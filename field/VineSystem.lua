@@ -7,17 +7,20 @@ function VineSystem.new(isServer, mission, customMt)
 	local self = setmetatable({}, customMt or VineSystem_mt)
 	self.mission = mission
 	self.isServer = isServer
+	self.isDebugAreaActive = false
+	self.debugAreas = {}
 	self.densityMapCellIdToNode = {}
 	self.dirtyNodes = {}
 	self.nodes = {}
 
-	if mission:getIsServer() then
-		if g_addCheatCommands then
+	if g_addCheatCommands then
+		if mission:getIsServer() then
 			addConsoleCommand("gsVineSystemSetGrowthState", "Sets vineyard growthstate", "consoleCommandSetGrowthState", self)
 		end
-	elseif g_addCheatCommands then
+
 		addConsoleCommand("gsVineSystemUpdateVisuals", "Updates the visuals", "consoleCommandUpdateVisuals", self)
 		addConsoleCommand("gsVineSystemPrintCellMapping", "Print the current cellmapping", "consoleCommandPrintCellMapping", self)
+		addConsoleCommand("gsVineSystemToggleDebug", "Toggles debug view", "consoleCommandToggleDebug", self)
 	end
 
 	return self
@@ -32,6 +35,13 @@ function VineSystem:delete()
 	removeConsoleCommand("gsVineSystemSetGrowthState")
 	removeConsoleCommand("gsVineSystemUpdateVisuals")
 	removeConsoleCommand("gsVineSystemPrintCellMapping")
+	removeConsoleCommand("gsVineSystemToggleDebug")
+
+	for fruitTypeIndex, debugArea in pairs(self.debugAreas) do
+		debugArea:delete()
+
+		self.debugAreas[fruitTypeIndex] = nil
+	end
 end
 
 function VineSystem:addElement(placeable, node, sizeX, sizeZ)
@@ -39,8 +49,118 @@ function VineSystem:addElement(placeable, node, sizeX, sizeZ)
 		return
 	end
 
+	local fruitTypeIndex = placeable:getVineFruitType()
+
+	if self.debugAreas[fruitTypeIndex] == nil then
+		local fruitType = g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+		local colors = {
+			[0] = {
+				0,
+				0.5,
+				0,
+				0.05
+			},
+			{
+				0,
+				0,
+				1,
+				0.075
+			},
+			{
+				0.995,
+				0.685,
+				0,
+				0.05
+			},
+			{
+				0.846,
+				0.216,
+				0,
+				0.05
+			},
+			{
+				0.695,
+				0.007,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			}
+		}
+		self.debugAreas[fruitTypeIndex] = DebugDensityMap.new(fruitType.terrainDataPlaneId, fruitType.startStateChannel, fruitType.numStateChannels, 10, 0.05, colors)
+	end
+
 	if not self.isServer and self.mission.missionDynamicInfo.isMultiplayer then
-		local fruitTypeIndex = placeable:getVineFruitType()
 		local densityMapId = g_currentMission.densityMapSyncer:activateFruitUpdateCallback(fruitTypeIndex)
 
 		if densityMapId ~= nil then
@@ -253,6 +373,18 @@ function VineSystem:consoleCommandPrintCellMapping()
 					log("            ", node, getName(node))
 				end
 			end
+		end
+	end
+end
+
+function VineSystem:consoleCommandToggleDebug()
+	self.isDebugAreaActive = not self.isDebugAreaActive
+
+	for _, debugArea in pairs(self.debugAreas) do
+		if self.isDebugAreaActive then
+			g_currentMission:addDrawable(debugArea)
+		else
+			g_currentMission:removeDrawable(debugArea)
 		end
 	end
 end

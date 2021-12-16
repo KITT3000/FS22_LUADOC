@@ -57,7 +57,6 @@ end
 function PowerConsumer.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", PowerConsumer)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", PowerConsumer)
-	SpecializationUtil.registerEventListener(vehicleType, "onPreAttach", PowerConsumer)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostDetach", PowerConsumer)
 	SpecializationUtil.registerEventListener(vehicleType, "onTurnedOn", PowerConsumer)
 end
@@ -105,7 +104,6 @@ function PowerConsumer:onLoad(savegame)
 	end)
 
 	if #spec.speedLimitModifier == 0 then
-		SpecializationUtil.removeEventListener(self, "onPreAttach", PowerConsumer)
 		SpecializationUtil.removeEventListener(self, "onPostDetach", PowerConsumer)
 	end
 end
@@ -261,26 +259,15 @@ function PowerConsumer:getRawSpeedLimit(superFunc)
 	local rawSpeedLimit = superFunc(self)
 	local spec = self.spec_powerConsumer
 
-	for i = 1, #spec.speedLimitModifier do
+	for i = #spec.speedLimitModifier, 1, -1 do
 		local modifier = spec.speedLimitModifier[i]
 
 		if modifier.minPowerKw <= spec.sourceMotorPeakPower and spec.sourceMotorPeakPower <= modifier.maxPowerKw then
-			rawSpeedLimit = rawSpeedLimit + modifier.offset
+			return rawSpeedLimit + modifier.offset
 		end
 	end
 
 	return rawSpeedLimit
-end
-
-function PowerConsumer:onPreAttach(attacherVehicle, inputJointDescIndex, jointDescIndex)
-	local spec = self.spec_powerConsumer
-	local rootVehicle = self.rootVehicle
-
-	if rootVehicle ~= nil and rootVehicle.getMotor ~= nil then
-		local rootMotor = rootVehicle:getMotor()
-		local peakMotorPower = rootMotor.peakMotorPower
-		spec.sourceMotorPeakPower = peakMotorPower
-	end
 end
 
 function PowerConsumer:onPostDetach()
@@ -289,6 +276,14 @@ end
 
 function PowerConsumer:onTurnedOn()
 	self.spec_powerConsumer.turnOnPeakPowerTimer = self.spec_powerConsumer.turnOnPeakPowerDuration * 1.5
+	local spec = self.spec_powerConsumer
+	local rootVehicle = self.rootVehicle
+
+	if rootVehicle ~= nil and rootVehicle.getMotor ~= nil then
+		local rootMotor = rootVehicle:getMotor()
+		local peakMotorPower = rootMotor.peakMotorPower
+		spec.sourceMotorPeakPower = peakMotorPower
+	end
 end
 
 function PowerConsumer:getTotalConsumedPtoTorque(excludeVehicle, expected, ignoreTurnOnPeak)
@@ -372,7 +367,7 @@ end
 
 addConsoleCommand("gsPowerConsumerSet", "Sets properties of the powerConsumer specialization", "consoleSetPowerConsumer", PowerConsumer)
 
-function PowerConsumer.loadSpecValueNeededPower(xmlFile, customEnvironment)
+function PowerConsumer.loadSpecValueNeededPower(xmlFile, customEnvironment, baseDir)
 	local neededPower = {
 		base = xmlFile:getValue("vehicle.storeData.specs.neededPower"),
 		config = {}

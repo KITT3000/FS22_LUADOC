@@ -31,6 +31,7 @@ function VehicleCharacter:load(xmlFile, xmlNode)
 		setVisibility(self.characterNode, false)
 
 		self.useAnimation = xmlFile:getValue(xmlNode .. "#useAnimation", false)
+		self.useIdleAnimation = xmlFile:getValue(xmlNode .. "#useIdleAnimation", not self.useAnimation)
 
 		if not self.useAnimation then
 			self.ikChainTargets = {}
@@ -70,7 +71,7 @@ function VehicleCharacter:loadCharacter(playerStyle, asyncCallbackObject, asyncC
 
 	self.playerModel = PlayerModel.new()
 
-	self.playerModel:load(playerStyle.xmlFilename, false, false, false, self.characterLoaded, self, {
+	self.playerModel:load(playerStyle.xmlFilename, false, false, self.useAnimation, self.characterLoaded, self, {
 		asyncCallbackObject,
 		asyncCallbackFunction,
 		asyncCallbackArguments,
@@ -103,24 +104,48 @@ function VehicleCharacter:characterLoaded(success, arguments)
 
 		self.characterDistanceRefNode = self.characterDistanceRefNodeCustom or self.playerModel.thirdPersonHeadNode
 
-		if self.useAnimation and self.playerModel.skeleton ~= nil and getNumOfChildren(self.playerModel.skeleton) > 0 then
-			local skeleton = self.playerModel.skeleton
-			local animNode = g_animCache:getNode(AnimationCache.VEHICLE_CHARACTER)
+		if self.playerModel.skeleton ~= nil and getNumOfChildren(self.playerModel.skeleton) > 0 then
+			if self.useAnimation then
+				local skeleton = self.playerModel.skeleton
+				local animNode = g_animCache:getNode(AnimationCache.CHARACTER)
 
-			cloneAnimCharacterSet(getChildAt(animNode, 0), skeleton)
+				cloneAnimCharacterSet(getChildAt(animNode, 0), skeleton)
 
-			self.animationCharsetId = getAnimCharacterSet(getChildAt(skeleton, 0))
-			local animationPlayer = createConditionalAnimation()
+				self.animationCharsetId = getAnimCharacterSet(getChildAt(skeleton, 0))
+				local animationPlayer = createConditionalAnimation()
 
-			if animationPlayer ~= 0 then
-				self.animationPlayer = animationPlayer
-			end
+				if animationPlayer ~= 0 then
+					self.animationPlayer = animationPlayer
+				end
 
-			if self.animationCharsetId == 0 then
-				self.animationCharsetId = nil
+				if self.animationCharsetId == 0 then
+					self.animationCharsetId = nil
 
-				Logging.devError("-- [VehicleCharacter:loadCharacter] Could not load animation CharSet from: [%s/%s]", getName(getParent(skeleton)), getName(skeleton))
-				printScenegraph(getParent(skeleton))
+					Logging.devError("-- [VehicleCharacter:loadCharacter] Could not load animation CharSet from: [%s/%s]", getName(getParent(skeleton)), getName(skeleton))
+					printScenegraph(getParent(skeleton))
+				end
+			elseif self.useIdleAnimation then
+				local skeleton = self.playerModel.skeleton
+				local animNode = g_animCache:getNode(AnimationCache.VEHICLE_CHARACTER)
+
+				cloneAnimCharacterSet(getChildAt(animNode, 0), skeleton)
+
+				self.animationCharsetId = getAnimCharacterSet(skeleton)
+
+				if self.animationCharsetId ~= 0 then
+					self.idleClipIndex = getAnimClipIndex(self.animationCharsetId, "idleSource")
+
+					clearAnimTrackClip(self.animationCharsetId, 0)
+					assignAnimTrackClip(self.animationCharsetId, 0, self.idleClipIndex)
+					setAnimTrackLoopState(self.animationCharsetId, 0, true)
+
+					self.idleAnimationState = false
+				else
+					self.useIdleAnimation = false
+					self.animationCharsetId = nil
+
+					Logging.devError("-- [VehicleCharacter:loadCharacter] Could not load animation CharSet from: [%s/%s]", getName(getParent(skeleton)), getName(skeleton))
+				end
 			end
 		end
 
@@ -230,12 +255,30 @@ function VehicleCharacter:getAllowCharacterUpdate()
 end
 
 function VehicleCharacter:update(dt)
-	if self.playerModel ~= nil and self.playerModel.isLoaded and self.vehicle.currentUpdateDistance < self.maxUpdateDistance then
-		if self:getAllowCharacterUpdate() then
-			self:setDirty(false)
+	if self.playerModel ~= nil and self.playerModel.isLoaded then
+		local inUpdateRange = self.vehicle.currentUpdateDistance < self.maxUpdateDistance
+
+		if inUpdateRange then
+			if self:getAllowCharacterUpdate() then
+				self:setDirty(false)
+			end
+
+			self:updateIKChains()
 		end
 
-		self:updateIKChains()
+		if self.useIdleAnimation then
+			if inUpdateRange then
+				if not self.idleAnimationState then
+					self.idleAnimationState = true
+
+					enableAnimTrack(self.animationCharsetId, 0)
+				end
+			elseif self.idleAnimationState then
+				self.idleAnimationState = false
+
+				disableAnimTrack(self.animationCharsetId, 0)
+			end
+		end
 	end
 end
 
@@ -268,6 +311,7 @@ function VehicleCharacter.registerCharacterXMLPaths(schema, basePath, name)
 	schema:register(XMLValueType.FLOAT, basePath .. "#cameraMinDistance", "Min. distance until character is hidden", 1.5)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#distanceRefNode", "Distance reference node", "Character root node")
 	schema:register(XMLValueType.BOOL, basePath .. "#useAnimation", "Use animation instead of ik chains", false)
+	schema:register(XMLValueType.BOOL, basePath .. "#useIdleAnimation", "Apply character idle animation additinally to ik chain control", "set if #useAnimation not set")
 	schema:register(XMLValueType.VECTOR_ROT, basePath .. "#spineRotation", "Spine rotation")
 	schema:register(XMLValueType.BOOL, basePath .. "#speedDependedSpine", "Speed dependent spine", false)
 	schema:register(XMLValueType.ANGLE, basePath .. "#spineNodeMinRot", "Spine node min. rotation", 10)

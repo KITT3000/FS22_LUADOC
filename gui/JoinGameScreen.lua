@@ -16,9 +16,10 @@ JoinGameScreen = {
 		"detailButtonElement",
 		"startButtonElement",
 		"changeButton",
-		"sortButton"
+		"sortButton",
+		"loadingText"
 	},
-	REFRESH_TIME = 15000,
+	REFRESH_TIME = 25000,
 	FILTER_CHANGE_REFRESH_TIME = 500
 }
 local JoinGameScreen_mt = Class(JoinGameScreen, ScreenElement)
@@ -109,6 +110,7 @@ function JoinGameScreen:onOpen()
 	end
 
 	self.isRequestPending = false
+	self.serverDetailsPending = false
 
 	g_masterServerConnection:setCallbackTarget(self)
 	self.startButtonElement:setDisabled(true)
@@ -125,6 +127,8 @@ function JoinGameScreen:onOpen()
 		g_connectionManager:startupWithWorkingPort(g_gameSettings:getValue("defaultServerPort"))
 		g_masterServerConnection:connectToMasterServer(g_masterServerConnection.lastBackServerIndex)
 	end
+
+	self.loadingText:setVisible(self.serverList:getItemCount() == 0)
 
 	if g_deepLinkingInfo ~= nil then
 		masterServerRequestServerDetailsWithPlatformServerId(g_deepLinkingInfo.platformServerId)
@@ -148,7 +152,8 @@ function JoinGameScreen:triggerRebuildOnFilterChange()
 end
 
 function JoinGameScreen:onServerInfoDetails(id, name, language, capacity, numPlayers, mapName, mapId, hasPassword, isLanServer, modTitles, modHashes, allowCrossPlay, platformId, password)
-	log(string.format([[
+	if g_isDevelopmentVersion then
+		log(string.format([[
 JoinGameScreen Id: %d
 name: %s
 language: %d
@@ -164,8 +169,9 @@ allowCrossPlay: %s
 platformId :%s
 ]], id, name, language, capacity, numPlayers, mapName, mapId, tostring(hasPassword), tostring(isLanServer), modTitles, modHashes, allowCrossPlay, getDeviceTypeFromPlatformId(platformId)))
 
-	for k, t in ipairs(modTitles) do
-		log("    ", t, "> Hash:", modHashes[k])
+		for k, t in ipairs(modTitles) do
+			log("    ", t, "> Hash:", modHashes[k])
+		end
 	end
 
 	if g_deepLinkingInfo ~= nil then
@@ -295,7 +301,9 @@ function JoinGameScreen:updateDisplayedServers()
 
 	table.sort(self.displayServers, self:buildSortFunc())
 	self.numServersText:setText(string.format("%d / %d %s", #self.displayServers, self.totalNumServers, g_i18n:getText("ui_games")))
+	self.numServersText.parent:invalidateLayout()
 	self.serverList:reloadData()
+	self.loadingText:setVisible(false)
 
 	if self.isInitialLoad then
 		if #self.displayServers > 0 then
@@ -342,7 +350,7 @@ function JoinGameScreen:filterServer(server)
 	local modsOk = not self.onlyWithAllModsAvailable or server.allModsAvailable
 	local languageOk = server.language == self.selectedLanguageId
 	local capOk = server.capacity <= self.selectedMaxNumPlayers
-	local serverNameOk = self.serverName and server.name and (self.serverName == "" or string.find(server.name:lower(), self.serverName:lower()) ~= nil)
+	local serverNameOk = self.serverName and server.name and (self.serverName == "" or string.find(server.name:lower(), self.serverName:lower(), 1, true) ~= nil)
 
 	return pwOk and notFullOk and mapOk and modsOk and languageOk and capOk and serverNameOk
 end

@@ -308,7 +308,10 @@ function I3DUtil.interateRecursively(node, func, depth)
 	for i = 0, getNumOfChildren(node) - 1 do
 		local child = getChildAt(node, i)
 
-		func(child, depth)
+		if func(child, depth) == false then
+			return
+		end
+
 		I3DUtil.interateRecursively(child, func, depth + 1)
 	end
 end
@@ -323,6 +326,10 @@ function I3DUtil.getIsLinkedToNode(parent, node)
 	end
 
 	return false
+end
+
+function I3DUtil.getIsSpline(node)
+	return getHasClassId(node, ClassIds.SHAPE) and getGeometry(node) ~= 0 and getHasClassId(getGeometry(node), ClassIds.SPLINE)
 end
 
 function I3DUtil.getNodePath(node)

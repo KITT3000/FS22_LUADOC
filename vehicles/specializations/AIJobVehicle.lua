@@ -172,6 +172,10 @@ function AIJobVehicle:getShowAIToggleActionEvent()
 		return false
 	end
 
+	if not self:getIsAIActive() and g_currentMission.aiSystem:getAILimitedReached() then
+		return false
+	end
+
 	return true
 end
 

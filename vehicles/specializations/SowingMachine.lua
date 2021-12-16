@@ -768,7 +768,10 @@ function SowingMachine:onEndWorkAreaProcessing(dt, hasProcessed)
 		end
 
 		self:updateLastWorkedArea(0)
-		stats:updateStats("sownTime", dt / 60000)
+
+		if spec.isWorking then
+			stats:updateStats("sownTime", dt / 60000)
+		end
 	end
 
 	if self.isClient then
@@ -842,6 +845,7 @@ function SowingMachine:updateAiParameters()
 				isCultivatorAttached = true
 
 				vehicles[i]:updateCultivatorAIRequirements()
+				vehicles[i]:updateCultivatorEnabledState()
 			end
 
 			if SpecializationUtil.hasSpecialization(Weeder, vehicles[i].specializations) then
@@ -860,6 +864,7 @@ function SowingMachine:updateAiParameters()
 		if isCultivatorAttached then
 			if self:getUseSowingMachineAIRequirements() then
 				self:addAIGroundTypeRequirements(SowingMachine.AI_REQUIRED_GROUND_TYPES)
+				self:addAIGroundTypeRequirements(SowingMachine.AI_OUTPUT_GROUND_TYPES)
 			end
 		elseif isWeederAttached then
 			if self:getUseSowingMachineAIRequirements() then
@@ -906,7 +911,7 @@ function SowingMachine:actionEventToggleSeedTypeBack(actionName, inputValue, cal
 	end
 end
 
-function SowingMachine.loadSpecValueSeedFillTypes(xmlFile, customEnvironment)
+function SowingMachine.loadSpecValueSeedFillTypes(xmlFile, customEnvironment, baseDir)
 	local categories = Utils.getNoNil(xmlFile:getValue("vehicle.storeData.specs.seedFruitTypeCategories"), xmlFile:getValue("vehicle.sowingMachine.seedFruitTypeCategories"))
 	local names = Utils.getNoNil(xmlFile:getValue("vehicle.storeData.specs.seedFruitTypes"), xmlFile:getValue("vehicle.sowingMachine.seedFruitTypes"))
 

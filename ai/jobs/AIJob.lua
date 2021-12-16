@@ -142,7 +142,7 @@ function AIJob:canContinueWork()
 end
 
 function AIJob:getPricePerMs()
-	return 0.001
+	return 0.0004
 end
 
 function AIJob:getNextTaskIndex()
@@ -246,18 +246,26 @@ end
 function AIJob:showNotification(aiMessage)
 	local helper = g_helperManager:getHelperByIndex(self.helperIndex)
 
-	if helper ~= nil and aiMessage ~= nil then
-		local text = aiMessage:getMessage()
-		local errorType = aiMessage:getType()
-		local notificationType = FSBaseMission.INGAME_NOTIFICATION_CRITICAL
+	if helper ~= nil then
+		local playerFarmId = nil
 
-		if errorType == AIMessageType.OK then
-			notificationType = FSBaseMission.INGAME_NOTIFICATION_OK
-		elseif errorType == AIMessageType.INFO then
-			notificationType = FSBaseMission.INGAME_NOTIFICATION_INFO
+		if g_currentMission ~= nil and g_currentMission.player ~= nil then
+			playerFarmId = g_currentMission.player.farmId
 		end
 
-		g_currentMission:addIngameNotification(notificationType, string.format(text, helper.name, aiMessage:getMessageArguments()))
+		if aiMessage ~= nil and self.startedFarmId == playerFarmId then
+			local text = aiMessage:getMessage()
+			local errorType = aiMessage:getType()
+			local notificationType = FSBaseMission.INGAME_NOTIFICATION_CRITICAL
+
+			if errorType == AIMessageType.OK then
+				notificationType = FSBaseMission.INGAME_NOTIFICATION_OK
+			elseif errorType == AIMessageType.INFO then
+				notificationType = FSBaseMission.INGAME_NOTIFICATION_INFO
+			end
+
+			g_currentMission:addIngameNotification(notificationType, string.format(text, helper.name, aiMessage:getMessageArguments()))
+		end
 	end
 end
 

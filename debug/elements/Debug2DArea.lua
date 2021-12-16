@@ -115,6 +115,8 @@ function Debug2DArea:setColor(r, g, b, a, isFilled)
 		b,
 		a
 	}
+
+	return self
 end
 
 function Debug2DArea:createWithNodes(startNode, widthNode, heightNode)
@@ -122,7 +124,7 @@ function Debug2DArea:createWithNodes(startNode, widthNode, heightNode)
 	local widthX, widthY, widthZ = getWorldTranslation(widthNode)
 	local heightX, heightY, heightZ = getWorldTranslation(heightNode)
 
-	self:createWithPositions(startX, startY, startZ, widthX, widthY, widthZ, heightX, heightY, heightZ)
+	return self:createWithPositions(startX, startY, startZ, widthX, widthY, widthZ, heightX, heightY, heightZ)
 end
 
 function Debug2DArea:createWithPositions(startX, startY, startZ, widthX, widthY, widthZ, heightX, heightY, heightZ)
@@ -168,6 +170,8 @@ function Debug2DArea:createWithPositions(startX, startY, startZ, widthX, widthY,
 		heightY,
 		heightZ
 	}
+
+	return self
 end
 
 function Debug2DArea:createWithStartEnd(startNode, endNode)
@@ -177,11 +181,11 @@ function Debug2DArea:createWithStartEnd(startNode, endNode)
 	local sizeZ = math.abs(offsetZ)
 	local dirX, _, dirZ = localDirectionToWorld(startNode, 0, 0, 1)
 
-	self:createFromPosAndDir(x, y, z, dirX, 0, dirZ, 0, 1, 0, sizeX, sizeZ)
+	return self:createFromPosAndDir(x, y, z, dirX, 0, dirZ, 0, 1, 0, sizeX, sizeZ)
 end
 
 function Debug2DArea:createSimple(x, y, z, size)
-	self:createFromPosAndDir(x, y, z, 0, 0, 1, 0, 1, 0, size, size)
+	return self:createFromPosAndDir(x, y, z, 0, 0, 1, 0, 1, 0, size, size)
 end
 
 function Debug2DArea:createWithSizeAndOffset(node, width, length, widthOffset, lengthOffset)
@@ -190,7 +194,7 @@ function Debug2DArea:createWithSizeAndOffset(node, width, length, widthOffset, l
 	local x, y, z = getWorldTranslation(node)
 	x, y, z = MathUtil.transform(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, widthOffset, 0, lengthOffset)
 
-	self:createFromPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, width, length)
+	return self:createFromPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, width, length)
 end
 
 function Debug2DArea:createFromPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, width, length)
@@ -209,6 +213,8 @@ function Debug2DArea:createFromPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY, up
 	pos[4] = {
 		MathUtil.transform(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, halfWidth, 0, -halfLength)
 	}
+
+	return self
 end
 
 function Debug2DArea:createWithNode(node, sizeX, sizeZ)
@@ -227,4 +233,6 @@ function Debug2DArea:createWithNode(node, sizeX, sizeZ)
 	pos[4] = {
 		localToWorld(node, sizeXHalf, 0, -sizeZHalf)
 	}
+
+	return self
 end

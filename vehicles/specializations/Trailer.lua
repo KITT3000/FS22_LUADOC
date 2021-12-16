@@ -39,6 +39,7 @@ Trailer = {
 		schema:register(XMLValueType.FLOAT, key .. ".tipSide(?).animation#speedScale", "Tip animation speed scale", 1)
 		schema:register(XMLValueType.FLOAT, key .. ".tipSide(?).animation#closeSpeedScale", "Tip animation speed scale while stopping to tip", "inversed speed scale")
 		schema:register(XMLValueType.FLOAT, key .. ".tipSide(?).animation#startTipTime", "Tip animation start tip time", 0)
+		schema:register(XMLValueType.BOOL, key .. ".tipSide(?).animation#resetTipSideChange", "Reset tip animation to zero while tip side is activated", false)
 		schema:register(XMLValueType.STRING, key .. ".tipSide(?).doorAnimation#name", "Door animation name")
 		schema:register(XMLValueType.FLOAT, key .. ".tipSide(?).doorAnimation#speedScale", "Door animation speed scale", 1)
 		schema:register(XMLValueType.FLOAT, key .. ".tipSide(?).doorAnimation#closeSpeedScale", "Door animation speed scale while stopping to tip", "inversed speed scale")
@@ -62,10 +63,14 @@ Trailer = {
 
 		schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).trailer#tipSideIndex", "Current tip side index")
 		schemaSavegame:register(XMLValueType.BOOL, "vehicles.vehicle(?).trailer#doorState", "Current back door state")
+		schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).trailer#tipState", "Current tip state")
+		schemaSavegame:register(XMLValueType.FLOAT, "vehicles.vehicle(?).trailer#tipAnimationTime", "Current tip animation time")
 	end,
 	registerEvents = function (vehicleType)
 		SpecializationUtil.registerEvent(vehicleType, "onStartTipping")
+		SpecializationUtil.registerEvent(vehicleType, "onOpenBackDoor")
 		SpecializationUtil.registerEvent(vehicleType, "onStopTipping")
+		SpecializationUtil.registerEvent(vehicleType, "onCloseBackDoor")
 		SpecializationUtil.registerEvent(vehicleType, "onEndTipping")
 	end
 }
@@ -81,6 +86,7 @@ function Trailer.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "endTipping", Trailer.endTipping)
 	SpecializationUtil.registerFunction(vehicleType, "setTrailerDoorState", Trailer.setTrailerDoorState)
 	SpecializationUtil.registerFunction(vehicleType, "getTipState", Trailer.getTipState)
+	SpecializationUtil.registerFunction(vehicleType, "setTipState", Trailer.setTipState)
 end
 
 function Trailer.registerOverwrittenFunctions(vehicleType)
@@ -156,17 +162,35 @@ end
 function Trailer:onPostLoad(savegame)
 	local spec = self.spec_trailer
 
-	if spec.tipSideCount > 1 and savegame ~= nil then
-		local tipSideIndex = savegame.xmlFile:getValue(savegame.key .. ".trailer#tipSideIndex")
+	if savegame ~= nil and spec.tipSideCount > 0 then
+		if spec.tipSideCount > 1 then
+			local tipSideIndex = savegame.xmlFile:getValue(savegame.key .. ".trailer#tipSideIndex")
 
-		if tipSideIndex ~= nil then
-			self:setPreferedTipSide(tipSideIndex, true)
+			if tipSideIndex ~= nil then
+				self:setPreferedTipSide(tipSideIndex, true)
+			end
 		end
 
 		local doorState = savegame.xmlFile:getValue(savegame.key .. ".trailer#doorState")
 
 		if doorState ~= nil then
 			self:setTrailerDoorState(doorState, true, true)
+		end
+
+		spec.tipState = savegame.xmlFile:getValue(savegame.key .. ".trailer#tipState", spec.tipState)
+
+		if spec.tipState == Trailer.TIPSTATE_OPENING or spec.tipState == Trailer.TIPSTATE_OPEN then
+			spec.currentTipSideIndex = spec.preferedTipSideIndex
+
+			self:setTipState(true)
+		end
+
+		local tipAnimationTime = savegame.xmlFile:getValue(savegame.key .. ".trailer#tipAnimationTime")
+
+		if tipAnimationTime ~= nil then
+			local tipSide = spec.tipSides[spec.preferedTipSideIndex]
+
+			self:setAnimationTime(tipSide.animation.name, tipAnimationTime, true, false)
 		end
 	end
 end
@@ -195,38 +219,29 @@ function Trailer:onReadStream(streamId, connection)
 
 	if spec.tipSideCount > 1 then
 		self:setPreferedTipSide(streamReadUIntN(streamId, Trailer.TIP_SIDE_NUM_BITS), true)
+	end
 
-		spec.tipState = streamReadUIntN(streamId, Trailer.TIP_STATE_NUM_BITS)
+	spec.tipState = streamReadUIntN(streamId, Trailer.TIP_STATE_NUM_BITS)
 
-		if streamReadBool(streamId) then
-			spec.currentTipSideIndex = streamReadUIntN(streamId, Trailer.TIP_SIDE_NUM_BITS)
-		end
+	if streamReadBool(streamId) then
+		spec.currentTipSideIndex = streamReadUIntN(streamId, Trailer.TIP_SIDE_NUM_BITS)
+	end
 
-		local tipSide = spec.tipSides[spec.currentTipSideIndex]
+	self:setTipState(spec.tipState == Trailer.TIPSTATE_OPENING or spec.tipState == Trailer.TIPSTATE_OPEN)
 
-		if tipSide ~= nil then
-			if spec.tipState == Trailer.TIPSTATE_OPENING or spec.tipState == Trailer.TIPSTATE_OPEN then
-				self:playAnimation(tipSide.animation.name, tipSide.animation.speedScale, self:getAnimationTime(tipSide.animation.name), true)
+	if streamReadBool(streamId) then
+		local doorState = streamReadBool(streamId)
 
-				if not tipSide.manualDoorToggle and tipSide.doorAnimation.name ~= nil then
-					self:playAnimation(tipSide.doorAnimation.name, tipSide.doorAnimation.speedScale, self:getAnimationTime(tipSide.doorAnimation.name), true)
-				end
-			else
-				self:playAnimation(tipSide.animation.name, tipSide.animation.closeSpeedScale, self:getAnimationTime(tipSide.animation.name), true)
+		self:setTrailerDoorState(doorState, true, true)
+	end
 
-				if not tipSide.manualDoorToggle and tipSide.doorAnimation.name ~= nil then
-					self:playAnimation(tipSide.doorAnimation.name, tipSide.doorAnimation.closeSpeedScale, self:getAnimationTime(tipSide.doorAnimation.name), true)
-				end
-			end
+	if streamReadBool(streamId) then
+		local tipAnimationTime = streamReadFloat32(streamId)
 
-			AnimatedVehicle.updateAnimationByName(self, tipSide.animation.name, 999999, true)
-			AnimatedVehicle.updateAnimationByName(self, tipSide.doorAnimation.name, 999999, true)
-		end
+		if tipAnimationTime ~= nil then
+			local tipSide = spec.tipSides[spec.preferedTipSideIndex]
 
-		if streamReadBool(streamId) then
-			local doorState = streamReadBool(streamId)
-
-			self:setTrailerDoorState(doorState, true, true)
+			self:setAnimationTime(tipSide.animation.name, tipAnimationTime, true, false)
 		end
 	end
 end
@@ -236,17 +251,22 @@ function Trailer:onWriteStream(streamId, connection)
 
 	if spec.tipSideCount > 1 then
 		streamWriteUIntN(streamId, spec.preferedTipSideIndex, Trailer.TIP_SIDE_NUM_BITS)
-		streamWriteUIntN(streamId, spec.tipState, Trailer.TIP_STATE_NUM_BITS)
+	end
 
-		if streamWriteBool(streamId, spec.currentTipSideIndex ~= nil) then
-			streamWriteUIntN(streamId, spec.currentTipSideIndex, Trailer.TIP_SIDE_NUM_BITS)
-		end
+	streamWriteUIntN(streamId, spec.tipState, Trailer.TIP_STATE_NUM_BITS)
 
-		local tipSide = spec.tipSides[spec.preferedTipSideIndex]
+	if streamWriteBool(streamId, spec.currentTipSideIndex ~= nil) then
+		streamWriteUIntN(streamId, spec.currentTipSideIndex, Trailer.TIP_SIDE_NUM_BITS)
+	end
 
-		if streamWriteBool(streamId, tipSide ~= nil and tipSide.manualDoorToggle) then
-			streamWriteBool(streamId, tipSide.doorAnimation.state)
-		end
+	local tipSide = spec.tipSides[spec.preferedTipSideIndex]
+
+	if streamWriteBool(streamId, tipSide ~= nil and tipSide.manualDoorToggle) then
+		streamWriteBool(streamId, tipSide.doorAnimation.state)
+	end
+
+	if streamWriteBool(streamId, tipSide ~= nil and tipSide.animation.name ~= nil) then
+		streamWriteFloat32(streamId, self:getAnimationTime(tipSide.animation.name))
 	end
 end
 
@@ -331,7 +351,7 @@ function Trailer:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 	elseif spec.tipState == Trailer.TIPSTATE_CLOSING then
 		tipSide = spec.tipSides[spec.currentTipSideIndex]
 
-		if tipSide ~= nil and (self:getAnimationTime(tipSide.animation.name) <= 0 or self:getAnimationDuration(tipSide.animation.name) == 0) then
+		if tipSide ~= nil and (self:getAnimationTime(tipSide.animation.name) <= 0 or self:getAnimationDuration(tipSide.animation.name) == 0 or tipSide.animation.closeSpeedScale == 0) then
 			spec.tipState = Trailer.TIPSTATE_CLOSED
 
 			self:endTipping()
@@ -383,6 +403,7 @@ function Trailer:loadTipSide(xmlFile, key, entry)
 	entry.animation.speedScale = xmlFile:getValue(key .. ".animation#speedScale", 1)
 	entry.animation.closeSpeedScale = -xmlFile:getValue(key .. ".animation#closeSpeedScale", entry.animation.speedScale)
 	entry.animation.startTipTime = xmlFile:getValue(key .. ".animation#startTipTime", 0)
+	entry.animation.resetTipSideChange = xmlFile:getValue(key .. ".animation#resetTipSideChange", false)
 	entry.doorAnimation = {
 		name = xmlFile:getValue(key .. ".doorAnimation#name"),
 		speedScale = xmlFile:getValue(key .. ".doorAnimation#speedScale", 1)
@@ -432,13 +453,16 @@ function Trailer:saveToXMLFile(xmlFile, key, usedModNames)
 
 	if spec.tipSideCount > 1 then
 		xmlFile:setValue(key .. "#tipSideIndex", spec.preferedTipSideIndex)
-
-		local tipSide = spec.tipSides[spec.preferedTipSideIndex]
-
-		if tipSide ~= nil then
-			xmlFile:setValue(key .. "#doorState", self:getAnimationTime(tipSide.doorAnimation.name) > 0)
-		end
 	end
+
+	local tipSide = spec.tipSides[spec.preferedTipSideIndex]
+
+	if tipSide ~= nil then
+		xmlFile:setValue(key .. "#doorState", self:getAnimationTime(tipSide.doorAnimation.name) > 0)
+		xmlFile:setValue(key .. "#tipAnimationTime", self:getAnimationTime(tipSide.animation.name))
+	end
+
+	xmlFile:setValue(key .. "#tipState", spec.tipState)
 end
 
 function Trailer:getCanTogglePreferdTipSide()
@@ -520,6 +544,10 @@ function Trailer:setPreferedTipSide(index, noEventSend)
 		self:setTrailerDoorState(false, true)
 	end
 
+	if newTipSide.animation.resetTipSideChange then
+		self:setAnimationTime(newTipSide.animation.name, 0, true, false)
+	end
+
 	self:setCurrentDischargeNodeIndex(newTipSide.dischargeNodeIndex)
 	self:requestActionEventUpdate()
 end
@@ -563,9 +591,13 @@ function Trailer:stopTipping(noEventSend)
 	local tipSide = spec.tipSides[spec.currentTipSideIndex]
 
 	if tipSide ~= nil then
-		local animTime = self:getAnimationTime(tipSide.animation.name)
+		if tipSide.animation.closeSpeedScale ~= 0 then
+			local animTime = self:getAnimationTime(tipSide.animation.name)
 
-		self:playAnimation(tipSide.animation.name, tipSide.animation.closeSpeedScale, animTime, true)
+			self:playAnimation(tipSide.animation.name, tipSide.animation.closeSpeedScale, animTime, true)
+		elseif self:getIsAnimationPlaying(tipSide.animation.name) then
+			self:stopAnimation(tipSide.animation.name, true)
+		end
 
 		if not tipSide.manualDoorToggle and tipSide.doorAnimation.name ~= nil and not tipSide.doorAnimation.delayedClosing then
 			self:setTrailerDoorState(false, true)
@@ -618,12 +650,44 @@ function Trailer:setTrailerDoorState(state, noEventSend, instantUpdate)
 			AnimatedVehicle.updateAnimationByName(self, tipSide.doorAnimation.name, 999999, true)
 		end
 
+		if tipSide.manualDoorToggle and tipSide.doorAnimation.name ~= nil then
+			if state then
+				SpecializationUtil.raiseEvent(self, "onOpenBackDoor", spec.preferedTipSideIndex)
+			else
+				SpecializationUtil.raiseEvent(self, "onCloseBackDoor", spec.preferedTipSideIndex)
+			end
+		end
+
 		TrailerToggleManualDoorEvent.sendEvent(self, state, noEventSend)
 	end
 end
 
 function Trailer:getTipState()
 	return self.spec_trailer.tipState
+end
+
+function Trailer:setTipState(isOpen)
+	local spec = self.spec_trailer
+	local tipSide = spec.tipSides[spec.currentTipSideIndex]
+
+	if tipSide ~= nil then
+		if isOpen then
+			self:playAnimation(tipSide.animation.name, tipSide.animation.speedScale, self:getAnimationTime(tipSide.animation.name), true)
+
+			if not tipSide.manualDoorToggle and tipSide.doorAnimation.name ~= nil then
+				self:playAnimation(tipSide.doorAnimation.name, tipSide.doorAnimation.speedScale, self:getAnimationTime(tipSide.doorAnimation.name), true)
+			end
+		else
+			self:playAnimation(tipSide.animation.name, tipSide.animation.closeSpeedScale, self:getAnimationTime(tipSide.animation.name), true)
+
+			if not tipSide.manualDoorToggle and tipSide.doorAnimation.name ~= nil then
+				self:playAnimation(tipSide.doorAnimation.name, tipSide.doorAnimation.closeSpeedScale, self:getAnimationTime(tipSide.doorAnimation.name), true)
+			end
+		end
+
+		AnimatedVehicle.updateAnimationByName(self, tipSide.animation.name, 999999, true)
+		AnimatedVehicle.updateAnimationByName(self, tipSide.doorAnimation.name, 999999, true)
+	end
 end
 
 function Trailer:getDischargeNodeEmptyFactor(superFunc, dischargeNode)
@@ -666,9 +730,21 @@ end
 
 function Trailer:getIsNextCoverStateAllowed(superFunc, nextState)
 	local spec = self.spec_trailer
+	local tipSide = nil
 
 	if spec.currentTipSideIndex ~= nil then
-		local tipSide = spec.tipSides[spec.currentTipSideIndex]
+		tipSide = spec.tipSides[spec.currentTipSideIndex]
+	end
+
+	if spec.preferedTipSideIndex ~= nil then
+		local preferedTipSide = spec.tipSides[spec.preferedTipSideIndex]
+
+		if preferedTipSide ~= nil and preferedTipSide.manualDoorToggle and preferedTipSide.doorAnimation.state then
+			tipSide = preferedTipSide
+		end
+	end
+
+	if tipSide ~= nil then
 		local dischargeNode = self:getDischargeNodeByIndex(tipSide.dischargeNodeIndex)
 		local cover = self:getCoverByFillUnitIndex(dischargeNode.fillUnitIndex)
 

@@ -1,5 +1,5 @@
 FertilizeMission = {
-	REWARD_PER_HA = 400,
+	REWARD_PER_HA = 320,
 	REIMBURSEMENT_PER_HA = 1150
 }
 local FertilizeMission_mt = Class(FertilizeMission, AbstractFieldMission)

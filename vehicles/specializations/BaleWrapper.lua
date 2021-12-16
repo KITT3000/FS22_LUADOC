@@ -716,11 +716,13 @@ function BaleWrapper:onDelete()
 			if self.isServer then
 				if self.isReconfigurating == nil or not self.isReconfigurating then
 					bale:unmountKinematic()
+					bale:setCanBeSold(true)
 				else
 					bale:delete()
 				end
 			else
 				bale:unmountKinematic()
+				bale:setCanBeSold(true)
 			end
 		end
 	end
@@ -876,6 +878,7 @@ function BaleWrapper:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelect
 			local rx, ry, rz = unpack(spec.baleToMount.rot)
 
 			bale:mountKinematic(self, spec.baleToMount.linkNode, x, y, z, rx, ry, rz)
+			bale:setCanBeSold(false)
 
 			spec.baleToMount = nil
 
@@ -1279,6 +1282,7 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 
 			setTranslation(spec.baleGrabber.grabNode, x, y, z)
 			bale:mountKinematic(self, spec.baleGrabber.grabNode, 0, 0, 0, 0, 0, 0)
+			bale:setCanBeSold(false)
 
 			spec.baleToMount = nil
 
@@ -1307,6 +1311,7 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 
 		if bale ~= nil then
 			bale:mountKinematic(self, attachNode, 0, 0, 0, 0, 0, 0)
+			bale:setCanBeSold(false)
 
 			spec.baleToMount = nil
 		else
@@ -1366,10 +1371,13 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 		spec.baleWrapperState = BaleWrapper.STATE_WRAPPER_FINSIHED
 		local bale = NetworkUtil.getObject(spec.currentWrapper.currentBale)
 		local baleType = spec.currentWrapper.allowedBaleTypes[spec.currentBaleTypeIndex]
+		local skippedWrapping = not bale:getSupportsWrapping() or baleType.skipWrapping
 
-		if not bale:getSupportsWrapping() or baleType.skipWrapping or bale.wrappingState == 1 then
+		if skippedWrapping or bale.wrappingState == 1 then
 			self:updateWrappingState(0, true)
-		else
+		end
+
+		if not skippedWrapping then
 			local animation = spec.currentWrapper.animations.resetWrapping
 
 			if animation.animName ~= nil then
@@ -1389,6 +1397,7 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 
 		if bale ~= nil then
 			bale:unmountKinematic()
+			bale:setCanBeSold(true)
 
 			local baleType = spec.currentWrapper.allowedBaleTypes[spec.currentBaleTypeIndex]
 
@@ -1472,7 +1481,7 @@ function BaleWrapper:getBaleInRange(refNode, distance)
 	local spec = self.spec_baleWrapper
 
 	for bale, _ in pairs(spec.baleGrabber.balesInTrigger) do
-		if bale.mountObject == nil and calcDistanceFrom(refNode, bale.nodeId) < nearestDistance then
+		if bale.mountObject == nil and bale.nodeId ~= 0 and calcDistanceFrom(refNode, bale.nodeId) < nearestDistance then
 			local isWrappable, sizeMatches, baleTypeIndex = self:getIsBaleWrappable(bale)
 			nearestBale = bale
 			nearestDistance = distance
@@ -1589,7 +1598,7 @@ function BaleWrapper:updateActionEvents()
 	end
 end
 
-function BaleWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, roundBaleWrapper)
+function BaleWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, roundBaleWrapper)
 	local rootName = xmlFile:getRootName()
 	local wrapperName = roundBaleWrapper and "roundBaleWrapper" or "squareBaleWrapper"
 	local baleSizeAttributes = {
@@ -1647,12 +1656,12 @@ function BaleWrapper.getSpecValueBaleSize(storeItem, realItem, configurations, s
 	end
 end
 
-function BaleWrapper.loadSpecValueBaleSizeRound(xmlFile, customEnvironment)
-	return BaleWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, true)
+function BaleWrapper.loadSpecValueBaleSizeRound(xmlFile, customEnvironment, baseDir)
+	return BaleWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, true)
 end
 
-function BaleWrapper.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment)
-	return BaleWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, false)
+function BaleWrapper.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment, baseDir)
+	return BaleWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, false)
 end
 
 function BaleWrapper.getSpecValueBaleSizeRound(storeItem, realItem, configurations, saleItem, returnValues, returnRange)

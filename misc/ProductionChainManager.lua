@@ -13,7 +13,10 @@ function ProductionChainManager.new(isServer, customMt)
 	addConsoleCommand("gsProductionPointSetProductionState", "", "commandSetProductionState", self)
 	addConsoleCommand("gsProductionPointSetOutputMode", "", "commandSetOutputMode", self)
 	addConsoleCommand("gsProductionPointSetFillLevel", "", "commandSetFillLevel", self)
-	g_messageCenter:subscribe(MessageType.HOUR_CHANGED, self.distributeGoods, self)
+
+	if self.isServer then
+		g_messageCenter:subscribe(MessageType.HOUR_CHANGED, self.hourChanged, self)
+	end
 
 	return self
 end
@@ -23,6 +26,8 @@ function ProductionChainManager:initDataStructures()
 	self.reverseProductionPoint = {}
 	self.farmIds = {}
 	self.currentUpdateIndex = 1
+	self.hourChangedDirty = false
+	self.hourChangeUpdating = false
 end
 
 function ProductionChainManager:unloadMapData()
@@ -32,7 +37,11 @@ function ProductionChainManager:unloadMapData()
 	removeConsoleCommand("gsProductionPointSetProductionState")
 	removeConsoleCommand("gsProductionPointSetOutputMode")
 	removeConsoleCommand("gsProductionPointSetFillLevel")
-	g_messageCenter:unsubscribe(MessageType.HOUR_CHANGED, self)
+
+	if self.isServer then
+		g_messageCenter:unsubscribe(MessageType.HOUR_CHANGED, self)
+	end
+
 	ProductionChainManager:superClass().unloadMapData(self)
 end
 
@@ -149,15 +158,34 @@ function ProductionChainManager:update()
 
 	if self.currentUpdateIndex > #self.productionPoints then
 		self.currentUpdateIndex = 1
+
+		if self.hourChangedDirty then
+			self.hourChangeUpdating = true
+			self.hourChangedDirty = false
+		elseif self.hourChangeUpdating then
+			self.hourChangeUpdating = false
+
+			self:distributeGoods()
+		end
 	end
 
 	local prodPoint = self.productionPoints[self.currentUpdateIndex]
 
 	if prodPoint then
 		prodPoint:updateProduction()
+
+		if self.hourChangeUpdating and self.isServer and prodPoint.isOwned then
+			prodPoint:claimProductionCosts()
+			prodPoint:directlySellOutputs()
+			prodPoint:updateBalaceDirectlySoldOutputs()
+		end
 	end
 
 	self.currentUpdateIndex = self.currentUpdateIndex + 1
+end
+
+function ProductionChainManager:hourChanged()
+	self.hourChangedDirty = true
 end
 
 function ProductionChainManager:distributeGoods()
@@ -187,8 +215,10 @@ function ProductionChainManager:distributeGoods()
 
 							if maxAmountToReceive > 0 then
 								local amountToTransfer = math.min(maxAmountToReceive, amountToDistribute * maxAmountToReceive / totalFreeCapacity)
+								local distanceSourceToTarget = calcDistanceFrom(distributingProdPoint.owningPlaceable.rootNode, prodPointInDemand.owningPlaceable.rootNode)
+								local transferCosts = amountToTransfer * distanceSourceToTarget * ProductionPoint.DIRECT_DELIVERY_PRICE
 
-								g_currentMission:addMoney(amountToTransfer * 0.01, prodPointInDemand.ownerFarmId, MoneyType.PROPERTY_MAINTENANCE, true)
+								g_currentMission:addMoney(transferCosts, prodPointInDemand.ownerFarmId, MoneyType.PRODUCTION_COSTS, true)
 								prodPointInDemand.storage:setFillLevel(prodPointInDemand.storage:getFillLevel(fillTypeIdToDistribute) + amountToTransfer, fillTypeIdToDistribute)
 								distributingProdPoint.storage:setFillLevel(distributingProdPoint.storage:getFillLevel(fillTypeIdToDistribute) - amountToTransfer, fillTypeIdToDistribute)
 							end

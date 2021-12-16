@@ -74,14 +74,7 @@ end
 
 function ModHubController:endModification()
 	if self.hasChanges then
-		if not GS_IS_CONSOLE_VERSION and not GS_PLATFORM_GGP then
-			RestartManager:setStartScreen(RestartManager.START_SCREEN_MAIN)
-			doRestart(false, "")
-
-			return
-		else
-			reloadDlcsAndMods()
-		end
+		reloadDlcsAndMods()
 	end
 
 	self.hasChanges = false

@@ -25,9 +25,9 @@ function AIDriveStrategyCombine:setAIVehicle(vehicle)
 		table.insert(self.combines, self.vehicle)
 	end
 
-	for _, implement in pairs(self.vehicle:getAttachedAIImplements()) do
-		if SpecializationUtil.hasSpecialization(Combine, implement.object.specializations) then
-			table.insert(self.combines, implement.object)
+	for _, childVehicle in pairs(self.vehicle.rootVehicle.childVehicles) do
+		if SpecializationUtil.hasSpecialization(Combine, childVehicle.specializations) then
+			table.insert(self.combines, childVehicle)
 		end
 	end
 end

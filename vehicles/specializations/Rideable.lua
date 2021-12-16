@@ -300,6 +300,7 @@ function Rideable:onLoad(savegame)
 		setRigidBodyType(spec.proxy, RigidBodyType.NONE)
 	end
 
+	spec.collisionMask = getCollisionMask(self.components[1].node)
 	spec.maxAcceleration = 5
 	spec.maxDeceleration = 10
 	spec.gravity = -18.8
@@ -1093,7 +1094,7 @@ function Rideable:updateAnimation(dt)
 	params.yawVelocity.value = turnSpeed
 	params.absYawVelocity.value = math.abs(turnSpeed)
 	params.leftRightWeight.value = spec.smoothedLeftRightWeight
-	params.onGround.value = spec.isOnGround or spec.justSpawned
+	params.onGround.value = spec.isOnGround
 	params.closeToGround.value = spec.isCloseToGround
 	params.inWater.value = self.isInWater
 	params.halted.value = spec.haltTimer > 0
@@ -1222,6 +1223,9 @@ function Rideable:onEnterVehicle(isControlling)
 
 	if self.isServer then
 		spec.lastOwner = self:getOwner()
+
+		setCollisionMask(self.components[1].node, 0)
+
 		spec.doHusbandryCheck = 0
 	end
 end
@@ -1266,6 +1270,8 @@ function Rideable:onLeaveVehicle()
 	end
 
 	if self.isServer then
+		setCollisionMask(self.components[1].node, spec.collisionMask)
+
 		spec.doHusbandryCheck = 5000
 	end
 
@@ -1435,6 +1441,8 @@ function Rideable:getHoofSurfaceSound(x, y, z, hitTerrain)
 				return spec.surfaceNameToSound.field
 			elseif self.isInShallowWater then
 				return spec.surfaceNameToSound.shallowWater
+			elseif self.isInMediumWater then
+				return spec.surfaceNameToSound.mediumWater
 			end
 		end
 

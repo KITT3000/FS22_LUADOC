@@ -785,7 +785,7 @@ function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
 							x, y, z = localToWorld(spec.cutNode, yOffset or 1, 0, 0)
 							shape, minY, maxY, minZ, maxZ = findSplitShape(x, y, z, nx, ny, nz, yx, yy, yz, spec.cutSizeY, spec.cutSizeZ)
 
-							if shape ~= nil then
+							if shape ~= 0 then
 								radius = math.max(maxY - minY, maxZ - minZ) * 0.5 * cosTreeAngle
 
 								if radius <= spec.cutMaxRadius then

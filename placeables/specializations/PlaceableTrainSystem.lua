@@ -244,7 +244,7 @@ function PlaceableTrainSystem:onLoad(savegame)
 	for t = 0, 1, 0.5 / spec.splineLength do
 		local x1, y1, z1 = getSplinePosition(spec.spline, t)
 
-		for _, object in pairs(spec.railroadObjects) do
+		for _, object in ipairs(spec.railroadObjects) do
 			local x2, y2, z2 = getWorldTranslation(object.rootNode)
 			local distance = MathUtil.vector3Length(x1 - x2, y1 - y2, z1 - z2)
 
@@ -255,16 +255,6 @@ function PlaceableTrainSystem:onLoad(savegame)
 				object.nearestDistance = distance
 				object.nearestTime = t
 			end
-		end
-	end
-
-	for _, object in pairs(spec.railroadObjects) do
-		if object.setSplineTimeByPosition ~= nil then
-			object:setSplineTimeByPosition(object.nearestTime, spec.splineLength)
-		end
-
-		if object.onSplinePositionTimeUpdate ~= nil then
-			object:onSplinePositionTimeUpdate(spec.splineTime, spec.splineEndTime)
 		end
 	end
 
@@ -291,6 +281,24 @@ function PlaceableTrainSystem:onDelete()
 end
 
 function PlaceableTrainSystem:onFinalizePlacement()
+	local spec = self.spec_trainSystem
+
+	if spec.railroadCrossings ~= nil then
+		for _, railroadCrossing in ipairs(spec.railroadCrossings) do
+			railroadCrossing:findBlockingPositions()
+		end
+	end
+
+	for _, object in ipairs(spec.railroadObjects) do
+		if object.setSplineTimeByPosition ~= nil then
+			object:setSplineTimeByPosition(object.nearestTime, spec.splineLength)
+		end
+
+		if object.onSplinePositionTimeUpdate ~= nil then
+			object:onSplinePositionTimeUpdate(spec.splineTime, spec.splineEndTime)
+		end
+	end
+
 	g_currentMission:addTrainSystem(self)
 	self:createVehicles()
 end
@@ -464,9 +472,11 @@ function PlaceableTrainSystem:onUpdate(dt)
 
 	if not self.finishedFirstUpdate then
 		self:setIsTrainTabbable(spec.isRented and g_currentMission:getFarmId() == spec.rentFarmId)
+
+		self.finishedFirstUpdate = true
 	end
 
-	for _, railroadObject in pairs(spec.railroadObjects) do
+	for _, railroadObject in ipairs(spec.railroadObjects) do
 		if railroadObject.update ~= nil then
 			railroadObject:update(dt)
 		end
@@ -650,7 +660,7 @@ function PlaceableTrainSystem:finalizeTrain(attachVehicles)
 	local lastVehicle = nil
 	spec.rootLocomotive = nil
 
-	for _, railroadVehicle in pairs(spec.railroadVehicles) do
+	for _, railroadVehicle in ipairs(spec.railroadVehicles) do
 		railroadVehicle:addDeleteListener(self)
 
 		if spec.rootLocomotive == nil and railroadVehicle.startAutomatedTrainTravel ~= nil then
@@ -788,7 +798,7 @@ function PlaceableTrainSystem:rentRailroad(farmId, position, noEventSend)
 
 	spec.rootLocomotive:setRequestedSplinePosition(position)
 
-	for _, railroadVehicle in pairs(spec.railroadVehicles) do
+	for _, railroadVehicle in ipairs(spec.railroadVehicles) do
 		railroadVehicle:setOwnerFarmId(spec.rentFarmId, true)
 	end
 
@@ -813,7 +823,7 @@ function PlaceableTrainSystem:returnRailroad(noEventSend)
 
 	spec.rentFarmId = FarmManager.SPECTATOR_FARM_ID
 
-	for _, railroadVehicle in pairs(spec.railroadVehicles) do
+	for _, railroadVehicle in ipairs(spec.railroadVehicles) do
 		railroadVehicle:setOwnerFarmId(spec.rentFarmId, true)
 	end
 

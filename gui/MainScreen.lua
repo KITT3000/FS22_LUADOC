@@ -30,6 +30,7 @@ MainScreen.CONTROLS = {
 MainScreen.NOTIFICATION_ANIMATION_DURATION = 500
 MainScreen.NOTIFICATION_CHECK_DELAY = 500
 MainScreen.NOTIFICATION_ANIM_DELAY = 2000
+MainScreen.NO_STORE_URL = "noStore"
 
 function MainScreen.new(target, custom_mt, startMissionInfo)
 	local self = ScreenElement.new(target, custom_mt or MainScreen_mt)
@@ -386,7 +387,9 @@ function MainScreen:onClickOpenNotification()
 			g_gui:showGui("SettingsScreen")
 			g_settingsScreen:showDisplaySettings()
 		elseif storeHasNativeGUI() then
-			if not storeShow(self.notifications[self.activeNotification].url) then
+			local url = self.notifications[self.activeNotification].url
+
+			if url ~= MainScreen.NO_STORE_URL and not storeShow(url) then
 				g_gui:showInfoDialog({
 					text = g_i18n:getText("ui_dlcStoreNotConnected"),
 					callback = MainScreen.onStoreFailedOk,
@@ -529,15 +532,8 @@ function MainScreen:update(dt)
 			self:resetNotifications()
 			self:updateTheme()
 		end
-	elseif haveModsChanged() and not self.restartModDialogShown then
-		self.restartModDialogShown = true
-
-		g_gui:showYesNoDialog({
-			title = g_i18n:getText("ui_modsChangedTitle"),
-			text = g_i18n:getText("ui_modsChangedText") .. "\n\n" .. g_i18n:getText("ui_modsChangedRestartQuestion"),
-			callback = self.onRestartModDialog,
-			target = self
-		})
+	elseif haveModsChanged() then
+		reloadDlcsAndMods()
 	end
 
 	if storeAreDlcsCorrupted() then
@@ -549,13 +545,6 @@ function MainScreen:update(dt)
 	end
 
 	self:updateFading(dt)
-end
-
-function MainScreen:onRestartModDialog(yes)
-	if yes then
-		RestartManager:setStartScreen(RestartManager.START_SCREEN_MAIN)
-		doRestart(false, "")
-	end
 end
 
 function MainScreen:assignNotificationData()
@@ -594,6 +583,11 @@ function MainScreen:assignNotificationData()
 			self.notificationButtonOpen:setText(g_i18n:getText("button_settings"))
 		elseif storeHasNativeGUI() then
 			self.notificationButtonOpen:setText(g_i18n:getText("button_dlcStore"))
+
+			local url = self.notifications[self.activeNotification].url
+			local showButton = url ~= MainScreen.NO_STORE_URL
+
+			self.notificationButtonOpen:setVisible(showButton)
 		else
 			self.notificationButtonOpen:setText(g_i18n:getText("button_visitWebsite"))
 		end

@@ -53,6 +53,10 @@ function VariableWorkWidthHUDExtension:getDisplayHeight()
 	return self:canDraw() and self.displayHeight or 0
 end
 
+function VariableWorkWidthHUDExtension:getHelpEntryCountReduction()
+	return self:canDraw() and 1 or 0
+end
+
 function VariableWorkWidthHUDExtension:draw(leftPosX, rightPosX, posY)
 	setTextColor(unpack(self.uiTextColor))
 	setTextBold(true)

@@ -194,6 +194,13 @@ function CreditsScreen:loadCredits()
 			c = "Eddie Edwards",
 			t = CreditsScreen.TEXT
 		})
+		table.insert(creditsTexts, {
+			t = CreditsScreen.SEPARATOR
+		})
+		table.insert(creditsTexts, {
+			c = "Senior Programmer",
+			t = CreditsScreen.TITLE
+		})
 	else
 		table.insert(creditsTexts, {
 			c = "Senior Programmer",
@@ -205,6 +212,14 @@ function CreditsScreen:loadCredits()
 		})
 	end
 
+	table.insert(creditsTexts, {
+		c = "Olivier Fouré",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Samo Jordan",
+		t = CreditsScreen.TEXT
+	})
 	table.insert(creditsTexts, {
 		t = CreditsScreen.SEPARATOR
 	})
@@ -226,14 +241,6 @@ function CreditsScreen:loadCredits()
 	})
 	table.insert(creditsTexts, {
 		c = "Nicolas Wrobel",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
-		c = "Olivier Fouré",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
-		c = "Samo Jordan",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -913,34 +920,38 @@ function CreditsScreen:loadCredits()
 	table.insert(creditsTexts, {
 		t = CreditsScreen.SEPARATOR
 	})
-	table.insert(creditsTexts, {
-		t = CreditsScreen.DISCLAIMER,
-		c = g_i18n:getText("ui_copyrightSymbol") .. " 2021 Sony Interactive Entertainment LLC."
-	})
-	table.insert(creditsTexts, {
-		c = "\"PlayStation Family Mark\", \"PlayStation\",",
-		t = CreditsScreen.DISCLAIMER
-	})
-	table.insert(creditsTexts, {
-		c = "\"PS5 logo\", \"PS5\", \"PS4 logo\", \"PS4\",",
-		t = CreditsScreen.DISCLAIMER
-	})
-	table.insert(creditsTexts, {
-		c = "\"PlayStation Shapes Logo\" and \"Play Has No Limits\"",
-		t = CreditsScreen.DISCLAIMER
-	})
-	table.insert(creditsTexts, {
-		c = "are registered trademarks or trademarks of",
-		t = CreditsScreen.DISCLAIMER
-	})
-	table.insert(creditsTexts, {
-		c = "Sony Interactive Entertainment Inc.",
-		t = CreditsScreen.DISCLAIMER
-	})
-	table.insert(creditsTexts, {
-		c = "",
-		t = CreditsScreen.DISCLAIMER
-	})
+
+	if not GS_PLATFORM_XBOX then
+		table.insert(creditsTexts, {
+			t = CreditsScreen.DISCLAIMER,
+			c = g_i18n:getText("ui_copyrightSymbol") .. " 2021 Sony Interactive Entertainment LLC."
+		})
+		table.insert(creditsTexts, {
+			c = "\"PlayStation Family Mark\", \"PlayStation\",",
+			t = CreditsScreen.DISCLAIMER
+		})
+		table.insert(creditsTexts, {
+			c = "\"PS5 logo\", \"PS5\", \"PS4 logo\", \"PS4\",",
+			t = CreditsScreen.DISCLAIMER
+		})
+		table.insert(creditsTexts, {
+			c = "\"PlayStation Shapes Logo\" and \"Play Has No Limits\"",
+			t = CreditsScreen.DISCLAIMER
+		})
+		table.insert(creditsTexts, {
+			c = "are registered trademarks or trademarks of",
+			t = CreditsScreen.DISCLAIMER
+		})
+		table.insert(creditsTexts, {
+			c = "Sony Interactive Entertainment Inc.",
+			t = CreditsScreen.DISCLAIMER
+		})
+		table.insert(creditsTexts, {
+			c = "",
+			t = CreditsScreen.DISCLAIMER
+		})
+	end
+
 	table.insert(creditsTexts, {
 		c = "Uses Lua",
 		t = CreditsScreen.DISCLAIMER

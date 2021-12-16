@@ -20,6 +20,7 @@ function Wearable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.wearable#wearDuration", "Duration until fully worn (minutes)", 600)
 	schema:register(XMLValueType.FLOAT, "vehicle.wearable#workMultiplier", "Multiplier while working", 20)
 	schema:register(XMLValueType.FLOAT, "vehicle.wearable#fieldMultiplier", "Multiplier while on field", 2)
+	schema:register(XMLValueType.BOOL, "vehicle.wearable#showOnHud", "Show the damage on the hud", true)
 	schema:setXMLSpecializationType()
 
 	local schemaSavegame = Vehicle.xmlSchemaSavegame
@@ -36,6 +37,7 @@ function Wearable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "addWearableNodes", Wearable.addWearableNodes)
 	SpecializationUtil.registerFunction(vehicleType, "addWearAmount", Wearable.addWearAmount)
 	SpecializationUtil.registerFunction(vehicleType, "getDamageAmount", Wearable.getDamageAmount)
+	SpecializationUtil.registerFunction(vehicleType, "getDamageShowOnHud", Wearable.getDamageShowOnHud)
 	SpecializationUtil.registerFunction(vehicleType, "getNodeWearAmount", Wearable.getNodeWearAmount)
 	SpecializationUtil.registerFunction(vehicleType, "getUsageCausesDamage", Wearable.getUsageCausesDamage)
 	SpecializationUtil.registerFunction(vehicleType, "getUsageCausesWear", Wearable.getUsageCausesWear)
@@ -91,6 +93,7 @@ function Wearable:onLoad(savegame)
 	spec.damageSent = 0
 	spec.workMultiplier = self.xmlFile:getValue("vehicle.wearable#workMultiplier", 20)
 	spec.fieldMultiplier = self.xmlFile:getValue("vehicle.wearable#fieldMultiplier", 2)
+	spec.showOnHud = self.xmlFile:getValue("vehicle.wearable#showOnHud", true)
 	spec.dirtyFlag = self:getNextDirtyFlag()
 end
 
@@ -242,13 +245,13 @@ function Wearable:updateDamageAmount(dt)
 		local factor = 1
 
 		if self.lifetime ~= nil and self.lifetime ~= 0 then
-			local ageMultiplier = 0.3 * math.min(self.age / self.lifetime, 1)
+			local ageMultiplier = 0.15 * math.min(self.age / self.lifetime, 1)
 			local operatingTime = self.operatingTime / 3600000
-			local operatingTimeMultiplier = 0.7 * math.min(operatingTime / (self.lifetime * EconomyManager.LIFETIME_OPERATINGTIME_RATIO), 1)
+			local operatingTimeMultiplier = 0.85 * math.min(operatingTime / (self.lifetime * EconomyManager.LIFETIME_OPERATINGTIME_RATIO), 1)
 			factor = 1 + EconomyManager.MAX_DAILYUPKEEP_MULTIPLIER * (ageMultiplier + operatingTimeMultiplier)
 		end
 
-		return dt * spec.wearDuration * 0.5 * factor
+		return dt * spec.wearDuration * 0.35 * factor
 	else
 		return 0
 	end
@@ -287,7 +290,7 @@ function Wearable:setNodeWearAmount(nodeData, wearAmount, force)
 		for _, node in pairs(nodeData.nodes) do
 			local _, y, z, w = getShaderParameter(node, "RDT")
 
-			setShaderParameter(node, "RDT", nodeData.wearAmount, y, z, w, false)
+			setShaderParameter(node, "RDT", nodeData.wearAmount, y, 0, w, false)
 		end
 
 		if self.isServer then
@@ -316,6 +319,10 @@ end
 
 function Wearable:getDamageAmount()
 	return self.spec_wearable.damage
+end
+
+function Wearable:getDamageShowOnHud()
+	return self.spec_wearable.showOnHud
 end
 
 function Wearable:repairVehicle()
@@ -354,7 +361,7 @@ function Wearable:getRepairPrice(superFunc)
 end
 
 function Wearable.calculateRepairPrice(price, damage)
-	return price * math.pow(damage, 1.3) * 0.1
+	return price * math.pow(damage, 1.5) * 0.09
 end
 
 function Wearable:getRepaintPrice(superFunc)
@@ -484,7 +491,7 @@ function Wearable:updateDebugValues(values)
 
 	if spec.wearableNodes ~= nil and self.isServer then
 		for i, nodeData in ipairs(spec.wearableNodes) do
-			local changedAmount = nodeData.updateFunc(self, nodeData, 3600000)
+			changedAmount = nodeData.updateFunc(self, nodeData, 3600000)
 
 			table.insert(values, {
 				name = "WearableNode" .. i,
@@ -494,7 +501,7 @@ function Wearable:updateDebugValues(values)
 	end
 end
 
-function Wearable.loadSpecValueCondition(xmlFile, customEnvironment)
+function Wearable.loadSpecValueCondition(xmlFile, customEnvironment, baseDir)
 	return nil
 end
 

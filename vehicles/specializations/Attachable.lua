@@ -1367,7 +1367,7 @@ function Attachable:postAttach(attacherVehicle, inputJointDescIndex, jointDescIn
 			spec.controlledAction:setIsSaved(true)
 
 			if self:getAINeedsLowering() then
-				spec.controlledAction:addAIEventListener(self, "onAIImplementStartLine", 1)
+				spec.controlledAction:addAIEventListener(self, "onAIImplementStartLine", 1, true)
 				spec.controlledAction:addAIEventListener(self, "onAIImplementEndLine", -1)
 				spec.controlledAction:addAIEventListener(self, "onAIImplementPrepare", -1)
 			end

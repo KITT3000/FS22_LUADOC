@@ -48,9 +48,11 @@ function VehicleEnterRequestEvent:run(connection)
 			self.object:setOwner(connection)
 
 			self.object.controllerFarmId = self.farmId
+			local userId = g_currentMission.userManager:getUserIdByConnection(connection)
+			self.object.controllerUserId = userId
 
-			g_server:broadcastEvent(VehicleEnterResponseEvent.new(self.objectId, false, self.playerStyle, self.farmId), true, connection, self.object, false, nil, true)
-			connection:sendEvent(VehicleEnterResponseEvent.new(self.objectId, true, self.playerStyle, self.farmId))
+			g_server:broadcastEvent(VehicleEnterResponseEvent.new(self.objectId, false, self.playerStyle, self.farmId, userId), true, connection, self.object, false, nil, true)
+			connection:sendEvent(VehicleEnterResponseEvent.new(self.objectId, true, self.playerStyle, self.farmId, userId))
 		end
 	end
 end

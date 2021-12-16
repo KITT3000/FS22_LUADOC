@@ -14,9 +14,9 @@ GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
 local debugTool = debug
 debug = nil
-g_gameVersion = 4
-g_gameVersionNotification = "1.1.1.0"
-g_gameVersionDisplay = "1.1.1.0"
+g_gameVersion = 5
+g_gameVersionNotification = "1.2.0.0"
+g_gameVersionDisplay = "1.2.0.0"
 g_gameVersionDisplayExtra = ""
 g_presentationSettingsFile = "dataS/presentationSettings.xml"
 g_isPresentationVersion = false
@@ -44,7 +44,7 @@ g_isPresentationVersionNextLanguageTimer = nil
 g_isPresentationVersionPlaytimeCountdown = nil
 g_isPresentationVersionIsTourEnabled = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 62
+g_maxModDescVersion = 63
 
 source("dataS/scripts/std.lua")
 source("dataS/scripts/events.lua")
@@ -87,46 +87,32 @@ g_vehicleColors = {
 		name = "$l10n_ui_colorWhite"
 	},
 	{
-		g = 0.8388,
-		name = "$l10n_ui_colorBeige",
-		b = 0.7304,
-		r = 0.8228
+		brandColor = "SHARED_BEIGE",
+		name = "$l10n_ui_colorBeige"
 	},
 	{
-		g = 0.5271,
-		name = "$l10n_ui_colorSilver",
-		b = 0.5271,
-		r = 0.5271
+		brandColor = "SHARED_SILVER",
+		name = "$l10n_ui_colorSilver"
 	},
 	{
-		g = 0.294,
-		name = "$l10n_ui_colorGreyLight",
-		b = 0.294,
-		r = 0.294
+		brandColor = "SHARED_GREYLIGHT",
+		name = "$l10n_ui_colorGreyLight"
 	},
 	{
-		g = 0.129,
-		name = "$l10n_ui_colorGrey",
-		b = 0.129,
-		r = 0.129
+		brandColor = "SHARED_GREY",
+		name = "$l10n_ui_colorGrey"
 	},
 	{
-		g = 0.069,
-		name = "$l10n_ui_colorGreyDark",
-		b = 0.069,
-		r = 0.069
+		brandColor = "SHARED_GREYDARK",
+		name = "$l10n_ui_colorGreyDark"
 	},
 	{
-		g = 0.0254,
-		name = "$l10n_ui_colorBlackOnyx",
-		b = 0.0231,
-		r = 0.0278
+		brandColor = "SHARED_BLACKONYX",
+		name = "$l10n_ui_colorBlackOnyx"
 	},
 	{
-		g = 0.01,
-		name = "$l10n_ui_colorBlackJet",
-		b = 0.01,
-		r = 0.01
+		brandColor = "SHARED_BLACKJET",
+		name = "$l10n_ui_colorBlackJet"
 	},
 	{
 		brandColor = "JOHNDEERE_YELLOW1",
@@ -185,10 +171,8 @@ g_vehicleColors = {
 		name = "Goldhofer"
 	},
 	{
-		g = 0.003,
-		name = "$l10n_ui_colorBlueNavy",
-		b = 0.031,
-		r = 0.004
+		brandColor = "SHARED_BLUENAVY",
+		name = "$l10n_ui_colorBlueNavy"
 	},
 	{
 		brandColor = "LIZARD_PURPLE1",
@@ -231,16 +215,12 @@ g_vehicleColors = {
 		name = "$l10n_ui_colorBeige"
 	},
 	{
-		g = 0.068,
-		name = "$l10n_ui_colorBrown",
-		b = 0.03,
-		r = 0.168
+		brandColor = "SHARED_BROWN",
+		name = "$l10n_ui_colorBrown"
 	},
 	{
-		g = 0.009,
-		name = "$l10n_ui_colorRedCrimson",
-		b = 0.006,
-		r = 0.105
+		brandColor = "SHARED_REDCRIMSON",
+		name = "$l10n_ui_colorRedCrimson"
 	},
 	{
 		brandColor = "LIZARD_PINK1",
@@ -430,6 +410,7 @@ function init(args)
 		return
 	end
 
+	AudioGroup.loadGroups()
 	g_i3DManager:init()
 	updateLoadingBarProgress()
 
@@ -492,7 +473,6 @@ function init(args)
 	g_safeFrameMajorOffsetX, g_safeFrameMajorOffsetY = getNormalizedScreenValues(safeFrameMajorOffsetX, safeFrameMajorOffsetY)
 
 	registerProfileFile("gameSettings.xml")
-	registerProfileFile("characterPresets.xml")
 	registerProfileFile("extraContent.xml")
 
 	g_gameSettings = GameSettings.new(nil, g_messageCenter)
@@ -694,7 +674,7 @@ function init(args)
 
 	g_animCache:load(AnimationCache.CHARACTER, "dataS/character/humans/player/animations.i3d")
 	updateLoadingBarProgress()
-	g_animCache:load(AnimationCache.VEHICLE_CHARACTER, "dataS/character/humans/player/animations.i3d")
+	g_animCache:load(AnimationCache.VEHICLE_CHARACTER, "dataS/character/humans/player/vehicleCharacterAnimations.i3d")
 
 	if Platform.supportsPedestrians then
 		g_animCache:load(AnimationCache.PEDESTRIAN, "dataS/character/humans/npc/animations.i3d")
@@ -856,6 +836,7 @@ function init(args)
 	g_serverDetailScreen = ServerDetailScreen.new()
 	g_messageDialog = MessageDialog.new()
 	g_yesNoDialog = YesNoDialog.new()
+	local leaseYesNoDialog = LeaseYesNoDialog.new()
 	local optionDialog = OptionDialog.new()
 	local sleepDialog = SleepDialog.new()
 	g_textInputDialog = TextInputDialog.new(nil, nil, g_inputBinding)
@@ -877,6 +858,7 @@ function init(args)
 	local editFarmDialog = EditFarmDialog.new(nil, nil, g_i18n, g_farmManager)
 	local unBanDialog = UnBanDialog.new(nil, nil, g_i18n)
 	local serverSettingsDialog = ServerSettingsDialog.new(nil, nil, g_i18n, settingsModel)
+	local modHubScreenshotDialog = ModHubScreenshotDialog.new()
 	local voteDialog = nil
 
 	if Platform.supportsMods then
@@ -1029,6 +1011,7 @@ function init(args)
 	updateLoadingBarProgress()
 	g_gui:loadGui("dataS/gui/dialogs/MessageDialog.xml", "MessageDialog", g_messageDialog)
 	g_gui:loadGui("dataS/gui/dialogs/YesNoDialog.xml", "YesNoDialog", g_yesNoDialog)
+	g_gui:loadGui("dataS/gui/dialogs/LeaseYesNoDialog.xml", "LeaseYesNoDialog", leaseYesNoDialog)
 	g_gui:loadGui("dataS/gui/dialogs/OptionDialog.xml", "OptionDialog", optionDialog)
 	g_gui:loadGui("dataS/gui/dialogs/InfoDialog.xml", "InfoDialog", g_infoDialog)
 	g_gui:loadGui("dataS/gui/dialogs/PlaceableInfoDialog.xml", "PlaceableInfoDialog", placeableInfoDialog)
@@ -1043,6 +1026,7 @@ function init(args)
 	g_gui:loadGui("dataS/gui/dialogs/UnBanDialog.xml", "UnBanDialog", unBanDialog)
 	g_gui:loadGui("dataS/gui/dialogs/SleepDialog.xml", "SleepDialog", sleepDialog)
 	g_gui:loadGui("dataS/gui/dialogs/ServerSettingsDialog.xml", "ServerSettingsDialog", serverSettingsDialog)
+	g_gui:loadGui("dataS/gui/dialogs/ModHubScreenshotDialog.xml", "ModHubScreenshotDialog", modHubScreenshotDialog)
 	updateLoadingBarProgress()
 	g_gui:loadGui("dataS/gui/dialogs/SiloDialog.xml", "SiloDialog", g_siloDialog)
 	g_gui:loadGui("dataS/gui/dialogs/RefillDialog.xml", "RefillDialog", g_refillDialog)
@@ -1268,7 +1252,7 @@ function update(dt)
 	g_gamingStationManager:update(dt)
 	Input.updateFrameEnd()
 
-	if GS_PLATFORM_PC then
+	if GS_PLATFORM_PC and g_dedicatedServer == nil then
 		if getIsUpdateDownloadFinished() then
 			g_updateDownloadFinished = true
 		end
@@ -1893,7 +1877,7 @@ SystemConsoleCommands = {
 		if newMode == nil or newMode == "" then
 			setDebugRenderingMode(DebugRendering.NONE)
 
-			return "Possible modes: alpha, parallax, albedo, normals, smoothness, metalness, ambientOcclusion (ao), bakedAmbientOcclusion (bakedAO), screenSpaceAmbientOcclusion(ssao), specularOcclusion, diffuseLighting, specularLighting, indirectLighting, lightGrid, shadowSplits, depth, mipLevels, triangleDensity, terrainSlopes, motionVectors"
+			return "Possible modes: alpha, parallax, albedo, normals, smoothness, metalness, ambientOcclusion (ao), bakedAmbientOcclusion (bakedAO), screenSpaceAmbientOcclusion(ssao), specularOcclusion, diffuseLighting, specularLighting, indirectLighting, lightGrid, shadowSplits, depth, mipLevels, triangleDensity, terrainSlopes, motionVectors, vrs"
 		end
 
 		newMode = newMode:lower()
@@ -2041,6 +2025,10 @@ SystemConsoleCommands = {
 			motionvectors = {
 				DebugRendering.MOTION_VECTORS,
 				"motionVectors"
+			},
+			vrs = {
+				DebugRendering.SHADING_RATE,
+				"vrs"
 			},
 			custom1 = {
 				DebugRendering.CUSTOM1,

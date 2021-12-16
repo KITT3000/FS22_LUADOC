@@ -1029,9 +1029,32 @@ function ShopConfigScreen:onVehicleLoaded(vehicle, loadingState, asyncArguments)
 		end
 
 		if vehicle.setLicensePlatesData ~= nil and vehicle.getHasLicensePlates ~= nil and vehicle:getHasLicensePlates() then
+			local defaultPlacementIndex, hasFrontPlate = vehicle:getLicensePlateDialogSettings()
+			self.licensePlateData.defaultPlacementIndex = defaultPlacementIndex
+			self.licensePlateData.hasFrontPlate = hasFrontPlate
+
+			if not self.licensePlateData.customized and defaultPlacementIndex ~= nil then
+				self.licensePlateData.placementIndex = defaultPlacementIndex
+			end
+
 			vehicle:setLicensePlatesData(self.licensePlateData)
+			self:updateLicensePlateGraphics()
+		end
+
+		if self.saleItem ~= nil then
+			if vehicle.addDamageAmount ~= nil then
+				vehicle:addDamageAmount(self.saleItem.damage, true)
+			end
+
+			if vehicle.addWearAmount ~= nil then
+				vehicle:addWearAmount(self.saleItem.wear, true)
+			end
 		end
 	else
+		if vehicle ~= nil then
+			vehicle:delete()
+		end
+
 		if g_currentMission ~= nil then
 			Logging.error("Could not load vehicle defined in [%s]. Check vehicle configuration and mods.", tostring(self.storeItem.xmlFilename))
 
@@ -1283,12 +1306,15 @@ function ShopConfigScreen:setStoreItem(storeItem, vehicle, saleItem, configBaseP
 						placementIndex = data.placementIndex,
 						characters = table.copy(data.characters)
 					}
+					local defaultPlacementIndex, hasFrontPlate = vehicle:getLicensePlateDialogSettings()
+					self.licensePlateData.defaultPlacementIndex = defaultPlacementIndex
+					self.licensePlateData.hasFrontPlate = hasFrontPlate
 				else
-					self.licensePlateData = g_licensePlateManager:getRandomLicensePlateData()
+					self.licensePlateData = g_currentMission:getLastCreatedLicensePlate() or g_licensePlateManager:getRandomLicensePlateData()
 				end
 			end
 		else
-			self.licensePlateData = g_licensePlateManager:getRandomLicensePlateData()
+			self.licensePlateData = g_currentMission:getLastCreatedLicensePlate() or g_licensePlateManager:getRandomLicensePlateData()
 		end
 	end
 
@@ -2181,6 +2207,7 @@ end
 function ShopConfigScreen:onChangeLicensePlate(licensePlateData)
 	if licensePlateData ~= nil then
 		self.licensePlateData = licensePlateData
+		self.licensePlateData.customized = true
 
 		for i = 1, #self.previewVehicles do
 			local vehicle = self.previewVehicles[i]
@@ -2277,10 +2304,16 @@ function ShopConfigScreen:onClickLease()
 	else
 		self:playSample(GuiSoundPlayer.SOUND_SAMPLES.CLICK)
 
-		local text = string.format(self.l10n:getText(ShopConfigScreen.L10N_SYMBOL.CONFIRM_LEASE), self.l10n:formatMoney(self.initialLeasingCosts, 0, true, false))
+		local costsBase = self.totalPrice * EconomyManager.DEFAULT_LEASING_DEPOSIT_FACTOR
+		local initialCosts = self.initialLeasingCosts
+		local costsPerOperatingHour = self.totalPrice * EconomyManager.DEFAULT_RUNNING_LEASING_FACTOR
+		local costsPerDay = self.totalPrice * EconomyManager.PER_DAY_LEASING_FACTOR
 
-		g_gui:showYesNoDialog({
-			text = text,
+		g_gui:showLeaseYesNoDialog({
+			costsBase = costsBase,
+			initialCosts = initialCosts,
+			costsPerOperatingHour = costsPerOperatingHour,
+			costsPerDay = costsPerDay,
 			callback = self.onYesNoLease,
 			target = self
 		})

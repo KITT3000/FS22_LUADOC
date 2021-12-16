@@ -248,8 +248,10 @@ function GuiTopDownCursor:setGradientColor(ri, gi, bi, ro, go, bo, a)
 	setShaderParameter(self.shapeNode, "colorOutside", ro, go, bo, 1, true)
 end
 
-function GuiTopDownCursor:setColorMode(mode)
-	local alpha = 0.3
+function GuiTopDownCursor:setColorMode(mode, alpha)
+	if alpha == nil then
+		alpha = 0.3
+	end
 
 	if mode == GuiTopDownCursor.SHAPES_COLORS.SUCCESS then
 		self:setColor(0, 1, 0, alpha)

@@ -30,6 +30,7 @@ function FieldGroundSystem:initDataStructures()
 	self.fieldSprayTypeValue = {}
 	self.fieldSprayTypeTyreTrackColor = {}
 	self.fieldChopperTypeValue = {}
+	self.fieldChopperTypeTyreTrackColor = {}
 	self.densityMaps = {}
 end
 
@@ -161,13 +162,23 @@ function FieldGroundSystem:loadGroundTypes(filename)
 		1,
 		1
 	})
+	self:loadChopperIdFromXML(FieldChopperType.CHOPPER_STRAW, xmlFile, "fieldGround.densityMaps.sprayTypes.straw", 5, {
+		1,
+		1,
+		1,
+		1
+	})
+	self:loadChopperIdFromXML(FieldChopperType.CHOPPER_MAIZE, xmlFile, "fieldGround.densityMaps.sprayTypes.maize", 6, {
+		1,
+		1,
+		1,
+		1
+	})
 
 	self.firstSowableValue = xmlFile:getInt("fieldGround.densityMaps.groundTypes.ranges.sowable#firstValue", self.firstSowableValue or self.fieldGroundTypeValue[FieldGroundType.STUBBLE_TILLAGE])
 	self.lastSowableValue = xmlFile:getInt("fieldGround.densityMaps.groundTypes.ranges.sowable#lastValue", self.lastSowableValue or self.fieldGroundTypeValue[FieldGroundType.PLOWED])
 	self.firstSowingValue = xmlFile:getInt("fieldGround.densityMaps.groundTypes.ranges.sowing#firstValue", self.firstSowingValue or self.fieldGroundTypeValue[FieldGroundType.SOWN])
 	self.lastSowingValue = xmlFile:getInt("fieldGround.densityMaps.groundTypes.ranges.sowing#lastValue", self.lastSowingValue or self.fieldGroundTypeValue[FieldGroundType.RIDGE])
-	self.fieldChopperTypeValue[FieldChopperType.CHOPPER_STRAW] = 5
-	self.fieldChopperTypeValue[FieldChopperType.CHOPPER_MAIZE] = 6
 
 	xmlFile:delete()
 end
@@ -360,6 +371,46 @@ function FieldGroundSystem:loadSprayIdFromXML(identifier, xmlFile, key, defaultV
 	self.fieldSprayTypeTyreTrackColor[identifier] = color or self.fieldSprayTypeTyreTrackColor[identifier] or defaultColor
 end
 
+function FieldGroundSystem:loadChopperIdFromXML(identifier, xmlFile, key, defaultValue, defaultColor)
+	local id = xmlFile:getInt(key .. "#value") or self.fieldChopperTypeValue[identifier] or defaultValue
+
+	if id == nil then
+		id = defaultValue
+
+		Logging.xmlWarning(xmlFile, "Missing xml element '%s'! Using default value '%d'", key, defaultValue)
+	end
+
+	if id == self.sprayTypesMaxValue then
+		id = 0
+
+		Logging.xmlError(xmlFile, "Value '%d' is reserved and cannot be used in xml element '%s'! Using value '0'", self.sprayTypesMaxValue, key)
+	end
+
+	if self.sprayTypesMaxValue < id then
+		id = 0
+
+		Logging.xmlError(xmlFile, "Invalid value for xml element '%s'! Using value '0'", key)
+	end
+
+	self.fieldChopperTypeValue[identifier] = id
+	local colorStr = xmlFile:getString(key .. "#tireTrackColor")
+	local color = nil
+
+	if colorStr ~= nil then
+		color = {
+			colorStr:getVector()
+		}
+
+		if #color ~= 4 then
+			Logging.xmlError(xmlFile, "Invalid number of values (should be 4) for xml element '%s'!", key)
+
+			color = nil
+		end
+	end
+
+	self.fieldChopperTypeTyreTrackColor[id] = color or self.fieldChopperTypeTyreTrackColor[id] or defaultColor
+end
+
 function FieldGroundSystem:getFieldGroundValueByName(groundTypeName)
 	local groundType = FieldGroundType.getByName(groundTypeName)
 
@@ -384,7 +435,11 @@ function FieldGroundSystem:getFieldGroundTyreTrackColor(densityBits)
 	local color = self.fieldGroundTypeTyreTrackColor[groundType]
 
 	if sprayType > 0 then
-		color = self.fieldSprayTypeTyreTrackColor[groundType]
+		color = self.fieldSprayTypeTyreTrackColor[sprayType]
+
+		if color == nil then
+			color = self.fieldChopperTypeTyreTrackColor[sprayType]
+		end
 	end
 
 	if color ~= nil then

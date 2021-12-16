@@ -5,6 +5,7 @@ ConstructionBrushDestruct.OVERLAY_COLOR = {
 	0.1,
 	0.1
 }
+ConstructionBrushDestruct.SELL_UNDO_TIMEOUT = 900000
 
 function ConstructionBrushDestruct.new(subclass_mt, cursor)
 	local self = ConstructionBrushDestruct:superClass().new(subclass_mt or ConstructionBrushDestruct_mt, cursor)
@@ -24,10 +25,13 @@ function ConstructionBrushDestruct:activate()
 	self.cursor:setRotationEnabled(false)
 	self.cursor:setShape(GuiTopDownCursor.SHAPES.NONE)
 	self.cursor:setSelectionMode(true)
+
+	self.coloredNodes = {}
 end
 
 function ConstructionBrushDestruct:deactivate()
 	self.cursor:setSelectionMode(false)
+	self:resetColoredNodes()
 	ConstructionBrushDestruct:superClass().deactivate(self)
 end
 
@@ -40,12 +44,26 @@ function ConstructionBrushDestruct:update(dt)
 	end
 end
 
+function ConstructionBrushDestruct:resetColoredNodes()
+	for i = #self.coloredNodes, 1, -1 do
+		local node = self.coloredNodes[i]
+
+		if entityExists(node) then
+			setShaderParameter(node, "placeableColorScale", 1, 1, 1, 0, false)
+		end
+
+		self.coloredNodes[i] = nil
+	end
+end
+
 function ConstructionBrushDestruct:visualizeMouseOver()
 	local placeable = self.cursor:getHitPlaceable()
 
 	if placeable ~= self.lastPlaceable or self.perNodeMode then
 		if self.lastPlaceable ~= nil then
-			if self.lastPlaceable.rootNode ~= nil then
+			self:resetColoredNodes()
+
+			if self.lastPlaceable.rootNode ~= nil and not self.perNodeMode then
 				self.lastPlaceable:setOverlayColor(1, 1, 1, 0)
 			end
 
@@ -61,12 +79,15 @@ function ConstructionBrushDestruct:visualizeMouseOver()
 			local a = 0.8
 
 			if placeable:getDestructionMethod() == Placeable.DESTRUCTION.PER_NODE then
+				self:resetColoredNodes()
+
 				local nodes = placeable:previewNodeDestructionNodes(self.cursor:getHitNode())
 
 				if nodes ~= nil then
 					for _, node in ipairs(nodes) do
 						if getHasClassId(node, ClassIds.SHAPE) and getHasShaderParameter(node, "placeableColorScale") then
 							setShaderParameter(node, "placeableColorScale", r, g, b, a, false)
+							table.insert(self.coloredNodes, node)
 						end
 					end
 				end
@@ -100,14 +121,18 @@ function ConstructionBrushDestruct:onButtonPrimary(isDown, isDrag, isUp)
 				self.lastDragPlaceable = placeable
 			end
 
-			placeable:performNodeDestruction(self.cursor:getHitNode())
+			local didDestroy = placeable:performNodeDestruction(self.cursor:getHitNode())
+
+			if didDestroy and placeable.playDestroySound ~= nil then
+				placeable:playDestroySound(true)
+			end
 		elseif isDown then
 			local canBeSold, warning = placeable:canBeSold()
-			local price = g_currentMission.economyManager:getSellPrice(placeable)
+			local price, forFullPrice = placeable:getSellPrice()
 
 			local function callbackFunc(yes)
 				if yes then
-					g_client:getServerConnection():sendEvent(SellPlaceableEvent.new(placeable))
+					g_client:getServerConnection():sendEvent(SellPlaceableEvent.new(placeable, false, forFullPrice))
 				end
 			end
 

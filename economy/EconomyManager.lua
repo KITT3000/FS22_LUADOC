@@ -1,6 +1,8 @@
 EconomyManager = {}
 
 source("dataS/scripts/economy/GreatDemandsEvent.lua")
+source("dataS/scripts/economy/PricingHistoryInitialEvent.lua")
+source("dataS/scripts/economy/PricingHistoryEvent.lua")
 source("dataS/scripts/economy/PricingDynamics.lua")
 
 local EconomyManager_mt = Class(EconomyManager)
@@ -26,10 +28,7 @@ EconomyManager.DIRECT_SELL_MULTIPLIER = 1.1
 EconomyManager.MAX_DAILYUPKEEP_MULTIPLIER = 4
 
 function EconomyManager.new(customMt)
-	local self = {}
-
-	setmetatable(self, customMt or EconomyManager_mt)
-
+	local self = setmetatable({}, customMt or EconomyManager_mt)
 	self.minuteUpdateInterval = 5
 	self.minuteTimer = self.minuteUpdateInterval
 	self.showMoneyChangeNextMinute = false
@@ -39,6 +38,7 @@ function EconomyManager.new(customMt)
 	g_messageCenter:subscribe(MessageType.MINUTE_CHANGED, self.minuteChanged, self)
 	g_messageCenter:subscribe(MessageType.HOUR_CHANGED, self.hourChanged, self)
 	g_messageCenter:subscribe(MessageType.DAY_CHANGED, self.dayChanged, self)
+	g_messageCenter:subscribe(MessageType.PERIOD_CHANGED, self.periodChanged, self)
 
 	self.sellingStations = {}
 	self.sellingStationUpdateIndex = 1
@@ -56,28 +56,135 @@ function EconomyManager:init(mission)
 end
 
 function EconomyManager:delete()
-	g_messageCenter:unsubscribe(MessageType.MINUTE_CHANGED, self)
-	g_messageCenter:unsubscribe(MessageType.HOUR_CHANGED, self)
-	g_messageCenter:unsubscribe(MessageType.DAY_CHANGED, self)
+	g_messageCenter:unsubscribeAll(self)
 end
 
-function EconomyManager:update(dt)
-	self.sellingStationUpdateIndex = self.sellingStationUpdateIndex + 1
+function EconomyManager:saveToXMLFile(xmlFileHandle, key)
+	local xmlFile = XMLFile.wrap(xmlFileHandle)
 
-	if self.sellingStationUpdateIndex > #self.sellingStations then
-		self.sellingStationUpdateIndex = 1
-	end
+	xmlFile:setSortedTable(key .. ".greatDemands.greatDemand", self.greatDemands, function (demandKey, greatDemand)
+		local fillTypeName = g_fillTypeManager:getFillTypeNameByIndex(greatDemand.fillTypeIndex)
 
-	for k, sellingStation in ipairs(self.sellingStations) do
-		sellingStation.dt = sellingStation.dt + dt
-		sellingStation.scaledDt = sellingStation.scaledDt + dt * g_currentMission:getEffectiveTimeScale()
+		if fillTypeName ~= nil then
+			local placeableId = greatDemand.sellStation.owningPlaceable.currentSavegameId
 
-		if k == self.sellingStationUpdateIndex then
-			sellingStation.station:updateSellingStation(sellingStation.dt, sellingStation.scaledDt)
-
-			sellingStation.dt = 0
-			sellingStation.scaledDt = 0
+			if placeableId ~= nil then
+				xmlFile:setInt(demandKey .. "#placeableId", placeableId)
+				xmlFile:setString(demandKey .. "#fillTypeName", fillTypeName)
+				xmlFile:setFloat(demandKey .. "#demandMultiplier", greatDemand.demandMultiplier)
+				xmlFile:setInt(demandKey .. "#demandStartDay", greatDemand.demandStart.day)
+				xmlFile:setInt(demandKey .. "#demandStartHour", greatDemand.demandStart.hour)
+				xmlFile:setInt(demandKey .. "#demandDuration", greatDemand.demandDuration)
+				xmlFile:setBool(demandKey .. "#isRunning", greatDemand.isRunning)
+				xmlFile:setBool(demandKey .. "#isValid", greatDemand.isValid)
+			end
 		end
+	end)
+	xmlFile:setSortedTable(key .. ".fillTypes.fillType", g_fillTypeManager:getFillTypes(), function (fillTypeKey, fillType)
+		xmlFile:setString(fillTypeKey .. "#fillType", fillType.name)
+
+		if fillType.totalAmount > 0 then
+			xmlFile:setInt(fillTypeKey .. "#totalAmount", fillType.totalAmount)
+		end
+
+		xmlFile:setSortedTable(fillTypeKey .. ".history.period", fillType.economy.history, function (periodKey, price, period)
+			xmlFile:setInt(periodKey .. "#period", period)
+			xmlFile:setInt(periodKey, price * 1000)
+		end)
+	end)
+	xmlFile:delete()
+end
+
+function EconomyManager:loadFromXMLFile(xmlFileHandle, key)
+	local xmlFile = XMLFile.wrap(xmlFileHandle)
+	self.greatDemandToLoad = {}
+
+	xmlFile:iterate(key .. ".greatDemands.greatDemand", function (_, demandKey)
+		local placeableId = xmlFile:getInt(demandKey .. "#placeableId")
+
+		if placeableId == nil then
+			return
+		end
+
+		local fillTypeName = xmlFile:getString(demandKey .. "#fillTypeName")
+		local fillType = g_fillTypeManager:getFillTypeByName(fillTypeName)
+		local fillTypeIndex = nil
+
+		if fillType ~= nil then
+			fillTypeIndex = fillType.index
+		end
+
+		if fillTypeIndex == nil then
+			return
+		end
+
+		local greatDemand = {
+			placeableId = placeableId,
+			fillTypeIndex = fillTypeIndex,
+			demandMultiplier = xmlFile:getFloat(demandKey .. "#demandMultiplier"),
+			day = xmlFile:getInt(demandKey .. "#demandStartDay"),
+			hour = xmlFile:getInt(demandKey .. "#demandStartHour"),
+			demandDuration = xmlFile:getInt(demandKey .. "#demandDuration"),
+			isRunning = xmlFile:getBool(demandKey .. "#isRunning", false),
+			isValid = xmlFile:getBool(demandKey .. "#isValid", false)
+		}
+
+		table.insert(self.greatDemandToLoad, greatDemand)
+	end)
+	xmlFile:iterate(key .. ".fillTypes.fillType", function (_, fillTypeKey)
+		local fillTypeName = xmlFile:getString(fillTypeKey .. "#fillType")
+
+		if fillTypeName == nil then
+			return
+		end
+
+		local fillType = g_fillTypeManager:getFillTypeByName(fillTypeName)
+
+		if fillType ~= nil then
+			fillType.totalAmount = xmlFile:getInt(fillTypeKey .. "#totalAmount", fillType.totalAmount)
+
+			xmlFile:iterate(fillTypeKey .. ".history.period", function (_, periodKey)
+				local period = xmlFile:getInt(periodKey .. "#period")
+
+				if period ~= nil then
+					fillType.economy.history[period] = xmlFile:getInt(periodKey, fillType.economy.history[period]) / 1000
+				end
+			end)
+		end
+	end)
+	xmlFile:delete()
+end
+
+function EconomyManager:finalizeGreatDemandLoading()
+	if self.greatDemandToLoad ~= nil then
+		local i = 1
+
+		for _, greatDemandToLoad in ipairs(self.greatDemandToLoad) do
+			local placeable = g_currentMission.placeableSystem:getPlaceableBySavegameId(greatDemandToLoad.placeableId)
+
+			if placeable ~= nil then
+				if placeable.getSellingStation ~= nil then
+					local station = placeable:getSellingStation()
+
+					if station ~= nil and station.getSupportsGreatDemand and station:getSupportsGreatDemand(greatDemandToLoad.fillTypeIndex) then
+						local greatDemand = self.greatDemands[i]
+						greatDemand.sellStation = station
+						greatDemand.fillTypeIndex = greatDemandToLoad.fillTypeIndex
+						greatDemand.demandMultiplier = greatDemandToLoad.demandMultiplier
+						greatDemand.demandStart.day = greatDemandToLoad.day
+						greatDemand.demandStart.hour = greatDemandToLoad.hour
+						greatDemand.demandDuration = greatDemandToLoad.demandDuration
+						greatDemand.isRunning = greatDemandToLoad.isRunning
+						greatDemand.isValid = greatDemandToLoad.isValid
+						i = i + 1
+					end
+				else
+					Logging.warning("Placeable is not a selling station (%s)", placeable.configFileName)
+				end
+			end
+		end
+
+		self.greatDemandToLoad = nil
 	end
 end
 
@@ -109,6 +216,30 @@ function EconomyManager:removeSellingStation(sellingStation)
 			return
 		end
 	end
+end
+
+function EconomyManager:updateSellingStations(dt)
+	self.sellingStationUpdateIndex = self.sellingStationUpdateIndex + 1
+
+	if self.sellingStationUpdateIndex > #self.sellingStations then
+		self.sellingStationUpdateIndex = 1
+	end
+
+	for k, sellingStation in ipairs(self.sellingStations) do
+		sellingStation.dt = sellingStation.dt + dt
+		sellingStation.scaledDt = sellingStation.scaledDt + dt * g_currentMission:getEffectiveTimeScale()
+
+		if k == self.sellingStationUpdateIndex then
+			sellingStation.station:updateSellingStation(sellingStation.dt, sellingStation.scaledDt)
+
+			sellingStation.dt = 0
+			sellingStation.scaledDt = 0
+		end
+	end
+end
+
+function EconomyManager:update(dt)
+	self:updateSellingStations(dt)
 end
 
 function EconomyManager:dayChanged()
@@ -170,10 +301,12 @@ function EconomyManager:dayChanged()
 	end
 end
 
-function EconomyManager:hourChanged()
+function EconomyManager:hourChanged(hour)
 	if g_currentMission:getIsServer() then
 		self:manageGreatDemands()
 	end
+
+	self:updateFillTypeHistory()
 end
 
 function EconomyManager:vehicleOperatingHourChanged(vehicle)
@@ -198,6 +331,12 @@ function EconomyManager:minuteChanged()
 		g_currentMission:showMoneyChange(MoneyType.PRODUCTION_COSTS)
 
 		self.showMoneyChangeNextMinute = false
+	end
+end
+
+function EconomyManager:periodChanged(period)
+	if g_currentMission:getIsServer() then
+		self:sendPeriodFillTypeHistory((period - 2) % 12 + 1)
 	end
 end
 
@@ -309,7 +448,7 @@ function EconomyManager:getPricePerLiter(fillTypeIndex, useMultiplier)
 	end
 
 	local period, alpha = g_currentMission.environment:getPeriodAndAlphaIntoPeriod()
-	local seasonalFactor = self:getFruitSeasonalFactor(fillType, period, alpha)
+	local seasonalFactor = self:getFillTypeSeasonalFactor(fillType, period, alpha)
 
 	return fillType.pricePerLiter * difficultyMultiplier * seasonalFactor
 end
@@ -323,7 +462,7 @@ function EconomyManager:getCostPerLiter(fillTypeIndex, useMultiplier)
 	end
 
 	local period, alpha = g_currentMission.environment:getPeriodAndAlphaIntoPeriod()
-	local seasonalFactor = self:getFruitSeasonalFactor(fillType, period, alpha)
+	local seasonalFactor = self:getFillTypeSeasonalFactor(fillType, period, alpha)
 
 	return fillType.pricePerLiter * difficultyMultiplier * seasonalFactor
 end
@@ -367,138 +506,6 @@ function EconomyManager:getInitialLeasingPrice(price)
 	return price * (EconomyManager.DEFAULT_LEASING_DEPOSIT_FACTOR + EconomyManager.PER_DAY_LEASING_FACTOR + EconomyManager.DEFAULT_RUNNING_LEASING_FACTOR)
 end
 
-function EconomyManager:saveToXMLFile(xmlFile, key)
-	local index = 0
-
-	for _, greatDemand in ipairs(self.greatDemands) do
-		local fillTypeName = g_fillTypeManager:getFillTypeNameByIndex(greatDemand.fillTypeIndex)
-
-		if fillTypeName ~= nil then
-			local demandKey = string.format("%s.greatDemands.greatDemand(%d)", key, index)
-			local placeableId = greatDemand.sellStation.owningPlaceable.currentSavegameId
-
-			if placeableId ~= nil then
-				setXMLInt(xmlFile, demandKey .. "#placeableId", placeableId)
-				setXMLString(xmlFile, demandKey .. "#fillTypeName", fillTypeName)
-				setXMLFloat(xmlFile, demandKey .. "#demandMultiplier", greatDemand.demandMultiplier)
-				setXMLInt(xmlFile, demandKey .. "#demandStartDay", greatDemand.demandStart.day)
-				setXMLInt(xmlFile, demandKey .. "#demandStartHour", greatDemand.demandStart.hour)
-				setXMLInt(xmlFile, demandKey .. "#demandDuration", greatDemand.demandDuration)
-				setXMLBool(xmlFile, demandKey .. "#isRunning", greatDemand.isRunning)
-				setXMLBool(xmlFile, demandKey .. "#isValid", greatDemand.isValid)
-
-				index = index + 1
-			end
-		end
-	end
-
-	index = 0
-
-	for _, fillType in ipairs(g_fillTypeManager:getFillTypes()) do
-		if fillType.totalAmount > 0 then
-			local fillTypeKey = string.format("%s.fillTypes.fillType(%d)", key, index)
-
-			setXMLString(xmlFile, fillTypeKey .. "#fillType", fillType.name)
-			setXMLInt(xmlFile, fillTypeKey .. "#totalAmount", fillType.totalAmount)
-
-			index = index + 1
-		end
-	end
-end
-
-function EconomyManager:loadFromXMLFile(xmlFile, key)
-	self.greatDemandToLoad = {}
-	local greatDemandNumber = 0
-
-	while true do
-		local demandKey = string.format("%s.greatDemands.greatDemand(%d)", key, greatDemandNumber)
-		local placeableId = getXMLInt(xmlFile, demandKey .. "#placeableId")
-
-		if placeableId == nil then
-			break
-		end
-
-		local fillTypeName = getXMLString(xmlFile, demandKey .. "#fillTypeName")
-		local fillType = g_fillTypeManager:getFillTypeByName(fillTypeName)
-		local fillTypeIndex = nil
-
-		if fillType ~= nil then
-			fillTypeIndex = fillType.index
-		end
-
-		if fillTypeIndex == nil then
-			break
-		end
-
-		local greatDemand = {
-			placeableId = placeableId,
-			fillTypeIndex = fillTypeIndex,
-			demandMultiplier = getXMLFloat(xmlFile, demandKey .. "#demandMultiplier"),
-			day = getXMLInt(xmlFile, demandKey .. "#demandStartDay"),
-			hour = getXMLInt(xmlFile, demandKey .. "#demandStartHour"),
-			demandDuration = getXMLInt(xmlFile, demandKey .. "#demandDuration"),
-			isRunning = Utils.getNoNil(getXMLBool(xmlFile, demandKey .. "#isRunning"), false),
-			isValid = Utils.getNoNil(getXMLBool(xmlFile, demandKey .. "#isValid"), false)
-		}
-
-		table.insert(self.greatDemandToLoad, greatDemand)
-
-		greatDemandNumber = greatDemandNumber + 1
-	end
-
-	local index = 0
-
-	while true do
-		local fillTypeKey = string.format("%s.fillTypes.fillType(%d)", key, index)
-		local fillTypeName = getXMLString(xmlFile, fillTypeKey .. "#fillType")
-
-		if fillTypeName == nil then
-			break
-		end
-
-		local fillType = g_fillTypeManager:getFillTypeByName(fillTypeName)
-
-		if fillType ~= nil then
-			fillType.totalAmount = getXMLInt(xmlFile, fillTypeKey .. "#totalAmount") or fillType.totalAmount
-		end
-
-		index = index + 1
-	end
-end
-
-function EconomyManager:finalizeGreatDemandLoading()
-	if self.greatDemandToLoad ~= nil then
-		local i = 1
-
-		for _, greatDemandToLoad in ipairs(self.greatDemandToLoad) do
-			local placeable = g_currentMission.placeableSystem:getPlaceableBySavegameId(greatDemandToLoad.placeableId)
-
-			if placeable ~= nil then
-				if placeable.getSellingStation ~= nil then
-					local station = placeable:getSellingStation()
-
-					if station ~= nil and station.getSupportsGreatDemand and station:getSupportsGreatDemand(greatDemandToLoad.fillTypeIndex) then
-						local greatDemand = self.greatDemands[i]
-						greatDemand.sellStation = station
-						greatDemand.fillTypeIndex = greatDemandToLoad.fillTypeIndex
-						greatDemand.demandMultiplier = greatDemandToLoad.demandMultiplier
-						greatDemand.demandStart.day = greatDemandToLoad.day
-						greatDemand.demandStart.hour = greatDemandToLoad.hour
-						greatDemand.demandDuration = greatDemandToLoad.demandDuration
-						greatDemand.isRunning = greatDemandToLoad.isRunning
-						greatDemand.isValid = greatDemandToLoad.isValid
-						i = i + 1
-					end
-				else
-					Logging.warning("Placeable is not a selling station (%s)", placeable.configFileName)
-				end
-			end
-		end
-
-		self.greatDemandToLoad = nil
-	end
-end
-
 function EconomyManager.getPriceMultiplier(fillType, fillFormat)
 	return EconomyManager.PRICE_MULTIPLIER[g_currentMission.missionInfo.economicDifficulty]
 end
@@ -507,13 +514,46 @@ function EconomyManager.getCostMultiplier()
 	return EconomyManager.COST_MULTIPLIER[g_currentMission.missionInfo.economicDifficulty]
 end
 
-function EconomyManager:getFruitSeasonalFactor(fillType, period, alpha)
+function EconomyManager:getFillTypeSeasonalFactor(fillType, period, alpha)
 	period = period - 1
 	local p0 = (period - 1) % 12 + 1
-	local p1 = period + 1
+	local p1 = (period + 0) % 12 + 1
 	local p2 = (period + 1) % 12 + 1
 	local p3 = (period + 2) % 12 + 1
 	local factors = fillType.economy.factors
 
 	return MathUtil.catmullRom(factors[p0], factors[p1], factors[p2], factors[p3], alpha)
+end
+
+function EconomyManager:getFillTypeHistoricPrice(fillType, period)
+	return fillType.economy.history[period] * EconomyManager.getPriceMultiplier()
+end
+
+function EconomyManager:updateFillTypeHistory()
+	local period = g_currentMission.environment.currentPeriod
+
+	for fillTypeIndex, fillType in ipairs(g_fillTypeManager:getFillTypes()) do
+		local num = 0
+		local total = 0
+
+		for _, sellingStation in ipairs(self.sellingStations) do
+			if sellingStation.station.acceptedFillTypes[fillTypeIndex] then
+				local price = sellingStation.station:getEffectiveFillTypePrice(fillTypeIndex, ToolType.UNDEFINED) / EconomyManager.getPriceMultiplier()
+				num = num + 1
+				total = total + price
+			end
+		end
+
+		if num > 0 then
+			local historicPrice = fillType.economy.history[period]
+			local price = total / num
+			local hoursPassed = g_currentMission.environment.currentHour
+			historicPrice = (hoursPassed * historicPrice + price) / (hoursPassed + 1)
+			fillType.economy.history[period] = historicPrice
+		end
+	end
+end
+
+function EconomyManager:sendPeriodFillTypeHistory(period)
+	g_server:broadcastEvent(PricingHistoryEvent.new(period))
 end

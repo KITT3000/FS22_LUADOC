@@ -20,7 +20,9 @@ function RailroadCrossing.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. ".gates.gate(?)#closingOffset", "Closing offset (sec)", 0)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".signals.signal(?)#node", "Signal node, can be self-illum shape, add optional real light as child")
 	schema:register(XMLValueType.BOOL, basePath .. ".signals.signal(?)#alternatingLights", "True if light should blink in opposite", false)
-	schema:register(XMLValueType.NODE_INDEX, basePath .. ".trafficBlockers.trafficBlocker(?)#node", "Traffic blocking node. Use one per road lane")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".trafficBlockers.blocker(?)#node", "Traffic blocking node, also works for AI if it drives on a traffic system spline. Use one per road lane")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".aiNavigationBlockers.blocker(?)#node", "AI navigation blocking node. Only for ai splines, which are not part of the traffic system. Use one per spline")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".pedestrianBlockers.blocker(?)#node", "Pedestrian blocking node. Use one per spline")
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "crossing")
 end
 
@@ -46,16 +48,14 @@ function RailroadCrossing:loadFromXML(xmlFile, key, components, i3dMappings)
 	self.gates = {}
 	self.signals = {}
 	self.trafficBlockers = {}
+	self.trafficBlockersPending = {}
+	self.aiNavigationBlockers = {}
+	self.aiNavigationBlockersPending = {}
+	self.pedestrianBlockers = {}
+	self.pedestrianBlockersPending = {}
 	self.samples = {}
-	local i = 0
 
-	while true do
-		local gateKey = string.format("%s.gates.gate(%d)", key, i)
-
-		if not xmlFile:hasProperty(gateKey) then
-			break
-		end
-
+	xmlFile:iterate(string.format("%s.gates.gate", key), function (index, gateKey)
 		local node = xmlFile:getValue(gateKey .. "#node", nil, components, i3dMappings)
 
 		if node ~= nil then
@@ -111,21 +111,12 @@ function RailroadCrossing:loadFromXML(xmlFile, key, components, i3dMappings)
 				duration = duration,
 				closingOffset = closingOffset
 			})
-
-			i = i + 1
 		end
-	end
+	end)
 
 	local lightsProfile = g_gameSettings:getValue("lightsProfile")
-	i = 0
 
-	while true do
-		local signalKey = string.format("%s.signals.signal(%d)", key, i)
-
-		if not xmlFile:hasProperty(signalKey) then
-			break
-		end
-
+	xmlFile:iterate(string.format("%s.signals.signal", key), function (index, signalKey)
 		local signalNode = xmlFile:getValue(signalKey .. "#node", nil, components, i3dMappings)
 
 		if signalNode ~= nil then
@@ -171,56 +162,45 @@ function RailroadCrossing:loadFromXML(xmlFile, key, components, i3dMappings)
 
 			table.insert(self.signals, signal)
 		end
+	end)
 
-		i = i + 1
+	if self.isServer then
+		if g_currentMission.trafficSystem ~= nil then
+			xmlFile:iterate(string.format("%s.trafficBlockers.blocker", key), function (index, blockerKey)
+				local blockerNode = xmlFile:getValue(blockerKey .. "#node", nil, components, i3dMappings)
+
+				if blockerNode ~= nil then
+					table.insert(self.trafficBlockersPending, {
+						blockerNode = blockerNode,
+						blockerKey = blockerKey
+					})
+				end
+			end)
+		end
+
+		if g_currentMission.aiSystem ~= nil then
+			xmlFile:iterate(string.format("%s.aiNavigationBlockers.blocker", key), function (index, blockerKey)
+				local blockerNode = xmlFile:getValue(blockerKey .. "#node", nil, components, i3dMappings)
+
+				if blockerNode ~= nil then
+					table.insert(self.aiNavigationBlockersPending, {
+						blockerNode = blockerNode,
+						blockerKey = blockerKey
+					})
+				end
+			end)
+		end
 	end
 
-	local trafficSystem = g_currentMission.trafficSystem
+	if g_currentMission.pedestrianSystem ~= nil then
+		xmlFile:iterate(string.format("%s.pedestrianBlockers.blocker", key), function (index, blockerKey)
+			local blockerNode = xmlFile:getValue(blockerKey .. "#node", nil, components, i3dMappings)
 
-	if trafficSystem ~= nil then
-		xmlFile:iterate(string.format("%s.trafficBlockers.trafficBlocker", key), function (index, trafficBlockerKey)
-			local trafficBlockerNode = xmlFile:getValue(trafficBlockerKey .. "#node", nil, components, i3dMappings)
-
-			if trafficBlockerNode ~= nil then
-				local wx, wy, wz = getWorldTranslation(trafficBlockerNode)
-				local dx = 0
-				local dy = 0
-				local dz = 0
-				local splineIndex, splineTime = findTrafficSystemBlockingPositionInformation(trafficSystem.trafficSystemId, wx, wy, wz, dx, dy, dz, RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE)
-
-				if splineIndex == -1 then
-					Logging.xmlWarning(xmlFile, "Unable to find spline for traffic blocker (%s) at %.1f %.1f %.1f", trafficBlockerKey, wx, wy, wz)
-
-					return
-				end
-
-				local spline = trafficSystem:getSplineByIndex(splineIndex)
-
-				if spline == nil then
-					Logging.xmlWarning(xmlFile, "Unable to retrieve spline with index %d from traffic system", splineIndex)
-
-					return
-				end
-
-				local swx, swy, swz = getSplinePosition(spline, splineTime)
-
-				if swx == nil then
-					Logging.xmlWarning(xmlFile, "Unable to retrieve spline position at spline time %.5f for '%s'", splineTime, I3DUtil.getNodePath(spline))
-
-					return
-				end
-
-				local distanceBlockerToSpline = MathUtil.vector3Length(wx - swx, wy - swy, wz - swz)
-
-				if distanceBlockerToSpline < RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE then
-					table.insert(self.trafficBlockers, {
-						trafficBlockerNode = trafficBlockerNode,
-						splineIndex = splineIndex,
-						splineTime = splineTime
-					})
-				else
-					Logging.xmlDevWarning(xmlFile, "Nearest found traffic spline position %.1f %.1f %.1f (spline %s) is %.1fm from traffic blocker %s (node '%s' at %.1f %.1f %.1f). Ignoring this blocker!", swx, swy, swz, getName(spline), distanceBlockerToSpline, trafficBlockerKey, getName(trafficBlockerNode), wx, wy, wz)
-				end
+			if blockerNode ~= nil then
+				table.insert(self.pedestrianBlockersPending, {
+					blockerNode = blockerNode,
+					blockerKey = blockerKey
+				})
 			end
 		end)
 	end
@@ -242,15 +222,122 @@ function RailroadCrossing:delete()
 		self.samples.crossing = nil
 	end
 
+	self:setBlockingPositionsState(false)
+	self.trainSystem:removeSplinePositionUpdateListener(self)
+end
+
+function RailroadCrossing:findBlockingPositions()
+	self:findTrafficSystemBlockingPositions()
+
+	self.findAiBlockersNextFrame = true
+
+	self:findPedestrianSystemBlockingPositions()
+end
+
+function RailroadCrossing:findTrafficSystemBlockingPositions()
 	local trafficSystem = g_currentMission.trafficSystem
 
 	if trafficSystem ~= nil then
-		for _, trafficBlocker in ipairs(self.trafficBlockers) do
-			setTrafficSystemBlockingPositionState(trafficSystem.trafficSystemId, trafficBlocker.splineIndex, trafficBlocker.splineTime, false)
+		for _, blocker in ipairs(self.trafficBlockersPending) do
+			local blockerNode = blocker.blockerNode
+			local blockerKey = blocker.blockerKey
+			local wx, wy, wz = getWorldTranslation(blockerNode)
+			local dx, dy, dz = localDirectionToWorld(blockerNode, 0, 0, 1)
+
+			if RailroadCrossing.debugEnabled then
+				log("findTrafficSystemBlockingPositionInformation", wx, wy, wz, getName(blockerNode))
+			end
+
+			local splineIndex, splineTime = findTrafficSystemBlockingPositionInformation(trafficSystem.trafficSystemId, wx, wy, wz, dx, dy, dz, RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE)
+
+			if splineIndex == -1 then
+				Logging.warning("Unable to find spline for traffic blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
+			else
+				table.insert(self.trafficBlockers, {
+					blockerNode = blockerNode,
+					splineIndex = splineIndex,
+					splineTime = splineTime
+				})
+			end
 		end
 	end
 
-	self.trainSystem:removeSplinePositionUpdateListener(self)
+	self.trafficBlockersPending = nil
+end
+
+function RailroadCrossing:findVehicleNavigationMapBlockingPositions()
+	local aiSystem = g_currentMission.aiSystem
+
+	if aiSystem ~= nil then
+		for _, blocker in ipairs(self.aiNavigationBlockersPending) do
+			local blockerNode = blocker.blockerNode
+			local blockerKey = blocker.blockerKey
+			local wx, wy, wz = getWorldTranslation(blockerNode)
+			local dx, dy, dz = localDirectionToWorld(blockerNode, 0, 0, 1)
+			local splineId, splineTime = findVehicleNavigationMapBlockingPositionInformation(aiSystem.navigationMap, wx, wy, wz, dx, dy, dz, RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE)
+
+			if not entityExists(splineId) then
+				Logging.warning("Unable to find spline for ai navigation blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
+			else
+				table.insert(self.aiNavigationBlockers, {
+					blockerNode = blockerNode,
+					splineId = splineId,
+					splineTime = splineTime
+				})
+			end
+		end
+	end
+
+	self.aiNavigationBlockersPending = nil
+end
+
+function RailroadCrossing:findPedestrianSystemBlockingPositions()
+	local pedestrianSystem = g_currentMission.pedestrianSystem
+
+	for _, blocker in ipairs(self.pedestrianBlockersPending) do
+		local blockerNode = blocker.blockerNode
+		local blockerKey = blocker.blockerKey
+		local wx, wy, wz = getWorldTranslation(blockerNode)
+		local dx, dy, dz = localDirectionToWorld(blockerNode, 0, 0, 1)
+		local splineIndex, splineTime, direction = findPedestrianSystemBlockingPositionInformation(pedestrianSystem.pedestrianSystemId, wx, wy, wz, dx, dy, dz, RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE)
+
+		if splineIndex == -1 then
+			Logging.warning("Unable to find spline for pedestrian blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
+		else
+			table.insert(self.pedestrianBlockers, {
+				blockerNode = blockerNode,
+				splineIndex = splineIndex,
+				splineTime = splineTime,
+				direction = direction
+			})
+		end
+	end
+
+	self.pedestrianBlockersPending = nil
+end
+
+function RailroadCrossing:setBlockingPositionsState(state)
+	local trafficSystem = g_currentMission.trafficSystem
+	local aiSystem = g_currentMission.aiSystem
+	local pedestrianSystem = g_currentMission.pedestrianSystem
+
+	if trafficSystem ~= nil and trafficSystem.trafficSystemId ~= nil then
+		for _, blocker in ipairs(self.trafficBlockers) do
+			setTrafficSystemBlockingPositionState(trafficSystem.trafficSystemId, blocker.splineIndex, blocker.splineTime, state)
+		end
+	end
+
+	if aiSystem ~= nil and aiSystem.navigationMap ~= nil then
+		for _, blocker in ipairs(self.aiNavigationBlockers) do
+			setVehicleNavigationMapBlockingPositionState(aiSystem.navigationMap, blocker.splineId, blocker.splineTime, state)
+		end
+	end
+
+	if pedestrianSystem ~= nil and pedestrianSystem.pedestrianSystemId ~= nil then
+		for _, blocker in ipairs(self.pedestrianBlockers) do
+			setPedestrianSystemBlockingPositionState(pedestrianSystem.pedestrianSystemId, blocker.splineIndex, blocker.splineTime, blocker.direction, state)
+		end
+	end
 end
 
 function RailroadCrossing:setSplineTimeByPosition(t, splineLength)
@@ -261,6 +348,12 @@ function RailroadCrossing:setSplineTimeByPosition(t, splineLength)
 end
 
 function RailroadCrossing:update(dt)
+	if self.findAiBlockersNextFrame then
+		self:findVehicleNavigationMapBlockingPositions()
+
+		self.findAiBlockersNextFrame = nil
+	end
+
 	if self.state == RailroadCrossing.STATE_CLOSING or self.state == RailroadCrossing.STATE_OPENING then
 		local isAnimDone = self:updateGates(dt, self.gateDirection)
 
@@ -278,8 +371,8 @@ function RailroadCrossing:update(dt)
 		local alpha = MathUtil.clamp(math.cos(7 * shaderTime) + 0.2, 0, 1)
 		local alpha2 = MathUtil.clamp(math.cos(7 * shaderTime + math.pi) + 0.2, 0, 1)
 
-		for _, signal in pairs(self.signals) do
-			for k, light in pairs(signal.lights) do
+		for _, signal in ipairs(self.signals) do
+			for k, light in ipairs(signal.lights) do
 				if light.realLight ~= nil then
 					local currentAlpha = alpha
 
@@ -297,7 +390,7 @@ end
 function RailroadCrossing:updateGates(dt, direction)
 	local isAnimDone = true
 
-	for _, gate in pairs(self.gates) do
+	for _, gate in ipairs(self.gates) do
 		if gate.currentOffset == 0 then
 			gate.animTime = MathUtil.clamp(gate.animTime + direction * dt / gate.duration, 0, 1)
 			local sx, sy, sz, rx, ry, rz = gate.animCurve:get(gate.animTime)
@@ -318,11 +411,11 @@ end
 function RailroadCrossing:startClosingGates()
 	self.state = RailroadCrossing.STATE_CLOSING
 
-	for _, signal in pairs(self.signals) do
+	for _, signal in ipairs(self.signals) do
 		setVisibility(signal.node, true)
 	end
 
-	for _, gate in pairs(self.gates) do
+	for _, gate in ipairs(self.gates) do
 		if gate.animTime == 0 then
 			gate.currentOffset = gate.closingOffset
 		end
@@ -336,13 +429,7 @@ function RailroadCrossing:startClosingGates()
 		self.isCrossingSamplePlaying = true
 	end
 
-	local trafficSystem = g_currentMission.trafficSystem
-
-	if trafficSystem ~= nil then
-		for _, trafficBlocker in ipairs(self.trafficBlockers) do
-			setTrafficSystemBlockingPositionState(trafficSystem.trafficSystemId, trafficBlocker.splineIndex, trafficBlocker.splineTime, true)
-		end
-	end
+	self:setBlockingPositionsState(true)
 end
 
 function RailroadCrossing:startOpeningGates()
@@ -353,7 +440,7 @@ end
 function RailroadCrossing:finishOpenGates()
 	self.state = RailroadCrossing.STATE_OPEN
 
-	for _, signal in pairs(self.signals) do
+	for _, signal in ipairs(self.signals) do
 		setVisibility(signal.node, false)
 	end
 
@@ -363,13 +450,7 @@ function RailroadCrossing:finishOpenGates()
 		self.isCrossingSamplePlaying = false
 	end
 
-	local trafficSystem = g_currentMission.trafficSystem
-
-	if trafficSystem ~= nil then
-		for _, trafficBlocker in ipairs(self.trafficBlockers) do
-			setTrafficSystemBlockingPositionState(trafficSystem.trafficSystemId, trafficBlocker.splineIndex, trafficBlocker.splineTime, false)
-		end
-	end
+	self:setBlockingPositionsState(false)
 end
 
 function RailroadCrossing:onSplinePositionTimeUpdate(startTime, endTime)
@@ -383,5 +464,27 @@ function RailroadCrossing:onSplinePositionTimeUpdate(startTime, endTime)
 		end
 	elseif self.state == RailroadCrossing.STATE_CLOSED or self.state == RailroadCrossing.STATE_CLOSING then
 		self:startOpeningGates()
+	end
+end
+
+function RailroadCrossing.debugSetDebugNodeState(blockerDebugTable, blocked)
+	if blockerDebugTable ~= nil then
+		if blockerDebugTable.blockedPosGizmo ~= nil then
+			if RailroadCrossing.debugEnabled then
+				g_debugManager:addPermanentElement(blockerDebugTable.blockedPosGizmo)
+			else
+				g_debugManager:removePermanentElement(blockerDebugTable.blockedPosGizmo)
+			end
+
+			if blocked then
+				blockerDebugTable.blockedPosGizmo:setColor(unpack(RailroadCrossing.debugColorRed))
+			else
+				blockerDebugTable.blockedPosGizmo:setColor(unpack(RailroadCrossing.debugColorGreen))
+			end
+		end
+
+		if blockerDebugTable.spline ~= nil then
+			setVisibility(blockerDebugTable.spline, blocked)
+		end
 	end
 end

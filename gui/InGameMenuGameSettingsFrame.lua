@@ -11,7 +11,7 @@ InGameMenuGameSettingsFrame.CONTROLS = {
 	"checkAutoMotorStart",
 	"checkStopAndGoBraking",
 	"checkTrailerFillLimit",
-	"checkFuelUsage",
+	"multiFuelUsage",
 	"checkHelperRefillFuel",
 	"checkHelperRefillSeed",
 	"checkHelperRefillFertilizer",
@@ -174,7 +174,7 @@ function InGameMenuGameSettingsFrame:updateGameSettings()
 	self.checkHelperRefillFuel:setIsChecked(self.missionInfo.helperBuyFuel)
 	self.checkHelperRefillSeed:setIsChecked(self.missionInfo.helperBuySeeds)
 	self.checkHelperRefillFertilizer:setIsChecked(self.missionInfo.helperBuyFertilizer)
-	self.checkFuelUsage:setIsChecked(not self.missionInfo.fuelUsageLow)
+	self.multiFuelUsage:setState(self.missionInfo.fuelUsage)
 	self.checkStopAndGoBraking:setIsChecked(self.missionInfo.stopAndGoBraking)
 	self.checkTrailerFillLimit:setIsChecked(self.missionInfo.trailerFillLimit)
 	self.checkHelperRefillSlurry:setState(self.missionInfo.helperSlurrySource)
@@ -210,9 +210,10 @@ function InGameMenuGameSettingsFrame:assignStaticTexts()
 	self:assignEconomicDifficultyTexts()
 	self:assignDirtTexts()
 	self:assignAutoSaveTexts()
-	self.checkFuelUsage:setTexts({
+	self.multiFuelUsage:setTexts({
 		self.l10n:getText(InGameMenuGameSettingsFrame.L10N_SYMBOL.USAGE_LOW),
-		self.l10n:getText(InGameMenuGameSettingsFrame.L10N_SYMBOL.USAGE_DEFAULT)
+		self.l10n:getText(InGameMenuGameSettingsFrame.L10N_SYMBOL.USAGE_DEFAULT),
+		self.l10n:getText(InGameMenuGameSettingsFrame.L10N_SYMBOL.USAGE_HIGH)
 	})
 
 	local helperTexts = {
@@ -377,7 +378,7 @@ end
 
 function InGameMenuGameSettingsFrame:onClickFuelUsage(state)
 	if self.hasMasterRights then
-		g_currentMission:setFuelUsageLow(state ~= CheckedOptionElement.STATE_CHECKED)
+		g_currentMission:setFuelUsage(state)
 	end
 end
 
@@ -494,8 +495,6 @@ function InGameMenuGameSettingsFrame:onClickAutoSaveInterval(state)
 end
 
 function InGameMenuGameSettingsFrame:onClickPauseGame()
-	self.pageMapOverview:notifyPause()
-
 	if GS_IS_CONSOLE_VERSION then
 		self.onClickBackCallback()
 	end
@@ -515,13 +514,14 @@ InGameMenuGameSettingsFrame.PROFILE = {
 InGameMenuGameSettingsFrame.L10N_SYMBOL = {
 	UNPAUSE = "ui_unpause",
 	BUY = "ui_buy",
-	OFF = "ui_off",
+	USAGE_HIGH = "setting_high",
+	DIFFICULTY_EASY = "button_easy",
 	PAUSE = "input_PAUSE",
 	USAGE_LOW = "setting_fuelUsageLow",
 	USAGE_DEFAULT = "setting_fuelUsageDefault",
 	DIFFICULTY_NORMAL = "button_normal",
 	DIFFICULTY_HARD = "button_hard",
 	SUBSTITUTION_PREFIX = "$l10n_",
-	DIFFICULTY_EASY = "button_easy",
+	OFF = "ui_off",
 	GROWTH_RATE_TEMPLATE = "setting_plantGrowthRateState"
 }

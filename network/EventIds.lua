@@ -300,5 +300,7 @@ EventIds.EVENT_AI_TASK_STOP = nextEventId()
 EventIds.EVENT_AI_FIELDWORKER_STATE = nextEventId()
 EventIds.EVENT_AI_JOBVEHICLE_STATE = nextEventId()
 EventIds.EVENT_SLOT_SYSTEM_UPDATE = nextEventId()
+EventIds.EVENT_PRICING_HISTORY_INIT = nextEventId()
+EventIds.EVENT_PRICING_HISTORY = nextEventId()
 EventIds.SEND_NUM_BITS = 16
 EventIds.MAX_EVENT_ID = 2^EventIds.SEND_NUM_BITS - 1

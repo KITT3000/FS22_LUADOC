@@ -36,6 +36,8 @@ function ConstructionBrush.new(subclass_mt, cursor)
 	self.primaryAxisIsContinuous = false
 	self.secondaryAxisIsContinuous = false
 	self.inputTextDirty = true
+	self.activeSoundId = ConstructionSound.ID.NONE
+	self.activeSoundPitchModifier = nil
 
 	return self
 end
@@ -143,4 +145,14 @@ end
 
 function ConstructionBrush:getAxisSecondaryText()
 	return "SECONDARY AXIS"
+end
+
+function ConstructionBrush:setActiveSound(soundId, pitchModifier)
+	self.activeSoundId = soundId
+	self.activeSoundPitchModifier = pitchModifier
+end
+
+function ConstructionBrush:playSound(soundId, pitchModifier)
+	self.activeSoundId = soundId
+	self.activeSoundPitchModifier = pitchModifier
 end

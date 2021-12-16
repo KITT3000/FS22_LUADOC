@@ -349,79 +349,99 @@ function BaleManager:getBaleCapacityByBaleIndex(baleIndex, fillTypeIndex)
 	return 0
 end
 
+function BaleManager:getPossibleCapacitiesForFillType(fillTypeIndex)
+	local capacities = {}
+
+	for _, bale in ipairs(self.bales) do
+		for _, fillTypeData in ipairs(bale.fillTypes) do
+			if fillTypeData.fillTypeIndex == fillTypeIndex then
+				table.insert(capacities, fillTypeData.capacity)
+			end
+		end
+	end
+
+	return capacities
+end
+
 function BaleManager:consoleCommandAddBale(fillTypeName, isRoundbale, width, height, length, wrapState, modName)
 	local usage = "gsBaleAdd fillTypeName isRoundBale [width] [height/diameter] [length] [wrapState] [modName]"
 
-	if g_currentMission:getIsServer() then
-		fillTypeName = Utils.getNoNil(fillTypeName, "STRAW")
-		isRoundbale = Utils.stringToBoolean(isRoundbale)
-		width = width ~= nil and tonumber(width) or nil
-		height = height ~= nil and tonumber(height) or nil
-		length = length ~= nil and tonumber(length) or nil
-
-		if wrapState ~= nil and tonumber(wrapState) == nil then
-			Logging.error("Invalid wrapState '%s'. Number expected", wrapState, usage)
-
-			return
-		end
-
-		wrapState = tonumber(wrapState or 0)
-		local fillTypeIndex = g_fillTypeManager:getFillTypeIndexByName(fillTypeName)
-
-		if fillTypeIndex == nil then
-			Logging.error("Invalid fillTypeName '%s' (e.g. STRAW). Use %s", fillTypeName, usage)
-
-			return
-		end
-
-		local baleXMLFilename, _ = self:getBaleXMLFilename(fillTypeIndex, isRoundbale, width, height, length, height, modName)
-
-		if baleXMLFilename ~= nil then
-			local x = 0
-			local y = 0
-			local z = 0
-			local dirX = 1
-			local dirZ = 0
-			local _ = nil
-
-			if g_currentMission.controlPlayer then
-				local player = g_currentMission.player
-
-				if player ~= nil and player.isControlled and player.rootNode ~= nil and player.rootNode ~= 0 then
-					x, y, z = getWorldTranslation(player.rootNode)
-					dirZ = -math.cos(player.rotY)
-					dirX = -math.sin(player.rotY)
-				end
-			elseif g_currentMission.controlledVehicle ~= nil then
-				x, y, z = getWorldTranslation(g_currentMission.controlledVehicle.rootNode)
-				dirX, _, dirZ = localDirectionToWorld(g_currentMission.controlledVehicle.rootNode, 0, 0, 1)
-			else
-				x, y, z = getWorldTranslation(getCamera())
-				dirX, _, dirZ = localDirectionToWorld(getCamera(), 0, 0, -1)
-			end
-
-			z = z + dirZ * 4
-			x = x + dirX * 4
-			y = y + 5
-			local ry = MathUtil.getYRotationFromDirection(dirX, dirZ)
-			local baleObject = Bale.new(g_currentMission:getIsServer(), g_currentMission:getIsClient())
-
-			if baleObject:loadFromConfigXML(baleXMLFilename, x, y, z, 0, ry, 0) then
-				baleObject:setFillType(fillTypeIndex)
-				baleObject:setFillLevel(99999)
-				baleObject:setWrappingState(wrapState)
-				baleObject:setOwnerFarmId(g_currentMission:getFarmId(), true)
-				baleObject:register()
-			end
-
-			return string.format("Created bale at (%.2f, %.2f, %.2f). For specific bales use: %s", x, y, z, usage)
-		else
-			Logging.error("Could not find bale for given size attributes! (%s)", usage)
-			self:consoleCommandListBales()
-		end
-	else
+	if not g_currentMission:getIsServer() then
 		Logging.error("Command only allowed on server!")
+
+		return
 	end
+
+	fillTypeName = Utils.getNoNil(fillTypeName, "STRAW")
+	isRoundbale = Utils.stringToBoolean(isRoundbale)
+	width = width ~= nil and tonumber(width) or nil
+	height = height ~= nil and tonumber(height) or nil
+	length = length ~= nil and tonumber(length) or nil
+
+	if wrapState ~= nil and tonumber(wrapState) == nil then
+		Logging.error("Invalid wrapState '%s'. Number expected", wrapState, usage)
+
+		return
+	end
+
+	wrapState = tonumber(wrapState or 0)
+	local fillTypeIndex = g_fillTypeManager:getFillTypeIndexByName(fillTypeName)
+
+	if fillTypeIndex == nil then
+		Logging.error("Invalid fillTypeName '%s' (e.g. STRAW). Use %s", fillTypeName, usage)
+
+		return
+	end
+
+	local baleXMLFilename, _ = self:getBaleXMLFilename(fillTypeIndex, isRoundbale, width, height, length, height, modName)
+
+	if baleXMLFilename == nil then
+		Logging.error("Could not find bale for given size attributes! (%s)", usage)
+		self:consoleCommandListBales()
+
+		return
+	end
+
+	local x = 0
+	local y = 0
+	local z = 0
+	local dirX = 1
+	local dirZ = 0
+	local _ = nil
+
+	if g_currentMission.controlPlayer then
+		local player = g_currentMission.player
+
+		if player ~= nil and player.isControlled and player.rootNode ~= nil and player.rootNode ~= 0 then
+			x, y, z = getWorldTranslation(player.rootNode)
+			dirZ = -math.cos(player.rotY)
+			dirX = -math.sin(player.rotY)
+		end
+	elseif g_currentMission.controlledVehicle ~= nil then
+		x, y, z = getWorldTranslation(g_currentMission.controlledVehicle.rootNode)
+		dirX, _, dirZ = localDirectionToWorld(g_currentMission.controlledVehicle.rootNode, 0, 0, 1)
+	else
+		x, y, z = getWorldTranslation(getCamera())
+		dirX, _, dirZ = localDirectionToWorld(getCamera(), 0, 0, -1)
+	end
+
+	z = z + dirZ * 4
+	x = x + dirX * 4
+	y = y + 5
+	local ry = MathUtil.getYRotationFromDirection(dirX, dirZ)
+	local farmId = g_currentMission:getFarmId()
+	farmId = farmId ~= FarmManager.SPECTATOR_FARM_ID and farmId or 1
+	local baleObject = Bale.new(g_currentMission:getIsServer(), g_currentMission:getIsClient())
+
+	if baleObject:loadFromConfigXML(baleXMLFilename, x, y, z, 0, ry, 0) then
+		baleObject:setFillType(fillTypeIndex)
+		baleObject:setFillLevel(99999)
+		baleObject:setWrappingState(wrapState)
+		baleObject:setOwnerFarmId(farmId, true)
+		baleObject:register()
+	end
+
+	return string.format("Created bale at (%.2f, %.2f, %.2f). For specific bales use: %s", x, y, z, usage)
 end
 
 function BaleManager:consoleCommandListBales()
@@ -477,6 +497,7 @@ function BaleManager.registerBaleXMLPaths(schema)
 	schema:register(XMLValueType.STRING, "bale.fillTypes.fillType(?)#name", "Name of fill type")
 	schema:register(XMLValueType.FLOAT, "bale.fillTypes.fillType(?)#capacity", "Fill level of bale with this fill type")
 	schema:register(XMLValueType.FLOAT, "bale.fillTypes.fillType(?)#mass", "Mass of bale with this fill type", 500)
+	schema:register(XMLValueType.FLOAT, "bale.fillTypes.fillType(?)#forceAcceleration", "Force acceleration value of bale with this fill type", "bale.mountableObject#forceAcceleration")
 	schema:register(XMLValueType.BOOL, "bale.fillTypes.fillType(?)#supportsWrapping", "Wrapping is allowed while this type is used")
 	schema:register(XMLValueType.STRING, "bale.fillTypes.fillType(?).diffuse#filename", "Diffuse texture to apply to all mesh nodes")
 	schema:register(XMLValueType.STRING, "bale.fillTypes.fillType(?).normal#filename", "Normal texture to apply to all mesh nodes")

@@ -52,8 +52,8 @@ function LicensePlateManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 	local filename = getXMLString(xmlFile, "map.licensePlates#filename")
 
 	if filename ~= nil then
-		local xmlFilename = Utils.getFilename(filename, baseDirectory)
-		self.licensePlateXML = XMLFile.load("mapLicensePlates", xmlFilename, LicensePlateManager.xmlSchema)
+		self.xmlFilename = Utils.getFilename(filename, baseDirectory)
+		self.licensePlateXML = XMLFile.load("mapLicensePlates", self.xmlFilename, LicensePlateManager.xmlSchema)
 
 		if self.licensePlateXML ~= nil then
 			self.xmlReferences = 0
@@ -326,6 +326,53 @@ function LicensePlateManager.writeLicensePlateData(streamId, connection, license
 			local index = font:getCharacterIndexByCharacter(licensePlateData.characters[i])
 
 			streamWriteUIntN(streamId, index, LicensePlateManager.SEND_NUM_BITS_CHARACTER)
+		end
+	end
+end
+
+function LicensePlateManager.loadLicensePlateDataFromXML(xmlFile, key, useAbsolutePaths)
+	local valid = xmlFile:hasProperty(key .. "#variation")
+
+	if valid then
+		local licensePlateData = {}
+
+		if useAbsolutePaths then
+			licensePlateData.xmlFilename = xmlFile:getString(key .. "#configuration")
+		else
+			licensePlateData.xmlFilename = NetworkUtil.convertFromNetworkFilename(xmlFile:getString(key .. "#configuration"))
+		end
+
+		licensePlateData.variation = xmlFile:getInt(key .. "#variation")
+		licensePlateData.colorIndex = xmlFile:getInt(key .. "#color")
+		licensePlateData.placementIndex = xmlFile:getInt(key .. "#placement")
+		local font = g_licensePlateManager:getFont()
+		licensePlateData.characters = {}
+		local characters = xmlFile:getString(key .. "#characters")
+		local characterLength = characters:len()
+
+		for i = 1, characterLength do
+			table.insert(licensePlateData.characters, characters:sub(i, i))
+		end
+
+		return licensePlateData
+	else
+		return nil
+	end
+end
+
+function LicensePlateManager.saveLicensePlateDataToXML(xmlFile, key, licensePlateData, useAbsolutePaths)
+	local valid = licensePlateData ~= nil and licensePlateData.variation ~= nil and licensePlateData.characters ~= nil and licensePlateData.colorIndex ~= nil and licensePlateData.placementIndex ~= nil
+
+	if valid then
+		xmlFile:setInt(key .. "#variation", licensePlateData.variation)
+		xmlFile:setInt(key .. "#color", licensePlateData.colorIndex)
+		xmlFile:setInt(key .. "#placement", licensePlateData.placementIndex)
+		xmlFile:setString(key .. "#characters", table.concat(licensePlateData.characters, ""))
+
+		if useAbsolutePaths then
+			xmlFile:setString(key .. "#configuration", licensePlateData.xmlFilename)
+		else
+			xmlFile:setString(key .. "#configuration", NetworkUtil.convertToNetworkFilename(licensePlateData.xmlFilename))
 		end
 	end
 end

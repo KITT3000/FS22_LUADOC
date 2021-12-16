@@ -10,6 +10,7 @@ end
 function ChainsawSoundStateStart:activate(parms)
 	ChainsawSoundStateStart:superClass().activate(self, parms)
 	g_soundManager:playSample(self.owner.samples.start)
+	g_soundManager:playSample(self.owner.samples.idle, 0, self.owner.samples.start)
 	self.stateMachine:changeState(Chainsaw.SOUND_STATES.IDLE)
 end
 
@@ -44,7 +45,7 @@ end
 function ChainsawSoundStateIdle:update(dt)
 	ChainsawSoundStateIdle:superClass().update(self, dt)
 
-	if not g_soundManager:getIsSamplePlaying(self.owner.samples.start) and not g_soundManager:getIsSamplePlaying(self.owner.samples.idle) then
+	if not g_soundManager:getIsSamplePlaying(self.owner.samples.idle) then
 		g_soundManager:playSample(self.owner.samples.idle)
 	end
 

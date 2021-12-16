@@ -48,11 +48,13 @@ function VehicleSchemaDisplay:loadVehicleSchemaOverlays()
 	self:loadVehicleSchemaOverlaysFromXML(xmlFile)
 	delete(xmlFile)
 
-	for _, modDesc in ipairs(self.modManager:getMods()) do
-		xmlFile = loadXMLFile("ModFile", modDesc.modFile)
+	for _, modDesc in ipairs(self.modManager:getActiveMods()) do
+		xmlFile = loadXMLFile("VehicleSchemaDisplay ModFile", modDesc.modFile)
 
-		self:loadVehicleSchemaOverlaysFromXML(xmlFile, modDesc.modFile)
-		delete(xmlFile)
+		if xmlFile ~= 0 then
+			self:loadVehicleSchemaOverlaysFromXML(xmlFile, modDesc.modFile)
+			delete(xmlFile)
+		end
 	end
 
 	self:storeScaledValues()

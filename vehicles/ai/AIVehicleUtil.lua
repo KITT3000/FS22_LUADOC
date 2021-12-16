@@ -22,6 +22,10 @@ AIVehicleUtil = {
 					if hit and math.abs(f2) < 100000 then
 						local radius = tX * f2
 						rotTime = self:getSteeringRotTimeByCurvature(1 / radius)
+
+						if self:getReverserDirection() < 0 then
+							rotTime = -rotTime
+						end
 					end
 
 					local targetRotTime = nil
@@ -251,7 +255,7 @@ end
 
 function AIVehicleUtil.getAIToolReverserDirectionNode(vehicle)
 	for _, implement in pairs(vehicle:getAttachedImplements()) do
-		if implement.object ~= nil then
+		if implement.object ~= nil and implement.object.getAIToolReverserDirectionNode ~= nil then
 			local reverserNode = implement.object:getAIToolReverserDirectionNode()
 			local attachedReverserNode = AIVehicleUtil.getAIToolReverserDirectionNode(implement.object)
 			reverserNode = reverserNode or attachedReverserNode

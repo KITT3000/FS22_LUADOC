@@ -160,10 +160,15 @@ function BuyPlaceableEvent:placeableLoaded(placeable, loadingState, args)
 						placeable:setColor(self.colorIndex)
 					end
 
-					local y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, placeable.position.x, 0, placeable.position.z)
-					placeable.position.y = y
+					if displacedVolume > 0 then
+						local y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, placeable.position.x, 0, placeable.position.z)
+						placeable.position.y = y
+					end
 
 					placeable:initPose()
+
+					placeable.undoTimer = g_time
+
 					placeable:finalizePlacement()
 					placeable:register()
 					g_currentMission:addMoney(-price, ownerFarmId, MoneyType.SHOP_PROPERTY_BUY, true)

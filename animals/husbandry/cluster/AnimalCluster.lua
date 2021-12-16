@@ -41,6 +41,10 @@ function AnimalCluster.new(customMt)
 		title = reproductionText,
 		titleOrg = reproductionText
 	}
+	self.infoReproductionMinAge = {
+		text = "",
+		title = g_i18n:getText("infohud_reproductionMinAge")
+	}
 	self.infoHealth = {
 		text = "",
 		title = g_i18n:getText("ui_horseHealth")
@@ -323,28 +327,23 @@ function AnimalCluster:addInfos(infos)
 	table.insert(infos, self.infoHealth)
 
 	if self:getSupportsReproduction() then
-		local reproductionFactor = self:getReproductionFactor()
-		self.infoReproduction.value = reproductionFactor
-		self.infoReproduction.ratio = reproductionFactor
-		self.infoReproduction.valueText = string.format("%d %%", g_i18n:formatNumber(reproductionFactor * 100, 0))
-		self.infoReproduction.disabled = not self:getCanReproduce()
-		self.infoReproduction.title = self.infoReproduction.titleOrg
+		local subType = g_currentMission.animalSystem:getSubTypeByIndex(self:getSubTypeIndex())
 
-		if self.infoReproduction.disabled then
-			local subType = g_currentMission.animalSystem:getSubTypeByIndex(self:getSubTypeIndex())
-			local attributeText, valueText = nil
+		if self.age < subType.reproductionMinAgeMonth then
+			local minAgeFactor = MathUtil.clamp(self:getAge() / subType.reproductionMinAgeMonth, 0, 1)
+			self.infoReproductionMinAge.value = minAgeFactor
+			self.infoReproductionMinAge.ratio = minAgeFactor
+			self.infoReproductionMinAge.valueText = string.format("%d %%", g_i18n:formatNumber(minAgeFactor * 100, 0))
 
-			if self.age < subType.reproductionMinAgeMonth then
-				attributeText = g_i18n:getText("ui_age")
-				valueText = g_i18n:formatNumMonth(subType.reproductionMinAgeMonth)
-			else
-				attributeText = g_i18n:getText("infohud_health")
-				valueText = string.format("%d %%", subType.reproductionMinHealth)
-			end
+			table.insert(infos, self.infoReproductionMinAge)
+		else
+			local reproductionFactor = self:getReproductionFactor()
+			self.infoReproduction.value = reproductionFactor
+			self.infoReproduction.ratio = reproductionFactor
+			self.infoReproduction.valueText = string.format("%d %%", g_i18n:formatNumber(reproductionFactor * 100, 0))
+			self.infoReproduction.disabled = not self:getCanReproduce()
 
-			self.infoReproduction.title = self.infoReproduction.title .. string.format(" (%s < %s)", attributeText, valueText)
+			table.insert(infos, self.infoReproduction)
 		end
-
-		table.insert(infos, self.infoReproduction)
 	end
 end

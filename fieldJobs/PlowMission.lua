@@ -1,5 +1,5 @@
 PlowMission = {
-	REWARD_PER_HA = 1400
+	REWARD_PER_HA = 2100
 }
 local PlowMission_mt = Class(PlowMission, AbstractFieldMission)
 

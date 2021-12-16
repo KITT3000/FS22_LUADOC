@@ -84,7 +84,10 @@ function SellVehicleEvent:run(connection)
 					sellPrice = math.min(math.floor(self.vehicle:getSellPrice() * self.multiplier), self.vehicle:getPrice())
 				end
 
-				g_currentMission.vehicleSaleSystem:onVehicleWillSell(self.vehicle)
+				if isOwned then
+					g_currentMission.vehicleSaleSystem:onVehicleWillSell(self.vehicle)
+				end
+
 				g_currentMission:removeVehicle(self.vehicle)
 				g_currentMission:addMoney(sellPrice, self.vehicle:getOwnerFarmId(), MoneyType.SHOP_VEHICLE_SELL, true)
 			else

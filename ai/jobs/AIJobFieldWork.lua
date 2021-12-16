@@ -207,3 +207,7 @@ function AIJobFieldWork.getIsStartErrorText(state)
 
 	return g_i18n:getText("ai_startStateSuccess")
 end
+
+function AIJobFieldWork:getPricePerMs()
+	return 0.0005
+end

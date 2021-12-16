@@ -28,9 +28,12 @@ function PlayerInfoStorage:loadFromXMLFile(xmlFilename)
 		}
 
 		player.playerStyle:loadFromXMLFile(xmlFile, key .. ".style")
-		table.insert(self.players, player)
 
-		self.playerByUniqueUserId[player.uniqueUserId] = player
+		if player.playerStyle:isValid() then
+			table.insert(self.players, player)
+
+			self.playerByUniqueUserId[player.uniqueUserId] = player
+		end
 	end)
 	xmlFile:delete()
 end

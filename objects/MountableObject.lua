@@ -211,6 +211,11 @@ function MountableObject:mountDynamic(object, objectActorId, jointNode, mountTyp
 		setRotation(self.dynamicMountJointNodeDynamic, localRotationToLocal(jointNode, getParent(self.dynamicMountJointNodeDynamic), 0, 0, 0))
 	end
 
+	local additionalWeight = self:getAdditionalMountingMass()
+	local mass = self:getMass()
+	local massFactor = (additionalWeight + mass) / mass
+	forceAcceleration = forceAcceleration * massFactor
+
 	if DynamicMountUtil.mountDynamic(self, self.nodeId, object, objectActorId, jointNode, mountType, forceAcceleration * self.dynamicMountForceLimitScale, self.dynamicMountJointNodeDynamic) then
 		self.dynamicMountType = MountableObject.MOUNT_TYPE_DYNAMIC
 
@@ -232,6 +237,36 @@ end
 
 function MountableObject:getSupportsMountDynamic()
 	return true
+end
+
+function MountableObject:getAdditionalMountingDistance()
+	return 0
+end
+
+function MountableObject:getAdditionalMountingMass()
+	local distance = self:getAdditionalMountingDistance()
+
+	if distance > 0 then
+		local x, y, z = getWorldTranslation(self.nodeId)
+		self.additionalMountingMass = 0
+
+		raycastAll(x, y, z, 0, 1, 0, "additionalMountingMassRaycastCallback", distance + 0.1, self, CollisionFlag.VEHICLE, false, false)
+
+		return self.additionalMountingMass
+	end
+
+	return 0
+end
+
+function MountableObject:additionalMountingMassRaycastCallback(hitObjectId, x, y, z, distance, nx, ny, nz, subShapeIndex, shapeId, isLast)
+	local object = g_currentMission.nodeToObject[hitObjectId]
+
+	if object ~= self and object ~= nil and object:isa(MountableObject) then
+		self.additionalMountingMass = self.additionalMountingMass + object:getMass()
+		self.additionalMountingMass = self.additionalMountingMass + object:getAdditionalMountingMass()
+
+		return false
+	end
 end
 
 function MountableObject:setNodeId(nodeId)
@@ -269,10 +304,12 @@ end
 
 function MountableObject:setMountableObjectAttributes(triggerId, forceAcceleration, forceLimitScale, axisFreeY, axisFreeX)
 	if self.isServer then
-		self.dynamicMountTriggerId = triggerId
+		if self.dynamicMountTriggerId == nil then
+			self.dynamicMountTriggerId = triggerId
 
-		if self.dynamicMountTriggerId ~= nil then
-			addTrigger(self.dynamicMountTriggerId, "dynamicMountTriggerCallback", self)
+			if self.dynamicMountTriggerId ~= nil then
+				addTrigger(self.dynamicMountTriggerId, "dynamicMountTriggerCallback", self)
+			end
 		end
 
 		self.dynamicMountTriggerForceAcceleration = forceAcceleration or 4

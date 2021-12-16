@@ -9,6 +9,10 @@ function Lighting.new(environment, customMt)
 	self.cloudEnvMapIndex1 = 1
 	self.cloudEnvMapIndex2 = 1
 	self.cloudEnvMapBlendAlpha = 0
+	self.dayStart = 6.55
+	self.dayEnd = 18.1
+	self.nightEnd = 5
+	self.nightStart = 19.81
 
 	return self
 end

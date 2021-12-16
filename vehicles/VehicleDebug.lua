@@ -911,6 +911,7 @@ function VehicleDebug:drawMotorLoadGraph(x, y, sizeX, sizeY)
 			local numValues = 500
 			local loadGraph = motor.debugLoadGraph
 			local loadGraphSmooth = motor.debugLoadGraphSmooth
+			local loadGraphSound = motor.debugLoadGraphSound
 
 			if loadGraph == nil then
 				loadGraph = Graph.new(numValues, x, y, sizeX, sizeY, 0, 100, true, "%", Graph.STYLE_LINES, 0.1, "time")
@@ -923,6 +924,11 @@ function VehicleDebug:drawMotorLoadGraph(x, y, sizeX, sizeY)
 				loadGraphSmooth:setColor(0, 1, 0, 1)
 
 				motor.debugLoadGraphSmooth = loadGraphSmooth
+				loadGraphSound = Graph.new(numValues, x, y, sizeX, sizeY, 0, 100, false, "", Graph.STYLE_LINES)
+
+				loadGraphSound:setColor(0, 1, 1, 1)
+
+				motor.debugLoadGraphSound = loadGraphSound
 			else
 				loadGraph.height = sizeY
 				loadGraph.width = sizeX
@@ -932,17 +938,32 @@ function VehicleDebug:drawMotorLoadGraph(x, y, sizeX, sizeY)
 				loadGraphSmooth.width = sizeX
 				loadGraphSmooth.bottom = y
 				loadGraphSmooth.left = x
+				loadGraphSound.height = sizeY
+				loadGraphSound.width = sizeX
+				loadGraphSound.bottom = y
+				loadGraphSound.left = x
 			end
 
-			if loadGraph ~= nil and loadGraphSmooth ~= nil then
+			if loadGraph ~= nil and loadGraphSmooth ~= nil and loadGraphSound ~= nil then
 				local rawLoad = motor:getMotorAppliedTorque() / math.max(motor:getMotorAvailableTorque(), 0.0001)
 
 				loadGraph:addValue(rawLoad * 100, nil, true)
 				loadGraphSmooth:addValue(motorSpec.smoothedLoadPercentage * 100, nil, true)
+
+				for i = 1, #motorSpec.motorSamples do
+					local sample = motorSpec.motorSamples[i]
+
+					if sample.isGlsFile then
+						loadGraphSound:addValue(getSampleLoopSynthesisLoadFactor(sample.soundSample) * 100, nil, true)
+
+						break
+					end
+				end
 			end
 
 			loadGraph:draw()
 			loadGraphSmooth:draw()
+			loadGraphSound:draw()
 		end
 	end
 end
@@ -956,6 +977,7 @@ function VehicleDebug:drawMotorRPMGraph(x, y, sizeX, sizeY)
 			local numValues = 500
 			local rpmGraph = motor.debugRPMGraph
 			local rpmGraphSmooth = motor.debugRPMGraphSmooth
+			local rpmGraphSound = motor.debugRPMGraphSound
 
 			if rpmGraph == nil then
 				rpmGraph = Graph.new(numValues, x, y, sizeX, sizeY, motor:getMinRpm(), motor:getMaxRpm(), true, " RPM", Graph.STYLE_LINES, 0.1, "")
@@ -968,6 +990,25 @@ function VehicleDebug:drawMotorRPMGraph(x, y, sizeX, sizeY)
 				rpmGraphSmooth:setColor(0, 1, 0, 1)
 
 				motor.debugRPMGraphSmooth = rpmGraphSmooth
+				local minSoundRpm = motor:getMinRpm()
+				local maxSoundRpm = motor:getMaxRpm()
+
+				for i = 1, #motorSpec.motorSamples do
+					local sample = motorSpec.motorSamples[i]
+
+					if sample.isGlsFile then
+						maxSoundRpm = getSampleLoopSynthesisMaxRPM(sample.soundSample)
+						minSoundRpm = getSampleLoopSynthesisMinRPM(sample.soundSample)
+
+						break
+					end
+				end
+
+				rpmGraphSound = Graph.new(numValues, x, y, sizeX, sizeY, minSoundRpm, maxSoundRpm, false, "", Graph.STYLE_LINES)
+
+				rpmGraphSound:setColor(0, 1, 1, 1)
+
+				motor.debugRPMGraphSound = rpmGraphSound
 			else
 				rpmGraph.height = sizeY
 				rpmGraph.width = sizeX
@@ -977,15 +1018,30 @@ function VehicleDebug:drawMotorRPMGraph(x, y, sizeX, sizeY)
 				rpmGraphSmooth.width = sizeX
 				rpmGraphSmooth.bottom = y
 				rpmGraphSmooth.left = x
+				rpmGraphSound.height = sizeY
+				rpmGraphSound.width = sizeX
+				rpmGraphSound.bottom = y
+				rpmGraphSound.left = x
 			end
 
-			if rpmGraph ~= nil and rpmGraphSmooth ~= nil then
+			if rpmGraph ~= nil and rpmGraphSmooth ~= nil and rpmGraphSound ~= nil then
 				rpmGraph:addValue(motor:getLastRealMotorRpm(), nil, true)
 				rpmGraphSmooth:addValue(motor:getLastModulatedMotorRpm(), nil, true)
+
+				for i = 1, #motorSpec.motorSamples do
+					local sample = motorSpec.motorSamples[i]
+
+					if sample.isGlsFile then
+						rpmGraphSound:addValue(getSampleLoopSynthesisRPM(sample.soundSample, false), nil, true)
+
+						break
+					end
+				end
 			end
 
 			rpmGraph:draw()
 			rpmGraphSmooth:draw()
+			rpmGraphSound:draw()
 		end
 	end
 end

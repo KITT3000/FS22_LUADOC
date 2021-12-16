@@ -270,22 +270,6 @@ function Windrower:onTurnedOff()
 	g_animationManager:stopAnimations(spec.animationNodes)
 end
 
-function Windrower:onDeactivate()
-	if self.isClient then
-		local spec = self.spec_windrower
-
-		for _, effect in ipairs(spec.effects) do
-			g_effectManager:stopEffects(effect.effects)
-		end
-
-		if self.getIsTurnedOn == nil then
-			g_soundManager:stopSample(spec.samples.work)
-
-			spec.isWorking = false
-		end
-	end
-end
-
 function Windrower:doCheckSpeedLimit(superFunc)
 	local turnOn = true
 

@@ -30,6 +30,8 @@ function DebugFlag:setColor(r, g, b)
 	self.r = r or self.r
 	self.g = g or self.g
 	self.b = b or self.b
+
+	return self
 end
 
 function DebugFlag:draw()
@@ -69,4 +71,6 @@ function DebugFlag:create(x, y, z, dirX, dirZ)
 	self.x = x
 	self.dirZ = dirZ
 	self.dirX = dirX
+
+	return self
 end

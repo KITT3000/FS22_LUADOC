@@ -282,7 +282,7 @@ function WheelsUtil:updateWheelsPhysics(dt, currentSpeed, acceleration, doHandbr
 	useManualDirectionChange = useManualDirectionChange and not self:getIsAIActive()
 
 	if useManualDirectionChange then
-		acceleration = acceleration * motor.currentDirection * reverserDirection
+		acceleration = acceleration * motor.currentDirection
 	else
 		acceleration = acceleration * reverserDirection
 	end
@@ -325,7 +325,7 @@ function WheelsUtil:updateWheelsPhysics(dt, currentSpeed, acceleration, doHandbr
 		end
 	end
 
-	if useManualDirectionChange and acceleratorPedal ~= 0 and MathUtil.sign(acceleratorPedal) ~= motor.currentDirection * reverserDirection then
+	if useManualDirectionChange and acceleratorPedal ~= 0 and MathUtil.sign(acceleratorPedal) ~= motor.currentDirection then
 		brakePedal = math.abs(acceleratorPedal)
 		acceleratorPedal = 0
 	end
@@ -338,6 +338,10 @@ function WheelsUtil:updateWheelsPhysics(dt, currentSpeed, acceleration, doHandbr
 
 	if motor.gear == 0 and motor.targetGear ~= 0 and currentSpeed * MathUtil.sign(motor.targetGear) < 0 then
 		automaticBrake = true
+	end
+
+	if motor.gearShiftMode == VehicleMotor.SHIFT_MODE_MANUAL_CLUTCH and isManualTransmission then
+		automaticBrake = false
 	end
 
 	if automaticBrake then
@@ -405,7 +409,7 @@ function WheelsUtil:updateWheelsPhysics(dt, currentSpeed, acceleration, doHandbr
 		local minMotorRpm, maxMotorRpm = motor:getRequiredMotorRpmRange()
 		local neededPtoTorque, ptoTorqueVirtualMultiplicator = PowerConsumer.getTotalConsumedPtoTorque(self)
 		neededPtoTorque = neededPtoTorque / motor:getPtoMotorRpmRatio()
-		local neutralActive = minGearRatio == 0 and maxGearRatio == 0 or motor:getManualClutchPedal() == 1
+		local neutralActive = minGearRatio == 0 and maxGearRatio == 0 or motor:getManualClutchPedal() > 0.9
 
 		motor:setExternalTorqueVirtualMultiplicator(ptoTorqueVirtualMultiplicator)
 
@@ -414,7 +418,7 @@ function WheelsUtil:updateWheelsPhysics(dt, currentSpeed, acceleration, doHandbr
 		else
 			self:controlVehicle(0, 0, 0, 0, math.huge, 0, 0, 0, 0, 0)
 
-			brakePedal = math.max(brakePedal, 0.1)
+			brakePedal = math.max(brakePedal, 0.03)
 		end
 	end
 

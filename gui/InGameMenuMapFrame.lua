@@ -264,6 +264,7 @@ function InGameMenuMapFrame:onFrameOpen()
 	self:setSoundSuppressed(true)
 	FocusManager:setFocus(self.mapOverviewSelector)
 	self:setSoundSuppressed(false)
+	g_messageCenter:subscribe(MessageType.PAUSE, self.onPauseChanged, self)
 
 	if not GS_IS_MOBILE_VERSION then
 		self:updateInputGlyphs()
@@ -275,6 +276,7 @@ function InGameMenuMapFrame:onFrameOpen()
 end
 
 function InGameMenuMapFrame:onFrameClose()
+	g_messageCenter:unsubscribeAll(self)
 	InGameMenuMapFrame:superClass().onFrameClose(self)
 	self.ingameMap:onClose()
 	self:toggleMapInput(false)
@@ -296,6 +298,15 @@ function InGameMenuMapFrame:onLoadMapFinished()
 		self:assignFilterData()
 		self.farmlandManager:addStateChangeListener(self)
 	end
+end
+
+function InGameMenuMapFrame:onSoilSettingChanged()
+	self.mapOverlayGenerator:updateStates()
+
+	self.displayGrowthStates = self.mapOverlayGenerator:getDisplayGrowthStates()
+	self.displaySoilStates = self.mapOverlayGenerator:getDisplaySoilStates()
+
+	self:assignFilterData()
 end
 
 function InGameMenuMapFrame:toggleMapInput(isActive)
@@ -420,6 +431,7 @@ function InGameMenuMapFrame:assignFilterData()
 	self:assignCropTypeFilterData()
 	self:assignGroundStateFilterData(true, self.displayGrowthStates, self.growthStateFilterButton, self.growthStateFilterColor, self.growthStateFilterText)
 	self:assignGroundStateFilterData(false, self.displaySoilStates, self.soilStateFilterButton, self.soilStateFilterColor, self.soilStateFilterText)
+	self:invalidateLayout()
 end
 
 local function cropTypeButtonPredicate(element)
@@ -491,8 +503,22 @@ function InGameMenuMapFrame:assignCropTypeFilterData()
 end
 
 function InGameMenuMapFrame:assignGroundStateFilterData(isGrowth, displayStates, filterButtons, filterColors, filterTexts)
+	local nextDisplayState = 0
+
 	for i = 1, #filterButtons do
-		if i <= #displayStates then
+		nextDisplayState = nextDisplayState + 1
+
+		while displayStates[nextDisplayState] == nil do
+			nextDisplayState = nextDisplayState + 1
+
+			if nextDisplayState > 12 then
+				break
+			end
+		end
+
+		local state = displayStates[nextDisplayState]
+
+		if state ~= nil and (state.isActive == nil or state.isActive == true) then
 			local filterButton = filterButtons[i]
 
 			filterButton:setVisible(true)
@@ -502,7 +528,6 @@ function InGameMenuMapFrame:assignGroundStateFilterData(isGrowth, displayStates,
 			filterButton.onHighlightRemoveCallback = self.onFilterButtonUnselect
 			filterButton.onFocusCallback = self.onFilterButtonSelect
 			filterButton.onLeaveCallback = self.onFilterButtonUnselect
-			local state = displayStates[i]
 			local colors = state.colors[self.isColorBlindMode]
 			local colorElement = filterColors[i]
 
@@ -536,20 +561,18 @@ function InGameMenuMapFrame:assignGroundStateFilterData(isGrowth, displayStates,
 end
 
 function InGameMenuMapFrame:assignGroundStateColors(colorElement, stateColors)
-	if #stateColors == 1 then
-		colorElement:setImageColor(GuiOverlay.STATE_NORMAL, unpack(stateColors[1]))
-	else
-		for i = #colorElement.elements, 1, -1 do
-			colorElement.elements[i]:delete()
-		end
+	for i = #colorElement.elements, 1, -1 do
+		colorElement.elements[i]:delete()
+	end
 
-		colorElement:applyProfile(InGameMenuMapFrame.GROUND_STATE_FILTER_COLOR_PROFILE)
+	colorElement:applyProfile(InGameMenuMapFrame.GROUND_STATE_FILTER_COLOR_PROFILE)
 
-		local partWidth = colorElement.size[1] / #stateColors
+	local partWidth = colorElement.size[1] / #stateColors
 
-		colorElement:setSize(partWidth, nil)
-		colorElement:setImageColor(GuiOverlay.STATE_NORMAL, unpack(stateColors[1]))
+	colorElement:setSize(partWidth, nil)
+	colorElement:setImageColor(GuiOverlay.STATE_NORMAL, unpack(stateColors[1]))
 
+	if #stateColors > 1 then
 		local clones = {}
 
 		for i = 2, #stateColors do
@@ -675,9 +698,9 @@ function InGameMenuMapFrame:generateOverviewOverlay()
 
 		if self.foliageStateOverlay == nil then
 			self.foliageStateOverlayIsReady = false
-
-			self.dynamicMapImageLoading:setVisible(true)
 		end
+
+		self.dynamicMapImageLoading:setVisible(true)
 
 		if currentMap == InGameMenuMapFrame.MAP_FRUIT_TYPE then
 			self.mapOverlayGenerator:generateFruitTypeOverlay(self.overviewOverlayFinishedCallback, self.fruitTypeFilter)
@@ -852,6 +875,11 @@ function InGameMenuMapFrame:setMapSelectionItem(hotspot)
 		InGameMenuMapUtil.hideContextBox(self.contextBox)
 	end
 
+	canVisit = canVisit and not g_currentMission.paused
+	canEnter = canEnter and not g_currentMission.paused
+	canReset = canReset and not g_currentMission.paused
+	canBuy = canBuy and not g_currentMission.paused
+
 	self:showContextInput(canEnter, canReset, canVisit, canSetMarker, removeMarker, canBuy, false)
 
 	self.canBuy = canBuy
@@ -958,17 +986,29 @@ function InGameMenuMapFrame:checkPlaceablesOnFarmland(farmland)
 	for storeItem, itemInfos in pairs(ownedItems) do
 		if storeItem.canBeSold and StoreItemUtil.getIsPlaceable(storeItem) then
 			for _, placeable in pairs(itemInfos.items) do
-				local posX, _, posZ = getWorldTranslation(placeable.rootNode)
-				local placeableFarmlandId = self.farmlandManager:getFarmlandIdAtWorldPosition(posX, posZ)
+				if not placeable.boughtWithFarmland then
+					local posX, _, posZ = getWorldTranslation(placeable.rootNode)
+					local placeableFarmlandId = self.farmlandManager:getFarmlandIdAtWorldPosition(posX, posZ)
 
-				if placeableFarmlandId == farmland.id then
-					return true
+					if placeableFarmlandId == farmland.id then
+						return true
+					end
 				end
 			end
 		end
 	end
 
 	return false
+end
+
+function InGameMenuMapFrame:invalidateLayout()
+	for i = 1, #self.mapOverviewFruitTypeBox do
+		self.mapOverviewFruitTypeBox[i]:invalidateLayout()
+	end
+
+	self.mapOverviewGrowthBox:invalidateLayout()
+	self.mapOverviewSoilBox:invalidateLayout()
+	self.mapOverviewHotspotBox:invalidateLayout()
 end
 
 function InGameMenuMapFrame:onMoneyChanged(farmId, newBalance)
@@ -1080,14 +1120,7 @@ end
 
 function InGameMenuMapFrame:onClickMapOverviewSelector(state)
 	self.filterPaging:setPage(state)
-
-	for i = 1, #self.mapOverviewFruitTypeBox do
-		self.mapOverviewFruitTypeBox[i]:invalidateLayout()
-	end
-
-	self.mapOverviewGrowthBox:invalidateLayout()
-	self.mapOverviewSoilBox:invalidateLayout()
-	self.mapOverviewHotspotBox:invalidateLayout()
+	self:invalidateLayout()
 	self:generateOverviewOverlay()
 end
 
@@ -1386,7 +1419,7 @@ function InGameMenuMapFrame:onYesNoReset(yes)
 	end
 end
 
-function InGameMenuMapFrame:notifyPause()
+function InGameMenuMapFrame:onPauseChanged(isActive)
 	self:setMapSelectionItem(self.currentHotspot)
 end
 

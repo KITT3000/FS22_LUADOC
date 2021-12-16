@@ -145,6 +145,9 @@ function Mission00:setMissionInfo(missionInfo, missionDynamicInfo)
 		self.animalFoodSystem:loadMapData(self.xmlFile, missionInfo, self.baseDirectory)
 	end)
 	g_asyncTaskManager:addTask(function ()
+		g_sleepManager:loadMapData(self.xmlFile, missionInfo, self.baseDirectory)
+	end)
+	g_asyncTaskManager:addTask(function ()
 		self.animalNameSystem:loadMapData(self.xmlFile, missionInfo, self.baseDirectory)
 	end)
 	g_asyncTaskManager:addTask(function ()
@@ -614,13 +617,13 @@ end
 function Mission00:loadVehiclesFinished()
 	g_asyncTaskManager:addSubtask(function ()
 		g_messageCenter:publish(MessageType.LOADED_ALL_SAVEGAME_VEHICLES)
-		self:loadPlaceables(self.missionInfo.placeablesXMLLoad)
+		self:loadPlaceables(self.missionInfo.placeablesXMLLoad, self.missionInfo.defaultPlaceablesXMLFilename)
 	end)
 end
 
-function Mission00:loadPlaceables(xmlFilename)
+function Mission00:loadPlaceables(xmlFilename, defaultXMLFilename)
 	if xmlFilename ~= nil then
-		self.placeableSystem:load(xmlFilename, self.missionInfo, self.missionDynamicInfo, self.loadPlaceablesFinished, self, nil)
+		self.placeableSystem:load(xmlFilename, defaultXMLFilename, self.missionInfo, self.missionDynamicInfo, self.loadPlaceablesFinished, self, nil)
 	else
 		self:loadPlaceablesFinished()
 	end

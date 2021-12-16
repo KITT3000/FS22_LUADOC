@@ -213,6 +213,9 @@ end
 
 function XMLSchema:generateSchema()
 	log(string.format("Generating Schema for '%s'. Num. paths: %d", self.name, #self.orderedPaths))
+	table.sort(self.orderedPaths, function (a, b)
+		return a.path:lower() < b.path:lower()
+	end)
 
 	local root = {
 		children = {}

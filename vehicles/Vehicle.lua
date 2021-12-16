@@ -876,6 +876,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 	self.isSelectable = true
 	self.isInWater = false
 	self.isInShallowWater = false
+	self.isInMediumWater = false
 	self.waterY = -200
 	self.tailwaterDepth = -200
 	self.selectionObjects = {}
@@ -940,8 +941,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 
 	if self.loadingState ~= VehicleLoadingUtil.VEHICLE_LOAD_OK then
 		Logging.xmlError(self.xmlFile, "Vehicle loading failed!")
-		self.xmlFile:delete()
-		asyncCallbackFunction(asyncCallbackObject, nil, self.loadingState, asyncCallbackArguments)
+		asyncCallbackFunction(asyncCallbackObject, self, self.loadingState, asyncCallbackArguments)
 
 		return
 	end
@@ -1856,6 +1856,7 @@ function Vehicle:update(dt)
 	self.lastDistanceToCamera = calcDistanceFrom(self.rootNode, getCamera())
 	self.currentUpdateDistance = self.lastDistanceToCamera / self.lodDistanceCoeff
 	self.isActiveForInputIgnoreSelectionIgnoreAI = self:getIsActiveForInput(true, true)
+	self.isActiveForLocalSound = self.isActiveForInputIgnoreSelectionIgnoreAI
 	self.updateLoopIndex = g_updateLoopIndex
 
 	SpecializationUtil.raiseEvent(self, "onPreUpdate", dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
@@ -2384,11 +2385,13 @@ function Vehicle:onWaterRaycastCallback(waterY, args)
 	self.waterY = waterY
 	self.isInWater = y < waterY
 	self.isInShallowWater = false
+	self.isInMediumWater = false
 
 	if self.isInWater then
 		local terrainHeight = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, 0, z)
 		local waterDepth = math.max(0, waterY - terrainHeight)
-		self.isInShallowWater = waterDepth < 0.4
+		self.isInShallowWater = waterDepth <= 0.5
+		self.isInMediumWater = not self.isInShallowWater
 	end
 
 	self.tailwaterDepth = math.max(0, waterY - y)
@@ -2819,7 +2822,7 @@ function Vehicle:updateMass()
 end
 
 function Vehicle:getMaxComponentMassReached()
-	return self.serverMass >= self.maxComponentMass - self.precalculatedMass
+	return self.serverMass + 1e-05 >= self.maxComponentMass - self.precalculatedMass
 end
 
 function Vehicle:getAvailableComponentMass()
@@ -3738,6 +3741,9 @@ function Vehicle:getIsMapHotspotVisible()
 end
 
 function Vehicle:showInfo(box)
+	if self.isBroken then
+		box:addLine(g_i18n:getText("infohud_vehicleBrokenNeedToReset"), nil, true)
+	end
 end
 
 function Vehicle:loadObjectChangeValuesFromXML(xmlFile, key, node, object)
@@ -3881,7 +3887,7 @@ function Vehicle.getSpecValueOperatingTime(storeItem, realItem, _, saleItem)
 	return string.format(g_i18n:getText("shop_operatingTime"), hours, minutes)
 end
 
-function Vehicle.loadSpecValueWorkingWidth(xmlFile, customEnvironment)
+function Vehicle.loadSpecValueWorkingWidth(xmlFile, customEnvironment, baseDir)
 	return xmlFile:getValue("vehicle.storeData.specs.workingWidth")
 end
 
@@ -3893,7 +3899,7 @@ function Vehicle.getSpecValueWorkingWidth(storeItem, realItem)
 	return nil
 end
 
-function Vehicle.loadSpecValueWorkingWidthConfig(xmlFile, customEnvironment)
+function Vehicle.loadSpecValueWorkingWidthConfig(xmlFile, customEnvironment, baseDir)
 	local workingWidths = {}
 	local isValid = false
 
@@ -3974,7 +3980,7 @@ function Vehicle.getSpecValueWorkingWidthConfig(storeItem, realItem, configurati
 	return nil
 end
 
-function Vehicle.loadSpecValueSpeedLimit(xmlFile, customEnvironment)
+function Vehicle.loadSpecValueSpeedLimit(xmlFile, customEnvironment, baseDir)
 	return xmlFile:getValue("vehicle.base.speedLimit#value")
 end
 
@@ -3986,7 +3992,7 @@ function Vehicle.getSpecValueSpeedLimit(storeItem, realItem)
 	return nil
 end
 
-function Vehicle.loadSpecValueWeight(xmlFile, customEnvironment)
+function Vehicle.loadSpecValueWeight(xmlFile, customEnvironment, baseDir)
 	local massData = {
 		componentMass = 0
 	}
@@ -3996,8 +4002,8 @@ function Vehicle.loadSpecValueWeight(xmlFile, customEnvironment)
 		massData.componentMass = massData.componentMass + mass
 	end)
 
-	massData.fillUnitMassData = FillUnit.loadSpecValueFillUnitMassData(xmlFile, customEnvironment)
-	massData.wheelMassDefaultConfig = Wheels.loadSpecValueWheelWeight(xmlFile, customEnvironment)
+	massData.fillUnitMassData = FillUnit.loadSpecValueFillUnitMassData(xmlFile, customEnvironment, baseDir)
+	massData.wheelMassDefaultConfig = Wheels.loadSpecValueWheelWeight(xmlFile, customEnvironment, baseDir)
 	local configMin, configMax = nil
 	massData.storeDataConfigs = {}
 
@@ -4070,7 +4076,7 @@ function Vehicle.getSpecValueWeight(storeItem, realItem, configurations, saleIte
 	return nil
 end
 
-function Vehicle.loadSpecValueAdditionalWeight(xmlFile, customEnvironment)
+function Vehicle.loadSpecValueAdditionalWeight(xmlFile, customEnvironment, baseDir)
 	local maxWeight = xmlFile:getValue("vehicle.base.components#maxMass")
 
 	if maxWeight ~= nil then

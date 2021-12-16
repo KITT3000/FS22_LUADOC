@@ -21,6 +21,7 @@ function TourHotspot.new(customMt)
 	self.icon:setUVs(TourHotspot.UVS)
 
 	self.isVisible = false
+	self.forceNoRotation = true
 
 	return self
 end

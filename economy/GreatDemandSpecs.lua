@@ -24,7 +24,7 @@ function GreatDemandSpecs.new(customMt)
 	return self
 end
 
-function GreatDemandSpecs:getIsDateErlier(day1, hour1, day2, hour2)
+function GreatDemandSpecs:getIsDateEarlier(day1, hour1, day2, hour2)
 	return day1 < day2 or day1 == day2 and hour1 < hour2
 end
 
@@ -70,7 +70,7 @@ function GreatDemandSpecs:setUpRandomDemand(weighted, greatDemands, mission)
 					otherEndHour = otherEndHour * 24
 					local otherEndDay = otherStart.day + otherEndDayOffset
 
-					if not self:getIsDateErlier(endDay, endHour, otherStart.day, otherStart.hour) and not self:getIsDateErlier(otherEndDay, otherEndHour, start.day, start.hour) then
+					if not self:getIsDateEarlier(endDay, endHour, otherStart.day, otherStart.hour) and not self:getIsDateEarlier(otherEndDay, otherEndHour, start.day, start.hour) then
 						conflictingFillTypes[greatDemand.fillTypeIndex] = true
 					end
 				end

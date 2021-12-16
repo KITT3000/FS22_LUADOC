@@ -66,6 +66,11 @@ function MessageCenter:unsubscribe(messageType, callbackTarget)
 			local info = subscribers[i]
 
 			if info.callbackTarget == callbackTarget then
+				if info.isOneShot then
+					Logging.warning("Unsubscribing a oneshot callback")
+					printCallstack()
+				end
+
 				table.remove(subscribers, i)
 			end
 		end
@@ -228,6 +233,7 @@ MessageType = {
 	OWN_PLAYER_ENTERED = nextMessageTypeId(),
 	OWN_PLAYER_LEFT = nextMessageTypeId(),
 	ACHIEVEMENT_UNLOCKED = nextMessageTypeId(),
+	PAUSE = nextMessageTypeId(),
 	HUSBANDRY_ANIMALS_CHANGED = nextMessageTypeId(),
 	VEHICLE_REPAIRED = nextMessageTypeId(),
 	VEHICLE_REPAINTED = nextMessageTypeId(),
@@ -243,6 +249,7 @@ MessageType = {
 	GUI_INGAME_OPEN_FARMS_SCREEN = nextMessageTypeId(),
 	GUI_INGAME_OPEN_PRODUCTION_SCREEN = nextMessageTypeId(),
 	GUI_INGAME_OPEN_AI_SCREEN = nextMessageTypeId(),
+	GUI_INGAME_OPEN_HELP_SCREEN = nextMessageTypeId(),
 	GUI_CAREER_SCREEN_OPEN = nextMessageTypeId(),
 	GUI_MAIN_SCREEN_OPEN = nextMessageTypeId(),
 	GUI_CHARACTER_CREATION_SCREEN_OPEN = nextMessageTypeId(),
@@ -281,6 +288,7 @@ MessageType.SEASON_CHANGED = nextMessageTypeId()
 MessageType.YEAR_CHANGED = nextMessageTypeId()
 MessageType.DAYLIGHT_CHANGED = nextMessageTypeId()
 MessageType.WEATHER_CHANGED = nextMessageTypeId()
+MessageType.SNOW_HEIGHT_CHANGED = nextMessageTypeId()
 MessageType.UNLOADING_STATIONS_CHANGED = nextMessageTypeId()
 MessageType.AI_VEHICLE_STATE_CHANGE = nextMessageTypeId()
 MessageType.RADIO_CHANNEL_CHANGE = nextMessageTypeId()
@@ -299,3 +307,4 @@ MessageType.AI_JOB_STARTED = nextMessageTypeId()
 MessageType.AI_JOB_REMOVED = nextMessageTypeId()
 MessageType.AI_JOB_STOPPED = nextMessageTypeId()
 MessageType.TREE_SHAPE_CUT = nextMessageTypeId()
+MessageType.SLEEPING = nextMessageTypeId()

@@ -60,7 +60,7 @@ function ChatWindow:addMessage(msg, sender, farmId)
 
 	table.insert(self.messages, {
 		msg = msg,
-		sender = sender,
+		sender = string.format("[%s] %s", getDate("%H:%M"), sender),
 		farmId = farmId
 	})
 

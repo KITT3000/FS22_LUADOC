@@ -11,6 +11,9 @@ g_xmlManager:addInitSchemaFunction(function ()
 	schema:register(XMLValueType.STRING, "map.stones#title", "Stone title")
 	schema:register(XMLValueType.INT, "map.stones.general#firstChannel", "Stone first channel")
 	schema:register(XMLValueType.INT, "map.stones.general#numChannels", "Stone num channels")
+	schema:register(XMLValueType.VECTOR_N, "map.stones.mapColors.mapColor(?)#states", "Map color states")
+	schema:register(XMLValueType.VECTOR_4, "map.stones.mapColors.mapColor(?)#default", "Default map colors")
+	schema:register(XMLValueType.VECTOR_4, "map.stones.mapColors.mapColor(?)#colorBlind", "Color blind map colors")
 	schema:register(XMLValueType.INT, "map.stones.picking#maskValue", "Stone mask value")
 	schema:register(XMLValueType.INT, "map.stones.picking#minValue", "Stone min value")
 	schema:register(XMLValueType.INT, "map.stones.picking#maxValue", "Stone max value")
@@ -31,6 +34,8 @@ function StoneSystem.new(customMt)
 	self.densityMap = nil
 	self.growthMapping = {}
 	self.wearByType = {}
+	self.mapColor = {}
+	self.mapColorBlind = {}
 
 	return self
 end
@@ -38,8 +43,13 @@ end
 function StoneSystem:delete()
 	removeConsoleCommand("gsStoneSystemAddDelta")
 	removeConsoleCommand("gsStoneSystemSetState")
+	removeConsoleCommand("gsStoneSystemToggleDebug")
 
 	self.densityMap = nil
+
+	if self.debugArea ~= nil then
+		self.debugArea:delete()
+	end
 end
 
 function StoneSystem:loadStones(filename)
@@ -66,6 +76,30 @@ function StoneSystem:loadStones(filename)
 				period = period
 			})
 		end
+	end)
+
+	local color = {
+		0.6,
+		0.6,
+		0.6,
+		1
+	}
+
+	xmlFile:iterate("map.stones.mapColors.mapColor", function (_, key)
+		local states = xmlFile:getValue(key .. "#states", 1, true)
+		local defaultColor = xmlFile:getValue(key .. "#default", color, 4)
+		local colorBlind = xmlFile:getValue(key .. "#colorBlind", color, 4)
+		local data = {
+			states = states,
+			color = defaultColor
+		}
+		local dataBlind = {
+			states = states,
+			color = colorBlind
+		}
+
+		table.insert(self.mapColor, data)
+		table.insert(self.mapColorBlind, dataBlind)
 	end)
 
 	self.wearByType = {}
@@ -104,6 +138,7 @@ function StoneSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 	if g_currentMission:getIsServer() and g_addCheatCommands then
 		addConsoleCommand("gsStoneSystemAddDelta", "Add stone delta to field", "consoleCommandAddDelta", self)
 		addConsoleCommand("gsStoneSystemSetState", "Set stone state to field", "consoleCommandSetState", self)
+		addConsoleCommand("gsStoneSystemToggleDebug", "Toggles debug view", "consoleCommandToggleDebug", self)
 	end
 
 	return true
@@ -152,11 +187,86 @@ function StoneSystem:initTerrain(mission, terrainNode, terrainDetailId)
 		self.densityMap = id
 		self.stoneModifier = DensityMapModifier.new(self.densityMap, self.firstChannel, self.numChannels, g_currentMission.terrainNode)
 		self.stoneFilter = DensityMapFilter.new(self.stoneModifier)
+		local colors = {
+			[0] = {
+				0,
+				0.5,
+				0,
+				0.05
+			},
+			{
+				0,
+				0,
+				1,
+				0.075
+			},
+			{
+				0.995,
+				0.685,
+				0,
+				0.05
+			},
+			{
+				0.846,
+				0.216,
+				0,
+				0.05
+			},
+			{
+				0.695,
+				0.007,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			},
+			{
+				0,
+				1,
+				0,
+				0.05
+			}
+		}
+		self.debugArea = DebugDensityMap.new(id, self.firstChannel, self.numChannels, 10, 0.05, colors)
 	end
 end
 
 function StoneSystem:getGrowthMapping()
 	return self.growthMapping
+end
+
+function StoneSystem:getColors()
+	return self.mapColor, self.mapColorBlind
+end
+
+function StoneSystem:getTitle()
+	return self.title
+end
+
+function StoneSystem:consoleCommandToggleDebug()
+	self.isDebugAreaActive = not self.isDebugAreaActive
+
+	if self.isDebugAreaActive then
+		g_currentMission:addDrawable(self.debugArea)
+	else
+		g_currentMission:removeDrawable(self.debugArea)
+	end
 end
 
 function StoneSystem:consoleCommandAddDelta(fieldIndex, delta)

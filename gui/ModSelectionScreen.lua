@@ -148,9 +148,9 @@ function ModSelectionScreen:toggleModAction()
 end
 
 function ModSelectionScreen:onClickOk()
-	local valid, dependening, dependant, downloadModId = self:verifyDependencies()
+	local unresolved = self:verifyDependencies()
 
-	if valid then
+	if #unresolved == 0 then
 		local mods = {}
 
 		for _, modItem in pairs(self.selectedMods) do
@@ -160,26 +160,109 @@ function ModSelectionScreen:onClickOk()
 		self.missionDynamicInfo.mods = mods
 
 		g_careerScreen:startGame(self.missionInfo, self.missionDynamicInfo)
-	elseif g_dedicatedServer == nil then
-		if downloadModId ~= 0 then
-			g_gui:showYesNoDialog({
-				dialogType = DialogElement.TYPE_ERROR,
-				text = string.format(g_i18n:getText("ui_modDependencyMissing_download"), dependening.title, dependant.title),
-				callback = function (yes)
-					if yes then
-						g_modHubScreen:openWithModId(downloadModId)
-					end
-				end
-			})
-		else
-			g_gui:showInfoDialog({
-				dialogType = DialogElement.TYPE_ERROR,
-				text = string.format(g_i18n:getText("ui_modDependencyMissing"), dependening.title, dependant.title)
-			})
-		end
 	else
+		if g_dedicatedServer == nil then
+			local modsToActivate = {}
+			local modIdsToDownload = {}
+			local hasUnavailableMods = false
+			local dependencyLines = {}
+
+			for _, item in ipairs(unresolved) do
+				if dependencyLines[item.mod.title] == nil then
+					dependencyLines[item.mod.title] = item.dependencyTitle
+				else
+					dependencyLines[item.mod.title] = dependencyLines[item.mod.title] .. ", " .. item.dependencyTitle
+				end
+
+				if item.dependencyModId ~= nil then
+					table.insert(modIdsToDownload, item.dependencyModId)
+				elseif item.canActivate then
+					table.insert(modsToActivate, item.dependencyMod)
+				else
+					hasUnavailableMods = true
+				end
+			end
+
+			local listText = nil
+
+			for title, deps in pairs(dependencyLines) do
+				if listText == nil then
+					listText = string.format(g_i18n:getText("ui_mod_required"), title, deps)
+				else
+					listText = lisText .. " " .. string.format(g_i18n:getText("ui_mod_required"), title, deps)
+				end
+			end
+
+			if #modsToActivate > 0 then
+				g_gui:showYesNoDialog({
+					dialogType = DialogElement.TYPE_ERROR,
+					text = listText .. "\n\n" .. g_i18n:getText("ui_mod_selectAllRequired"),
+					callback = function (yes)
+						if yes then
+							for _, modItem in ipairs(modsToActivate) do
+								self:setItemState(modItem, true)
+							end
+						end
+					end
+				})
+			elseif #modIdsToDownload > 0 then
+				g_gui:showYesNoDialog({
+					dialogType = DialogElement.TYPE_ERROR,
+					text = listText .. "\n\n" .. g_i18n:getText("ui_mod_downloadAllRequired"),
+					callback = function (yes)
+						if yes then
+							g_modHubController:startModification()
+
+							local numToGo = #modIdsToDownload
+
+							function failure()
+								numToGo = numToGo - 1
+
+								g_gui:showInfoDialog({
+									text = g_l10n:getText("modHub_installFailed")
+								})
+
+								if numToGo == 0 then
+									self:goToModHub()
+								end
+							end
+
+							function added()
+								numToGo = numToGo - 1
+
+								if numToGo == 0 then
+									self:goToModHub()
+								end
+							end
+
+							g_modHubController:setModInstallFailedCallback(failure, self)
+							g_modHubController:setDependendModIstallFailedCallback(failure, self)
+							g_modHubController:setAddedToDownloadCallback(added, self)
+
+							for _, modId in ipairs(modIdsToDownload) do
+								g_modHubController:install(modId)
+							end
+						end
+					end
+				})
+			elseif hasUnavailableMods then
+				g_gui:showInfoDialog({
+					dialogType = DialogElement.TYPE_ERROR,
+					text = listText
+				})
+			end
+
+			return
+		end
+
 		Logging.error("Could not start dedicated server with current mod setup because some dependencies are missing!")
 	end
+end
+
+function ModSelectionScreen:goToModHub()
+	g_masterServerConnection:disconnectFromMasterServer()
+	g_connectionManager:shutdownAll()
+	g_modHubScreen:openDownloads()
 end
 
 function ModSelectionScreen:onDoubleClick(index)
@@ -189,8 +272,16 @@ end
 
 function ModSelectionScreen:toggleCrossplay()
 	self.crossplayOnly = not self.crossplayOnly
+	local selected = self.selectedMods
 
 	self:loadAvailableMods()
+
+	for _, mod in ipairs(self.availableMods) do
+		if selected[mod] then
+			self:setItemState(mod, true)
+		end
+	end
+
 	self.modList:reloadData()
 	self.buttonToggleCrossplay:setText(self.crossplayOnly and g_i18n:getText("button_modHubShowAll") or g_i18n:getText("button_modHubShowCrossplay"))
 end
@@ -274,36 +365,45 @@ function ModSelectionScreen:isModActivated(name)
 end
 
 function ModSelectionScreen:verifyDependencies()
+	local unresolved = {}
+
 	for _, modItem in pairs(self.selectedMods) do
 		if modItem.dependencies ~= nil and #modItem.dependencies > 0 then
 			for _, depName in ipairs(modItem.dependencies) do
 				if not self:isModActivated(depName) then
 					local depMod = g_modManager:getModByName(depName)
-					local downloadModId = 0
 
 					if depMod == nil then
 						local modId = getModIdByFilename(depName)
 
 						if modId ~= 0 then
-							downloadModId = modId
 							local modInfo = g_modHubController:getModInfo(modId)
-							depMod = {
-								title = modInfo:getName()
-							}
-						else
-							depMod = {
-								title = depName .. ".zip"
-							}
-						end
-					end
 
-					return false, modItem, depMod, downloadModId
+							table.insert(unresolved, {
+								mod = modItem,
+								dependencyTitle = "'" .. modInfo:getName() .. "'",
+								dependencyModId = modId
+							})
+						else
+							table.insert(unresolved, {
+								mod = modItem,
+								dependencyTitle = "'" .. depName .. ".zip'"
+							})
+						end
+					else
+						table.insert(unresolved, {
+							canActivate = true,
+							mod = modItem,
+							dependencyTitle = "'" .. depMod.title .. "'",
+							dependencyMod = depMod
+						})
+					end
 				end
 			end
 		end
 	end
 
-	return true
+	return unresolved
 end
 
 function ModSelectionScreen:loadAvailableMods()

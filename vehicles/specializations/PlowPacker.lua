@@ -40,6 +40,7 @@ end
 
 function PlowPacker.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "setRotationMax", PlowPacker.setRotationMax)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "setPlowAIRequirements", PlowPacker.setPlowAIRequirements)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "setFoldState", PlowPacker.setFoldState)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "processCultivatorArea", PlowPacker.processCultivatorArea)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getUseCultivatorAIRequirements", PlowPacker.getUseCultivatorAIRequirements)
@@ -82,7 +83,7 @@ end
 function PlowPacker:onPostLoad(savegame)
 	local spec = self.spec_plowPacker
 
-	self:setPlowAIRequirements((spec.packerState or spec.partialDeactivated) and PlowPacker.CULTIVATED_GROUND_TYPES or nil)
+	self:setPlowAIRequirements()
 
 	if savegame ~= nil and not savegame.resetVehicles and spec.packerAvailable then
 		local packerState = savegame.xmlFile:getValue(savegame.key .. ".plowPacker#packerState")
@@ -184,6 +185,16 @@ function PlowPacker:setRotationMax(superFunc, rotationMax, noEventSend, turnAnim
 	superFunc(self, rotationMax, noEventSend, turnAnimationTime)
 end
 
+function PlowPacker:setPlowAIRequirements(superFunc, excludedGroundTypes)
+	local spec = self.spec_plowPacker
+
+	if spec.packerAvailable and (spec.packerState or spec.partialDeactivated) then
+		return superFunc(self, PlowPacker.CULTIVATED_GROUND_TYPES)
+	end
+
+	return superFunc(self, excludedGroundTypes)
+end
+
 function PlowPacker:setFoldState(superFunc, direction, moveToMiddle, noEventSend)
 	local spec = self.spec_plowPacker
 
@@ -275,7 +286,7 @@ function PlowPacker:setPackerState(newState, updateAnimations, noEventSend)
 			end
 		end
 
-		self:setPlowAIRequirements((newState or spec.partialDeactivated) and PlowPacker.CULTIVATED_GROUND_TYPES or nil)
+		self:setPlowAIRequirements()
 		PlowPackerStateEvent.sendEvent(self, newState, updateAnimations, noEventSend)
 	end
 

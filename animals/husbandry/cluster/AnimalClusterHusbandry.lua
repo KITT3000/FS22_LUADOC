@@ -48,7 +48,7 @@ end
 function AnimalClusterHusbandry:create(xmlFilename, navigationNode, raycastDistance, collisionMask)
 	self.navigationNode = navigationNode
 	local raycastCollisionFlag = CollisionMask.ANIMAL_POSITIONING
-	local husbandry = createAnimalHusbandry(self.animalTypeName, navigationNode, xmlFilename, raycastDistance, raycastCollisionFlag, collisionMask)
+	local husbandry = createAnimalHusbandry(self.animalTypeName, navigationNode, xmlFilename, raycastDistance, raycastCollisionFlag, collisionMask, AudioGroup.ENVIRONMENT)
 
 	if husbandry ~= 0 then
 		self.husbandry = husbandry

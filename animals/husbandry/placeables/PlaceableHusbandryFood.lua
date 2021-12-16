@@ -378,7 +378,7 @@ function PlaceableHusbandryFood:getFoodInfos(superFunc)
 			end
 
 			local info = {
-				title = title,
+				title = string.format("%s (%d%%)", title, foodGroup.productionWeight * 100),
 				value = fillLevel,
 				capacity = capacity,
 				ratio = 0
@@ -625,7 +625,7 @@ function PlaceableHusbandryFood:onHusbandryAnimalsUpdate(clusters)
 	end
 end
 
-function PlaceableHusbandryFood.loadSpecValueAnimalFoodFillTypes(xmlFile, customEnvironment)
+function PlaceableHusbandryFood.loadSpecValueAnimalFoodFillTypes(xmlFile, customEnvironment, baseDir)
 	local data = nil
 
 	if xmlFile:hasProperty("placeable.husbandry.animals") then

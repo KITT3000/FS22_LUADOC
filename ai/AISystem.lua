@@ -50,6 +50,7 @@ function AISystem:delete()
 	removeConsoleCommand("gsAIStart")
 	removeConsoleCommand("gsAIEnableDebug")
 	removeConsoleCommand("gsAISplinesShow")
+	removeConsoleCommand("gsAISplinesCheckInterference")
 	removeConsoleCommand("gsAIStationsShow")
 	removeConsoleCommand("gsAIObstaclesShow")
 	removeConsoleCommand("gsAICostsShow")
@@ -64,6 +65,7 @@ function AISystem:loadMapData(xmlFile)
 		addConsoleCommand("gsAIStart", "Starts driving to target", "consoleCommandAIStart", self)
 		addConsoleCommand("gsAIEnableDebug", "Enables AI debugging", "consoleCommandAIEnableDebug", self)
 		addConsoleCommand("gsAISplinesShow", "Toggle AI system spline visibility", "consoleCommandAIToggleSplineVisibility", self)
+		addConsoleCommand("gsAISplinesCheckInterference", "Check if AI splines interfere with any objects", "consoleCommandAICheckSplineInterference", self)
 		addConsoleCommand("gsAIStationsShow", "Toggle AI system stations ai nodes visibility", "consoleCommandAIToggleAINodeDebug", self)
 		addConsoleCommand("gsAIObstaclesShow", "Shows the obstacles around the camera", "consoleCommandAIShowObstacles", self)
 		addConsoleCommand("gsAICostsShow", "Shows the costs per cell", "consoleCommandAIShowCosts", self)
@@ -173,6 +175,8 @@ function AISystem:onTerrainLoad(terrainNode)
 			local success = loadVehicleNavigationCostMapFromFile(self.navigationMap, path)
 
 			if success then
+				Logging.info("Loaded navigation cost map from savegame")
+
 				loadFromSave = true
 			end
 		end
@@ -188,8 +192,8 @@ end
 function AISystem:onMissionStarted()
 	local worldSizeHalf = 0.5 * self.mission.terrainSize
 
-	updateVehicleNavigationMap(self.navigationMap, -worldSizeHalf, worldSizeHalf, -worldSizeHalf, worldSizeHalf)
 	Logging.info("No vehicle navigation cost map found. Start scanning map...")
+	updateVehicleNavigationMap(self.navigationMap, -worldSizeHalf, worldSizeHalf, -worldSizeHalf, worldSizeHalf)
 end
 
 function AISystem:loadFromXMLFile(xmlFilename)
@@ -263,7 +267,7 @@ function AISystem:update(dt)
 	for _, job in ipairs(self.activeJobs) do
 		job:update(dt)
 
-		if self.isServer then
+		if self.isServer and g_currentMission.isRunning then
 			local price = job:getPricePerMs()
 
 			if price > 0 then
@@ -393,6 +397,20 @@ end
 
 function AISystem:getAILimitedReached()
 	return g_currentMission.maxNumHirables <= #self.activeJobVehicles
+end
+
+function AISystem:getIsPositionReachable(x, y, z)
+	if self.navigationMap == nil or not self.isServer then
+		return true
+	end
+
+	local costs, isBlocking = getVehicleNavigationMapCostAtWorldPos(self.navigationMap, x, y, z)
+
+	if costs == 255 or isBlocking then
+		return false
+	end
+
+	return true
 end
 
 function AISystem:draw()
@@ -701,11 +719,14 @@ function AISystem:consoleCommandAICostmapExport(imageFormatStr)
 	end
 
 	local terrainSizeHalf = self.mission.terrainSize * 0.5
-	local imageSize = terrainSizeHalf * 2 + 1
+	local cellSizeHalf = self.cellSizeMeters / 2
+	local imageSize = self.mission.terrainSize
+	local isGreymap = imageFormat == BitmapUtil.FORMAT.GREYMAP
+	local colorBlocking = self.debug.colors.blocking
 
 	local function getPixelsIterator()
-		local stepZ = -terrainSizeHalf
-		local stepX = -terrainSizeHalf
+		local stepZ = -terrainSizeHalf + cellSizeHalf
+		local stepX = -terrainSizeHalf + cellSizeHalf
 		local pixel = {
 			0,
 			0,
@@ -713,20 +734,20 @@ function AISystem:consoleCommandAICostmapExport(imageFormatStr)
 		}
 
 		return function ()
-			if terrainSizeHalf < stepZ then
+			if stepZ > terrainSizeHalf - cellSizeHalf then
 				return nil
 			end
 
 			local worldPosY = getTerrainHeightAtWorldPos(self.mission.terrainRootNode, stepX, 0, stepZ)
 			local cost, isBlocking = getVehicleNavigationMapCostAtWorldPos(self.navigationMap, stepX, worldPosY, stepZ)
 
-			if imageFormat == BitmapUtil.FORMAT.GREYMAP then
+			if isGreymap then
 				pixel[1] = cost
 			else
 				if isBlocking then
-					pixel[3] = self.debug.colors.blocking[3]
-					pixel[2] = self.debug.colors.blocking[2]
-					pixel[1] = self.debug.colors.blocking[1]
+					pixel[3] = colorBlocking[3]
+					pixel[2] = colorBlocking[2]
+					pixel[1] = colorBlocking[1]
 				else
 					pixel[1], pixel[2], pixel[3] = Utils.getGreenRedBlendedColor(cost / 255)
 				end
@@ -736,10 +757,10 @@ function AISystem:consoleCommandAICostmapExport(imageFormatStr)
 				pixel[1] = pixel[1] * 255
 			end
 
-			if stepX < terrainSizeHalf then
+			if stepX < terrainSizeHalf - self.cellSizeMeters then
 				stepX = stepX + self.cellSizeMeters
 			else
-				stepX = -terrainSizeHalf
+				stepX = -terrainSizeHalf + cellSizeHalf
 				stepZ = stepZ + self.cellSizeMeters
 			end
 
@@ -747,11 +768,126 @@ function AISystem:consoleCommandAICostmapExport(imageFormatStr)
 		end
 	end
 
-	if BitmapUtil.writeBitmapToFileFromIterator(getPixelsIterator, imageSize, imageSize, g_currentMission.missionInfo.savegameDirectory .. "/navigationMap", imageFormat) then
-		return "Finished costmap export"
+	if not BitmapUtil.writeBitmapToFileFromIterator(getPixelsIterator, imageSize, imageSize, g_currentMission.missionInfo.savegameDirectory .. "/navigationMap", imageFormat) then
+		return "Error: Costmap export failed"
 	end
 
-	return "Error: Costmap export failed"
+	return "Finished costmap export"
+end
+
+function AISystem:consoleCommandAICheckSplineInterference(stepLength, heightOffset, defaultSplineWidth)
+	local usage = "gsAISplineCheckInterference [stepLength] [heightOffset] [defaultSplineWidth]\nUse 'gsDebugManagerClearElements' to remove boxes."
+	self.debugLastPos = {}
+
+	self:debugDeleteInterferences()
+
+	self.debugInterferencePositions = {}
+	self.debugInterferences = {}
+	stepLength = tonumber(stepLength) or 5
+	heightOffset = tonumber(heightOffset) or 0.2
+	defaultSplineWidth = tonumber(defaultSplineWidth) or self.defaultVehicleMaxWidth
+	local collisionMask = CollisionMask.ALL - CollisionFlag.TERRAIN
+	local overlapFactor = 0.9
+
+	Logging.info("Checking interference: stepLength=%.2f heightOffset=%.2f defaultSplineWidth=%.2f", stepLength, heightOffset, defaultSplineWidth)
+
+	local numSplines = 0
+	local testPosition = createTransformGroup("testPosition")
+	local splineMaxWidth = nil
+
+	local function checkInterference(spline)
+		numSplines = numSplines + 1
+		local splineWidth = getUserAttribute(spline, "maxWidth") or splineMaxWidth or defaultSplineWidth
+		local splineLength = getSplineLength(spline)
+		local stepSize = stepLength * overlapFactor / splineLength
+
+		for offset = 0, 1 + stepSize, stepSize do
+			local clampedSplineTime = MathUtil.clamp(offset, 0, 1)
+			local wx, wy, wz = getSplinePosition(spline, clampedSplineTime)
+			local dx, dy, dz = getSplineDirection(spline, clampedSplineTime)
+
+			setWorldTranslation(testPosition, wx, wy, wz)
+			setDirection(testPosition, dx, dy, dz, 0, 1, 0)
+
+			local rx, ry, rz = getWorldRotation(testPosition)
+			local sx = splineWidth / 2
+			local sy = self.vehicleMaxHeight / 2 - heightOffset / 2
+			local sz = stepLength / 2
+			wy = wy + sy + heightOffset
+			self.debugLastPos = {
+				rx = rx,
+				ry = ry,
+				rz = rz,
+				sx = sx,
+				sy = sy,
+				sz = sz,
+				wx = wx,
+				wy = wy,
+				wz = wz,
+				spline = spline
+			}
+
+			overlapBox(wx, wy, wz, rx, ry, rz, sx, sy, sz, "splineInterferenceOverlapCallback", self, collisionMask, true, true, true, false)
+		end
+	end
+
+	local function filterSplines(node, depth)
+		if I3DUtil.getIsSpline(node) then
+			checkInterference(node)
+		else
+			splineMaxWidth = getUserAttribute(node, "maxWidth")
+		end
+	end
+
+	for _, aiSpline in ipairs(self.roadSplines) do
+		I3DUtil.interateRecursively(aiSpline, filterSplines)
+	end
+
+	delete(testPosition)
+
+	local numInterferences = table.size(self.debugInterferences)
+	self.debugInterferences = nil
+	self.debugLastPos = nil
+
+	return string.format("Checked %d splines, found %d interferences\n%s", numSplines, numInterferences, usage)
+end
+
+function AISystem:splineInterferenceOverlapCallback(nodeId)
+	if nodeId ~= 0 and nodeId ~= g_currentMission.terrainRootNode and not CollisionFlag.getHasFlagSet(nodeId, CollisionFlag.VEHICLE) and CollisionFlag.getHasFlagSet(nodeId, CollisionFlag.AI_BLOCKING) then
+		local last = self.debugLastPos
+		local customWidth = getUserAttribute(nodeId, "maxWidth")
+		local customWidthText = customWidth and string.format(" (maxWidth UserAttribute: %.2f)", customWidth) or ""
+
+		Logging.info("found interference for spline '%s'%s with object '%s|%s' at %d %d %d", getName(last.spline), customWidthText, getName(getParent(nodeId)), getName(nodeId), last.wx, last.wy, last.wz)
+
+		local debugFunctionPair = {
+			DebugUtil.drawOverlapBox,
+			{
+				last.wx,
+				last.wy,
+				last.wz,
+				last.rx,
+				last.ry,
+				last.rz,
+				last.sx,
+				last.sy,
+				last.sz
+			}
+		}
+
+		table.insert(self.debugInterferencePositions, debugFunctionPair)
+		g_debugManager:addPermanentFunction(debugFunctionPair)
+
+		self.debugInterferences[nodeId] = true
+	end
+end
+
+function AISystem:debugDeleteInterferences()
+	if self.debugInterferencePositions ~= nil then
+		for _, debugFunctionPair in ipairs(self.debugInterferencePositions) do
+			g_debugManager:removePermanentFunction(debugFunctionPair)
+		end
+	end
 end
 
 function AISystem.getAgentStateName(index)

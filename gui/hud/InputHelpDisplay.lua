@@ -736,6 +736,12 @@ function InputHelpDisplay:getMaxEntryCount(prio, ignoreLive)
 		count = count - #self.extraHelpTexts
 	end
 
+	for _, hudExtension in pairs(self.vehicleHudExtensions) do
+		if hudExtension.getHelpEntryCountReduction ~= nil then
+			count = count - hudExtension:getHelpEntryCountReduction()
+		end
+	end
+
 	return count
 end
 

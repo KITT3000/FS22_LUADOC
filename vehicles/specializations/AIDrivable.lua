@@ -184,7 +184,7 @@ function AIDrivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 			local x, y, z = getWorldTranslation(aiRootNode)
 			spec.distanceToTarget = MathUtil.vector2Length(x - spec.targetX, z - spec.targetZ)
 			local lastSpeed = self.lastSpeedReal * self.movingDirection * 1000
-			local maxSpeed = math.min(spec.maxSpeed, self:getCruiseControlMaxSpeed())
+			local maxSpeed = math.min(spec.maxSpeed, self:getCruiseControlSpeed())
 
 			if spec.useManualDriving then
 				local tx, _, tz = worldToLocal(aiRootNode, spec.targetX, spec.targetY, spec.targetZ)
@@ -211,13 +211,25 @@ function AIDrivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 					maxSpeed = math.min(maxSpeedCurvature * 3.6, maxSpeed)
 
 					AIVehicleUtil.driveAlongCurvature(self, dt, curvature, maxSpeed, 1)
+
+					if maxSpeed == 0 then
+						isBlocked = false
+					end
 				elseif status == AgentState.PLANNING then
+					isBlocked = false
+
 					self:brake(1)
 				elseif status == AgentState.BLOCKED then
 					isBlocked = true
+
+					self:brake(1)
 				elseif status == AgentState.TARGET_REACHED then
+					isBlocked = false
+
 					self:reachedAITarget()
 				elseif status == AgentState.NOT_REACHABLE then
+					isBlocked = false
+
 					self:stopCurrentAIJob(AIMessageErrorNotReachable.new())
 				end
 

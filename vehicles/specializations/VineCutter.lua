@@ -142,7 +142,7 @@ function VineCutter:clearCurrentVinePlaceable(superFunc)
 	spec.lastHarvestingNode = nil
 end
 
-function VineCutter:harvestCallback(placeable, area, totalArea, weedFactor, sprayFactor, plowFactor)
+function VineCutter:harvestCallback(placeable, area, totalArea, weedFactor, sprayFactor, plowFactor, sectionLength)
 	local spec = self.spec_vineCutter
 	local limeFactor = 1
 	local stubbleTillageFactor = 1
@@ -154,11 +154,18 @@ function VineCutter:harvestCallback(placeable, area, totalArea, weedFactor, spra
 
 	spec.currentCombineVehicle:addCutterArea(area, realArea, spec.inputFruitTypeIndex, spec.outputFillTypeIndex, 0, nil, farmId, 1)
 
-	local ha = MathUtil.areaToHa(area, g_currentMission:getFruitPixelsToSqm())
 	local stats = g_currentMission:farmStats(farmId)
 
-	stats:updateStats("threshedHectares", ha)
-	stats:updateStats("workedHectares", ha)
+	if spec.inputFruitTypeIndex == FruitType.GRAPE then
+		stats:updateStats("harvestedGrapes", sectionLength)
+	elseif spec.inputFruitTypeIndex == FruitType.OLIVE then
+		stats:updateStats("harvestedOlives", sectionLength)
+	else
+		local ha = MathUtil.areaToHa(area, g_currentMission:getFruitPixelsToSqm())
+
+		stats:updateStats("threshedHectares", ha)
+		stats:updateStats("workedHectares", ha)
+	end
 end
 
 function VineCutter:doCheckSpeedLimit(superFunc)

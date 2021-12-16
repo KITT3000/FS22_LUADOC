@@ -2,7 +2,7 @@ BaleMission = {
 	REWARD_PER_HA_HAY = 3000,
 	REWARD_PER_HA_SILAGE = 3300,
 	SILAGE_VARIANT_CHANCE = 0.5,
-	FILL_SUCCESS_FACTOR = 0.8,
+	FILL_SUCCESS_FACTOR = 0.9,
 	REWARD_PER_METER = 5
 }
 local BaleMission_mt = Class(BaleMission, AbstractFieldMission)
@@ -143,7 +143,7 @@ function BaleMission:init(...)
 	local highestPrice = 0
 
 	for _, unloadingStation in pairs(self.mission.storageSystem:getUnloadingStations()) do
-		if unloadingStation.owningPlaceable ~= nil and unloadingStation:isa(SellingStation) and unloadingStation.acceptedFillTypes[self.fillType] == true then
+		if unloadingStation.owningPlaceable ~= nil and unloadingStation:isa(SellingStation) and unloadingStation.allowMissions and unloadingStation.acceptedFillTypes[self.fillType] == true then
 			local price = unloadingStation:getEffectiveFillTypePrice(self.fillType)
 
 			if highestPrice < price then
@@ -247,7 +247,7 @@ function BaleMission:update(dt)
 		self:tryToResolveSellPoint()
 	end
 
-	if g_currentMission.player.farmId == self.farmId and self.isClient and self.status == AbstractMission.STATUS_RUNNING and not self:hasMapMarker() then
+	if g_currentMission.player.farmId == self.farmId and self.sellPoint ~= nil and self.isClient and self.status == AbstractMission.STATUS_RUNNING and not self:hasMapMarker() then
 		self:createMapMarkerAtSellingStation(self.sellPoint)
 	end
 
@@ -263,21 +263,13 @@ function BaleMission:update(dt)
 	end
 end
 
-local BALE_SIZES = {
-	3500,
-	5500,
-	7500,
-	5000,
-	6000,
-	6500
-}
-
 function BaleMission:roundToWholeBales(liters)
+	local baleSizes = g_baleManager:getPossibleCapacitiesForFillType(self.fillType)
 	local minBales = math.huge
 	local minBaleIndex = 1
 
-	for i = 1, #BALE_SIZES do
-		local bales = math.floor(liters / BALE_SIZES[i])
+	for i = 1, #baleSizes do
+		local bales = math.floor(liters * 0.95 / baleSizes[i])
 
 		if bales < minBales then
 			minBales = bales
@@ -285,7 +277,7 @@ function BaleMission:roundToWholeBales(liters)
 		end
 	end
 
-	return minBales * BALE_SIZES[minBaleIndex]
+	return math.max(minBales * baleSizes[minBaleIndex], liters - 10000)
 end
 
 function BaleMission:updateRewardPerHa()
@@ -337,7 +329,7 @@ function BaleMission:getData()
 end
 
 function BaleMission:getCompletion()
-	local transportCompletion = math.min(1, self.depositedLiters / self.expectedLiters / BaleMission.FILL_SUCCESS_FACTOR)
+	local transportCompletion = math.min(1, self.depositedLiters / (self.expectedLiters * BaleMission.FILL_SUCCESS_FACTOR))
 	local fieldCompletion = self:getFieldCompletion()
 	local mowCompletion = math.min(1, fieldCompletion / AbstractMission.SUCCESS_FACTOR)
 

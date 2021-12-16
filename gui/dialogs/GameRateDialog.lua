@@ -7,7 +7,7 @@ GameRateDialog = {
 local GameRateDialog_mt = Class(GameRateDialog, MessageDialog)
 
 function GameRateDialog.new(target, custom_mt)
-	local self = MessageDialog:new(target, custom_mt or GameRateDialog_mt)
+	local self = MessageDialog.new(target, custom_mt or GameRateDialog_mt)
 	self.isBackAllowed = false
 	self.inputDelay = 250
 	self.value = 0

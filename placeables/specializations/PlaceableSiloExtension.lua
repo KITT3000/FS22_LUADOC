@@ -217,7 +217,7 @@ function PlaceableSiloExtension:onSell()
 	end
 end
 
-function PlaceableSiloExtension.loadSpecValueVolume(xmlFile, customEnvironment)
+function PlaceableSiloExtension.loadSpecValueVolume(xmlFile, customEnvironment, baseDir)
 	return xmlFile:getValue("placeable.siloExtension.storage#capacity")
 end
 

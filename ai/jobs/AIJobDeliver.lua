@@ -354,6 +354,29 @@ function AIJobDeliver:canContinueWork()
 		return false, AIMessageErrorUnloadingStationDeleted.new()
 	end
 
+	if self.currentTaskIndex == self.waitForFillingTask.taskIndex then
+		local hasSpace = false
+
+		for _, dischargeNodeInfo in ipairs(self.dischargeNodeInfos) do
+			local dischargeVehicle = dischargeNodeInfo.vehicle
+			local fillUnitIndex = dischargeNodeInfo.dischargeNode.fillUnitIndex
+
+			if dischargeVehicle:getFillUnitFillLevel(fillUnitIndex) > 1 then
+				local fillTypeIndex = dischargeVehicle:getFillUnitFillType(fillUnitIndex)
+
+				if unloadingStation:getFreeCapacity(fillTypeIndex, self.startedFarmId) > 0 then
+					hasSpace = true
+
+					break
+				end
+			end
+		end
+
+		if not hasSpace then
+			return false, AIMessageErrorUnloadingStationFull.new()
+		end
+	end
+
 	return true, nil
 end
 

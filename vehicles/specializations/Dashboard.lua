@@ -257,13 +257,13 @@ function Dashboard:updateDashboards(dashboards, dt, force)
 				if type(value) == "number" then
 					min = self:getDashboardValue(dashboard.valueObject, dashboard.minFunc, dashboard)
 
-					if min ~= nil then
+					if min ~= nil and isActive then
 						value = math.max(min, value)
 					end
 
 					max = self:getDashboardValue(dashboard.valueObject, dashboard.maxFunc, dashboard)
 
-					if max ~= nil then
+					if max ~= nil and isActive then
 						value = math.min(max, value)
 					end
 
@@ -800,6 +800,14 @@ function Dashboard:defaultDashboardStateFunc(dashboard, newValue, minValue, maxV
 end
 
 function Dashboard:defaultEmitterDashboardStateFunc(dashboard, newValue, minValue, maxValue, isActive)
+	if type(newValue) == "number" then
+		if newValue > 0.5 then
+			newValue = true
+		else
+			newValue = false
+		end
+	end
+
 	newValue = newValue == nil and isActive or newValue and isActive
 
 	setShaderParameter(dashboard.node, "lightControl", newValue and dashboard.intensity or dashboard.idleValue, 0, 0, 0, false)

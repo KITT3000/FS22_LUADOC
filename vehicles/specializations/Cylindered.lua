@@ -190,6 +190,10 @@ function Cylindered.initSpecialization()
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMaxInactive", "Moving tool max. rotation if object change inactive")
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMinActive", "Moving tool min. rotation if object change active")
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMinInactive", "Moving tool min. rotation if object change inactive")
+		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMaxActive", "Moving tool max. translation if object change active")
+		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMaxInactive", "Moving tool max. translation if object change inactive")
+		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMinActive", "Moving tool min. translation if object change active")
+		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMinInactive", "Moving tool min. translation if object change inactive")
 		_schema:register(XMLValueType.BOOL, key .. "#movingPartUpdateActive", "moving part active state if object change active")
 		_schema:register(XMLValueType.BOOL, key .. "#movingPartUpdateInactive", "moving part active state if object change inactive")
 	end)
@@ -257,6 +261,7 @@ function Cylindered.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "loadDependentAnimations", Cylindered.loadDependentAnimations)
 	SpecializationUtil.registerFunction(vehicleType, "loadCopyLocalDirectionParts", Cylindered.loadCopyLocalDirectionParts)
 	SpecializationUtil.registerFunction(vehicleType, "loadRotationBasedLimits", Cylindered.loadRotationBasedLimits)
+	SpecializationUtil.registerFunction(vehicleType, "checkMovingPartDirtyUpdateNode", Cylindered.checkMovingPartDirtyUpdateNode)
 	SpecializationUtil.registerFunction(vehicleType, "updateDirtyMovingParts", Cylindered.updateDirtyMovingParts)
 	SpecializationUtil.registerFunction(vehicleType, "setMovingToolDirty", Cylindered.setMovingToolDirty)
 	SpecializationUtil.registerFunction(vehicleType, "updateCylinderedInitial", Cylindered.updateCylinderedInitial)
@@ -325,6 +330,7 @@ function Cylindered:onLoad(savegame)
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.movingTools", "vehicle.cylindered.movingTools")
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.cylinderedHydraulicSound", "vehicle.cylindered.sounds.hydraulic")
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.cylindered.movingParts#isActiveDirtyTimeOffset")
+	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.cylindered.movingParts.sounds", "vehicle.cylindered.sounds")
 
 	spec.activeDirtyMovingParts = {}
 	local referenceNodes = {}
@@ -804,6 +810,30 @@ function Cylindered:onPostLoad(savegame)
 	if not self.isClient or not hasTools then
 		SpecializationUtil.removeEventListener(self, "onDraw", Cylindered)
 		SpecializationUtil.removeEventListener(self, "onRegisterActionEvents", Cylindered)
+	end
+
+	if g_isDevelopmentVersion then
+		local function checkPart(part)
+			I3DUtil.interateRecursively(part.node, function (child, depth)
+				self:checkMovingPartDirtyUpdateNode(child, part)
+			end, math.huge)
+
+			if part.dependentPartData ~= nil then
+				for _, data in pairs(part.dependentPartData) do
+					if data.part ~= nil then
+						checkPart(data.part)
+					end
+				end
+			end
+		end
+
+		for j = 1, #spec.movingParts do
+			local movingPart = spec.movingParts[j]
+
+			if movingPart.isActiveDirty and movingPart.maxUpdateDistance ~= math.huge then
+				checkPart(movingPart)
+			end
+		end
 	end
 end
 
@@ -1700,7 +1730,7 @@ function Cylindered:updateDependentAnimations(part, dt)
 				pos = (retValues[dependentAnimation.rotationAxis] - dependentAnimation.minValue) / (dependentAnimation.maxValue - dependentAnimation.minValue)
 			end
 
-			pos = MathUtil.clamp(math.abs(pos), 0, 1)
+			pos = MathUtil.clamp(pos, 0, 1)
 
 			if dependentAnimation.invert then
 				pos = 1 - pos
@@ -2575,6 +2605,8 @@ function Cylindered:loadDependentAttacherJoints(xmlFile, baseName, entry)
 			for i = 1, #indices do
 				if availableAttacherJoints[indices[i]] ~= nil then
 					table.insert(entry.attacherJoints, availableAttacherJoints[indices[i]])
+				else
+					Logging.xmlWarning(xmlFile, "Invalid attacher joint index '%s' for '%s'!", indices[i], baseName)
 				end
 			end
 		end
@@ -2764,6 +2796,9 @@ function Cylindered:loadRotationBasedLimits(xmlFile, key, tool)
 	return nil
 end
 
+function Cylindered:checkMovingPartDirtyUpdateNode(node, movingPart)
+end
+
 function Cylindered:setMovingToolDirty(node, forceUpdate, dt)
 	local spec = self.spec_cylindered
 	local tool = spec.nodesToMovingTools[node]
@@ -2933,6 +2968,10 @@ function Cylindered:loadObjectChangeValuesFromXML(superFunc, xmlFile, key, node,
 		object.movingToolRotMaxInactive = xmlFile:getValue(key .. "#movingToolRotMaxInactive", movingTool.rotMax)
 		object.movingToolRotMinActive = xmlFile:getValue(key .. "#movingToolRotMinActive", movingTool.rotMin)
 		object.movingToolRotMinInactive = xmlFile:getValue(key .. "#movingToolRotMinInactive", movingTool.rotMin)
+		object.movingToolTransMaxActive = xmlFile:getValue(key .. "#movingToolTransMaxActive", movingTool.transMax)
+		object.movingToolTransMaxInactive = xmlFile:getValue(key .. "#movingToolTransMaxInactive", movingTool.transMax)
+		object.movingToolTransMinActive = xmlFile:getValue(key .. "#movingToolTransMinActive", movingTool.transMin)
+		object.movingToolTransMinInactive = xmlFile:getValue(key .. "#movingToolTransMinInactive", movingTool.transMin)
 	end
 
 	ObjectChangeUtil.loadValueType(object.values, xmlFile, key, "movingPartUpdate", nil, function (state)
@@ -2957,9 +2996,13 @@ function Cylindered:setObjectChangeValues(superFunc, object, isActive)
 		if isActive then
 			movingTool.rotMax = object.movingToolRotMaxActive
 			movingTool.rotMin = object.movingToolRotMinActive
+			movingTool.transMax = object.movingToolTransMaxActive
+			movingTool.transMin = object.movingToolTransMinActive
 		else
 			movingTool.rotMax = object.movingToolRotMaxInactive
 			movingTool.rotMin = object.movingToolRotMinInactive
+			movingTool.transMax = object.movingToolTransMaxInactive
+			movingTool.transMin = object.movingToolTransMinInactive
 		end
 	end
 end

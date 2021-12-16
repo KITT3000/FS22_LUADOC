@@ -303,7 +303,7 @@ IngameMapLayoutCircle.PIVOT = {
 IngameMapLayoutCircle.UV = {
 	BACKGROUND = {
 		48,
-		288,
+		291,
 		256,
 		256
 	},

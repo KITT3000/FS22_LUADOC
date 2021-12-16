@@ -23,6 +23,7 @@ function DebugGizmo.new(customMt)
 		x = 0,
 		y = 0
 	}
+	self.textColor = nil
 	self.alignToGround = false
 	self.hideWhenGuiIsOpen = false
 
@@ -60,7 +61,7 @@ function DebugGizmo:draw()
 	drawDebugLine(x, y, z, 0, 0, 1, x + scale * dirX, y + scale * dirY, z + scale * dirZ, 0, 0, 1, solid)
 
 	if self.text ~= nil then
-		Utils.renderTextAtWorldPosition(x + self.textOffset.x, y + self.textOffset.y, z + self.textOffset.z, tostring(self.text), getCorrectTextSize(0.012), 0)
+		Utils.renderTextAtWorldPosition(x + self.textOffset.x, y + self.textOffset.y, z + self.textOffset.z, tostring(self.text), getCorrectTextSize(0.012), 0, self.textColor)
 	end
 end
 
@@ -99,6 +100,17 @@ function DebugGizmo:createWithWorldPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY
 
 	self.alignToGround = Utils.getNoNil(alignToGround, self.alignToGround)
 	self.hideWhenGuiIsOpen = Utils.getNoNil(hideWhenGUIOpen, self.hideWhenGuiIsOpen)
+
+	return self
+end
+
+function DebugGizmo:setColor(r, g, b, a)
+	self.textColor = {
+		r or 1,
+		g or 1,
+		b or 1,
+		a or 1
+	}
 
 	return self
 end

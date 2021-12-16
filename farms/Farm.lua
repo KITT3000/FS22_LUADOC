@@ -2,7 +2,7 @@ Farm = {
 	MIN_LOAN = 500000,
 	MAX_LOAN = 3000000,
 	EQUITY_LOAN_RATIO = 0.8,
-	LOAN_INTEREST_RATE = 100,
+	LOAN_INTEREST_RATE = 0.04,
 	PERMISSION = {
 		MANAGE_CONTRACTS = "manageContracts",
 		SELL_PLACEABLE = "sellPlaceable",
@@ -191,8 +191,6 @@ function Farm:setInitialEconomy()
 
 	self:updateMaxLoan()
 
-	self.loanAnnualInterestRate = 100 + 100 * (difficulty - 1)
-
 	if self.isSpectator then
 		self.money = 0
 		self.loan = 0
@@ -224,7 +222,6 @@ function Farm:loadFromXMLFile(xmlFile, key)
 	self.password = xmlFile:getString(key .. "#password")
 	self.loan = xmlFile:getFloat(key .. "#loan")
 	self.money = xmlFile:getFloat(key .. "#money")
-	self.loanAnnualInterestRate = xmlFile:getFloat(key .. "#loanAnnualInterestRate", 100)
 
 	xmlFile:iterate(key .. ".players.player", function (_, playerKey)
 		local player = {
@@ -267,7 +264,6 @@ function Farm:saveToXMLFile(xmlFile, key)
 
 	xmlFile:setFloat(key .. "#loan", self.loan)
 	xmlFile:setFloat(key .. "#money", self.money)
-	xmlFile:setFloat(key .. "#loanAnnualInterestRate", self.loanAnnualInterestRate)
 	xmlFile:setSortedTable(key .. ".players.player", self.players, function (playerKey, player)
 		xmlFile:setString(playerKey .. "#uniqueUserId", player.uniqueUserId)
 		xmlFile:setBool(playerKey .. "#farmManager", player.isFarmManager)
@@ -397,7 +393,6 @@ end
 function Farm:merge(other)
 	self.money = self.money + other.money
 	self.loan = self.loan + other.loan
-	self.loanAnnualInterestRate = math.min(self.loanAnnualInterestRate, other.loanAnnualInterestRate)
 
 	self.stats:merge(other.stats)
 end
@@ -586,9 +581,10 @@ function Farm:updateMaxLoan()
 end
 
 function Farm:calculateDailyLoanInterest()
-	local annualInterest = self.loanAnnualInterestRate / 100 * self.loan
+	local yearInterest = Farm.LOAN_INTEREST_RATE
+	local daysInYear = g_currentMission.environment.daysPerPeriod * Environment.PERIODS_IN_YEAR
 
-	return math.floor(annualInterest / 356) * g_currentMission.environment.timeAdjustment
+	return math.floor(yearInterest / daysInYear * self.loan)
 end
 
 function Farm:changeBalance(amount, moneyType)

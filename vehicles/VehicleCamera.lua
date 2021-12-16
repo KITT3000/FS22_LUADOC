@@ -280,13 +280,16 @@ function VehicleCamera:loadFromXML(xmlFile, key, savegame, cameraIndex)
 				self.rotY,
 				self.rotZ
 			})
-			self.transX, self.transY, self.transZ = savegame.xmlFile:getValue(cameraKey .. "#translation", {
-				self.transX,
-				self.transY,
-				self.transZ
-			})
-			self.zoom = savegame.xmlFile:getValue(cameraKey .. "#zoom", self.zoom)
-			self.zoomTarget = self.zoom
+
+			if self.allowTranslation then
+				self.transX, self.transY, self.transZ = savegame.xmlFile:getValue(cameraKey .. "#translation", {
+					self.transX,
+					self.transY,
+					self.transZ
+				})
+				self.zoom = savegame.xmlFile:getValue(cameraKey .. "#zoom", self.zoom)
+				self.zoomTarget = self.zoom
+			end
 
 			setTranslation(self.cameraPositionNode, self.transX, self.transY, self.transZ)
 			setRotation(self.rotateNode, self.rotX, self.rotY, self.rotZ)

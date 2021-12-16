@@ -134,6 +134,7 @@ function GuidedTour:loadMapData(mapXmlFile, missionInfo, baseDirectory)
 
 		table.insert(self.steps, step)
 	end)
+	xmlFile:delete()
 
 	self.isLoaded = true
 
@@ -152,6 +153,10 @@ function GuidedTour:loadMapData(mapXmlFile, missionInfo, baseDirectory)
 	if GuidedTour.DISABLED_LANGUAGES[g_languageShort] ~= nil then
 		self.missionInfo.guidedTourActive = false
 	end
+end
+
+function GuidedTour:getIsRunning()
+	return self.isRunning
 end
 
 function GuidedTour:addVehicle(vehicle, name)

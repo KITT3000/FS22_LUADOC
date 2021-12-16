@@ -37,6 +37,7 @@ function GroundReference.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getPowerMultiplier", GroundReference.getPowerMultiplier)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadSpeedRotatingPartFromXML", GroundReference.loadSpeedRotatingPartFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsSpeedRotatingPartActive", GroundReference.getIsSpeedRotatingPartActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "checkMovingPartDirtyUpdateNode", GroundReference.checkMovingPartDirtyUpdateNode)
 end
 
 function GroundReference.registerEventListeners(vehicleType)
@@ -245,4 +246,18 @@ function GroundReference:getIsSpeedRotatingPartActive(superFunc, speedRotatingPa
 	end
 
 	return superFunc(self, speedRotatingPart)
+end
+
+function GroundReference:checkMovingPartDirtyUpdateNode(superFunc, node, movingPart)
+	superFunc(self, node, movingPart)
+
+	local spec = self.spec_groundReference
+
+	for i = 1, #spec.groundReferenceNodes do
+		local groundReferenceNode = spec.groundReferenceNodes[i]
+
+		if node == groundReferenceNode.node then
+			Logging.xmlError(self.xmlFile, "Found ground reference node '%s' in active dirty moving part '%s' with limited update distance. Remove limit or adjust hierarchy for correct function. (maxUpdateDistance='-')", getName(node), getName(movingPart.node))
+		end
+	end
 end

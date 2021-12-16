@@ -53,6 +53,7 @@ function InGameMenuPricesFrame:onFrameOpen()
 	InGameMenuPricesFrame:superClass().onFrameOpen(self)
 	self:rebuildTable()
 	self:setMode(self.mode)
+	g_messageCenter:subscribe(MessageType.HOUR_CHANGED, self.onHourChanged, self)
 	self:setSoundSuppressed(true)
 	FocusManager:setFocus(self.productList)
 	self:setSoundSuppressed(false)
@@ -60,6 +61,7 @@ end
 
 function InGameMenuPricesFrame:onFrameClose()
 	InGameMenuPricesFrame:superClass().onFrameClose(self)
+	g_messageCenter:unsubscribe(MessageType.HOUR_CHANGED, self)
 
 	self.currentStations = {}
 end
@@ -176,13 +178,13 @@ function InGameMenuPricesFrame:updateFluctuations()
 		currentPrice = totalPrice / totalNumPrices
 	end
 
-	local factors = fillTypeDesc.economy.factors
+	local prices = fillTypeDesc.economy.history
 	local min = math.huge
 	local max = 0
 
 	for i = 1, 12 do
-		min = math.min(min, factors[i])
-		max = math.max(max, factors[i])
+		min = math.min(min, prices[i])
+		max = math.max(max, prices[i])
 	end
 
 	local range = max - min
@@ -201,8 +203,8 @@ function InGameMenuPricesFrame:updateFluctuations()
 	for month = 1, 12 do
 		local barBg = self.fluctuationBars[month]
 		local bar = barBg.elements[1]
-		local percentageInView = (factors[month] - min) / (max - min)
-		local prevPercentageInView = (factors[(month - 2) % 12 + 1] - min) / (max - min)
+		local percentageInView = (prices[month] - min) / (max - min)
+		local prevPercentageInView = (prices[(month - 2) % 12 + 1] - min) / (max - min)
 		local diff = percentageInView - prevPercentageInView
 
 		if diff > 0 then
@@ -400,6 +402,10 @@ function InGameMenuPricesFrame:onButtonToggleMode()
 	else
 		self:setMode(InGameMenuPricesFrame.MODE_PRICES)
 	end
+end
+
+function InGameMenuPricesFrame:onHourChanged()
+	self:updateFluctuations()
 end
 
 InGameMenuPricesFrame.PROFILE = {

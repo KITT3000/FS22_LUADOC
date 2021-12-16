@@ -143,7 +143,6 @@ function Lights.registerEvents(vehicleType)
 	SpecializationUtil.registerEvent(vehicleType, "onReverseLightsVisibilityChanged")
 	SpecializationUtil.registerEvent(vehicleType, "onLightsTypesMaskChanged")
 	SpecializationUtil.registerEvent(vehicleType, "onBeaconLightsVisibilityChanged")
-	SpecializationUtil.registerEvent(vehicleType, "onDeactivateLights")
 end
 
 function Lights.registerFunctions(vehicleType)
@@ -421,9 +420,11 @@ function Lights:onLoad(savegame)
 			}
 		})
 		self:loadDashboardsFromXML(self.xmlFile, "vehicle.lights.dashboards", {
-			valueFunc = "beaconLightsActive",
 			valueTypeToLoad = "beaconLight",
-			valueObject = spec
+			valueObject = spec,
+			valueFunc = function (_spec)
+				return _spec.beaconLightsActive and 1 or 0
+			end
 		})
 	end
 
@@ -991,8 +992,6 @@ function Lights:deactivateLights(keepHazardLightsOn)
 	self:setInteriorLightsVisibility(false)
 
 	spec.currentLightState = 0
-
-	SpecializationUtil.raiseEvent(self, "onDeactivateLights")
 end
 
 function Lights:deactivateBeaconLights()
@@ -1849,11 +1848,18 @@ function Lights:dashboardLightState(dashboard, newValue, minValue, maxValue, isA
 	local lightsTypesMask = self.spec_lights.lightsTypesMask
 
 	if dashboard.displayTypeIndex == Dashboard.TYPES.MULTI_STATE then
+		local anyLightActive = false
+
 		for i = 0, self.spec_lights.maxLightState do
 			dashboard.lightStates[i] = bitAND(lightsTypesMask, 2^i) ~= 0
+			anyLightActive = anyLightActive or dashboard.lightStates[i]
 		end
 
-		Dashboard.defaultMultiStateDashboardStateFunc(self, dashboard, dashboard.lightStates, minValue, maxValue, isActive)
+		if anyLightActive then
+			Dashboard.defaultMultiStateDashboardStateFunc(self, dashboard, dashboard.lightStates, minValue, maxValue, isActive)
+		else
+			Dashboard.defaultMultiStateDashboardStateFunc(self, dashboard, -1, minValue, maxValue, isActive)
+		end
 	else
 		local lightIsActive = false
 

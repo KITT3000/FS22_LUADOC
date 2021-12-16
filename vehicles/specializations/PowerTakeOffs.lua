@@ -325,29 +325,29 @@ function PowerTakeOffs:loadPowerTakeOffsFromXML(xmlFile, key)
 	local spec = self.spec_powerTakeOffs
 
 	if SpecializationUtil.hasSpecialization(AttacherJoints, self.specializations) then
-		self.xmlFile:iterate(key .. ".output", function (_, outputKey)
+		xmlFile:iterate(key .. ".output", function (_, outputKey)
 			local powerTakeOffOutput = {}
 
-			if self:loadOutputPowerTakeOff(self.xmlFile, outputKey, powerTakeOffOutput) then
+			if self:loadOutputPowerTakeOff(xmlFile, outputKey, powerTakeOffOutput) then
 				table.insert(spec.outputPowerTakeOffs, powerTakeOffOutput)
 			end
 		end)
 	end
 
 	if SpecializationUtil.hasSpecialization(Attachable, self.specializations) then
-		self.xmlFile:iterate(key .. ".input", function (_, inputKey)
+		xmlFile:iterate(key .. ".input", function (_, inputKey)
 			local powerTakeOffInput = {}
 
-			if self:loadInputPowerTakeOff(self.xmlFile, inputKey, powerTakeOffInput) then
+			if self:loadInputPowerTakeOff(xmlFile, inputKey, powerTakeOffInput) then
 				table.insert(spec.inputPowerTakeOffs, powerTakeOffInput)
 			end
 		end)
 	end
 
-	self.xmlFile:iterate(key .. ".local", function (_, localKey)
+	xmlFile:iterate(key .. ".local", function (_, localKey)
 		local powerTakeOffLocal = {}
 
-		if self:loadLocalPowerTakeOff(self.xmlFile, localKey, powerTakeOffLocal) then
+		if self:loadLocalPowerTakeOff(xmlFile, localKey, powerTakeOffLocal) then
 			table.insert(spec.localPowerTakeOffs, powerTakeOffLocal)
 		end
 	end)
@@ -361,7 +361,7 @@ function PowerTakeOffs:loadOutputPowerTakeOff(xmlFile, baseName, powerTakeOffOut
 	local outputNode = xmlFile:getValue(baseName .. "#outputNode", nil, self.components, self.i3dMappings)
 
 	if outputNode == nil and powerTakeOffOutput.skipToInputAttacherIndex == nil then
-		Logging.xmlWarning(self.xmlFile, "Pto output needs to have either a valid 'outputNode' or a 'skipToInputAttacherIndex' in '%s'", baseName)
+		Logging.xmlWarning(xmlFile, "Pto output needs to have either a valid 'outputNode' or a 'skipToInputAttacherIndex' in '%s'", baseName)
 
 		return false
 	end
@@ -370,7 +370,7 @@ function PowerTakeOffs:loadOutputPowerTakeOff(xmlFile, baseName, powerTakeOffOut
 	local attacherJointIndicesRaw = xmlFile:getValue(baseName .. "#attacherJointIndices", nil, true)
 
 	if attacherJointIndicesRaw == nil then
-		Logging.xmlWarning(self.xmlFile, "Pto output needs to have valid 'attacherJointIndices' in '%s'", baseName)
+		Logging.xmlWarning(xmlFile, "Pto output needs to have valid 'attacherJointIndices' in '%s'", baseName)
 
 		return false
 	else
@@ -382,10 +382,10 @@ function PowerTakeOffs:loadOutputPowerTakeOff(xmlFile, baseName, powerTakeOffOut
 	powerTakeOffOutput.outputNode = outputNode
 	powerTakeOffOutput.attacherJointIndices = attacherJointIndices
 	powerTakeOffOutput.connectedInput = nil
-	powerTakeOffOutput.ptoName = self.xmlFile:getValue(baseName .. "#ptoName", "DEFAULT_PTO")
+	powerTakeOffOutput.ptoName = xmlFile:getValue(baseName .. "#ptoName", "DEFAULT_PTO")
 	powerTakeOffOutput.objectChanges = {}
 
-	ObjectChangeUtil.loadObjectChangeFromXML(self.xmlFile, baseName, powerTakeOffOutput.objectChanges, self.components, self)
+	ObjectChangeUtil.loadObjectChangeFromXML(xmlFile, baseName, powerTakeOffOutput.objectChanges, self.components, self)
 	ObjectChangeUtil.setObjectChanges(powerTakeOffOutput.objectChanges, false)
 
 	return true
@@ -395,7 +395,7 @@ function PowerTakeOffs:loadInputPowerTakeOff(xmlFile, baseName, powerTakeOffInpu
 	local inputNode = xmlFile:getValue(baseName .. "#inputNode", nil, self.components, self.i3dMappings)
 
 	if inputNode == nil then
-		Logging.xmlWarning(self.xmlFile, "Pto input needs to have a valid 'inputNode' in '%s'", baseName)
+		Logging.xmlWarning(xmlFile, "Pto input needs to have a valid 'inputNode' in '%s'", baseName)
 
 		return false
 	end
@@ -404,7 +404,7 @@ function PowerTakeOffs:loadInputPowerTakeOff(xmlFile, baseName, powerTakeOffInpu
 	local inputAttacherJointIndicesRaw = xmlFile:getValue(baseName .. "#inputAttacherJointIndices", nil, true)
 
 	if inputAttacherJointIndicesRaw == nil then
-		Logging.xmlWarning(self.xmlFile, "Pto output needs to have valid 'inputAttacherJointIndices' in '%s'", baseName)
+		Logging.xmlWarning(xmlFile, "Pto output needs to have valid 'inputAttacherJointIndices' in '%s'", baseName)
 
 		return false
 	else
@@ -419,10 +419,10 @@ function PowerTakeOffs:loadInputPowerTakeOff(xmlFile, baseName, powerTakeOffInpu
 	powerTakeOffInput.aboveAttacher = xmlFile:getValue(baseName .. "#aboveAttacher", true)
 	powerTakeOffInput.color = xmlFile:getValue(baseName .. "#color", nil, true)
 	powerTakeOffInput.decalColor = xmlFile:getValue(baseName .. "#decalColor", nil, true)
-	powerTakeOffInput.ptoName = self.xmlFile:getValue(baseName .. "#ptoName", "DEFAULT_PTO")
+	powerTakeOffInput.ptoName = xmlFile:getValue(baseName .. "#ptoName", "DEFAULT_PTO")
 	powerTakeOffInput.objectChanges = {}
 
-	ObjectChangeUtil.loadObjectChangeFromXML(self.xmlFile, baseName, powerTakeOffInput.objectChanges, self.components, self)
+	ObjectChangeUtil.loadObjectChangeFromXML(xmlFile, baseName, powerTakeOffInput.objectChanges, self.components, self)
 	ObjectChangeUtil.setObjectChanges(powerTakeOffInput.objectChanges, false)
 
 	local filename = xmlFile:getValue(baseName .. "#filename", "$data/shared/assets/powerTakeOffs/walterscheidW.xml")
@@ -439,7 +439,7 @@ function PowerTakeOffs:loadLocalPowerTakeOff(xmlFile, baseName, powerTakeOffLoca
 	powerTakeOffLocal.inputNode = xmlFile:getValue(baseName .. "#startNode", nil, self.components, self.i3dMappings)
 
 	if powerTakeOffLocal.inputNode == nil then
-		Logging.xmlWarning(self.xmlFile, "Missing startNode for local power take off '%s'", baseName)
+		Logging.xmlWarning(xmlFile, "Missing startNode for local power take off '%s'", baseName)
 
 		return false
 	end
@@ -447,7 +447,7 @@ function PowerTakeOffs:loadLocalPowerTakeOff(xmlFile, baseName, powerTakeOffLoca
 	powerTakeOffLocal.endNode = xmlFile:getValue(baseName .. "#endNode", nil, self.components, self.i3dMappings)
 
 	if powerTakeOffLocal.endNode == nil then
-		Logging.xmlWarning(self.xmlFile, "Missing endNode for local power take off '%s'", baseName)
+		Logging.xmlWarning(xmlFile, "Missing endNode for local power take off '%s'", baseName)
 
 		return false
 	end
@@ -693,11 +693,11 @@ function PowerTakeOffs:loadPowerTakeOffFromConfigFile(powerTakeOff, xmlFilename)
 
 		if i3dFilename ~= nil then
 			i3dFilename = Utils.getFilename(i3dFilename, self.baseDirectory)
+			powerTakeOff.xmlFile = xmlFile
 			powerTakeOff.sharedLoadRequestId = self:loadSubSharedI3DFile(i3dFilename, false, false, self.onPowerTakeOffI3DLoaded, self, {
 				xmlFile,
 				powerTakeOff
 			})
-			powerTakeOff.xmlFile = xmlFile
 		else
 			Logging.xmlWarning(self.xmlFile, "Failed to open powerTakeOff i3d file '%s' in '%s'", i3dFilename, xmlFilename)
 			xmlFile:delete()

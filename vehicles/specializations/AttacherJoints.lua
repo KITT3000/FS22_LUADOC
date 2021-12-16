@@ -278,6 +278,7 @@ function AttacherJoints.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onReadStream", AttacherJoints)
 	SpecializationUtil.registerEventListener(vehicleType, "onWriteStream", AttacherJoints)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", AttacherJoints)
+	SpecializationUtil.registerEventListener(vehicleType, "onUpdateEnd", AttacherJoints)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostUpdate", AttacherJoints)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", AttacherJoints)
 	SpecializationUtil.registerEventListener(vehicleType, "onRegisterActionEvents", AttacherJoints)
@@ -564,6 +565,7 @@ function AttacherJoints:onPostLoad(savegame)
 		SpecializationUtil.removeEventListener(self, "onReadStream", AttacherJoints)
 		SpecializationUtil.removeEventListener(self, "onWriteStream", AttacherJoints)
 		SpecializationUtil.removeEventListener(self, "onUpdate", AttacherJoints)
+		SpecializationUtil.removeEventListener(self, "onUpdateEnd", AttacherJoints)
 		SpecializationUtil.removeEventListener(self, "onPostUpdate", AttacherJoints)
 		SpecializationUtil.removeEventListener(self, "onStateChange", AttacherJoints)
 		SpecializationUtil.removeEventListener(self, "onLightsTypesMaskChanged", AttacherJoints)
@@ -722,6 +724,16 @@ function AttacherJoints:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSel
 			AttacherJoints.updateVehiclesInAttachRange(self, AttacherJoints.MAX_ATTACH_DISTANCE_SQ, AttacherJoints.MAX_ATTACH_ANGLE, true)
 		else
 			info.attacherVehicle, info.attacherVehicleJointDescIndex, info.attachable, info.attachableJointDescIndex = nil
+		end
+	end
+end
+
+function AttacherJoints:onUpdateEnd(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	local spec = self.spec_attacherJoints
+
+	for _, implement in pairs(spec.attachedImplements) do
+		if implement.object ~= nil and self.updateLoopIndex == implement.object.updateLoopIndex then
+			self:updateAttacherJointGraphics(implement, dt)
 		end
 	end
 end
@@ -3326,7 +3338,10 @@ function AttacherJoints:getTotalMass(superFunc, onlyGivenVehicle)
 	if onlyGivenVehicle == nil or not onlyGivenVehicle then
 		for _, implement in pairs(spec.attachedImplements) do
 			local object = implement.object
-			mass = mass + object:getTotalMass(onlyGivenVehicle)
+
+			if object ~= nil then
+				mass = mass + object:getTotalMass(onlyGivenVehicle)
+			end
 		end
 	end
 
@@ -3337,7 +3352,11 @@ function AttacherJoints:addChildVehicles(superFunc, vehicles)
 	local spec = self.spec_attacherJoints
 
 	for _, implement in pairs(spec.attachedImplements) do
-		implement.object:addChildVehicles(vehicles)
+		local object = implement.object
+
+		if object ~= nil and object.addChildVehicles ~= nil then
+			object:addChildVehicles(vehicles)
+		end
 	end
 
 	return superFunc(self, vehicles)
@@ -3350,7 +3369,7 @@ function AttacherJoints:getAirConsumerUsage(superFunc)
 	for _, implement in pairs(spec.attachedImplements) do
 		local object = implement.object
 
-		if object.getAttachbleAirConsumerUsage ~= nil then
+		if object ~= nil and object.getAttachbleAirConsumerUsage ~= nil then
 			usage = usage + object:getAttachbleAirConsumerUsage()
 		end
 	end
@@ -3362,7 +3381,11 @@ function AttacherJoints:addVehicleToAIImplementList(superFunc, list)
 	superFunc(self, list)
 
 	for _, implement in pairs(self:getAttachedImplements()) do
-		implement.object:addVehicleToAIImplementList(list)
+		local object = implement.object
+
+		if object ~= nil and object.addVehicleToAIImplementList ~= nil then
+			object:addVehicleToAIImplementList(list)
+		end
 	end
 end
 
@@ -3370,8 +3393,12 @@ function AttacherJoints:collectAIAgentAttachments(superFunc, aiDrivableVehicle)
 	superFunc(self, aiDrivableVehicle)
 
 	for _, implement in pairs(self:getAttachedImplements()) do
-		implement.object:collectAIAgentAttachments(aiDrivableVehicle)
-		aiDrivableVehicle:startNewAIAgentAttachmentChain()
+		local object = implement.object
+
+		if object ~= nil and object.collectAIAgentAttachments ~= nil then
+			object:collectAIAgentAttachments(aiDrivableVehicle)
+			aiDrivableVehicle:startNewAIAgentAttachmentChain()
+		end
 	end
 end
 
@@ -3379,8 +3406,10 @@ function AttacherJoints:setAIVehicleObstacleStateDirty(superFunc)
 	superFunc(self)
 
 	for _, implement in pairs(self:getAttachedImplements()) do
-		if implement.object ~= nil then
-			implement.object:setAIVehicleObstacleStateDirty()
+		local object = implement.object
+
+		if object ~= nil and object.setAIVehicleObstacleStateDirty ~= nil then
+			object:setAIVehicleObstacleStateDirty()
 		end
 	end
 end
@@ -3392,7 +3421,7 @@ function AttacherJoints:getDirectionSnapAngle(superFunc)
 	for _, implement in pairs(spec.attachedImplements) do
 		local object = implement.object
 
-		if object.getDirectionSnapAngle ~= nil then
+		if object ~= nil and object.getDirectionSnapAngle ~= nil then
 			maxAngle = math.max(maxAngle + object:getDirectionSnapAngle())
 		end
 	end
@@ -3406,11 +3435,11 @@ function AttacherJoints:getAICollisionTriggers(superFunc, collisionTriggers)
 	for _, implement in pairs(spec.attachedImplements) do
 		local object = implement.object
 
-		if object.getAIImplementCollisionTriggers ~= nil then
+		if object ~= nil and object.getAIImplementCollisionTriggers ~= nil then
 			object:getAIImplementCollisionTriggers(collisionTriggers)
 		end
 
-		if object.getAICollisionTriggers ~= nil then
+		if object ~= nil and object.getAICollisionTriggers ~= nil then
 			object:getAICollisionTriggers(collisionTriggers)
 		end
 	end
@@ -3424,8 +3453,10 @@ function AttacherJoints:getFillLevelInformation(superFunc, display)
 	superFunc(self, display)
 
 	for _, implement in pairs(spec.attachedImplements) do
-		if implement.object ~= nil then
-			implement.object:getFillLevelInformation(display)
+		local object = implement.object
+
+		if object ~= nil and object.getFillLevelInformation ~= nil then
+			object:getFillLevelInformation(display)
 		end
 	end
 end
@@ -3436,8 +3467,10 @@ function AttacherJoints:attachableAddToolCameras(superFunc)
 	superFunc(self)
 
 	for _, implement in pairs(spec.attachedImplements) do
-		if implement.object ~= nil then
-			implement.object:attachableAddToolCameras()
+		local object = implement.object
+
+		if object ~= nil and object.attachableAddToolCameras ~= nil then
+			object:attachableAddToolCameras()
 		end
 	end
 end
@@ -3448,8 +3481,10 @@ function AttacherJoints:attachableRemoveToolCameras(superFunc)
 	superFunc(self)
 
 	for _, implement in pairs(spec.attachedImplements) do
-		if implement.object ~= nil then
-			implement.object:attachableRemoveToolCameras()
+		local object = implement.object
+
+		if object ~= nil and object.attachableRemoveToolCameras ~= nil then
+			object:attachableRemoveToolCameras()
 		end
 	end
 end
@@ -3462,7 +3497,7 @@ function AttacherJoints:registerSelectableObjects(superFunc, selectableObjects)
 	for _, implement in pairs(spec.attachedImplements) do
 		local object = implement.object
 
-		if object ~= nil then
+		if object ~= nil and object.registerSelectableObjects ~= nil then
 			object:registerSelectableObjects(selectableObjects)
 		end
 	end
@@ -3472,7 +3507,9 @@ function AttacherJoints:getIsReadyForAutomatedTrainTravel(superFunc)
 	local spec = self.spec_attacherJoints
 
 	for _, implement in pairs(spec.attachedImplements) do
-		if implement.object ~= nil and implement.object.getIsReadyForAutomatedTrainTravel ~= nil and not implement.object:getIsReadyForAutomatedTrainTravel() then
+		local object = implement.object
+
+		if object ~= nil and object.getIsReadyForAutomatedTrainTravel ~= nil and not object:getIsReadyForAutomatedTrainTravel() then
 			return false
 		end
 	end
@@ -3498,7 +3535,9 @@ function AttacherJoints:getIsAutomaticShiftingAllowed(superFunc)
 			end
 		end
 
-		if implement.object ~= nil and implement.object.getIsAutomaticShiftingAllowed ~= nil and not implement.object:getIsAutomaticShiftingAllowed() then
+		local object = implement.object
+
+		if object ~= nil and object.getIsAutomaticShiftingAllowed ~= nil and not object:getIsAutomaticShiftingAllowed() then
 			return false
 		end
 	end
@@ -3719,10 +3758,6 @@ function AttacherJoints:onReverseDirectionChanged(direction)
 			joint.time = math.abs(joint.time - spec.attacherJointCombos.duration)
 		end
 	end
-end
-
-function AttacherJoints:onDeactivateLights()
-	self:deactivateAttachmentsLights()
 end
 
 function AttacherJoints:onStateChange(state, data)

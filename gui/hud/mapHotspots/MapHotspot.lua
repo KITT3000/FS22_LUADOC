@@ -43,6 +43,7 @@ function MapHotspot.new(customMt)
 	self.lastScreenLayout = nil
 	self.icon = nil
 	self.clickArea = nil
+	self.forceNoRotation = false
 	self.ownerFarmId = AccessHandler.EVERYONE
 
 	return self
@@ -174,6 +175,10 @@ function MapHotspot:render(x, y, rotation, small)
 	local icon = self.icon
 
 	if icon ~= nil then
+		if self.forceNoRotation then
+			rotation = 0
+		end
+
 		icon:setPosition(x, y)
 		icon:setRotation(rotation or 0, icon.width * 0.5, icon.height * 0.5)
 

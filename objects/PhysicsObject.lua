@@ -201,6 +201,10 @@ function PhysicsObject:onGhostAdd()
 	addToPhysics(self.nodeId)
 end
 
+function PhysicsObject:wakeUp()
+	I3DUtil.wakeUpObject(self.nodeId)
+end
+
 function PhysicsObject:setWorldPositionQuaternion(x, y, z, quatX, quatY, quatZ, quatW, changeInterp)
 	setWorldTranslation(self.nodeId, x, y, z)
 	setWorldQuaternion(self.nodeId, quatX, quatY, quatZ, quatW)

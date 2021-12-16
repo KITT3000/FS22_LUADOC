@@ -181,7 +181,7 @@ function AIFieldWorker:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 
 		for _, implement in pairs(self:getAttachedAIImplements()) do
 			if implement.object:getAINeedsRootAlignment() then
-				local yRot = Utils.getYRotationBetweenNodes(self.components[1].node, implement.object.components[1].node, self.yRotationOffset, implement.object.yRotationOffset)
+				local yRot = Utils.getYRotationBetweenNodes(self:getAIDirectionNode(), implement.object.components[1].node, self.yRotationOffset, implement.object.yRotationOffset)
 
 				if math.abs(yRot) > math.pi / 2 then
 					self:stopCurrentAIJob(AIMessageErrorImplementWrongWay.new())
@@ -462,12 +462,12 @@ function AIFieldWorker:updateAIFieldWorkerDriveStrategies()
 		local foundCombine = false
 		local foundBaler = false
 
-		for _, implement in pairs(spec.aiImplementList) do
-			if SpecializationUtil.hasSpecialization(Combine, implement.object.specializations) then
+		for _, childVehicle in pairs(self.rootVehicle.childVehicles) do
+			if SpecializationUtil.hasSpecialization(Combine, childVehicle.specializations) then
 				foundCombine = true
 			end
 
-			if SpecializationUtil.hasSpecialization(Baler, implement.object.specializations) then
+			if SpecializationUtil.hasSpecialization(Baler, childVehicle.specializations) then
 				foundBaler = true
 			end
 		end

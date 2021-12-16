@@ -149,7 +149,7 @@ function SoundPlayer:previousChannel()
 		end
 
 		if lastChannel ~= self.currentChannel then
-			self:changeChannel()
+			self:changeChannel(lastChannel)
 
 			return true
 		end
@@ -168,7 +168,7 @@ function SoundPlayer:nextChannel()
 		end
 
 		if lastChannel ~= self.currentChannel then
-			self:changeChannel()
+			self:changeChannel(lastChannel)
 
 			return true
 		end
@@ -186,11 +186,14 @@ function SoundPlayer:startChannel()
 	self:updateMetaData()
 end
 
-function SoundPlayer:changeChannel()
+function SoundPlayer:changeChannel(lastChannel)
 	if self.streamingAccessOwner == nil or not getIsSoundPlayerChannelStreamed(self.soundPlayerId, self.currentChannel) then
 		self:startChannel()
 	else
-		self:pause()
+		if getIsSoundPlayerChannelStreamed(self.soundPlayerId, lastChannel) then
+			self:pause()
+		end
+
 		self.streamingAccessOwner:onSoundPlayerStreamAccess()
 	end
 end

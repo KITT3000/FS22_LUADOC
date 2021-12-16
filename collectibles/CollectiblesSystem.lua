@@ -15,6 +15,7 @@ function CollectiblesSystem.new(isServer, customMt)
 end
 
 function CollectiblesSystem:delete()
+	removeConsoleCommand("gsCollectiblesShowAll")
 end
 
 function CollectiblesSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
@@ -126,16 +127,21 @@ function CollectiblesSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 		self.achievementName = collectiblesFile:getString("collectibles#achievementName")
 		self.incompleteNodeIndex = collectiblesFile:getString("collectibles.target.incompleteNode")
 		self.completeNodeIndex = collectiblesFile:getString("collectibles.target.completeNode")
+		self.hotspotThreshold = collectiblesFile:getInt("collectibles#hotspotThreshold", math.floor(totalItems / 4))
 
 		collectiblesFile:delete()
 
 		self.isActive = true
+
+		if g_addCheatCommands and g_currentMission:getIsServer() then
+			addConsoleCommand("gsCollectiblesShowAll", "Shows all collectibles on the map", "consoleCommandShowAll", self)
+		end
 	end
 end
 
 function CollectiblesSystem:loadFromXMLFile(xmlFilename)
 	local xmlFile = XMLFile.load("collectibles", xmlFilename)
-	self.isComplete = xmlFile:getBool("collectibles.isComplete", false)
+	self.isComplete = xmlFile:getBool("collectibles#isComplete", false)
 
 	if not self.isComplete then
 		xmlFile:iterate("collectibles.collectible", function (_, key)
@@ -164,6 +170,7 @@ function CollectiblesSystem:loadFromXMLFile(xmlFilename)
 	xmlFile:delete()
 	self:updateCollectiblesState()
 	self:updateTargetState()
+	self:updateHotspotState()
 end
 
 function CollectiblesSystem:saveToXMLFile(xmlFilename)
@@ -238,6 +245,7 @@ function CollectiblesSystem:onStateEvent(state)
 
 	self:updateTargetState()
 	self:updateCollectiblesState()
+	self:updateHotspotState()
 end
 
 function CollectiblesSystem:updateTargetState()
@@ -296,6 +304,16 @@ function CollectiblesSystem:isCompleted()
 	end
 
 	return true
+end
+
+function CollectiblesSystem:updateHotspotState()
+	local visible = self.hotspotThreshold <= self:getTotalCollected()
+
+	for _, info in pairs(self.collectibles) do
+		if info.object ~= nil then
+			info.object:setHotspotVisible(visible)
+		end
+	end
 end
 
 function CollectiblesSystem:addCollectible(collectible)
@@ -410,4 +428,10 @@ function CollectiblesSystem:getTotalCollectable()
 	else
 		return nil
 	end
+end
+
+function CollectiblesSystem:consoleCommandShowAll()
+	self.hotspotThreshold = 0
+
+	self:updateHotspotState()
 end

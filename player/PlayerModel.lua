@@ -386,7 +386,18 @@ function PlayerModel:loadFileFinished(rootNode, failedReason, arguments)
 		ParticleUtil.loadParticleSystem(xmlFile, self.particleSystemsInformation.systems.swim, "player.particleSystems.swim", self.particleSystemsInformation.swimNode, false, nil, self.baseDirectory)
 		ParticleUtil.loadParticleSystem(xmlFile, self.particleSystemsInformation.systems.plunge, "player.particleSystems.plunge", self.particleSystemsInformation.plungeNode, false, nil, self.baseDirectory)
 	else
-		link(self.rootNode, self.skeleton)
+		if not isAnimated then
+			local linkNode = createTransformGroup("characterLinkNode")
+
+			link(self.rootNode, linkNode)
+			link(linkNode, self.skeleton)
+
+			local x, y, z = localToLocal(self.thirdPersonSpineNode, self.skeleton, 0, 0, 0)
+
+			setTranslation(linkNode, -x, -y, -z)
+		else
+			link(self.rootNode, self.skeleton)
+		end
 
 		if self.pickUpKinematicHelperNode ~= nil then
 			delete(self.pickUpKinematicHelperNode)
@@ -399,12 +410,6 @@ function PlayerModel:loadFileFinished(rootNode, failedReason, arguments)
 
 			self.lightNode = nil
 		end
-
-		local offset = {
-			localToLocal(self.thirdPersonSpineNode, self.skeleton, 0, 0, 0)
-		}
-
-		setTranslation(self.skeleton, -offset[1], -offset[2], -offset[3])
 	end
 
 	if isRealPlayer and Platform.hasPlayer then
@@ -745,7 +750,9 @@ function PlayerModel:getCurrentSurfaceSound(x, y, z, waterLevel, waterY)
 
 	local hitTerrain = self.belowPlayerObject == g_currentMission.terrainRootNode
 	local deltaWater = y - waterY
-	local shallowWater = waterLevel < deltaWater and deltaWater < 0
+	local isInWater = deltaWater < 0
+	local shallowWater = isInWater and deltaWater >= -0.6
+	local mediumWater = isInWater and waterLevel < deltaWater and not shallowWater
 
 	if hitTerrain then
 		local snowHeight = g_currentMission.snowSystem:getSnowHeightAtArea(x, z, x + 0.1, z + 0.1, x + 0.1, z)
@@ -757,6 +764,8 @@ function PlayerModel:getCurrentSurfaceSound(x, y, z, waterLevel, waterY)
 
 			if isOnField then
 				return self.soundInformation.surfaceNameToSound.field, shallowWater
+			elseif mediumWater then
+				return self.soundInformation.surfaceNameToSound.mediumWater, shallowWater
 			elseif shallowWater then
 				return self.soundInformation.surfaceNameToSound.shallowWater, shallowWater
 			end

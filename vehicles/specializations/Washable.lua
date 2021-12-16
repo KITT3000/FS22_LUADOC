@@ -283,7 +283,7 @@ function Washable:setNodeDirtAmount(nodeData, dirtAmount, force)
 			local node = nodeData.nodes[i]
 			local x, _, z, w = getShaderParameter(node, "RDT")
 
-			setShaderParameter(node, "RDT", x, nodeData.dirtAmount, z, w, false)
+			setShaderParameter(node, "RDT", x, nodeData.dirtAmount, 0, w, false)
 		end
 
 		if self.isServer then
@@ -482,8 +482,20 @@ function Washable:updateDebugValues(values)
 	local spec = self.spec_washable
 
 	if spec.washableNodes ~= nil then
+		local allowsWashingByRain = self:getAllowsWashingByType(Washable.WASHTYPE_RAIN)
+		local rainScale = 0
+		local timeSinceLastRain = 0
+		local temperature = 0
+
+		if allowsWashingByRain then
+			local weather = g_currentMission.environment.weather
+			rainScale = weather:getRainFallScale()
+			timeSinceLastRain = weather:getTimeSinceLastRain()
+			temperature = weather:getCurrentTemperature()
+		end
+
 		for i, nodeData in ipairs(spec.washableNodes) do
-			local changedAmount = nodeData.updateFunc(self, nodeData, 3600000)
+			local changedAmount = nodeData.updateFunc(self, nodeData, 3600000, allowsWashingByRain, rainScale, timeSinceLastRain, temperature)
 
 			table.insert(values, {
 				name = "WashableNode" .. i,

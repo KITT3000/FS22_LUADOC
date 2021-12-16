@@ -1,12 +1,13 @@
 FillTrigger = {
-	TRIGGER_MASK = 1073741824
+	TRIGGER_MASK = CollisionFlag.FILLABLE
 }
 local FillTrigger_mt = Class(FillTrigger)
 
 function FillTrigger:onCreate(id)
 	local fillTrigger = FillTrigger.new(id)
+	local moneyChangeType = MoneyType.register("other", "finance_purchaseFuel")
 
-	fillTrigger:finalize()
+	fillTrigger:setMoneyChangeType(moneyChangeType)
 	g_currentMission:addNonUpdateable(fillTrigger)
 end
 
@@ -35,8 +36,8 @@ function FillTrigger.new(id, sourceObject, fillUnitIndex, fillLitersPerSecond, d
 	return self
 end
 
-function FillTrigger:finalize()
-	self.moneyChangeType = MoneyType.getMoneyType("other", "finance_purchaseFuel")
+function FillTrigger:setMoneyChangeType(moneyChangeType)
+	self.moneyChangeType = moneyChangeType
 end
 
 function FillTrigger:delete()

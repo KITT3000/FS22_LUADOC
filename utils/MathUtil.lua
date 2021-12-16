@@ -850,7 +850,7 @@ function MathUtil.getSteeringAngleFromDeviceGravity(x, y, z)
 end
 
 function MathUtil.catmullRom(p0, p1, p2, p3, t)
-	return 0.5 * (2 * p1 + -p0 * p2 * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t)
+	return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t)
 end
 
 function MathUtil.equalEpsilon(a, b, epsilon)

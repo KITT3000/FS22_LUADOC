@@ -21,7 +21,7 @@ end
 
 function MoneyChangeEvent:writeStream(streamId, connection)
 	streamWriteFloat32(streamId, self.amount)
-	streamWriteUInt8(streamId, self.moneyType.id)
+	streamWriteUInt16(streamId, self.moneyType.id)
 	streamWriteUIntN(streamId, self.farmId, FarmManager.FARM_ID_SEND_NUM_BITS)
 
 	if self.text ~= nil then
@@ -34,7 +34,8 @@ end
 
 function MoneyChangeEvent:readStream(streamId, connection)
 	self.amount = streamReadFloat32(streamId)
-	self.moneyType = MoneyType.getMoneyTypeById(streamReadUInt8(streamId))
+	local moneyTypeId = streamReadUInt16(streamId)
+	self.moneyType = MoneyType.getMoneyTypeById(moneyTypeId)
 	self.farmId = streamReadUIntN(streamId, FarmManager.FARM_ID_SEND_NUM_BITS)
 
 	if streamReadBool(streamId) then
@@ -45,7 +46,7 @@ function MoneyChangeEvent:readStream(streamId, connection)
 end
 
 function MoneyChangeEvent:run(connection)
-	if g_currentMission:getFarmId() == self.farmId then
+	if g_currentMission:getFarmId() == self.farmId and self.moneyType ~= nil then
 		g_currentMission.hud:addMoneyChange(self.moneyType, self.amount)
 
 		local text = nil

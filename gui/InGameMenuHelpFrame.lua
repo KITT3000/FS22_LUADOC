@@ -149,3 +149,9 @@ function InGameMenuHelpFrame:getPage(categoryIndex, pageIndex)
 
 	return categories[categoryIndex].pages[pageIndex]
 end
+
+function InGameMenuHelpFrame:openPage(categoryIndex, pageIndex)
+	self:setSoundSuppressed(true)
+	self.helpLineList:setSelectedItem(categoryIndex, pageIndex, true, 1)
+	self:setSoundSuppressed(false)
+end

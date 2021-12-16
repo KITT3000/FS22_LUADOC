@@ -32,13 +32,7 @@ function Bale.registerSavegameXMLPaths(schema, basePath)
 end
 
 function Bale.new(isServer, isClient, customMt)
-	local mt = customMt
-
-	if mt == nil then
-		mt = Bale_mt
-	end
-
-	local self = MountableObject.new(isServer, isClient, mt)
+	local self = MountableObject.new(isServer, isClient, customMt or Bale_mt)
 	self.forcedClipDistance = 300
 
 	registerObjectClassName(self, "Bale")
@@ -88,12 +82,7 @@ function Bale:delete()
 		g_baleManager:removeFermentation(self)
 	end
 
-	if self.obstacleNodeId ~= nil then
-		g_currentMission.aiSystem:removeObstacle(self.obstacleNodeId)
-
-		self.obstacleNodeId = nil
-	end
-
+	self:setBaleAIObstacle(false)
 	g_currentMission:removeLimitedObject(FSBaseMission.LIMITED_OBJECT_TYPE_BALE, self)
 	unregisterObjectClassName(self)
 	g_currentMission.itemSystem:removeItemToSave(self)
@@ -267,12 +256,14 @@ end
 function Bale:mount(object, node, x, y, z, rx, ry, rz)
 	g_currentMission.itemSystem:removeItemToSave(self)
 	Bale:superClass().mount(self, object, node, x, y, z, rx, ry, rz)
+	self:setBaleAIObstacle(false)
 end
 
 function Bale:unmount()
 	if Bale:superClass().unmount(self) then
 		g_currentMission.itemSystem:addItemToSave(self)
 		self:setReducedComponentMass(false)
+		self:setBaleAIObstacle(true)
 
 		return true
 	end
@@ -283,12 +274,14 @@ end
 function Bale:mountKinematic(object, node, x, y, z, rx, ry, rz)
 	g_currentMission.itemSystem:removeItemToSave(self)
 	Bale:superClass().mountKinematic(self, object, node, x, y, z, rx, ry, rz)
+	self:setBaleAIObstacle(false)
 end
 
 function Bale:unmountKinematic()
 	if Bale:superClass().unmountKinematic(self) then
 		g_currentMission.itemSystem:addItemToSave(self)
 		self:setReducedComponentMass(false)
+		self:setBaleAIObstacle(true)
 
 		return true
 	end
@@ -296,9 +289,27 @@ function Bale:unmountKinematic()
 	return false
 end
 
+function Bale:mountDynamic(object, objectActorId, jointNode, mountType, forceAcceleration)
+	Bale:superClass().mountDynamic(self, object, objectActorId, jointNode, mountType, forceAcceleration)
+	self:setBaleAIObstacle(false)
+end
+
 function Bale:unmountDynamic(isDelete)
 	Bale:superClass().unmountDynamic(self, isDelete)
 	self:setReducedComponentMass(false)
+	self:setBaleAIObstacle(true)
+end
+
+function Bale:setBaleAIObstacle(isActive)
+	if isActive and self.obstacleNodeId == nil then
+		g_currentMission.aiSystem:addObstacle(self.nodeId, nil, nil, nil, nil, nil, nil, nil)
+
+		self.obstacleNodeId = self.nodeId
+	elseif not isActive and self.obstacleNodeId ~= nil then
+		g_currentMission.aiSystem:removeObstacle(self.obstacleNodeId)
+
+		self.obstacleNodeId = nil
+	end
 end
 
 function Bale:createNode(i3dFilename)
@@ -340,9 +351,7 @@ function Bale:loadFromConfigXML(xmlFilename, x, y, z, rx, ry, rz)
 
 	xmlFile:delete()
 	g_currentMission.itemSystem:addItemToSave(self)
-	g_currentMission.aiSystem:addObstacle(self.nodeId, nil, nil, nil, nil, nil, nil, nil)
-
-	self.obstacleNodeId = self.nodeId
+	self:setBaleAIObstacle(true)
 
 	return true
 end
@@ -552,7 +561,7 @@ function Bale:getValue()
 end
 
 function Bale:getMass()
-	return getMass(self.nodeId)
+	return entityExists(self.nodeId or 0) and getMass(self.nodeId) or 0
 end
 
 function Bale:getDefaultMass()
@@ -589,18 +598,24 @@ function Bale:setFillType(fillTypeIndex, fillBale)
 
 		self.defaultMass = fillTypeInfo.mass
 
-		if self.isServer and fillTypeInfo.fermenting ~= nil and not fillTypeInfo.fermenting.requiresWrapping then
-			if self.isFermenting then
-				g_baleManager:removeFermentation(self)
+		if self.isServer then
+			if fillTypeInfo.forceAcceleration ~= nil then
+				self:setMountableObjectAttributes(nil, fillTypeInfo.forceAcceleration, self.dynamicMountForceLimitScale, self.dynamicMountSingleAxisFreeY, self.dynamicMountSingleAxisFreeX)
 			end
 
-			local maxTime = fillTypeInfo.fermenting.time * 86400000
+			if fillTypeInfo.fermenting ~= nil and not fillTypeInfo.fermenting.requiresWrapping then
+				if self.isFermenting then
+					g_baleManager:removeFermentation(self)
+				end
 
-			g_baleManager:registerFermentation(self, 0, maxTime)
+				local maxTime = fillTypeInfo.fermenting.time * 86400000
 
-			self.isFermenting = true
+				g_baleManager:registerFermentation(self, 0, maxTime)
 
-			self:raiseDirtyFlags(self.fermentingDirtyFlag)
+				self.isFermenting = true
+
+				self:raiseDirtyFlags(self.fermentingDirtyFlag)
+			end
 		end
 
 		if fillBale == true then
@@ -778,6 +793,14 @@ function Bale:getAllowPickup()
 	return self.allowPickup
 end
 
+function Bale:getAdditionalMountingDistance()
+	if self.isRoundbale then
+		return 0
+	else
+		return self.height
+	end
+end
+
 function Bale:getIsFermenting()
 	return self.isFermenting
 end
@@ -847,6 +870,73 @@ function Bale:open()
 	self:setWrappingState(0)
 end
 
+function Bale:resetDetailVisibilityCut()
+	for i = 1, #self.meshes do
+		local meshData = self.meshes[i]
+
+		if getHasShaderParameter(meshData.node, "visibilityXZ") then
+			setShaderParameter(meshData.node, "visibilityXZ", 5, -5, 5, -5, false)
+		end
+	end
+end
+
+function Bale:setDetailVisibilityCutNode(node, axis, direction)
+	for i = 1, #self.meshes do
+		Bale.setBaleMeshVisibilityCut(self.meshes[i].node, node, axis, direction, false)
+	end
+end
+
+function Bale.setBaleMeshVisibilityCut(baleMesh, node, axis, direction, recursively)
+	if getHasShaderParameter(baleMesh, "visibilityXZ") then
+		local sx, sy, sz, sw = getShaderParameter(baleMesh, "visibilityXZ")
+		local x, _, z = localToLocal(node, baleMesh, 0, 0, 0)
+
+		if axis == 1 then
+			if direction > 0 then
+				sx = x
+			else
+				sy = x
+			end
+		elseif direction > 0 then
+			sz = z
+		else
+			sw = z
+		end
+
+		setShaderParameter(baleMesh, "visibilityXZ", sx, sy, sz, sw, false)
+	end
+
+	if recursively then
+		for i = 1, getNumOfChildren(baleMesh) do
+			Bale.setBaleMeshVisibilityCut(getChildAt(baleMesh, i - 1), node, axis, direction, recursively)
+		end
+	end
+end
+
+function Bale:doDensityMapItemAreaUpdate(func, target, ...)
+	local gridSize = 0.25
+
+	if self.isRoundbale then
+		local x, _, z = getWorldTranslation(self.nodeId)
+		local sizeFactor = 0.4
+		local x0 = x + self.width * sizeFactor
+		local z0 = z + self.width * sizeFactor
+		local x1 = x - self.width * sizeFactor
+		local z1 = z + self.width * sizeFactor
+		local x2 = x + self.width * sizeFactor
+		local z2 = z - self.width * sizeFactor
+
+		func(target, x0 + gridSize, z0 + gridSize, x1 + gridSize, z1 + gridSize, x2 + gridSize, z2 + gridSize, ...)
+	else
+		local sizeFactor = 0.4
+		local x0, _, z0 = localToWorld(self.nodeId, self.width * sizeFactor, self.height * sizeFactor, self.length * sizeFactor)
+		local x1, _, z1 = localToWorld(self.nodeId, -self.width * sizeFactor, -self.height * sizeFactor, self.length * sizeFactor)
+		local x2, _, z2 = localToWorld(self.nodeId, self.width * sizeFactor, self.height * sizeFactor, -self.length * sizeFactor)
+
+		func(target, x0 + gridSize, z0 + gridSize, x1 + gridSize, z1 + gridSize, x2 + gridSize, z2 + gridSize, ...)
+	end
+end
+
 function Bale:showInfo(box)
 	local fillType = self:getFillType()
 	local fillLevel = self:getFillLevel()
@@ -904,6 +994,7 @@ function Bale.loadFillTypesFromXML(fillTypes, xmlFile, baseDirectory)
 				fillTypeIndex = fillTypeIndex,
 				capacity = xmlFile:getValue(key .. "#capacity", 1000),
 				mass = xmlFile:getValue(key .. "#mass", 500) / 1000,
+				forceAcceleration = xmlFile:getValue(key .. "#forceAcceleration"),
 				supportsWrapping = xmlFile:getValue(key .. "#supportsWrapping", false)
 			}
 			local diffuseFilename = xmlFile:getValue(key .. ".diffuse#filename")

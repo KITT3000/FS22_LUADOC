@@ -80,6 +80,7 @@ function FillTypeManager:initDataStructures()
 	self.fillTypeTextureDiffuseMap = nil
 	self.fillTypeTextureNormalMap = nil
 	self.fillTypeTextureSpecularMap = nil
+	self.modsToLoad = {}
 	FillType = self.nameToIndex
 	FillTypeCategory = self.categories
 end
@@ -87,7 +88,7 @@ end
 function FillTypeManager:loadDefaultTypes()
 	local xmlFile = loadXMLFile("fillTypes", "data/maps/maps_fillTypes.xml")
 
-	self:loadFillTypes(xmlFile, nil, nil, true)
+	self:loadFillTypes(xmlFile, nil, true, nil)
 	delete(xmlFile)
 end
 
@@ -95,13 +96,28 @@ function FillTypeManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 	FillTypeManager:superClass().loadMapData(self)
 	self:loadDefaultTypes()
 
-	if XMLUtil.loadDataFromMapXML(xmlFile, "fillTypes", baseDirectory, self, self.loadFillTypes, missionInfo, baseDirectory) then
+	if XMLUtil.loadDataFromMapXML(xmlFile, "fillTypes", baseDirectory, self, self.loadFillTypes, baseDirectory, false, missionInfo.customEnvironment) then
+		for _, data in ipairs(self.modsToLoad) do
+			local fillTypesXmlFile = XMLFile.load("fillTypes", data[1], FillTypeManager.xmlSchema)
+
+			g_fillTypeManager:loadFillTypes(fillTypesXmlFile, data[2], false, data[3])
+			fillTypesXmlFile:delete()
+		end
+
 		self:constructFillTypeTextureArrays()
 
 		return true
 	end
 
 	return false
+end
+
+function FillTypeManager:addModWithFillTypes(xmlFilename, baseDirectory, customEnvironment)
+	table.insert(self.modsToLoad, {
+		xmlFilename,
+		baseDirectory,
+		customEnvironment
+	})
 end
 
 function FillTypeManager:unloadMapData()
@@ -114,12 +130,15 @@ function FillTypeManager:unloadMapData()
 	FillTypeManager:superClass().unloadMapData(self)
 end
 
-function FillTypeManager:loadFillTypes(xmlFile, missionInfo, baseDirectory, isBaseType)
+function FillTypeManager:loadFillTypes(xmlFile, baseDirectory, isBaseType, customEnv)
 	if type(xmlFile) ~= "table" then
 		xmlFile = XMLFile.wrap(xmlFile, FillTypeManager.xmlSchema)
 	end
 
-	self:addFillType("UNKNOWN", "Unknown", false, 0, 0, 0, "", baseDirectory, nil, nil, nil, nil, {}, nil, nil, nil, nil, nil, nil, nil, nil, isBaseType or false)
+	if isBaseType then
+		self:addFillType("UNKNOWN", "Unknown", false, 0, 0, 0, "", baseDirectory, nil, nil, nil, nil, {}, nil, nil, nil, nil, nil, nil, nil, nil, isBaseType)
+	end
+
 	xmlFile:iterate("map.fillTypes.fillType", function (_, key)
 		local name = xmlFile:getValue(key .. "#name")
 		local title = xmlFile:getValue(key .. "#title")
@@ -148,12 +167,6 @@ function FillTypeManager:loadFillTypes(xmlFile, missionInfo, baseDirectory, isBa
 		local normalMapFilename = xmlFile:getValue(key .. ".textures#normal")
 		local specularMapFilename = xmlFile:getValue(key .. ".textures#specular")
 		local distanceFilename = xmlFile:getValue(key .. ".textures#distance")
-		local customEnv = nil
-
-		if missionInfo ~= nil then
-			customEnv = missionInfo.customEnvironment
-		end
-
 		local prioritizedEffectType = xmlFile:getValue(key .. ".effects#prioritizedEffectType") or "ShaderPlaneEffect"
 		local fillSmokeColor = xmlFile:getValue(key .. ".effects#fillSmokeColor", nil, true)
 		local fruitSmokeColor = xmlFile:getValue(key .. ".effects#fruitSmokeColor", nil, true)
@@ -285,7 +298,7 @@ function FillTypeManager:addFillType(name, title, showOnPriceTable, pricePerLite
 		table.insert(self.fillTypes, fillType)
 	end
 
-	fillType.achievementName = achievementName
+	fillType.achievementName = achievementName or fillType.achievementName
 	fillType.showOnPriceTable = Utils.getNoNil(showOnPriceTable, Utils.getNoNil(fillType.showOnPriceTable, false))
 	fillType.pricePerLiter = Utils.getNoNil(pricePerLiter, Utils.getNoNil(fillType.pricePerLiter, 0))
 	fillType.massPerLiter = Utils.getNoNil(massPerLiter, Utils.getNoNil(fillType.massPerLiter, 0.0001)) * FillTypeManager.MASS_SCALE
@@ -337,15 +350,17 @@ function FillTypeManager:addFillType(name, title, showOnPriceTable, pricePerLite
 		fillType.fillPlaneColors[3] = fillType.fillPlaneColors[3] or 1
 	end
 
-	fillType.economy = {
-		factors = {}
+	fillType.economy = fillType.economy or {
+		factors = {},
+		history = {}
 	}
 
 	for period = Environment.PERIOD.EARLY_SPRING, Environment.PERIOD.LATE_WINTER do
-		fillType.economy.factors[period] = economicCurve[period] or 1
+		fillType.economy.factors[period] = economicCurve[period] or fillType.economy.factors[period] or 1
+		fillType.economy.history[period] = fillType.economy.factors[period] * fillType.pricePerLiter
 	end
 
-	fillType.prioritizedEffectType = prioritizedEffectType
+	fillType.prioritizedEffectType = prioritizedEffectType or fillType.prioritizedEffectType
 
 	if fillSmokeColor ~= nil and #fillSmokeColor == 4 then
 		fillType.fillSmokeColor = fillSmokeColor

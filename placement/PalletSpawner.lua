@@ -166,7 +166,7 @@ function PalletSpawner:onSpawnSearchFinished(location)
 	local objectToSpawn = self.currentObjectToSpawn
 
 	if location ~= nil then
-		location.yOffset = 0.3
+		location.y = location.y + 0.25
 
 		VehicleLoadingUtil.loadVehicle(objectToSpawn.pallet.filename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, objectToSpawn.farmId, nil, nil, self.onFinishLoadingPallet, self)
 	else

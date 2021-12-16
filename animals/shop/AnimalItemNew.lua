@@ -11,12 +11,19 @@ function AnimalItemNew.new(subTypeIndex, age)
 		{
 			title = g_i18n:getText("ui_age"),
 			value = g_i18n:formatNumMonth(self.visual.minAge)
-		},
-		{
-			title = g_i18n:getText("infohud_reproduction"),
-			value = g_i18n:formatNumMonth(subType.reproductionDurationMonth)
 		}
 	}
+
+	if subType.supportsReproduction then
+		table.insert(self.infos, {
+			title = g_i18n:getText("infohud_reproductionDuration"),
+			value = g_i18n:formatNumMonth(subType.reproductionDurationMonth)
+		})
+		table.insert(self.infos, {
+			title = g_i18n:getText("infohud_reproductionMinAge"),
+			value = g_i18n:formatNumMonth(subType.reproductionMinAgeMonth)
+		})
+	end
 
 	return self
 end

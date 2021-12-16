@@ -162,7 +162,6 @@ end
 
 function I3DManager:unpinSharedI3DFileInCache(filename)
 	if filename ~= nil then
-		log("unpinSharedI3DFileInCache", filename)
 		unpinSharedI3DFileInCache(filename)
 	else
 		Logging.error("I3DManager:unpinSharedI3DFileInCache - filename is nil")
@@ -196,6 +195,8 @@ function I3DManager:setLoadingDelay(minDelaySeconds, maxDelaySeconds, minDelayCa
 	setStreamI3DFileDelay(minDelaySeconds, maxDelaySeconds)
 	setStreamSharedI3DFileDelay(minDelaySeconds, maxDelaySeconds, minDelayCachedSeconds, maxDelayCachedSeconds)
 	Logging.info("Set new loading delay. MinDelay: %.2fs, MaxDelay: %.2fs, MinDelayCached: %.2fs, MaxDelayCached: %.2fs", minDelaySeconds, maxDelaySeconds, minDelayCachedSeconds, maxDelayCachedSeconds)
+
+	return string.format("loadingDelay=%dms", I3DManager.loadingDelay)
 end
 
 function I3DManager:consoleCommandSetLoadingDelay(minDelaySec, maxDelaySec, minDelayCachedSec, maxDelayCachedSec)
@@ -209,6 +210,8 @@ end
 
 function I3DManager:consoleCommandShowCache(delay)
 	I3DManager.showCache = not I3DManager.showCache
+
+	return "showCache=" .. tostring(I3DManager.showCache)
 end
 
 function I3DManager:consoleCommandPrintActiveLoadings()
@@ -417,34 +420,40 @@ end)
 I3DManager.addDebugLoadingCheck("Occluder Checks", function (filename, node)
 	local nodeName = getName(node)
 
-	if getHasClassId(node, ClassIds.SHAPE) and (string.contains(nodeName:upper(), "OCCLUDER") or getIsOccluderMesh(node)) then
-		local hasErrors = false
+	if getHasClassId(node, ClassIds.SHAPE) then
+		local isOccluderMesh = getIsOccluderMesh(node)
 
-		if string.contains(nodeName:upper(), "OCCLUDER") and not getIsOccluderMesh(node) then
-			Logging.warning("Mesh is named occluder but does not have the occluder mesh flag set - Node: %s", I3DUtil.getNodePath(node))
+		if string.contains(nodeName:upper(), "OCCLUDER") or isOccluderMesh then
+			local hasErrors = false
 
-			hasErrors = true
-		elseif not string.contains(nodeName:upper(), "OCCLUDER") and getIsOccluderMesh(node) then
-			Logging.warning("Mesh has occluder flag set but is not named 'occluder' - Node: %s", I3DUtil.getNodePath(node))
+			if string.contains(nodeName:upper(), "OCCLUDER") and not isOccluderMesh then
+				Logging.warning("Mesh is named occluder but does not have the occluder mesh flag set - Node: %s", I3DUtil.getNodePath(node))
 
-			hasErrors = true
+				hasErrors = true
+			elseif not string.contains(nodeName:upper(), "OCCLUDER") and isOccluderMesh then
+				Logging.warning("Mesh has occluder flag set but is not named 'occluder' - Node: %s", I3DUtil.getNodePath(node))
+
+				hasErrors = true
+			end
+
+			if isOccluderMesh then
+				if not getVisibility(node) or not getVisibility(getParent(node)) then
+					Logging.warning("Occluder mesh is not visible and will not function. Use 'non-renderable' flag for hiding instead - Node: %s", I3DUtil.getNodePath(node))
+
+					hasErrors = true
+				end
+
+				local _, _, _, boundingRadius = getShapeBoundingSphere(node)
+
+				if boundingRadius < 2 then
+					Logging.warning("Occluder is very small , bounding radius %.3f - Node: %s", boundingRadius, I3DUtil.getNodePath(node))
+
+					hasErrors = true
+				end
+			end
+
+			return hasErrors
 		end
-
-		if not getVisibility(node) or not getVisibility(getParent(node)) then
-			Logging.warning("Occluder mesh is not visible and will not function. Use 'non-renderable' flag for hiding instead - Node: %s", I3DUtil.getNodePath(node))
-
-			hasErrors = true
-		end
-
-		local _, _, _, boundingRadius = getShapeBoundingSphere(node)
-
-		if boundingRadius < 2 then
-			Logging.warning("Occluder is very small , bounding radius %.3f - Node: %s", boundingRadius, I3DUtil.getNodePath(node))
-
-			hasErrors = true
-		end
-
-		return hasErrors
 	end
 
 	return false

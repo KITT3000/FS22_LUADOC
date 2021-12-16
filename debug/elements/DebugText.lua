@@ -47,14 +47,14 @@ function DebugText:createWithNode(node, text, size)
 	local x, y, z = getWorldTranslation(node)
 	local rotX, rotY, rotZ = getWorldRotation(node)
 
-	self:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, text, size)
+	return self:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, text, size)
 end
 
 function DebugText:createWithNodeToCamera(node, yOffset, text, size)
 	self.alignToCamera = true
 	local x, y, z = localToWorld(node, 0, yOffset, 0)
 
-	self:createWithWorldPosAndRot(x, y, z, 0, self:getRotationToCamera(x, y, z), 0, text, size)
+	return self:createWithWorldPosAndRot(x, y, z, 0, self:getRotationToCamera(x, y, z), 0, text, size)
 end
 
 function DebugText:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, text, size)
@@ -66,6 +66,8 @@ function DebugText:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, text, siz
 	self.rotX = rotX
 	self.text = text
 	self.size = size
+
+	return self
 end
 
 function DebugText:getRotationToCamera(x, y, z)

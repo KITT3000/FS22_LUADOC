@@ -48,9 +48,23 @@ function BuyingStation:load(components, xmlFile, key, customEnv, i3dMappings)
 		i = i + 1
 	end
 
-	self.moneyChangeType = MoneyType.getMoneyType("other", "finance_other")
+	if self.isServer then
+		self.moneyChangeType = MoneyType.register("other", "finance_other")
+	end
 
 	return true
+end
+
+function BuyingStation:readStream(streamId, connection)
+	local moneyTypeId = streamReadUInt16(streamId)
+	self.moneyChangeType = MoneyType.registerWithId(moneyTypeId, "other", "finance_other")
+
+	BuyingStation:superClass().readStream(self, streamId, connection)
+end
+
+function BuyingStation:writeStream(streamId, connection)
+	streamWriteUInt16(streamId, self.moneyChangeType.id)
+	BuyingStation:superClass().writeStream(self, streamId, connection)
 end
 
 function BuyingStation:update(dt)

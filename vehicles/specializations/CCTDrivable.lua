@@ -8,6 +8,8 @@ CCTDrivable = {
 		schema:setXMLSpecializationType("CCTDrivable")
 		schema:register(XMLValueType.FLOAT, "vehicle.cctDrivable#cctRadius", "CCT radius", 1)
 		schema:register(XMLValueType.FLOAT, "vehicle.cctDrivable#cctHeight", "CCT height", 1)
+		schema:register(XMLValueType.FLOAT, "vehicle.cctDrivable#cctSlopeLimit", "CCT slope limit", 25)
+		schema:register(XMLValueType.FLOAT, "vehicle.cctDrivable#cctStepOffset", "CCT step offset", 0.35)
 		schema:register(XMLValueType.FLOAT, "vehicle.cctDrivable#customOffset", "CCT custom offset", 0)
 		schema:setXMLSpecializationType()
 	end
@@ -34,6 +36,8 @@ function CCTDrivable:onLoad(savegame)
 	local spec = self.spec_cctdrivable
 	spec.cctRadius = self.xmlFile:getValue("vehicle.cctDrivable#cctRadius", 1)
 	spec.cctHeight = self.xmlFile:getValue("vehicle.cctDrivable#cctHeight", 1)
+	spec.cctSlopeLimit = self.xmlFile:getValue("vehicle.cctDrivable#cctSlopeLimit", 25)
+	spec.cctStepOffset = self.xmlFile:getValue("vehicle.cctDrivable#cctStepOffset", 0.3)
 	spec.customOffset = self.xmlFile:getValue("vehicle.cctDrivable#customOffset", 0)
 	spec.cctCenterOffset = spec.cctRadius + spec.cctHeight * 0.5
 	spec.kinematicCollisionMask = 4
@@ -45,7 +49,7 @@ function CCTDrivable:onLoad(savegame)
 
 		link(getRootNode(), spec.cctNode)
 
-		spec.controllerIndex = createCCT(spec.cctNode, spec.cctRadius, spec.cctHeight, 0.6, 45, 0.1, spec.kinematicCollisionMask, mass)
+		spec.controllerIndex = createCCT(spec.cctNode, spec.cctRadius, spec.cctHeight, spec.cctStepOffset, spec.cctSlopeLimit, 0.1, spec.kinematicCollisionMask, mass)
 	end
 end
 

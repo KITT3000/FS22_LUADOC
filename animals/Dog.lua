@@ -37,7 +37,7 @@ function Dog:load(spawner, xmlFilename, spawnX, spawnY, spawnZ)
 	self.spawnZ = spawnZ
 	self.xmlFilename = xmlFilename
 	self.name = g_currentMission.animalNameSystem:getRandomName()
-	self.dogInstance = createAnimalCompanionManager("dog", self.xmlFilename, "dog", self.spawnX, self.spawnY, self.spawnZ, g_currentMission.terrainRootNode, self.isServer, self.isClient, 1)
+	self.dogInstance = createAnimalCompanionManager("dog", self.xmlFilename, "dog", self.spawnX, self.spawnY, self.spawnZ, g_currentMission.terrainRootNode, self.isServer, self.isClient, 1, AudioGroup.ENVIRONMENT)
 
 	if self.dogInstance == 0 then
 		return false

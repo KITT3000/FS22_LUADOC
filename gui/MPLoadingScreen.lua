@@ -153,6 +153,7 @@ function MPLoadingScreen:onClickOk(element)
 		g_inputBinding:setShowMouseCursor(false)
 
 		if (g_currentMission:getIsServer() and not self.missionInfo.isValid or not g_currentMission:getIsServer() and self.knownPlayerOnServer == false) and (not g_isPresentationVersion or g_isPresentationVersionWardrobeEnabled) then
+			g_wardrobeScreen:setNextOpenIsNewCharacter()
 			g_gui:changeScreen(nil, WardrobeScreen)
 		end
 

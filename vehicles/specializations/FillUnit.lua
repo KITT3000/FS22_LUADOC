@@ -385,6 +385,10 @@ function FillUnit:onPostLoad(savegame)
 				end
 			end
 		end
+
+		for i, fillUnit in ipairs(spec.fillUnits) do
+			self:updateAlarmTriggers(fillUnit.alarmTriggers)
+		end
 	end
 
 	if #spec.fillUnits == 0 then
@@ -1085,7 +1089,7 @@ function FillUnit:loadFillUnitUnloadingFromXML(xmlFile, key, entry, index)
 	return true
 end
 
-function FillUnit:getAllowLoadTriggerActivation()
+function FillUnit:getAllowLoadTriggerActivation(rootVehicle)
 	if self.rootVehicle == g_currentMission.controlledVehicle then
 		return true
 	end
@@ -1239,7 +1243,7 @@ function FillUnit:addFillUnitFillLevel(farmId, fillUnitIndex, fillLevelDelta, fi
 			return 0
 		end
 
-		if fillLevelDelta > 0 and not fillUnit.ignoreFillLimit and g_currentMission.missionInfo.trailerFillLimit then
+		if self.isServer and fillLevelDelta > 0 and not fillUnit.ignoreFillLimit and g_currentMission.missionInfo.trailerFillLimit then
 			local maxMassToApply = self:getAvailableComponentMass()
 			local fillTypeDesc = g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
 
@@ -2401,7 +2405,7 @@ function FillUnit.addFillTypeSources(sources, currentVehicle, excludeVehicle, fi
 	end
 end
 
-function FillUnit.loadSpecValueCapacity(xmlFile, customEnvironment)
+function FillUnit.loadSpecValueCapacity(xmlFile, customEnvironment, baseDir)
 	local function getUnitCapacityAndText(fillUnitKey, capacity)
 		local unitText = xmlFile:getValue(fillUnitKey .. "#unitTextOverride")
 
@@ -2565,7 +2569,7 @@ function FillUnit.getCapacityFromXml(xmlFile)
 	return maxCapacity
 end
 
-function FillUnit.loadSpecValueFillTypes(xmlFile, customEnvironment)
+function FillUnit.loadSpecValueFillTypes(xmlFile, customEnvironment, baseDir)
 	local fillTypeNames, fillTypeCategoryNames, fillTypes, fruitTypeNames = nil
 	local fillTypesByConfiguration = {}
 	local rootName = xmlFile:getRootName()
@@ -2747,7 +2751,7 @@ function FillUnit.getSpecValueFillTypes(storeItem, realItem, configurations)
 	return nil
 end
 
-function FillUnit.loadSpecValueFillUnitMassData(xmlFile, customEnvironment)
+function FillUnit.loadSpecValueFillUnitMassData(xmlFile, customEnvironment, baseDir)
 	local fillUnitMassData = {}
 
 	xmlFile:iterate("vehicle.motorized.consumerConfigurations.consumerConfiguration(0).consumer", function (index, key)

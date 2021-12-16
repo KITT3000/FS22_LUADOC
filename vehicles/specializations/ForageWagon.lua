@@ -198,7 +198,7 @@ function ForageWagon:processForageWagonArea(workArea)
 		end
 	end
 
-	if spec.additives.available then
+	if self.isServer and spec.additives.available then
 		local fillTypeSupported = false
 
 		for i = 1, #spec.additives.fillTypes do

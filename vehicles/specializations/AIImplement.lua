@@ -117,6 +117,7 @@ function AIImplement.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "removeNodeObjectMapping", AIImplement.removeNodeObjectMapping)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAllowTireTracks", AIImplement.getAllowTireTracks)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getDoConsumePtoPower", AIImplement.getDoConsumePtoPower)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "checkMovingPartDirtyUpdateNode", AIImplement.checkMovingPartDirtyUpdateNode)
 end
 
 function AIImplement.registerEventListeners(vehicleType)
@@ -292,6 +293,24 @@ function AIImplement:getDoConsumePtoPower(superFunc)
 	end
 
 	return superFunc(self)
+end
+
+function AIImplement:checkMovingPartDirtyUpdateNode(superFunc, node, movingPart)
+	superFunc(self, node, movingPart)
+
+	local spec = self.spec_aiImplement
+
+	if node == spec.leftMarker or node == spec.rightMarker or node == spec.backMarker then
+		Logging.xmlError(self.xmlFile, "Found ai marker node '%s' in active dirty moving part '%s' with limited update distance. Remove limit or adjust hierarchy for correct function. (maxUpdateDistance='-')", getName(node), getName(movingPart.node))
+	end
+
+	if node == spec.sizeLeftMarker or node == spec.sizeRightMarker or node == spec.sizeBackMarker then
+		Logging.xmlError(self.xmlFile, "Found ai size marker node '%s' in active dirty moving part '%s' with limited update distance. Remove limit or adjust hierarchy for correct function. (maxUpdateDistance='-')", getName(node), getName(movingPart.node))
+	end
+
+	if spec.collisionTrigger ~= nil and node == spec.collisionTrigger.node then
+		Logging.xmlError(self.xmlFile, "Found ai collision trigger '%s' in active dirty moving part '%s' with limited update distance. Remove limit or adjust hierarchy for correct function. (maxUpdateDistance='-')", getName(node), getName(movingPart.node))
+	end
 end
 
 function AIImplement:getAIMinTurningRadius()

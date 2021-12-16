@@ -69,14 +69,6 @@ function Environment:onCreateSunLight(node)
 end
 
 function Environment:onCreateWater(id)
-	if Utils.getNoNil(getUserAttribute(id, "isMainWater"), false) then
-		if g_currentMission.environment.water == nil then
-			g_currentMission.environment.water = id
-		else
-			Logging.error("Main water plane already set. Delete user-attribute 'isMainWater' for '%s'!", getName(id))
-		end
-	end
-
 	if not Utils.getNoNil(getUserAttribute(id, "useShapeObjectMask"), false) then
 		setObjectMask(id, bitAND(getObjectMask(id), 4294967167.0))
 	end
@@ -143,10 +135,6 @@ function Environment.new(mission)
 		setIsSummer = ambientSoundSystem:registerModifier("summer", nil),
 		setIsAutumn = ambientSoundSystem:registerModifier("autumn", nil),
 		setIsWinter = ambientSoundSystem:registerModifier("winter", nil),
-		setIsSun = ambientSoundSystem:registerModifier("sun", nil),
-		setIsRain = ambientSoundSystem:registerModifier("rain", nil),
-		setIsCloudy = ambientSoundSystem:registerModifier("cloudy", nil),
-		setIsSnow = ambientSoundSystem:registerModifier("snow", nil),
 		setInVehicle = ambientSoundSystem:registerModifier("inVehicle", nil),
 		setOutVehicle = ambientSoundSystem:registerModifier("outVehicle", nil)
 	}
@@ -182,18 +170,18 @@ function Environment:load(filename)
 	self.realHourTimer = self.realHourLength
 	local ambientSoundModifiers = self.ambientSoundModifiers
 	self.timeRanges = {
-		night = self:loadTimeRange(xmlFile, "night", 20, 5, ambientSoundModifiers.setIsNight),
-		preSunrise = self:loadTimeRange(xmlFile, "preSunrise", 5, 6, ambientSoundModifiers.setIsPreSunrise),
-		sunrise = self:loadTimeRange(xmlFile, "sunrise", 6, 7, ambientSoundModifiers.setIsSunrise),
-		postSunrise = self:loadTimeRange(xmlFile, "postSunrise", 7, 8, ambientSoundModifiers.setIsPostSunrise),
-		morning = self:loadTimeRange(xmlFile, "morning", 8, 11, ambientSoundModifiers.setIsMorning),
-		preNoon = self:loadTimeRange(xmlFile, "preNoon", 11, 12, ambientSoundModifiers.setIsPreNoon),
-		noon = self:loadTimeRange(xmlFile, "noon", 12, 13, ambientSoundModifiers.setIsNoon),
-		postNoon = self:loadTimeRange(xmlFile, "postNoon", 13, 14, ambientSoundModifiers.setIsPostNoon),
-		afternoon = self:loadTimeRange(xmlFile, "afternoon", 14, 17, ambientSoundModifiers.setIsAfternoon),
-		preSunset = self:loadTimeRange(xmlFile, "preSunset", 17, 18, ambientSoundModifiers.setIsPreSunset),
-		sunset = self:loadTimeRange(xmlFile, "sunset", 18, 19, ambientSoundModifiers.setIsSunset),
-		postSunset = self:loadTimeRange(xmlFile, "postSunset", 19, 20, ambientSoundModifiers.setIsPostSunset)
+		night = self:addTimeRange(20, 5, ambientSoundModifiers.setIsNight),
+		preSunrise = self:addTimeRange(5, 6, ambientSoundModifiers.setIsPreSunrise),
+		sunrise = self:addTimeRange(6, 7, ambientSoundModifiers.setIsSunrise),
+		postSunrise = self:addTimeRange(7, 8, ambientSoundModifiers.setIsPostSunrise),
+		morning = self:addTimeRange(8, 11, ambientSoundModifiers.setIsMorning),
+		preNoon = self:addTimeRange(11, 12, ambientSoundModifiers.setIsPreNoon),
+		noon = self:addTimeRange(12, 13, ambientSoundModifiers.setIsNoon),
+		postNoon = self:addTimeRange(13, 14, ambientSoundModifiers.setIsPostNoon),
+		afternoon = self:addTimeRange(14, 17, ambientSoundModifiers.setIsAfternoon),
+		preSunset = self:addTimeRange(17, 18, ambientSoundModifiers.setIsPreSunset),
+		sunset = self:addTimeRange(18, 19, ambientSoundModifiers.setIsSunset),
+		postSunset = self:addTimeRange(19, 20, ambientSoundModifiers.setIsPostSunset)
 	}
 
 	self.daylight:load(xmlFile, baseKey)
@@ -239,7 +227,6 @@ function Environment:load(filename)
 	self.depthOfField = xmlFile:getBool(baseKey .. "#depthOfField", true)
 
 	g_depthOfFieldManager:setEnvironmentDoFEnabled(self.depthOfField)
-	self:updateAmbientSoundModifiers()
 	xmlFile:delete()
 	g_messageCenter:unsubscribeAll(self)
 	g_messageCenter:subscribe(MessageType.OWN_PLAYER_ENTERED, self.onPlayerEntered, self)
@@ -448,8 +435,9 @@ function Environment:updateTimeValues(initialState)
 				self.currentMinute = 0
 			end
 
+			self:updateAmbientSoundModifiers()
+
 			if not initialState then
-				self:updateAmbientSoundModifiers()
 				g_messageCenter:publish(MessageType.MINUTE_CHANGED, self.currentMinute)
 				self.mission:onMinuteChanged(self.currentMinute)
 			end
@@ -509,7 +497,7 @@ function Environment:updateTimeValues(initialState)
 		end
 
 		if self.visualPeriodLocked then
-			self.currentDayInSeason = (self.currentVisualPeriod - 1) % 3 + 1
+			self.currentDayInSeason = math.floor((self.currentVisualPeriod - 1) % 3 * self.daysPerPeriod + 1)
 		else
 			self.currentDayInSeason = math.fmod(self.currentDay - 1, self.daysPerPeriod * 3) + 1
 		end
@@ -563,10 +551,10 @@ function Environment:updateTimeValues(initialState)
 	end
 end
 
-function Environment:loadTimeRange(xmlFile, name, fromDefault, toDefault, ambientSoundModifierFunc)
+function Environment:addTimeRange(from, to, ambientSoundModifierFunc)
 	local data = {
-		from = xmlFile:getFloat(string.format("environment.dayTime.%s#from", name), fromDefault),
-		to = xmlFile:getFloat(string.format("environment.dayTime.%s#to", name), toDefault),
+		from = from,
+		to = to,
 		func = ambientSoundModifierFunc
 	}
 
@@ -575,12 +563,13 @@ end
 
 function Environment:updateAmbientSoundModifiers()
 	local currentHour = self.dayTime / 3600000
+	local seasonizedHour = self.lighting:getHardcodedFromTime(currentHour)
 
 	for _, data in pairs(self.timeRanges) do
 		if data.from < data.to then
-			data.func(data.from <= currentHour and currentHour < data.to)
+			data.func(data.from <= seasonizedHour and seasonizedHour < data.to)
 		else
-			data.func(data.from <= currentHour or currentHour < data.to)
+			data.func(data.from <= seasonizedHour or seasonizedHour < data.to)
 		end
 	end
 end
@@ -605,14 +594,6 @@ end
 
 function Environment:onWeatherChanged(weatherObject)
 	self.environmentMaskSystem:setWeather(weatherObject.weatherType)
-
-	local typeIndex = weatherObject.weatherType.index
-	local ambientSoundModifiers = self.ambientSoundModifiers
-
-	ambientSoundModifiers.setIsSun(typeIndex == WeatherType.SUN)
-	ambientSoundModifiers.setIsRain(typeIndex == WeatherType.RAIN)
-	ambientSoundModifiers.setIsCloudy(typeIndex == WeatherType.CLOUDY)
-	ambientSoundModifiers.setIsSnow(typeIndex == WeatherType.SNOW)
 end
 
 function Environment:resetSceneParameters()
@@ -621,7 +602,7 @@ end
 
 function Environment:getSeasonShaderValue()
 	if self.visualPeriodLocked then
-		return (self.currentVisualSeason - 1) % 4
+		return (self.currentVisualSeason - 1) % 4 + 0.5
 	end
 
 	local pInDay = self.dayTime * Environment.DAYTIME_TO_HOURS_MULT + 0.0001
@@ -654,12 +635,6 @@ function Environment:setSunVisibility(isVisible)
 	else
 		setLightColor(self.baseLighting.sunLightId, 0, 0, 0)
 	end
-end
-
-function Environment:getPercentageIntoYear()
-	local inDay = self.dayTime * Environment.DAYTIME_TO_HOURS_MULT + 0.0001
-
-	return (day - 1) % (3 * self.daysPerPeriod) / (3 * self.daysPerPeriod) / 4 + self.currentSeason / 4 + inDay / (12 * self.daysPerPeriod)
 end
 
 function Environment:getDayAndDayTime(dayTime, dayOffset)
@@ -739,29 +714,6 @@ end
 function Environment:updateJulianDay()
 	if self.daylight ~= nil then
 		self.daylight:setJulianDay(self:getJulianDay())
-
-		local sunRiseStart = self.daylight.nightEnd
-		local sunRiseEnd = self.daylight.dayStart
-		local sunRisePart = (sunRiseEnd - sunRiseStart) / 3
-		self.timeRanges.night.to = sunRiseStart
-		self.timeRanges.preSunrise.from = sunRiseStart
-		self.timeRanges.preSunrise.to = self.timeRanges.preSunrise.from + sunRisePart
-		self.timeRanges.sunrise.from = self.timeRanges.preSunrise.to
-		self.timeRanges.sunrise.to = self.timeRanges.sunrise.from + sunRisePart
-		self.timeRanges.postSunrise.from = self.timeRanges.sunrise.to
-		self.timeRanges.postSunrise.to = sunRiseEnd
-		self.timeRanges.morning.from = sunRiseEnd
-		local sunSetStart = self.daylight.dayEnd
-		local sunSetEnd = self.daylight.nightStart
-		local sunSetPart = (sunSetEnd - sunSetStart) / 3
-		self.timeRanges.afternoon.to = sunSetStart
-		self.timeRanges.preSunset.from = sunSetStart
-		self.timeRanges.preSunset.to = self.timeRanges.preSunset.from + sunSetPart
-		self.timeRanges.sunset.from = self.timeRanges.preSunset.to
-		self.timeRanges.sunset.to = self.timeRanges.sunset.from + sunSetPart
-		self.timeRanges.postSunset.from = self.timeRanges.sunset.to
-		self.timeRanges.postSunset.to = sunSetEnd
-		self.timeRanges.night.from = sunSetEnd
 	end
 end
 
@@ -780,10 +732,10 @@ function Environment.getSeasonFromString(seasonName)
 end
 
 function Environment:getPeriodAndAlphaIntoPeriod()
-	local inDay = self.dayTime * Environment.DAYTIME_TO_HOURS_MULT + 0.0001
-	local dayTimeAlpha = inDay / 3 + (self.currentDayInPeriod - 1) / self.daysPerPeriod
+	local base = self.currentDayInPeriod - 1
+	local time = self.dayTime * Environment.DAYTIME_TO_HOURS_MULT
 
-	return self.currentPeriod, dayTimeAlpha
+	return self.currentPeriod, (base + time) / self.daysPerPeriod
 end
 
 function Environment:getDirtColors()
@@ -819,7 +771,7 @@ function Environment:setFixedPeriod(period)
 		self.visualPeriodLocked = true
 		self.currentVisualPeriod = period
 		self.currentVisualSeason = math.floor((period - 1) / 3)
-		self.currentDayInSeason = (self.currentVisualPeriod - 1) % 3 + 1
+		self.currentDayInSeason = math.floor((self.currentVisualPeriod - 1) % 1.5 * self.daysPerPeriod + 1)
 		self.mission.missionInfo.fixedSeasonalVisuals = period
 
 		self:updateJulianDay()

@@ -36,7 +36,7 @@ function TrafficSystem.new(isServer, isClient, customMt)
 end
 
 function TrafficSystem:load(xmlFilename, transformId, useHighProfile, isServer, isClient)
-	local trafficSystemId = createTrafficSystem(xmlFilename, transformId, useHighProfile, isServer, isClient)
+	local trafficSystemId = createTrafficSystem(xmlFilename, transformId, useHighProfile, isServer, isClient, AudioGroup.ENVIRONMENT)
 
 	if trafficSystemId == 0 then
 		Logging.error("Unable to create TrafficSystem from '%s' and '%s'", xmlFilename, I3DUtil.getNodePath(transformId))
@@ -135,5 +135,21 @@ function TrafficSystem:onDaylightChanged()
 end
 
 function TrafficSystem:getSplineByIndex(splineIndex)
-	return splineIndex < getNumOfChildren(self.rootNodeId) and getChildAt(self.rootNodeId, splineIndex) or nil
+	local splineTargetIndex = splineIndex
+	local currentIndex = 0
+	local foundSpine = nil
+
+	I3DUtil.interateRecursively(self.rootNodeId, function (child)
+		if I3DUtil.getIsSpline(child) then
+			if currentIndex == splineTargetIndex then
+				foundSpine = child
+
+				return false
+			end
+
+			currentIndex = currentIndex + 1
+		end
+	end)
+
+	return foundSpine
 end

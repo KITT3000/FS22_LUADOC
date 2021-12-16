@@ -40,7 +40,6 @@ function AIParameterUnloadingStation:loadFromXMLFile(xmlFile, key)
 end
 
 function AIParameterUnloadingStation:onPlaceableLoaded(args)
-	g_messageCenter:unsubscribe(MessageType.LOADED_ALL_SAVEGAME_PLACEABLES, self)
 	self:setUnloadingStationFromSavegameId(args[1], args[2])
 end
 

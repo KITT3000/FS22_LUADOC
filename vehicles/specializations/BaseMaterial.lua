@@ -16,12 +16,16 @@ function BaseMaterial.initSpecialization()
 	MaterialUtil.registerBaseMaterialXMLPaths(schema, "vehicle.baseMaterial.material")
 	BaseMaterial.registerBaseMaterialConfigurationsXMLPaths(schema, "baseMaterial")
 	ConfigurationUtil.registerColorConfigurationXMLPaths(schema, "baseMaterial")
+	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.baseMaterialConfigurations.baseMaterialConfiguration(?)")
 	BaseMaterial.registerBaseMaterialConfigurationsXMLPaths(schema, "designMaterial")
 	ConfigurationUtil.registerColorConfigurationXMLPaths(schema, "designMaterial")
+	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.designMaterialConfigurations.designMaterialConfiguration(?)")
 	BaseMaterial.registerBaseMaterialConfigurationsXMLPaths(schema, "designMaterial2")
 	ConfigurationUtil.registerColorConfigurationXMLPaths(schema, "designMaterial2")
+	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.designMaterial2Configurations.designMaterial2Configuration(?)")
 	BaseMaterial.registerBaseMaterialConfigurationsXMLPaths(schema, "designMaterial3")
 	ConfigurationUtil.registerColorConfigurationXMLPaths(schema, "designMaterial3")
+	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.designMaterial3Configurations.designMaterial3Configuration(?)")
 	schema:setXMLSpecializationType()
 end
 
@@ -61,18 +65,22 @@ function BaseMaterial:onLoad(savegame)
 
 	if self.configurations.baseMaterial ~= nil then
 		self:applyBaseMaterialConfiguration(self.xmlFile, "baseMaterial", self.configurations.baseMaterial)
+		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.baseMaterialConfigurations.baseMaterialConfiguration", self.configurations.baseMaterial, self.components, self)
 	end
 
 	if self.configurations.designMaterial ~= nil then
 		self:applyBaseMaterialConfiguration(self.xmlFile, "designMaterial", self.configurations.designMaterial)
+		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.designMaterialConfigurations.designMaterialConfiguration", self.configurations.designMaterial, self.components, self)
 	end
 
 	if self.configurations.designMaterial2 ~= nil then
 		self:applyBaseMaterialConfiguration(self.xmlFile, "designMaterial2", self.configurations.designMaterial2)
+		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.designMaterial2Configurations.designMaterial2Configuration", self.configurations.designMaterial2, self.components, self)
 	end
 
 	if self.configurations.designMaterial3 ~= nil then
 		self:applyBaseMaterialConfiguration(self.xmlFile, "designMaterial3", self.configurations.designMaterial3)
+		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.designMaterial3Configurations.designMaterial3Configuration", self.configurations.designMaterial3, self.components, self)
 	end
 end
 

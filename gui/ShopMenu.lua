@@ -112,7 +112,6 @@ function ShopMenu:initializePages()
 	self.shopController:setClient(g_client)
 	self.shopController:setUpdateShopItemsCallback(self:makeSelfCallback(self.updateCurrentDisplayItems))
 	self.shopController:setUpdateAllItemsCallback(self:makeSelfCallback(self.updateGarageItems))
-	self.shopController:setStartPlacementModeCallback(self.startPlacementMode, self)
 	self.shopController:setSaleItemBoughtCallback(self.closeConfigScreen, self)
 	self.shopController:setSwitchToConfigurationCallback(self.showConfigurationScreen, self)
 	self.shopController:load()
@@ -463,9 +462,6 @@ function ShopMenu:setIsGamePaused(paused)
 	if self.currentPage ~= nil then
 		self:updateButtonsPanel(self.currentPage)
 	end
-end
-
-function ShopMenu:startPlacementMode(storeItem, isSellingMode, obj)
 end
 
 function ShopMenu:onDetailClosed(detailPage)

@@ -19,6 +19,7 @@ function PlaceableHusbandry.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getConditionInfos", PlaceableHusbandry.getConditionInfos)
 	SpecializationUtil.registerFunction(placeableType, "getFoodInfos", PlaceableHusbandry.getFoodInfos)
 	SpecializationUtil.registerFunction(placeableType, "getAnimalInfos", PlaceableHusbandry.getAnimalInfos)
+	SpecializationUtil.registerFunction(placeableType, "getAnimalDescription", PlaceableHusbandry.getAnimalDescription)
 	SpecializationUtil.registerFunction(placeableType, "getHusbandryCapacity", PlaceableHusbandry.getHusbandryCapacity)
 	SpecializationUtil.registerFunction(placeableType, "getHusbandryFreeCapacity", PlaceableHusbandry.getHusbandryFreeCapacity)
 	SpecializationUtil.registerFunction(placeableType, "addHusbandryFillLevelFromTool", PlaceableHusbandry.addHusbandryFillLevelFromTool)
@@ -423,6 +424,10 @@ end
 
 function PlaceableHusbandry:getAnimalInfos()
 	return {}
+end
+
+function PlaceableHusbandry:getAnimalDescription(cluster)
+	return ""
 end
 
 function PlaceableHusbandry:getHusbandryCapacity(fillTypeIndex, farmId)

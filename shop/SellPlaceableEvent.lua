@@ -14,10 +14,11 @@ function SellPlaceableEvent.emptyNew()
 	return self
 end
 
-function SellPlaceableEvent.new(placeable, forFree)
+function SellPlaceableEvent.new(placeable, forFree, forFullPrice)
 	local self = SellPlaceableEvent.emptyNew()
 	self.placeable = placeable
 	self.forFree = Utils.getNoNil(forFree, false)
+	self.forFullPrice = Utils.getNoNil(forFullPrice, false)
 
 	return self
 end
@@ -34,6 +35,7 @@ function SellPlaceableEvent:readStream(streamId, connection)
 	if not connection:getIsServer() then
 		self.placeable = NetworkUtil.readNodeObject(streamId)
 		self.forFree = streamReadBool(streamId)
+		self.forFullPrice = streamReadBool(streamId)
 	else
 		self.state = streamReadUIntN(streamId, 2)
 
@@ -49,6 +51,7 @@ function SellPlaceableEvent:writeStream(streamId, connection)
 	if connection:getIsServer() then
 		NetworkUtil.writeNodeObject(streamId, self.placeable)
 		streamWriteBool(streamId, self.forFree)
+		streamWriteBool(streamId, self.forFullPrice)
 	else
 		streamWriteUIntN(streamId, self.state, 2)
 
@@ -70,7 +73,11 @@ function SellPlaceableEvent:run(connection)
 					g_currentMission:addPlaceableToDelete(self.placeable)
 
 					if not self.forFree then
-						sellPrice = g_currentMission.economyManager:getSellPrice(self.placeable)
+						if self.forFullPrice then
+							sellPrice = self.placeable.price
+						else
+							sellPrice = self.placeable:getSellPrice()
+						end
 					end
 
 					state = SellPlaceableEvent.STATE_SUCCESS

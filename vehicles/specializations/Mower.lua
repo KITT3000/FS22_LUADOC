@@ -20,6 +20,7 @@ Mower = {
 		schema:register(XMLValueType.FLOAT, "vehicle.mower.toggleWindrowDrop#animationEnableSpeed", "Animation enable speed", 1)
 		schema:register(XMLValueType.FLOAT, "vehicle.mower.toggleWindrowDrop#animationDisableSpeed", "Animation disable speed", "inversed 'animationEnableSpeed'")
 		schema:register(XMLValueType.BOOL, "vehicle.mower.toggleWindrowDrop#startEnabled", "Start windrow drop enabled", false)
+		SoundManager.registerSampleXMLPaths(schema, "vehicle.mower.sounds", "cut(?)")
 		schema:register(XMLValueType.BOOL, WorkArea.WORK_AREA_XML_KEY .. ".mower#dropWindrow", "Drop windrow", true)
 		schema:register(XMLValueType.INT, WorkArea.WORK_AREA_XML_KEY .. ".mower#dropAreaIndex", "Drop area index", 1)
 		schema:register(XMLValueType.BOOL, WorkArea.WORK_AREA_XML_CONFIG_KEY .. ".mower#dropWindrow", "Drop windrow", true)
@@ -36,6 +37,7 @@ function Mower.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "processDropArea", Mower.processDropArea)
 	SpecializationUtil.registerFunction(vehicleType, "getDropArea", Mower.getDropArea)
 	SpecializationUtil.registerFunction(vehicleType, "setDropEffectEnabled", Mower.setDropEffectEnabled)
+	SpecializationUtil.registerFunction(vehicleType, "setCutSoundEnabled", Mower.setCutSoundEnabled)
 	SpecializationUtil.registerFunction(vehicleType, "setUseMowerWindrowDropAreas", Mower.setUseMowerWindrowDropAreas)
 end
 
@@ -74,6 +76,9 @@ function Mower:onLoad(savegame)
 
 	if self.isClient then
 		spec.animationNodes = g_animationManager:loadAnimations(self.xmlFile, "vehicle.mower.animationNodes", self.components, self, self.i3dMappings)
+		spec.samples = {
+			cut = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.mower.sounds", "cut", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
+		}
 	end
 
 	spec.dropEffects = {}
@@ -145,6 +150,8 @@ function Mower:onLoad(savegame)
 		lastInputGrowthState = 0
 	}
 	spec.isWorking = false
+	spec.isCutting = false
+	spec.lastDropTime = -math.huge
 	spec.stoneLastState = 0
 	spec.stoneWearMultiplierData = g_currentMission.stoneSystem:getWearMultiplierByType("MOWER")
 	spec.dirtyFlag = self:getNextDirtyFlag()
@@ -187,7 +194,10 @@ end
 function Mower:onDelete()
 	local spec = self.spec_mower
 
-	g_animationManager:deleteAnimations(spec.animationNodes)
+	if self.isClient then
+		g_animationManager:deleteAnimations(spec.animationNodes)
+		g_soundManager:deleteSamples(spec.samples.cut)
+	end
 
 	if spec.dropEffects ~= nil then
 		for _, dropEffect in pairs(spec.dropEffects) do
@@ -218,12 +228,16 @@ function Mower:onReadUpdateStream(streamId, timestamp, connection)
 	if connection:getIsServer() then
 		local spec = self.spec_mower
 
-		if #spec.dropEffects > 0 and streamReadBool(streamId) then
-			for _, dropEffect in ipairs(spec.dropEffects) do
-				dropEffect.fillType = streamReadUIntN(streamId, FillTypeManager.SEND_NUM_BITS)
+		if #spec.dropEffects > 0 then
+			if streamReadBool(streamId) then
+				for _, dropEffect in ipairs(spec.dropEffects) do
+					dropEffect.fillType = streamReadUIntN(streamId, FillTypeManager.SEND_NUM_BITS)
 
-				self:setDropEffectEnabled(dropEffect, streamReadBool(streamId))
+					self:setDropEffectEnabled(dropEffect, streamReadBool(streamId))
+				end
 			end
+		else
+			self:setCutSoundEnabled(streamReadBool(streamId))
 		end
 	end
 end
@@ -232,11 +246,15 @@ function Mower:onWriteUpdateStream(streamId, connection, dirtyMask)
 	if not connection:getIsServer() then
 		local spec = self.spec_mower
 
-		if #spec.dropEffects > 0 and streamWriteBool(streamId, bitAND(dirtyMask, spec.dirtyFlag) ~= 0) then
-			for _, dropEffect in ipairs(spec.dropEffects) do
-				streamWriteUIntN(streamId, dropEffect.fillType or FillType.UNKNOWN, FillTypeManager.SEND_NUM_BITS)
-				streamWriteBool(streamId, dropEffect.isActiveSent)
+		if #spec.dropEffects > 0 then
+			if streamWriteBool(streamId, bitAND(dirtyMask, spec.dirtyFlag) ~= 0) then
+				for _, dropEffect in ipairs(spec.dropEffects) do
+					streamWriteUIntN(streamId, dropEffect.fillType or FillType.UNKNOWN, FillTypeManager.SEND_NUM_BITS)
+					streamWriteBool(streamId, dropEffect.isActiveSent)
+				end
 			end
+		else
+			streamWriteBool(streamId, spec.isCutting)
 		end
 	end
 end
@@ -318,6 +336,10 @@ function Mower:processDropArea(dropArea, dt)
 		dropped, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(self, dropArea.litersToDrop, dropArea.fillType, sx, sy, sz, ex, ey, ez, 0, nil, dropArea.dropLineOffset, false, nil, false)
 		dropArea.litersToDrop = dropArea.litersToDrop - dropped
 		dropArea.dropLineOffset = lineOffset
+
+		if dropped ~= 0 then
+			self.spec_mower.lastDropTime = g_time
+		end
 	end
 end
 
@@ -357,6 +379,26 @@ function Mower:setDropEffectEnabled(dropEffect, isActive)
 			g_effectManager:startEffects(dropEffect.effects)
 		else
 			g_effectManager:stopEffects(dropEffect.effects)
+		end
+	end
+end
+
+function Mower:setCutSoundEnabled(isActive)
+	if self.isClient then
+		local spec = self.spec_mower
+
+		if isActive then
+			for i = 1, #spec.samples.cut do
+				if not g_soundManager:getIsSamplePlaying(spec.samples.cut[i]) then
+					g_soundManager:playSample(spec.samples.cut[i])
+				end
+			end
+		else
+			for i = 1, #spec.samples.cut do
+				if g_soundManager:getIsSamplePlaying(spec.samples.cut[i]) then
+					g_soundManager:stopSample(spec.samples.cut[i])
+				end
+			end
 		end
 	end
 end
@@ -552,6 +594,15 @@ function Mower:onEndWorkAreaProcessing(dt, hasProcessed)
 
 			stats:updateStats("threshedHectares", ha)
 			self:updateLastWorkedArea(lastStatsArea)
+		end
+
+		local isCutting = g_time - spec.lastDropTime < 500
+
+		if spec.isCutting ~= isCutting then
+			spec.isCutting = isCutting
+
+			self:raiseDirtyFlags(spec.dirtyFlag)
+			self:setCutSoundEnabled(spec.isCutting)
 		end
 	end
 

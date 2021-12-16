@@ -419,11 +419,27 @@ function ExtraContentSystem:consoleCommandCreateKeysAll(numKeys)
 	return "Finished"
 end
 
-function ExtraContentSystem:consoleCommandCreateKeys(itemCode, numKeys)
+function ExtraContentSystem:consoleCommandCreateKeys(itemCode, numKeys, file)
 	numKeys = tonumber(numKeys) or 1
 
 	if itemCode == nil then
 		return "Invalid item code"
+	end
+
+	local generatedKeys = {}
+
+	if file ~= nil then
+		local xmlFile = XMLFile.load("keys", file)
+
+		if xmlFile ~= nil then
+			xmlFile:iterate("keys.key", function (_, key)
+				local value = xmlFile:getString(key)
+
+				if value ~= nil then
+					generatedKeys[string.trim(value)] = true
+				end
+			end)
+		end
 	end
 
 	itemCode = itemCode:upper()
@@ -445,8 +461,6 @@ function ExtraContentSystem:consoleCommandCreateKeys(itemCode, numKeys)
 
 	setFileLogPrefixTimestamp(false)
 	print(string.format("Generating keys for item '%s':", g_i18n:convertText(foundItem.title)))
-
-	local generatedKeys = {}
 
 	while numKeys > 0 do
 		local key = self:createItemKey(foundItem, itemChars)

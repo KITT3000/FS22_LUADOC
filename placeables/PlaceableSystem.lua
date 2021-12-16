@@ -9,6 +9,7 @@ function PlaceableSystem.new(mission, customMt)
 	self.weatherStations = {}
 	self.farmhouses = {}
 	self.bunkerSilos = {}
+	self.version = 1
 	self.isReloadRunning = false
 
 	if self.mission:getIsServer() and g_addTestCommands then
@@ -145,6 +146,8 @@ end
 
 function PlaceableSystem:saveToXML(xmlFile, usedModNames)
 	if xmlFile ~= nil then
+		xmlFile:setValue("placeables#version", self.version)
+
 		local xmlIndex = 0
 
 		for i, placeable in ipairs(self.placeables) do
@@ -175,19 +178,25 @@ function PlaceableSystem:savePlaceableToXML(placeable, xmlFile, index, i, usedMo
 	placeable:saveToXMLFile(xmlFile, placeableKey, usedModNames)
 end
 
-function PlaceableSystem:load(xmlFilename, missionInfo, missionDynamicInfo, asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments)
+function PlaceableSystem:load(xmlFilename, defaultXMLFilename, missionInfo, missionDynamicInfo, asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments)
 	local xmlFile = XMLFile.load("placeablesXML", xmlFilename, Placeable.xmlSchemaSavegame)
+	self.version = xmlFile:getValue("placeables#version", 1)
 	local loadingData = {
 		xmlFile = xmlFile,
-		xmlFilename = xmlFilename,
-		missionInfo = missionInfo,
-		missionDynamicInfo = missionDynamicInfo,
-		placeablesById = {},
-		index = 0,
-		asyncCallbackFunction = asyncCallbackFunction,
-		asyncCallbackObject = asyncCallbackObject,
-		asyncCallbackArguments = asyncCallbackArguments
+		xmlFilename = xmlFilename
 	}
+
+	if xmlFilename ~= defaultXMLFilename then
+		loadingData.defaultXMLFilename = defaultXMLFilename
+	end
+
+	loadingData.missionInfo = missionInfo
+	loadingData.missionDynamicInfo = missionDynamicInfo
+	loadingData.placeablesById = {}
+	loadingData.index = 0
+	loadingData.asyncCallbackFunction = asyncCallbackFunction
+	loadingData.asyncCallbackObject = asyncCallbackObject
+	loadingData.asyncCallbackArguments = asyncCallbackArguments
 
 	if not self:loadNextPlaceableFromXML(loadingData) then
 		self:loadFinished(loadingData)
@@ -213,7 +222,14 @@ function PlaceableSystem:loadNextPlaceableFromXML(loadingData)
 			return false
 		end
 
-		if self:loadPlaceableFromXML(xmlFile, key, missionInfo, missionDynamicInfo, defaultItemsToSPFarm, self.loadNextPlaceableFromXMLFinished, self, loadingData) then
+		local shouldLoad = true
+
+		if loadingData.upgradeOnly then
+			local sinceVersion = xmlFile:getValue(key .. "#sinceVersion")
+			shouldLoad = sinceVersion ~= nil and self.version <= sinceVersion
+		end
+
+		if shouldLoad and self:loadPlaceableFromXML(xmlFile, key, missionInfo, missionDynamicInfo, defaultItemsToSPFarm, self.loadNextPlaceableFromXMLFinished, self, loadingData) then
 			return true
 		end
 	end
@@ -246,13 +262,32 @@ function PlaceableSystem:loadNextPlaceableFromXMLFinished(placeable, loadingStat
 end
 
 function PlaceableSystem:loadFinished(loadingData)
-	g_asyncTaskManager:addTask(function ()
+	if loadingData.defaultXMLFilename ~= nil then
 		loadingData.xmlFile:delete()
 
-		if loadingData.asyncCallbackFunction ~= nil then
-			loadingData.asyncCallbackFunction(loadingData.asyncCallbackObject, loadingData.asyncCallbackArguments)
+		loadingData.xmlFile = XMLFile.load("placeablesXML", loadingData.defaultXMLFilename, Placeable.xmlSchemaSavegame)
+		loadingData.defaultXMLFilename = nil
+		loadingData.upgradeOnly = true
+		loadingData.index = 0
+		local savegameVersion = self.version
+		self.version = loadingData.xmlFile:getValue("placeables#version", 1)
+
+		if self.version <= savegameVersion then
+			return self:loadFinished(loadingData)
 		end
-	end)
+
+		if not self:loadNextPlaceableFromXML(loadingData) then
+			self:loadFinished(loadingData)
+		end
+	else
+		g_asyncTaskManager:addTask(function ()
+			loadingData.xmlFile:delete()
+
+			if loadingData.asyncCallbackFunction ~= nil then
+				loadingData.asyncCallbackFunction(loadingData.asyncCallbackObject, loadingData.asyncCallbackArguments)
+			end
+		end)
+	end
 end
 
 function PlaceableSystem:loadPlaceableFromXML(xmlFile, key, missionInfo, missionDynamicInfo, defaultItemsToSPFarm, callback, target, args)

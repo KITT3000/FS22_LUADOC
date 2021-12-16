@@ -4,6 +4,7 @@ g_dlcsDirectories = {}
 g_forceNeedsDlcsAndModsReload = false
 g_lastCheckDlcPaths = {}
 g_modIsLoaded = {}
+g_globalMods = {}
 g_modNameToDirectory = {}
 local isReloadingDlcs = false
 g_dlcModNameHasPrefix = {}
@@ -182,7 +183,7 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 		isDLCFile = true
 
 		if not fileExists(modFile) then
-			if GS_IS_EPIC_VERSION and StringUtil.startsWith(modDir, getAppBasePath() .. "pdlc/") then
+			if GS_IS_EPIC_VERSION and string.startsWith(modDir, getAppBasePath() .. "pdlc/") then
 				print("Info: No license for dlc " .. modName .. ".")
 			else
 				print("Error: No license for dlc " .. modName .. ". Please reinstall.")
@@ -696,7 +697,7 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 			local item, errorCode = g_extraContentSystem:unlockItem(key, true)
 
 			if item ~= nil and errorCode == ExtraContentSystem.UNLOCKED then
-				print("ExtraContent: Unlocked '" .. g_i18n:convertText(item.title) .. "'")
+				print("ExtraContent: Unlocked '" .. item.id .. "'")
 				g_extraContentSystem:saveToProfile()
 			end
 		end
@@ -859,6 +860,21 @@ function loadMod(modName, modDir, modFile, modTitle)
 
 		g_storeManager:addModStorePack(name, title, imageFilename, modDir)
 	end)
+
+	local fillTypesFilename = xmlFile:getString("modDesc.fillTypes#filename")
+
+	if fillTypesFilename ~= nil then
+		g_fillTypeManager:addModWithFillTypes(Utils.getFilename(fillTypesFilename, g_currentModDirectory), g_currentModDirectory, modName)
+	end
+
+	local missionVehiclesFilename = xmlFile:getString("modDesc.missionVehicles#filename")
+
+	if missionVehiclesFilename ~= nil then
+		missionVehiclesFilename = Utils.getFilename(missionVehiclesFilename, g_currentModDirectory)
+
+		g_missionManager:addPendingMissionVehiclesFile(missionVehiclesFilename, g_currentModDirectory)
+	end
+
 	xmlFile:delete()
 
 	g_currentModDirectory = nil
@@ -887,6 +903,7 @@ function reloadDlcsAndMods()
 	g_modIsLoaded = {}
 	g_modNameToDirectory = {}
 	g_dlcModNameHasPrefix = {}
+	g_globalMods = {}
 	isReloadingDlcs = true
 
 	startUpdatePendingMods()

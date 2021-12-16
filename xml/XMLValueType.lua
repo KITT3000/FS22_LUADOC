@@ -253,7 +253,19 @@ function XMLValueType.getXMLColor(xmlFile, path, default, packed)
 				Logging.xmlWarning(g_xmlManager:getFileByHandle(xmlFile), "Invalid color value '%s' in '%s'.", colorStr, path)
 			end
 
-			return nil
+			if type(default) == "string" then
+				color = {
+					string.getVector(default)
+				}
+
+				if #color < 3 then
+					return nil
+				end
+			elseif default ~= nil then
+				color = default
+			else
+				return nil
+			end
 		end
 
 		if color[4] == nil then

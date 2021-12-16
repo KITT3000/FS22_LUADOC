@@ -431,6 +431,12 @@ end
 function GuiElement:updateFramePosition()
 	local x, y = unpack(self.absPosition)
 	local width, height = unpack(self.absSize)
+	local xPixel = 1 / g_screenWidth
+	local yPixel = 1 / g_screenHeight
+	x = math.floor(x / xPixel) * xPixel
+	y = math.floor(y / yPixel) * yPixel
+	width = math.max(width, xPixel)
+	height = math.max(height, yPixel)
 	local left = 1
 	local top = 2
 	local right = 3
@@ -1262,6 +1268,9 @@ function GuiElement:setCallback(funcName, callbackName)
 	if self.target ~= nil then
 		self[funcName] = self.target[callbackName]
 	else
+		log(funcName, callbackName)
+		printCallstack()
+
 		self[funcName] = ClassUtil.getFunction(callbackName)
 	end
 end

@@ -103,6 +103,14 @@ function PlayerHUDUpdater:updateRaycastObject()
 	end
 end
 
+function PlayerHUDUpdater:convertFarmToName(farm)
+	if not g_currentMission.missionInfo.isMultiplayer then
+		return g_i18n:getText("fieldInfo_ownerYou")
+	else
+		return farm.name
+	end
+end
+
 function PlayerHUDUpdater:showVehicleInfo(vehicle)
 	local name = vehicle:getFullName()
 	local farmId = vehicle:getOwnerFarmId()
@@ -117,9 +125,9 @@ function PlayerHUDUpdater:showVehicleInfo(vehicle)
 		local propertyState = vehicle:getPropertyState()
 
 		if propertyState == Vehicle.PROPERTY_STATE_OWNED then
-			box:addLine(g_i18n:getText("fieldInfo_ownedBy"), farm.name)
+			box:addLine(g_i18n:getText("fieldInfo_ownedBy"), self:convertFarmToName(farm))
 		else
-			box:addLine(g_i18n:getText("infohud_rentedBy"), farm.name)
+			box:addLine(g_i18n:getText("infohud_rentedBy"), self:convertFarmToName(farm))
 		end
 
 		vehicle:showInfo(box)
@@ -135,7 +143,7 @@ function PlayerHUDUpdater:showBaleInfo(bale)
 	box:setTitle(g_i18n:getText("infohud_bale"))
 
 	if farm ~= nil then
-		box:addLine(g_i18n:getText("fieldInfo_ownedBy"), farm.name)
+		box:addLine(g_i18n:getText("fieldInfo_ownedBy"), self:convertFarmToName(farm))
 	end
 
 	bale:showInfo(box)
@@ -148,10 +156,15 @@ function PlayerHUDUpdater:showPalletInfo(pallet)
 	local box = self.objectBox
 
 	box:clear()
-	box:setTitle(g_i18n:getText("infohud_pallet"))
+
+	if SpecializationUtil.hasSpecialization(BigBag, pallet.specializations) then
+		box:setTitle(g_i18n:getText("shopItem_bigBag"))
+	else
+		box:setTitle(g_i18n:getText("infohud_pallet"))
+	end
 
 	if farm ~= nil then
-		box:addLine(g_i18n:getText("fieldInfo_ownedBy"), farm.name)
+		box:addLine(g_i18n:getText("fieldInfo_ownedBy"), self:convertFarmToName(farm))
 	end
 
 	box:addLine(g_i18n:getText("infohud_mass"), g_i18n:formatMass(mass))
@@ -200,6 +213,7 @@ end
 
 PlayerHUDUpdater.LIME_REQUIRED_THRESHOLD = 0.25
 PlayerHUDUpdater.PLOWING_REQUIRED_THRESHOLD = 0.25
+PlayerHUDUpdater.ROLLING_REQUIRED_THRESHOLD = 0.25
 
 function PlayerHUDUpdater:updateFieldInfo(posX, posZ, rotY)
 	if self.requestedFieldData then
@@ -244,6 +258,7 @@ function PlayerHUDUpdater:showFieldInfo()
 		self:fieldAddWeed(data, box)
 		self:fieldAddLime(data, box)
 		self:fieldAddPlowing(data, box)
+		self:fieldAddRolling(data, box)
 
 		self.fieldInfoNeedsRebuild = false
 	end
@@ -288,10 +303,18 @@ function PlayerHUDUpdater:fieldAddLime(data, box)
 end
 
 function PlayerHUDUpdater:fieldAddPlowing(data, box)
-	local isRequired = PlayerHUDUpdater.PLOWING_REQUIRED_THRESHOLD < data.needsPlowFactor
+	local isRequired = data.plowFactor < PlayerHUDUpdater.PLOWING_REQUIRED_THRESHOLD
 
 	if isRequired and g_currentMission.missionInfo.plowingRequiredEnabled then
 		box:addLine(g_i18n:getText("ui_growthMapNeedsPlowing"), nil, true)
+	end
+end
+
+function PlayerHUDUpdater:fieldAddRolling(data, box)
+	local isRequired = PlayerHUDUpdater.ROLLING_REQUIRED_THRESHOLD < data.needsRollingFactor
+
+	if isRequired then
+		box:addLine(g_i18n:getText("ui_growthMapNeedsRolling"), nil, true)
 	end
 end
 
@@ -304,27 +327,67 @@ function PlayerHUDUpdater:fieldAddFertilization(data, box)
 end
 
 function PlayerHUDUpdater:fieldAddWeed(data, box)
-	local weedFactor = data.weedFactor
+	if g_currentMission.missionInfo.weedsEnabled then
+		local weedSystem = g_currentMission.weedSystem
+		local fieldInfoStates = weedSystem:getFieldInfoStates()
+		local maxState = nil
+		local maxPixels = 0
 
-	if weedFactor >= 0 and g_currentMission.missionInfo.weedsEnabled then
-		box:addLine(g_i18n:getText("fillType_weed"), string.format("%d %%", (1 - weedFactor) * 100))
+		for state, pixels in pairs(data.weed) do
+			if maxPixels < pixels then
+				maxState = state
+				maxPixels = pixels
+			end
+		end
+
+		if maxState == nil then
+			return
+		end
+
+		local toolName = nil
+		local fruitTypeIndex = data.fruitTypeMax
+		local fruitGrowthState = data.fruitStateMax
+		local fruitTypeDesc = nil
+
+		if fruitTypeIndex ~= nil then
+			fruitTypeDesc = g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+		end
+
+		if fruitTypeIndex == nil or fruitGrowthState < fruitTypeDesc.minHarvestingGrowthState and fruitGrowthState <= fruitTypeDesc.maxWeederState then
+			local weederReplacements = weedSystem:getWeederReplacements(false)
+			local weed = weederReplacements.weed
+			local targetState = weed.replacements[maxState]
+
+			if targetState == 0 then
+				toolName = g_i18n:getText("weed_destruction_weeder")
+			end
+		end
+
+		if toolName == nil and (fruitTypeIndex == nil or fruitGrowthState < fruitTypeDesc.minHarvestingGrowthState and fruitGrowthState <= fruitTypeDesc.maxWeederHoeState) then
+			local hoeReplacements = weedSystem:getWeederReplacements(true)
+			local weed = hoeReplacements.weed
+			local targetState = weed.replacements[maxState]
+
+			if targetState == 0 then
+				toolName = g_i18n:getText("weed_destruction_hoe")
+			end
+		end
+
+		if toolName == nil and (fruitTypeIndex == nil or fruitGrowthState < fruitTypeDesc.minHarvestingGrowthState) then
+			toolName = g_i18n:getText("weed_destruction_herbicide")
+		end
+
+		local title = fieldInfoStates[maxState]
+
+		box:addLine(title, toolName or "-", true)
 	end
 end
 
 function PlayerHUDUpdater:fieldAddFruit(data, box)
-	local fruitTypeIndex = 0
-	local fruitGrowthState = 0
-	local maxPixels = 0
+	local fruitTypeIndex = data.fruitTypeMax
+	local fruitGrowthState = data.fruitStateMax
 
-	for fruitDescIndex, state in pairs(data.fruits) do
-		if maxPixels < data.fruitPixels[fruitDescIndex] then
-			maxPixels = data.fruitPixels[fruitDescIndex]
-			fruitTypeIndex = fruitDescIndex
-			fruitGrowthState = state
-		end
-	end
-
-	if fruitTypeIndex == 0 then
+	if fruitTypeIndex == nil then
 		return
 	end
 
@@ -345,6 +408,7 @@ function PlayerHUDUpdater:fieldAddFruit(data, box)
 	end
 
 	local text = nil
+	local isGrowing = false
 
 	if fruitGrowthState == fruitType.cutState then
 		text = g_i18n:getText("ui_growthMapCut")
@@ -352,13 +416,43 @@ function PlayerHUDUpdater:fieldAddFruit(data, box)
 		text = g_i18n:getText("ui_growthMapWithered")
 	elseif fruitGrowthState > 0 and fruitGrowthState <= maxGrowingState then
 		text = g_i18n:getText("ui_growthMapGrowing")
+		isGrowing = true
 	elseif fruitType.minPreparingGrowthState >= 0 and fruitType.minPreparingGrowthState <= fruitGrowthState and fruitGrowthState <= fruitType.maxPreparingGrowthState then
 		text = g_i18n:getText("ui_growthMapReadyToPrepareForHarvest")
+		isGrowing = true
 	elseif fruitType.minHarvestingGrowthState <= fruitGrowthState and fruitGrowthState <= fruitType.maxHarvestingGrowthState then
 		text = g_i18n:getText("ui_growthMapReadyToHarvest")
+		isGrowing = true
 	end
 
 	if text ~= nil then
 		box:addLine(g_i18n:getText("ui_mapOverviewGrowth"), text)
+
+		if isGrowing then
+			local sprayFactor = data.fertilizerFactor
+			local plowFactor = data.plowFactor
+			local limeFactor = 1 - data.needsLimeFactor
+			local weedFactor = data.weedFactor
+			local stubbleFactor = data.stubbleFactor
+			local rollerFactor = 1 - data.needsRollingFactor
+			local missionInfo = g_currentMission.missionInfo
+
+			if not missionInfo.plowingRequiredEnabled then
+				plowFactor = 1
+			end
+
+			if not missionInfo.limeRequired then
+				limeFactor = 1
+			end
+
+			if not missionInfo.weedsEnabled then
+				weedFactor = 1
+			end
+
+			local harvestMultiplier = g_currentMission:getHarvestScaleMultiplier(fruitTypeIndex, sprayFactor, plowFactor, limeFactor, weedFactor, stubbleFactor, rollerFactor, 0) - 1
+			harvestMultiplier = math.ceil(harvestMultiplier * 100)
+
+			box:addLine(g_i18n:getText("fieldInfo_yieldBonus"), string.format("+ %d %%", harvestMultiplier))
+		end
 	end
 end

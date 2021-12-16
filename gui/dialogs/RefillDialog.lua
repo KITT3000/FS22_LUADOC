@@ -175,12 +175,13 @@ function RefillDialog:updateFillAmounts()
 	self.amountMapping = {}
 	self.priceMapping = {}
 	local fillType = g_fillTypeManager:getFillTypeByIndex(self.selectedFillType)
+	local litersText = g_i18n:getText("unit_liter")
 
 	for _, fillAmount in ipairs(fillAmounts) do
 		local pricePerLiter = fillType.pricePerLiter * self.priceFactor
 		local price = pricePerLiter * fillAmount
 		local priceStr = g_i18n:formatMoney(price)
-		local text = string.format("%d Liter (%s)", fillAmount, priceStr)
+		local text = string.format("%d %s (%s)", fillAmount, litersText, priceStr)
 
 		table.insert(fillAmountTexts, text)
 		table.insert(self.amountMapping, fillAmount)

@@ -135,7 +135,7 @@ function ServerSettingsDialog:showChangeButton(show)
 	self.changeButton.parent:invalidateLayout()
 end
 
-function ServerSettingsDialog:onEscPressed()
+function ServerSettingsDialog:onEscPressed(element)
 	FocusManager:setFocus(element)
 
 	self.isTyping = false
@@ -145,7 +145,7 @@ function ServerSettingsDialog:onEscPressed()
 	FocusManager:setFocus(element)
 end
 
-function ServerSettingsDialog:onEnterPressed()
+function ServerSettingsDialog:onEnterPressed(element)
 	self.blockTime = self.time + 250
 	self.isTyping = false
 

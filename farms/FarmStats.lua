@@ -12,6 +12,8 @@ FarmStats.STAT_NAMES = {
 	"sprayedHectares",
 	"threshedHectares",
 	"weededHectares",
+	"harvestedGrapes",
+	"harvestedOlives",
 	"workedTime",
 	"cultivatedTime",
 	"plowedTime",
@@ -113,6 +115,8 @@ function FarmStats:saveToXMLFile(xmlFile, key)
 	xmlFile:setFloat(key .. ".statistics.sprayedHectares", self.statistics.sprayedHectares.total)
 	xmlFile:setFloat(key .. ".statistics.threshedHectares", self.statistics.threshedHectares.total)
 	xmlFile:setFloat(key .. ".statistics.plowedHectares", self.statistics.plowedHectares.total)
+	xmlFile:setFloat(key .. ".statistics.harvestedGrapes", self.statistics.harvestedGrapes.total)
+	xmlFile:setFloat(key .. ".statistics.harvestedOlives", self.statistics.harvestedOlives.total)
 	xmlFile:setFloat(key .. ".statistics.workedTime", self.statistics.workedTime.total)
 	xmlFile:setFloat(key .. ".statistics.cultivatedTime", self.statistics.cultivatedTime.total)
 	xmlFile:setFloat(key .. ".statistics.sownTime", self.statistics.sownTime.total)
@@ -176,6 +180,8 @@ function FarmStats:loadFromXMLFile(xmlFile, rootKey)
 	self.statistics.threshedHectares.total = xmlFile:getFloat(key .. ".threshedHectares", 0)
 	self.statistics.weededHectares.total = xmlFile:getFloat(key .. ".weededHectares", 0)
 	self.statistics.plowedHectares.total = xmlFile:getFloat(key .. ".plowedHectares", 0)
+	self.statistics.harvestedGrapes.total = xmlFile:getFloat(key .. ".harvestedGrapes", 0)
+	self.statistics.harvestedOlives.total = xmlFile:getFloat(key .. ".harvestedOlives", 0)
 	self.statistics.workedTime.total = xmlFile:getFloat(key .. ".workedTime", 0)
 	self.statistics.cultivatedTime.total = xmlFile:getFloat(key .. ".cultivatedTime", 0)
 	self.statistics.sownTime.total = xmlFile:getFloat(key .. ".sownTime", 0)
@@ -442,6 +448,8 @@ function FarmStats:getStatisticData()
 		self:addStatistic("sownHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("sownHectares")), g_i18n:getArea(self:getTotalValue("sownHectares")), "%.2f")
 		self:addStatistic("sprayedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("sprayedHectares")), g_i18n:getArea(self:getTotalValue("sprayedHectares")), "%.2f")
 		self:addStatistic("threshedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("threshedHectares")), g_i18n:getArea(self:getTotalValue("threshedHectares")), "%.2f")
+		self:addStatistic("harvestedOlives", "m", g_i18n:getArea(self:getSessionValue("harvestedOlives")), g_i18n:getArea(self:getTotalValue("harvestedOlives")), "%.1f")
+		self:addStatistic("harvestedGrapes", "m", g_i18n:getArea(self:getSessionValue("harvestedGrapes")), g_i18n:getArea(self:getTotalValue("harvestedGrapes")), "%.1f")
 
 		if not GS_IS_MOBILE_VERSION then
 			self:addStatistic("workedTime", nil, Utils.formatTime(self:getSessionValue("workedTime")), Utils.formatTime(self:getTotalValue("workedTime")), "%s")

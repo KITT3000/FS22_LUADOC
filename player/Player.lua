@@ -342,7 +342,6 @@ function Player.new(isServer, isClient)
 	self.playerStateMachine = PlayerStateMachine.new(self)
 	self.hudUpdater = PlayerHUDUpdater.new()
 	self.farmId = FarmManager.SPECTATOR_FARM_ID
-	self.uiText = ""
 	self.cameraBobbingEnabled = g_gameSettings:getValue(GameSettings.SETTING.CAMERA_BOBBING)
 	self.playerHotspot = PlayerHotspot.new()
 
@@ -448,6 +447,8 @@ function Player:load(creatorConnection, isOwner)
 			addConsoleCommand("gsTip", "Tips a fillType into a trigger", "consoleCommandTip", self)
 			addConsoleCommand("gsPlayerIKChainsReload", "Reloads player IKChains", "Player.consoleCommandReloadIKChains", nil)
 			addConsoleCommand("gsPlayerSuperStrength", "Enables/disables player super strength", "consoleCommandToggleSuperStrongMode", self)
+			addConsoleCommand("gsPlayerRaycastDebug", "Enables/disables player pickup raycast debug information", "consoleCommandTogglePickupRaycastDebug", self)
+			addConsoleCommand("gsPlayerThirdPerson", "Enables/disables player third person view", "consoleCommandThirdPersonView", self)
 		end
 	end
 end
@@ -986,18 +987,11 @@ function Player:updateTick(dt)
 	end
 end
 
-function Player:enableInput(inputAction)
+function Player:setInputState(inputAction, state)
 	local id = self.inputInformation.registrationList[inputAction].eventId
 
-	g_inputBinding:setActionEventActive(id, true)
-	g_inputBinding:setActionEventTextVisibility(id, true)
-end
-
-function Player:disableInput(inputAction)
-	local id = self.inputInformation.registrationList[inputAction].eventId
-
-	g_inputBinding:setActionEventActive(id, false)
-	g_inputBinding:setActionEventTextVisibility(id, false)
+	g_inputBinding:setActionEventActive(id, state)
+	g_inputBinding:setActionEventTextVisibility(id, state)
 end
 
 function Player:updateActionEvents()
@@ -1008,39 +1002,37 @@ function Player:updateActionEvents()
 		g_inputBinding:setActionEventTextVisibility(eventIdToggleLight, isDark and self.model:getHasTorch())
 	end
 
-	self:disableInput(InputAction.SWITCH_HANDTOOL)
-	self:disableInput(InputAction.ACTIVATE_HANDTOOL)
-	self:disableInput(InputAction.INTERACT)
-	self:disableInput(InputAction.ANIMAL_PET)
-	self:disableInput(InputAction.ENTER)
-	self:disableInput(InputAction.THROW_OBJECT)
-	self:disableInput(InputAction.ROTATE_OBJECT_LEFT_RIGHT)
-	self:disableInput(InputAction.ROTATE_OBJECT_UP_DOWN)
+	local stateSwitchHandTool = false
+	local stateActivateHandTool = false
+	local stateInteract = false
+	local stateAnimalPet = false
+	local stateEnter = false
+	local stateThrowObject = false
+	local stateObjectLeftRight = false
+	local stateObjectUpDown = false
 
 	if self.playerStateMachine:isAvailable("cycleHandtool") then
-		self:enableInput(InputAction.SWITCH_HANDTOOL)
+		stateSwitchHandTool = true
 	end
 
 	if self:hasHandtoolEquipped() then
-		self:enableInput(InputAction.ACTIVATE_HANDTOOL)
+		stateActivateHandTool = true
+
 		self.playerStateMachine:isAvailable("activateObject")
 	else
 		if self.playerStateMachine:isAvailable("throw") then
-			self:enableInput(InputAction.THROW_OBJECT)
+			stateThrowObject = true
 		end
 
-		local eventIdObjectRotateHorizontally = self.inputInformation.registrationList[InputAction.ROTATE_OBJECT_LEFT_RIGHT].eventId
-		local eventIdObjectRotateVertically = self.inputInformation.registrationList[InputAction.ROTATE_OBJECT_UP_DOWN].eventId
-
 		if self.isCarryingObject then
-			self:enableInput(InputAction.ROTATE_OBJECT_LEFT_RIGHT)
-			self:enableInput(InputAction.ROTATE_OBJECT_UP_DOWN)
+			stateObjectLeftRight = true
+			stateObjectUpDown = true
 		end
 
 		if self.playerStateMachine:isAvailable("animalPet") then
 			local eventIdActivateObject = self.inputInformation.registrationList[InputAction.ANIMAL_PET].eventId
+			stateAnimalPet = true
 
-			self:enableInput(InputAction.ANIMAL_PET)
 			g_inputBinding:setActionEventText(eventIdActivateObject, g_i18n:getText("action_petAnimal"))
 		end
 
@@ -1048,18 +1040,19 @@ function Player:updateActionEvents()
 
 		if self.playerStateMachine:isAvailable("drop") then
 			g_inputBinding:setActionEventText(eventIdInteract, g_i18n:getText("action_dropObject"))
-			self:enableInput(InputAction.INTERACT)
+
+			stateInteract = true
 		elseif self.playerStateMachine:isAvailable("pickup") then
 			g_inputBinding:setActionEventText(eventIdInteract, g_i18n:getText("action_pickUpObject"))
-			self:enableInput(InputAction.INTERACT)
+
+			stateInteract = true
 		elseif self.playerStateMachine:isAvailable("animalInteract") or self.playerStateMachine:isActive("animalInteract") then
 			local animalInteractState = self.playerStateMachine:getState("animalInteract")
 			local animalInteractText = string.format(g_i18n:getText("action_interactAnimal"), animalInteractState.interactText)
 
 			g_inputBinding:setActionEventText(eventIdInteract, animalInteractText)
-			self:enableInput(InputAction.INTERACT)
-		elseif self.inputInformation.interactState == Player.BUTTONSTATES.RELEASED then
-			self:disableInput(InputAction.INTERACT)
+
+			stateInteract = true
 		end
 	end
 
@@ -1070,7 +1063,8 @@ function Player:updateActionEvents()
 
 	if self.canEnterVehicle and not vehicleIsRideable then
 		g_inputBinding:setActionEventText(eventIdEnter, g_i18n:getText("button_enterVehicle"))
-		self:enableInput(InputAction.ENTER)
+
+		stateEnter = true
 	elseif self.canRideAnimal or vehicleIsRideable then
 		local rideableName = ""
 
@@ -1082,8 +1076,18 @@ function Player:updateActionEvents()
 		end
 
 		g_inputBinding:setActionEventText(eventIdEnter, string.format(g_i18n:getText("action_rideAnimal"), rideableName))
-		self:enableInput(InputAction.ENTER)
+
+		stateEnter = true
 	end
+
+	self:setInputState(InputAction.SWITCH_HANDTOOL, stateSwitchHandTool)
+	self:setInputState(InputAction.ACTIVATE_HANDTOOL, stateActivateHandTool)
+	self:setInputState(InputAction.INTERACT, stateInteract)
+	self:setInputState(InputAction.ANIMAL_PET, stateAnimalPet)
+	self:setInputState(InputAction.ENTER, stateEnter)
+	self:setInputState(InputAction.THROW_OBJECT, stateThrowObject)
+	self:setInputState(InputAction.ROTATE_OBJECT_LEFT_RIGHT, stateObjectLeftRight)
+	self:setInputState(InputAction.ROTATE_OBJECT_UP_DOWN, stateObjectUpDown)
 
 	local eventIdDebugFlyToggle = self.inputInformation.registrationList[InputAction.DEBUG_PLAYER_ENABLE].eventId
 
@@ -1623,39 +1627,18 @@ function Player:deleteStartleAnimalSound()
 end
 
 function Player.consoleCommandReloadIKChains(unusedSelf)
-	local xmlFile = loadXMLFile("TempXML", g_currentMission.player.xmlFilename)
-	local i = 0
+	local player = g_currentMission.player
+	local style = player.model.style
+	local newModel = PlayerModel.new()
 
-	while true do
-		local key = string.format("player.ikChains.ikChain(%d)", i)
-
-		if not hasXMLProperty(xmlFile, key) then
-			break
+	newModel:load(player.model.style.xmlFilename, true, player.isOwner, true, function (_, success, _)
+		if success then
+			player:setModel(newModel)
+			player:setStyle(style, false)
+			g_messageCenter:publish(MessageType.PLAYER_STYLE_CHANGED, style, player.userId)
+			log("Finished reload")
 		end
-
-		local id = getXMLString(xmlFile, key .. "#id")
-		local chain = g_currentMission.player.model.ikChains[id]
-
-		if chain ~= nil then
-			for k, node in pairs(chain.nodes) do
-				local nodeKey = key .. string.format(".node(%d)", k - 1)
-				node.minRx = math.rad(Utils.getNoNil(getXMLFloat(xmlFile, nodeKey .. "#minRx"), -180))
-				node.maxRx = math.rad(Utils.getNoNil(getXMLFloat(xmlFile, nodeKey .. "#maxRx"), 180))
-				node.minRy = math.rad(Utils.getNoNil(getXMLFloat(xmlFile, nodeKey .. "#minRy"), -180))
-				node.maxRy = math.rad(Utils.getNoNil(getXMLFloat(xmlFile, nodeKey .. "#maxRy"), 180))
-				node.minRz = math.rad(Utils.getNoNil(getXMLFloat(xmlFile, nodeKey .. "#minRz"), -180))
-				node.maxRz = math.rad(Utils.getNoNil(getXMLFloat(xmlFile, nodeKey .. "#maxRz"), 180))
-				node.damping = math.rad(Utils.getNoNil(getXMLFloat(xmlFile, nodeKey .. "#damping"), 0))
-
-				chain.ikChainSolver:setJointTransformGroup(k - 1, node.node, node.minRx, node.maxRx, node.minRy, node.maxRy, node.minRz, node.maxRz, node.damping)
-			end
-		end
-
-		i = i + 1
-	end
-
-	g_currentMission.player:setIKDirty()
-	delete(xmlFile)
+	end, nil, nil)
 end
 
 function Player:setLightIsActive(isActive, noEventSend)
@@ -1673,8 +1656,6 @@ end
 
 function Player:setStyle(style, isTempStyle)
 	self.model:setStyle(style, isTempStyle, nil)
-
-	self.model.style.playerName = self.uiText
 
 	if self.isOwner then
 		g_gameSettings:setValue(GameSettings.SETTING.LAST_PLAYER_STYLE_MALE, style:getIsMale())
@@ -1738,14 +1719,6 @@ function Player:rebuildCCT()
 
 	local radius, height = self.model:getCapsuleSize()
 	self.controllerIndex = createCCT(self.rootNode, radius, height, 0.4, 45, radius * 0.2, CollisionMask.PLAYER_KINEMATIC, self.motionInformation.mass)
-end
-
-function Player:setUIText(text)
-	self.uiText = text or ""
-
-	if self.model ~= nil and self.model.style ~= nil then
-		self.model.style.playerName = text
-	end
 end
 
 function Player:setCustomWorkStylePreset(presetName)

@@ -32,6 +32,7 @@ function BaleLoader.initSpecialization()
 	schema:register(XMLValueType.BOOL, "vehicle.baleLoader#keepBaleRotationDuringLoad", "Keep the same bale rotation while loading bale", false)
 	schema:register(XMLValueType.BOOL, "vehicle.baleLoader#automaticUnloading", "Automatically unload the bale loader if platform lifted", false)
 	schema:register(XMLValueType.INT, "vehicle.baleLoader#minUnloadingFillLevel", "Min. fill level until unloading is allowed", 1)
+	schema:register(XMLValueType.BOOL, "vehicle.baleLoader#allowKinematicMounting", "Kinematic mounting of bale is allow (= bales still have collision while loaded)", true)
 	schema:register(XMLValueType.BOOL, "vehicle.baleLoader.dynamicMount#enabled", "Bales are dynamically mounted", false)
 	schema:register(XMLValueType.BOOL, "vehicle.baleLoader.dynamicMount#doInterpolation", "Bale position is interpolated from bale origin position to grabber position", false)
 	schema:register(XMLValueType.TIME, "vehicle.baleLoader.dynamicMount#interpolationTimeRot", "Time for bale rotation interpolation", 1)
@@ -312,6 +313,7 @@ function BaleLoader:onLoad(savegame)
 	spec.automaticUnloading = self.xmlFile:getValue(baseKey .. "#automaticUnloading", false)
 	spec.minUnloadingFillLevel = self.xmlFile:getValue(baseKey .. "#minUnloadingFillLevel", 1)
 	spec.fillUnitIndex = self.xmlFile:getValue(baseKey .. "#fillUnitIndex", 1)
+	spec.allowKinematicMounting = self.xmlFile:getValue(baseKey .. "#allowKinematicMounting", true)
 	spec.dynamicMount = {
 		enabled = self.xmlFile:getValue(baseKey .. ".dynamicMount#enabled", false),
 		jointInterpolation = self.xmlFile:getValue(baseKey .. ".dynamicMount#doInterpolation", false),
@@ -2017,6 +2019,8 @@ function BaleLoader:doStateChange(id, nearestBaleServerId)
 				baleObject:setFillLevel(packedFillLevel)
 				baleObject:setOwnerFarmId(packedFarmId, true)
 				baleObject:register()
+				removeFromPhysics(baleObject.nodeId)
+				addToPhysics(baleObject.nodeId)
 			end
 		end
 
@@ -2776,15 +2780,15 @@ function BaleLoader:mountBale(bale, object, node, x, y, z, rx, ry, rz, noKinemat
 		spec.unloadingMover.balesInTrigger[bale] = nil
 	end
 
-	if noKinematicMounting == true then
+	if noKinematicMounting == true or not spec.allowKinematicMounting then
 		bale:mount(object, node, x, y, z, rx, ry, rz)
 	else
 		bale:mountKinematic(object, node, x, y, z, rx, ry, rz)
-	end
 
-	if not table.hasElement(spec.kinematicMountedBales, bale) then
-		self:setBalePairCollision(bale, false)
-		table.addElement(spec.kinematicMountedBales, bale)
+		if not table.hasElement(spec.kinematicMountedBales, bale) then
+			self:setBalePairCollision(bale, false)
+			table.addElement(spec.kinematicMountedBales, bale)
+		end
 	end
 end
 
@@ -2795,10 +2799,9 @@ function BaleLoader:unmountBale(bale)
 		bale:unmount()
 	elseif bale.dynamicMountType == MountableObject.MOUNT_TYPE_KINEMATIC then
 		bale:unmountKinematic()
+		table.removeElement(spec.kinematicMountedBales, bale)
+		self:setBalePairCollision(bale, true)
 	end
-
-	table.removeElement(spec.kinematicMountedBales, bale)
-	self:setBalePairCollision(bale, true)
 end
 
 function BaleLoader:setBalePairCollision(bale, state)
@@ -3030,7 +3033,7 @@ function BaleLoader:actionEventWorkTransport(actionName, inputValue, callbackSta
 	g_client:getServerConnection():sendEvent(BaleLoaderStateEvent.new(self, BaleLoader.CHANGE_BUTTON_WORK_TRANSPORT))
 end
 
-function BaleLoader.loadSpecValueBaleSize(xmlFile, customEnvironment, roundBaleLoader)
+function BaleLoader.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, roundBaleLoader)
 	local rootName = xmlFile:getRootName()
 	local baleSizeAttributes = {
 		maxDiameter = -math.huge,
@@ -3091,12 +3094,12 @@ function BaleLoader.getSpecValueBaleSize(storeItem, realItem, configurations, sa
 	end
 end
 
-function BaleLoader.loadSpecValueBaleSizeRound(xmlFile, customEnvironment)
-	return BaleLoader.loadSpecValueBaleSize(xmlFile, customEnvironment, true)
+function BaleLoader.loadSpecValueBaleSizeRound(xmlFile, customEnvironment, baseDir)
+	return BaleLoader.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, true)
 end
 
-function BaleLoader.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment)
-	return BaleLoader.loadSpecValueBaleSize(xmlFile, customEnvironment, false)
+function BaleLoader.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment, baseDir)
+	return BaleLoader.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, false)
 end
 
 function BaleLoader.getSpecValueBaleSizeRound(storeItem, realItem, configurations, saleItem, returnValues, returnRange)

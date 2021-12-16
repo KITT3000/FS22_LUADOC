@@ -19,6 +19,7 @@ function ItemSystem.new(mission, customMt)
 	local self = setmetatable({}, customMt or ItemSystem_mt)
 	self.mission = mission
 	self.itemsToSave = {}
+	self.sortedItemsToSave = {}
 	self.loadItemsById = {}
 
 	return self
@@ -247,14 +248,18 @@ end
 
 function ItemSystem:addItemToSave(item)
 	if item.saveToXMLFile == nil then
-		print("Error: adding item which does not have a saveToXMLFile function")
+		Logging.error("Adding item which does not have a saveToXMLFile function")
 
 		return
 	end
 
 	if self.mission.objectsToClassName[item] == nil then
-		print("Error: adding item which does not have a className registered. Use registerObjectClassName(object,className)")
+		Logging.error("Adding item which does not have a className registered. Use registerObjectClassName(object,className)")
 
+		return
+	end
+
+	if self.itemsToSave[item] ~= nil then
 		return
 	end
 
@@ -262,8 +267,12 @@ function ItemSystem:addItemToSave(item)
 		item = item,
 		className = self.mission.objectsToClassName[item]
 	}
+
+	table.addElement(self.sortedItemsToSave, self.itemsToSave[item])
 end
 
 function ItemSystem:removeItemToSave(item)
+	table.removeElement(self.sortedItemsToSave, self.itemsToSave[item])
+
 	self.itemsToSave[item] = nil
 end

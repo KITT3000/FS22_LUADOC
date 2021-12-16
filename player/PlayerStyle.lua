@@ -65,7 +65,6 @@ function PlayerStyle.new(customMt)
 	self.faceConfig.selection = 1
 	self.hairStyleConfig.selection = 2
 	self.disabledOptionsForSelection = {}
-	self.playerName = ""
 	self.presets = {}
 	self.isConfigurationLoaded = false
 
@@ -83,7 +82,6 @@ function PlayerStyle:copyFrom(other)
 	self.xmlFilename = other.xmlFilename
 	self.filename = other.filename
 	self.atlasFilename = other.atlasFilename
-	self.playerName = other.playerName
 	self.attachPoints = other.attachPoints
 
 	local function copyConfig(name)
@@ -128,7 +126,6 @@ function PlayerStyle:copyMinimalFrom(other)
 	end
 
 	self.xmlFilename = other.xmlFilename
-	self.playerName = other.playerName
 	self.isConfigurationLoaded = false
 
 	local function copyConfig(name)
@@ -263,7 +260,7 @@ function PlayerStyle:loadConfigurationXML(xmlFilename)
 			uvSlot = xmlFile:getInt(key .. "#uvSlot"),
 			brand = brand,
 			extraContentId = xmlFile:getString(key .. "#extraContentId"),
-			isSelectable = Utils.getNoNil(xmlFile:getBool(key .. "#isSelectable"), true)
+			isSelectable = xmlFile:getBool(key .. "#isSelectable", true)
 		}
 
 		local function getOrNul(list, itemKey)
@@ -623,8 +620,6 @@ function PlayerStyle:readStream(streamId, connection)
 	readConfig("onepieceConfig")
 	readConfig("topConfig")
 	readConfig("facegearConfig")
-
-	self.playerName = streamReadString(streamId)
 end
 
 function PlayerStyle:writeStream(streamId, connection)
@@ -649,7 +644,6 @@ function PlayerStyle:writeStream(streamId, connection)
 	writeConfig("onepieceConfig")
 	writeConfig("topConfig")
 	writeConfig("facegearConfig")
-	streamWriteString(streamId, self.playerName or "")
 end
 
 function PlayerStyle:readStreamColor(streamId)
@@ -1455,4 +1449,18 @@ function PlayerStyle:print()
 	p("onepieceConfig")
 	p("topConfig")
 	p("facegearConfig")
+end
+
+function PlayerStyle:isValid()
+	if self.footwearConfig.selection == 0 and self.onepieceConfig.selection > 0 then
+		self:loadConfigurationIfRequired()
+	end
+
+	if self.hairStyleConfig.selection > 0 and self.faceConfig.selection > 0 and (self.footwearConfig.selection > 0 or self.onepieceConfig.selection > 0 and self.onepieceConfig.items[self.onepieceConfig.selection].disabledOptions.footwear) and (self.topConfig.selection > 0 or self.onepieceConfig.selection > 0) and (self.bottomConfig.selection > 0 or self.onepieceConfig.selection > 0) then
+		return true
+	end
+
+	Logging.warning("A player style was invalid and has been replaced by the default player setup.")
+
+	return false
 end

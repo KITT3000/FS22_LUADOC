@@ -12,14 +12,17 @@ function AnimalItemStock.new(cluster)
 			value = g_i18n:formatNumMonth(cluster:getAge())
 		},
 		{
-			title = g_i18n:getText("infohud_reproduction"),
-			value = g_i18n:formatNumMonth(subType.reproductionDurationMonth)
-		},
-		{
 			title = g_i18n:getText("ui_horseHealth"),
 			value = string.format("%.f%%", cluster:getHealthFactor() * 100)
 		}
 	}
+
+	if subType.supportsReproduction then
+		table.insert(self.infos, {
+			title = g_i18n:getText("infohud_reproductionStatus"),
+			value = string.format("%.f%%", cluster:getReproductionFactor() * 100)
+		})
+	end
 
 	if cluster.getFitnessFactor ~= nil then
 		table.insert(self.infos, {

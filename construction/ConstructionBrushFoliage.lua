@@ -11,6 +11,7 @@ function ConstructionBrushFoliage.new(subclass_mt, cursor)
 	self.supportsPrimaryAxis = true
 	self.primaryAxisIsContinuous = false
 	self.supportsTertiaryButton = true
+	self.maxBrushRadius = ConstructionBrush.CURSOR_SIZES[#ConstructionBrush.CURSOR_SIZES] / 2
 
 	return self
 end
@@ -114,6 +115,8 @@ function ConstructionBrushFoliage:onSculptingFinished(isValidation, errorCode, d
 end
 
 function ConstructionBrushFoliage:performBrush(isDown, isDrag, isUp, direction)
+	self:setActiveSound(ConstructionSound.ID.NONE)
+
 	if isUp then
 		self.lastX = nil
 
@@ -132,6 +135,13 @@ function ConstructionBrushFoliage:performBrush(isDown, isDrag, isUp, direction)
 
 	local radius = self.brushRadius
 	local validateOnly = false
+	local err = self:verifyAccess(x, y, z)
+
+	if err ~= nil then
+		return
+	end
+
+	self:setActiveSound(ConstructionSound.ID.FOLIAGE, 1 - self.brushRadius / self.maxBrushRadius)
 
 	if self.lastX ~= nil then
 		local dx = x - self.lastX
@@ -145,12 +155,6 @@ function ConstructionBrushFoliage:performBrush(isDown, isDrag, isUp, direction)
 
 	self.lastZ = z
 	self.lastX = x
-	local err = self:verifyAccess(x, y, z)
-
-	if err ~= nil then
-		return
-	end
-
 	local requestLandscaping = nil
 
 	if direction > 0 then

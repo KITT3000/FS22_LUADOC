@@ -113,6 +113,8 @@ function DebugCube:setColor(r, g, b)
 		g,
 		b
 	}
+
+	return self
 end
 
 function DebugCube:createSimple(x, y, z, size)
@@ -129,6 +131,8 @@ function DebugCube:createWithStartEnd(startNode, endNode)
 	local rotY = MathUtil.getYRotationFromDirection(dirX, dirZ)
 
 	self:createWithWorldPosAndRot(x, y, z, 0, rotY, 0, sizeX * 0.5, sizeY * 0.5, sizeZ * 0.5)
+
+	return self
 end
 
 function DebugCube:createWithPlacementSize(node, sizeWidth, sizeLength, widthOffset, lengthOffset, updatePosition)
@@ -136,6 +140,8 @@ function DebugCube:createWithPlacementSize(node, sizeWidth, sizeLength, widthOff
 	local x, y, z = localToWorld(node, widthOffset, 0, lengthOffset)
 
 	self:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, sizeWidth, 1, sizeLength)
+
+	return self
 end
 
 function DebugCube:createWithNode(node, sizeX, sizeY, sizeZ, offsetX, offsetY, offsetZ)
@@ -196,6 +202,8 @@ function DebugCube:createWithNode(node, sizeX, sizeY, sizeZ, offsetX, offsetY, o
 		y - self.normY + self.upY + self.dirY,
 		z - self.normZ + self.upZ + self.dirZ
 	}
+
+	return self
 end
 
 function DebugCube:createWithPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, sizeX, sizeY, sizeZ)
@@ -258,6 +266,8 @@ function DebugCube:createWithPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY, upZ,
 		y - self.normY + self.upY + self.dirY,
 		z - self.normZ + self.upZ + self.dirZ
 	}
+
+	return self
 end
 
 function DebugCube:createWithWorldPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, sizeX, sizeY, sizeZ)
@@ -268,6 +278,8 @@ function DebugCube:createWithWorldPosAndDir(x, y, z, dirX, dirY, dirZ, upX, upY,
 	setDirection(temp, dirX, dirY, dirZ, upX, upY, upZ)
 	self:createWithNode(temp, sizeX, sizeY, sizeZ)
 	delete(temp)
+
+	return self
 end
 
 function DebugCube:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, sizeX, sizeY, sizeZ)
@@ -278,4 +290,6 @@ function DebugCube:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, sizeX, si
 	setRotation(temp, rotX, rotY, rotZ)
 	self:createWithNode(temp, sizeX, sizeY, sizeZ)
 	delete(temp)
+
+	return self
 end

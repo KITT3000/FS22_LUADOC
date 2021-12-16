@@ -421,7 +421,7 @@ function LoadTrigger:getAllowsActivation(fillableObject)
 		return true
 	end
 
-	if fillableObject.getAllowLoadTriggerActivation ~= nil and fillableObject:getAllowLoadTriggerActivation() then
+	if fillableObject.getAllowLoadTriggerActivation ~= nil and fillableObject:getAllowLoadTriggerActivation(fillableObject) then
 		return true
 	end
 

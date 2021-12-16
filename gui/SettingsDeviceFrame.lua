@@ -219,11 +219,13 @@ function SettingsDeviceFrame:updateView()
 		self.sensitivityMouseElement:setState(self.settingsModel:getMouseSensitivityValue())
 	end
 
-	local hasHeadTracking = g_gameSettings:getValue("isHeadTrackingEnabled") and isHeadTrackingAvailable()
+	local hasHeadTracking = true
+	local isKeyboardAvailable = getIsKeyboardAvailable()
+	local isHeadTrackingVisible = hasHeadTracking and (isMouse or not isKeyboardAvailable)
 
-	self.sensitivityHeadTrackingElement:setVisible(hasHeadTracking)
+	self.sensitivityHeadTrackingElement:setVisible(isHeadTrackingVisible)
 
-	if hasHeadTracking then
+	if isHeadTrackingVisible then
 		if firstVisible == nil then
 			firstVisible = self.sensitivityHeadTrackingElement
 		end

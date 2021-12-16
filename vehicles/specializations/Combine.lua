@@ -232,6 +232,15 @@ function Combine:onPostLoad(savegame)
 	end
 
 	spec.isBufferCombine = self:getFillUnitCapacity(self.spec_combine.fillUnitIndex) == math.huge
+
+	if spec.isBufferCombine then
+		local fillUnit = self:getFillUnitByIndex(self.spec_combine.fillUnitIndex)
+
+		if fillUnit.showOnInfoHud then
+			Logging.xmlWarning(self.xmlFile, "Buffer combine fill unit is displayed in info hud! Add showOnInfoHud='false' to the fill unit.")
+		end
+	end
+
 	local ladder = spec.ladder
 
 	if ladder.animName ~= nil then
@@ -1138,7 +1147,7 @@ function Combine:addCutterArea(area, realArea, inputFruitType, outputFillType, s
 			litersPerSqm = fruitDesc.windrowLiterPerSqm
 		end
 
-		if self:getIsThreshingDuringRain() then
+		if self:getIsThreshingDuringRain() and self.propertyState ~= Vehicle.PROPERTY_STATE_MISSION then
 			realArea = realArea * (1 - Combine.RAIN_YIELD_REDUCTION)
 		end
 

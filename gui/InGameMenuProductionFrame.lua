@@ -10,8 +10,10 @@ InGameMenuProductionFrame.CONTROLS = {
 	"storageList",
 	"detailsBox",
 	"detailProductionStatus",
-	"detailCyclesPerHour",
-	"detailCostsPerHour",
+	"productionCyclesDesc",
+	"detailCyclesPerMonth",
+	"productionCostsDesc",
+	"detailCostsPerMonth",
 	"recipeFillIcon",
 	"recipeText",
 	"recipeArrow",
@@ -93,6 +95,9 @@ function InGameMenuProductionFrame:initialize()
 			self:onButtonToggleOutputMode()
 		end
 	}
+
+	self.productionCyclesDesc:setText(string.format("%s / %s", g_i18n:getText("ui_cycles"), g_i18n:getText("ui_month")))
+	self.productionCostsDesc:setText(string.format("%s / %s", g_i18n:getText("finance_productionCosts"), g_i18n:getText("ui_month")))
 end
 
 function InGameMenuProductionFrame:onFrameOpen()
@@ -146,8 +151,8 @@ function InGameMenuProductionFrame:updateDetails()
 
 	self.detailProductionStatus:applyProfile(statusProfile)
 	self.detailProductionStatus:setLocaKey(statusKey)
-	self.detailCyclesPerHour:setText(MathUtil.round(production.cyclesPerHour, 2))
-	self.detailCostsPerHour:setValue(production.costsPerActiveHour)
+	self.detailCyclesPerMonth:setText(MathUtil.round(production.cyclesPerMonth, 2))
+	self.detailCostsPerMonth:setValue(production.costsPerActiveMonth)
 
 	local function addIcons(list, layout)
 		for i = 1, #layout.elements do

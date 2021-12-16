@@ -136,11 +136,20 @@ end
 function AIJobGoTo:validate(farmId)
 	self:setParamterValid(true)
 
-	local isValid, errorMessage = self.vehicleParameter:validate()
+	local isVehicleValid, errorMessageVehicle = self.vehicleParameter:validate()
 
-	if not isValid then
+	if not isVehicleValid then
 		self.vehicleParameter:setIsValid(false)
 	end
+
+	local isPositionValid, errorMessagePosition = self.positionAngleParameter:validate()
+
+	if not isPositionValid then
+		self.positionAngleParameter:setIsValid(false)
+	end
+
+	local isValid = isVehicleValid and isPositionValid
+	local errorMessage = errorMessageVehicle or errorMessagePosition
 
 	return isValid, errorMessage
 end

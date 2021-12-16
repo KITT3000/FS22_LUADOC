@@ -3,7 +3,7 @@ local FieldHotspot_mt = Class(FieldHotspot, MapHotspot)
 
 function FieldHotspot.new(customMt)
 	local self = MapHotspot.new(customMt or FieldHotspot_mt)
-	local _, textSize = getNormalizedScreenValues(0, 16)
+	local _, textSize = getNormalizedScreenValues(0, 22)
 	self.textSize = textSize
 	self.name = ""
 

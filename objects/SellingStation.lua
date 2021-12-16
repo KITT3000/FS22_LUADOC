@@ -1,9 +1,8 @@
 SellingStation = {
 	PRICE_FALLING = 1,
 	PRICE_CLIMBING = 2,
-	PRICE_LOW = 3,
-	PRICE_HIGH = 4,
 	PRICE_GREAT_DEMAND = 5,
+	RANDOM_DELTA_IMPACT = 0.3,
 	PRICE_DROP_DELAY = 3600000
 }
 local SellingStation_mt = Class(SellingStation, UnloadingStation)
@@ -21,6 +20,7 @@ function SellingStation.new(isServer, isClient, customMt)
 	self.isSellingPoint = true
 	self.storeSoldGoods = false
 	self.skipSell = false
+	self.allowMissions = true
 
 	return self
 end
@@ -49,6 +49,7 @@ function SellingStation:load(components, xmlFile, key, customEnv, i3dMappings, r
 
 	self.appearsOnStats = xmlFile:getValue(key .. "#appearsOnStats", false)
 	self.suppressWarnings = xmlFile:getValue(key .. "#suppressWarnings", false)
+	self.allowMissions = xmlFile:getValue(key .. "#allowMissions", true)
 	self.hasDynamic = xmlFile:getValue(key .. "#hasDynamic", true)
 	local litersForFullPriceDrop = xmlFile:getValue(key .. "#litersForFullPriceDrop")
 
@@ -112,7 +113,10 @@ function SellingStation:load(components, xmlFile, key, customEnv, i3dMappings, r
 		end
 	end
 
-	self.moneyChangeType = MoneyType.getMoneyType("soldMaterials", "finance_other")
+	if self.isServer then
+		self.moneyChangeType = MoneyType.register("soldMaterials", "finance_other")
+	end
+
 	self.priceDropTimer = 0
 	self.pricingDynamics = {}
 
@@ -161,6 +165,9 @@ function SellingStation:addAcceptedFillType(fillType, priceUnscaled, supportsGre
 end
 
 function SellingStation:readStream(streamId, connection)
+	local moneyTypeId = streamReadUInt16(streamId)
+	self.moneyChangeType = MoneyType.registerWithId(moneyTypeId, "soldMaterials", "finance_other")
+
 	SellingStation:superClass().readStream(self, streamId, connection)
 
 	if connection:getIsServer() then
@@ -175,6 +182,7 @@ function SellingStation:readStream(streamId, connection)
 end
 
 function SellingStation:writeStream(streamId, connection)
+	streamWriteUInt16(streamId, self.moneyChangeType.id)
 	SellingStation:superClass().writeStream(self, streamId, connection)
 
 	if not connection:getIsServer() then
@@ -239,20 +247,6 @@ end
 function SellingStation:updateSellingStation(dt, scaledDt)
 	if self.isServer then
 		self:updatePrices(scaledDt)
-
-		if self.priceDropTimer > 0 then
-			self.priceDropTimer = math.max(self.priceDropTimer - scaledDt, 0)
-		end
-
-		if self.priceDropTimer <= 0 then
-			for fillType, _ in pairs(self.acceptedFillTypes) do
-				if (not self.isGreatDemandActive or self.greatDemandFillType ~= fillType) and self.pendingPriceDrop[fillType] > 0 then
-					self:executePriceDrop(self.pendingPriceDrop[fillType], fillType)
-
-					self.pendingPriceDrop[fillType] = 0
-				end
-			end
-		end
 
 		if self.hasDynamic then
 			self.priceSyncTimer = self.priceSyncTimer - dt
@@ -406,7 +400,16 @@ function SellingStation:getEffectiveFillTypePrice(fillType, toolType)
 	end
 
 	if self.isServer then
-		return (self.fillTypePrices[fillType] + self.fillTypePriceRandomDelta[fillType]) * self.priceMultipliers[fillType] * EconomyManager.getPriceMultiplier()
+		local factor = 0
+		local period, alpha = g_currentMission.environment:getPeriodAndAlphaIntoPeriod()
+		local fillTypeDesc = g_fillTypeManager:getFillTypeByIndex(fillType)
+		local seasonalFactor = g_currentMission.economyManager:getFillTypeSeasonalFactor(fillTypeDesc, period, alpha)
+
+		if seasonalFactor == 0 then
+			return 0
+		else
+			return (self.fillTypePrices[fillType] * seasonalFactor + self.fillTypePriceRandomDelta[fillType] * SellingStation.RANDOM_DELTA_IMPACT) * self.priceMultipliers[fillType] * EconomyManager.getPriceMultiplier()
+		end
 	else
 		return self.fillTypePrices[fillType]
 	end
@@ -438,7 +441,7 @@ end
 
 function SellingStation:initPricingDynamics()
 	local timeScaling = 1
-	local amp = 0.2
+	local amp = 0.04
 	local ampVar = 0.15
 	local ampDist = PricingDynamics.AMP_DIST_LINEAR_DOWN
 	local per = 172800000
@@ -446,7 +449,7 @@ function SellingStation:initPricingDynamics()
 	local perDist = PricingDynamics.AMP_DIST_CONSTANT
 	local plateauFactor = 0.3
 	local initialPlateauFraction = 0.75
-	local amp2 = 0.1
+	local amp2 = 0.02
 	local ampVar2 = 0.02
 	local ampDist2 = PricingDynamics.AMP_DIST_CONSTANT
 	local per2 = 604800000
@@ -466,15 +469,9 @@ function SellingStation:initPricingDynamics()
 end
 
 function SellingStation:executePriceDrop(priceDrop, fillType)
-	local lowestPrice = self.originalFillTypePrices[fillType] * EconomyManager.PRICE_DROP_MIN_PERCENT
-	self.fillTypePrices[fillType] = math.max(self.fillTypePrices[fillType] - priceDrop, lowestPrice)
 end
 
 function SellingStation:doPriceDrop(fillLevel, fillType)
-	if self.pendingPriceDrop[fillType] ~= nil and self.priceDropPerLiter ~= nil then
-		self.pendingPriceDrop[fillType] = self.pendingPriceDrop[fillType] + self.priceDropPerLiter * fillLevel * self.originalFillTypePrices[fillType]
-		self.priceDropTimer = SellingStation.PRICE_DROP_DELAY
-	end
 end
 
 function SellingStation:updatePrices(dt)
@@ -488,26 +485,47 @@ function SellingStation:updatePrices(dt)
 				self.fillTypePriceRandomDelta[fillType] = self.pricingDynamics[fillType]:evaluate()
 				self.fillTypePriceInfo[fillType] = Utils.clearBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_CLIMBING)
 				self.fillTypePriceInfo[fillType] = Utils.clearBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_FALLING)
+				local trend = self:getTrend(fillType)
 
-				if self.pricingDynamics[fillType]:getBaseCurveTrend() == PricingDynamics.TREND_FALLING then
+				if trend == PricingDynamics.TREND_FALLING then
 					self.fillTypePriceInfo[fillType] = Utils.setBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_FALLING)
-				elseif self.pricingDynamics[fillType]:getBaseCurveTrend() == PricingDynamics.TREND_CLIMBING then
+				elseif trend == PricingDynamics.TREND_CLIMBING then
 					self.fillTypePriceInfo[fillType] = Utils.setBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_CLIMBING)
 				end
 
 				local priceRecover = priceRecoverBase * self.originalFillTypePrices[fillType]
 				self.fillTypePrices[fillType] = math.min(self.fillTypePrices[fillType] + priceRecover, self.originalFillTypePrices[fillType])
-				self.fillTypePriceInfo[fillType] = Utils.clearBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_LOW)
-				self.fillTypePriceInfo[fillType] = Utils.clearBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_HIGH)
-				local correctedDelta = self.fillTypePriceRandomDelta[fillType] - (self.originalFillTypePrices[fillType] - self.fillTypePrices[fillType])
-
-				if self.levelThreshold < correctedDelta then
-					self.fillTypePriceInfo[fillType] = Utils.setBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_HIGH)
-				elseif correctedDelta < -self.levelThreshold then
-					self.fillTypePriceInfo[fillType] = Utils.setBit(self.fillTypePriceInfo[fillType], SellingStation.PRICE_LOW)
-				end
 			end
 		end
+	end
+end
+
+function SellingStation:getTrend(fillType)
+	local fillTypeDesc = g_fillTypeManager:getFillTypeByIndex(fillType)
+	local N = 240
+	local randomDelta1 = self.fillTypePriceRandomDelta[fillType] / self.fillTypePrices[fillType]
+	local randomDelta2 = self.pricingDynamics[fillType]:evaluateForTrend(N * 60 * 1000) / self.fillTypePrices[fillType]
+	local period, alpha = g_currentMission.environment:getPeriodAndAlphaIntoPeriod()
+	local alpha2 = alpha + N / 60 / 24 / g_currentMission.environment.daysPerPeriod
+	local period2 = period
+
+	if alpha2 > 1 then
+		alpha2 = alpha2 - 1
+		period2 = period2 + 1
+	end
+
+	local seasonalFactor1 = g_currentMission.economyManager:getFillTypeSeasonalFactor(fillTypeDesc, period, alpha)
+	local seasonalFactor2 = g_currentMission.economyManager:getFillTypeSeasonalFactor(fillTypeDesc, period2, alpha2)
+	local price1 = seasonalFactor1 + randomDelta1 * SellingStation.RANDOM_DELTA_IMPACT
+	local price2 = seasonalFactor2 + randomDelta2 * SellingStation.RANDOM_DELTA_IMPACT
+	local delta = price2 - price1
+
+	if math.abs(delta) < 0.002 then
+		return PricingDynamics.TREND_PLATEAU
+	elseif delta > 0 then
+		return PricingDynamics.TREND_CLIMBING
+	else
+		return PricingDynamics.TREND_FALLING
 	end
 end
 
@@ -577,6 +595,7 @@ end
 function SellingStation.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.BOOL, basePath .. "#appearsOnStats", "Appears on Stats", false)
 	schema:register(XMLValueType.BOOL, basePath .. "#suppressWarnings", "Suppress warnings", false)
+	schema:register(XMLValueType.BOOL, basePath .. "#allowMissions", "Allow missions", true)
 	schema:register(XMLValueType.BOOL, basePath .. "#hasDynamic", "Has dynamic prices", true)
 	schema:register(XMLValueType.INT, basePath .. "#litersForFullPriceDrop", "Liters for full price drop")
 	schema:register(XMLValueType.FLOAT, basePath .. "#fullPriceRecoverHours", "Full price recover ingame hours")
@@ -596,7 +615,7 @@ function SellingStation.registerSavegameXMLPaths(schema, basePath)
 	PricingDynamics.registerSavegameXMLPaths(schema, basePath .. ".stats(?)")
 end
 
-function SellingStation.loadSpecValueFillTypes(xmlFile, customEnvironment)
+function SellingStation.loadSpecValueFillTypes(xmlFile, customEnvironment, baseDir)
 	local fillTypeNames = nil
 	local fillTypesNamesString = xmlFile:getValue("placeable.sellingStation#fillTypes")
 

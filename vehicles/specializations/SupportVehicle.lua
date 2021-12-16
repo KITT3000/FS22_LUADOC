@@ -246,7 +246,15 @@ end
 
 function SupportVehicle:resolveMultipleAttachments(superFunc)
 	if self.isServer then
-		self:removeSupportVehicle()
+		if self.spec_supportVehicle.filename ~= nil then
+			self:removeSupportVehicle()
+		else
+			local attacherVehicle = self:getAttacherVehicle()
+
+			if attacherVehicle ~= nil then
+				attacherVehicle:detachImplementByObject(self)
+			end
+		end
 	end
 
 	superFunc(self)

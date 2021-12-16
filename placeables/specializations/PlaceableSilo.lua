@@ -513,7 +513,7 @@ function PlaceableSilo:updateInfo(superFunc, infoTable)
 	end
 end
 
-function PlaceableSilo.loadSpecValueVolume(xmlFile, customEnvironment)
+function PlaceableSilo.loadSpecValueVolume(xmlFile, customEnvironment, baseDir)
 	return xmlFile:getValue("placeable.silo.storages.storage(0)#capacity")
 end
 

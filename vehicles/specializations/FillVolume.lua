@@ -40,6 +40,7 @@ function FillVolume.initSpecialization()
 	schema:register(XMLValueType.VECTOR_SCALE, "vehicle.fillVolume.heightNodes.heightNode(?).node(?)#scaleMax", "Max. scale", "0 0 0")
 	schema:register(XMLValueType.VECTOR_3, "vehicle.fillVolume.heightNodes.heightNode(?).node(?)#transAxis", "Translation axis", "0 0 0")
 	schema:register(XMLValueType.VECTOR_TRANS, "vehicle.fillVolume.heightNodes.heightNode(?).node(?)#transMax", "Max. translation", "0 0 0")
+	schema:register(XMLValueType.FLOAT, "vehicle.fillVolume.heightNodes.heightNode(?).node(?)#minHeight", "Min. fill volume height used for heigth node", 0)
 	schema:register(XMLValueType.FLOAT, "vehicle.fillVolume.heightNodes.heightNode(?).node(?)#heightOffset", "Fill plane height offset", 0)
 	schema:register(XMLValueType.BOOL, "vehicle.fillVolume.heightNodes.heightNode(?).node(?)#orientateToWorldY", "Orientate to world Y", false)
 	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, basePath)
@@ -317,7 +318,7 @@ function FillVolume:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 					heightNode.currentMaxHeightWorld = maxHeightWorld
 
 					for _, node in pairs(heightNode.nodes) do
-						local nodeHeight = math.max(minHeight + node.heightOffset, 0)
+						local nodeHeight = math.max(minHeight + node.heightOffset, node.minHeight)
 						local sx = node.scaleAxis[1] * nodeHeight
 						local sy = node.scaleAxis[2] * nodeHeight
 						local sz = node.scaleAxis[3] * nodeHeight
@@ -596,6 +597,7 @@ function FillVolume:loadFillVolumeHeightNode(xmlFile, key, entry)
 				},
 				transAxis = xmlFile:getValue(nodeKey .. "#transAxis", "0 0 0", true),
 				transMax = xmlFile:getValue(nodeKey .. "#transMax", "0 0 0", true),
+				minHeight = xmlFile:getValue(nodeKey .. "#minHeight", 0),
 				heightOffset = xmlFile:getValue(nodeKey .. "#heightOffset", 0),
 				orientateToWorldY = xmlFile:getValue(nodeKey .. "#orientateToWorldY", false)
 			}

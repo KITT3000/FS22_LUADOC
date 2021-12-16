@@ -12,6 +12,9 @@ Mountable = {
 		schema:register(XMLValueType.FLOAT, "vehicle.dynamicMount#triggerForceAcceleration", "Trigger force acceleration", 4)
 		schema:register(XMLValueType.BOOL, "vehicle.dynamicMount#singleAxisFreeY", "Single axis free Y")
 		schema:register(XMLValueType.BOOL, "vehicle.dynamicMount#singleAxisFreeX", "Single axis free X")
+		schema:register(XMLValueType.FLOAT, "vehicle.dynamicMount#jointTransY", "Fixed Y translation of local placed joint", "not defined")
+		schema:register(XMLValueType.BOOL, "vehicle.dynamicMount#jointLimitToRotY", "Local placed joint will only be adjusted on Y axis to the target mounter object. X and Z will be 0.", false)
+		schema:register(XMLValueType.FLOAT, "vehicle.dynamicMount#additionalMountDistance", "Distance from root node to the object laying on top (normally height of object). If defined the mass of this object has influence in mounting.", 0)
 		schema:register(XMLValueType.BOOL, "vehicle.dynamicMount#allowMassReduction", "Defines if mass can be reduced by the mount vehicle", true)
 		schema:setXMLSpecializationType()
 	end
@@ -27,6 +30,9 @@ function Mountable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "unmountKinematic", Mountable.unmountKinematic)
 	SpecializationUtil.registerFunction(vehicleType, "mountDynamic", Mountable.mountDynamic)
 	SpecializationUtil.registerFunction(vehicleType, "unmountDynamic", Mountable.unmountDynamic)
+	SpecializationUtil.registerFunction(vehicleType, "getAdditionalMountingDistance", Mountable.getAdditionalMountingDistance)
+	SpecializationUtil.registerFunction(vehicleType, "getAdditionalMountingMass", Mountable.getAdditionalMountingMass)
+	SpecializationUtil.registerFunction(vehicleType, "additionalMountingMassRaycastCallback", Mountable.additionalMountingMassRaycastCallback)
 	SpecializationUtil.registerFunction(vehicleType, "getMountObject", Mountable.getMountObject)
 	SpecializationUtil.registerFunction(vehicleType, "getDynamicMountObject", Mountable.getDynamicMountObject)
 	SpecializationUtil.registerFunction(vehicleType, "setReducedComponentMass", Mountable.setReducedComponentMass)
@@ -74,12 +80,16 @@ function Mountable:onLoad(savegame)
 
 			link(spec.componentNode, spec.dynamicMountJointNodeDynamic)
 		end
+
+		spec.dynamicMountJointTransY = self.xmlFile:getValue("vehicle.dynamicMount#jointTransY")
+		spec.dynamicMountJointLimitToRotY = self.xmlFile:getValue("vehicle.dynamicMount#jointLimitToRotY", false)
 	end
 
 	spec.jointNode = self.xmlFile:getValue("vehicle.dynamicMount#jointNode", nil, self.components, self.i3dMappings)
 	spec.dynamicMountTriggerForceAcceleration = self.xmlFile:getValue("vehicle.dynamicMount#triggerForceAcceleration", 4)
 	spec.dynamicMountSingleAxisFreeY = self.xmlFile:getValue("vehicle.dynamicMount#singleAxisFreeY")
 	spec.dynamicMountSingleAxisFreeX = self.xmlFile:getValue("vehicle.dynamicMount#singleAxisFreeX")
+	spec.additionalMountDistance = self.xmlFile:getValue("vehicle.dynamicMount#additionalMountDistance", 0)
 	spec.allowMassReduction = self.xmlFile:getValue("vehicle.dynamicMount#allowMassReduction", true)
 	spec.reducedComponentMass = false
 end
@@ -294,9 +304,29 @@ function Mountable:mountDynamic(object, objectActorId, jointNode, mountType, for
 			x, y, z = localToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 0)
 		end
 
+		y = spec.dynamicMountJointTransY or y
+
 		setTranslation(spec.dynamicMountJointNodeDynamic, x, y, z)
-		setRotation(spec.dynamicMountJointNodeDynamic, localRotationToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 0))
+
+		local rx, ry, rz = nil
+
+		if spec.dynamicMountJointLimitToRotY then
+			local dx, _, dz = localDirectionToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 1)
+			dx, dz = MathUtil.vector2Normalize(dx, dz)
+			rz = 0
+			ry = MathUtil.getYRotationFromDirection(dx, dz)
+			rx = 0
+		else
+			rx, ry, rz = localRotationToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 0)
+		end
+
+		setRotation(spec.dynamicMountJointNodeDynamic, rx, ry, rz)
 	end
+
+	local additionalWeight = self:getAdditionalMountingMass()
+	local mass = self:getTotalMass()
+	local massFactor = (additionalWeight + mass) / mass
+	forceAcceleration = forceAcceleration * massFactor
 
 	return DynamicMountUtil.mountDynamic(self, spec.componentNode, object, objectActorId, jointNode, mountType, forceAcceleration * spec.dynamicMountForceLimitScale, spec.dynamicMountJointNodeDynamic)
 end
@@ -304,6 +334,38 @@ end
 function Mountable:unmountDynamic(isDelete)
 	DynamicMountUtil.unmountDynamic(self, isDelete)
 	self:setReducedComponentMass(false)
+end
+
+function Mountable:getAdditionalMountingDistance()
+	return self.spec_mountable.additionalMountDistance
+end
+
+function Mountable:getAdditionalMountingMass()
+	local distance = self:getAdditionalMountingDistance()
+
+	if distance > 0 then
+		local spec = self.spec_mountable
+		local x, y, z = getWorldTranslation(self.rootNode)
+		spec.additionalMountingMass = 0
+
+		raycastAll(x, y + 0.1, z, 0, 1, 0, "additionalMountingMassRaycastCallback", distance, self, CollisionFlag.DYNAMIC_OBJECT, false, false)
+
+		return spec.additionalMountingMass
+	end
+
+	return 0
+end
+
+function Mountable:additionalMountingMassRaycastCallback(hitObjectId, x, y, z, distance, nx, ny, nz, subShapeIndex, shapeId, isLast)
+	local vehicle = g_currentMission.nodeToObject[hitObjectId]
+
+	if vehicle ~= self and vehicle ~= nil and vehicle:isa(Vehicle) and vehicle.getAdditionalMountingMass ~= nil then
+		local spec = self.spec_mountable
+		spec.additionalMountingMass = spec.additionalMountingMass + vehicle:getTotalMass()
+		spec.additionalMountingMass = spec.additionalMountingMass + vehicle:getAdditionalMountingMass()
+
+		return false
+	end
 end
 
 function Mountable:getIsActive(superFunc)

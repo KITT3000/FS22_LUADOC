@@ -222,16 +222,22 @@ function Landscaping:sculpt(x, y, z, nx, ny, nz, d, minY, maxY, radius, strength
 	elseif operation == Landscaping.OPERATION.FOLIAGE then
 		local foliageSystem = g_currentMission.foliageSystem
 
-		if brushShape == Landscaping.BRUSH_SHAPE.CIRCLE then
-			for ox = -radius / self.terrainUnit, radius / self.terrainUnit - 1 do
-				local xStart = ox * self.terrainUnit
-				local xEnd = ox * self.terrainUnit + self.terrainUnit
+		if brushShape == Landscaping.BRUSH_SHAPE.CIRCLE and radius >= 1 then
+			local unit = 0.5
+
+			for ox = -radius / unit, radius / unit - 1 do
+				local xStart = ox * unit
+				local xEnd = ox * unit + unit
 				local zOffset1 = math.sin(math.acos(math.abs(xStart) / radius)) * radius
 				local zOffset2 = math.sin(math.acos(math.abs(xEnd) / radius)) * radius
 				local zOffset = math.min(zOffset1, zOffset2) - 0.02
 				displacedFoliageArea = displacedFoliageArea + foliageSystem:apply(foliageSystem:getFoliagePaint(terrainFoliageLayer), x + xStart, z - zOffset, x + xEnd, z - zOffset, x + xStart, z + zOffset, terrainFoliageValue)
 			end
 		else
+			if brushShape == Landscaping.BRUSH_SHAPE.CIRCLE then
+				radius = radius / 2
+			end
+
 			local x0 = x - radius
 			local z0 = z - radius
 			local x1 = x - radius
@@ -315,6 +321,7 @@ function Landscaping:onSculptingApplied(errorCode, displacedVolumeOrArea, _)
 				if self.sculptingOperation ~= Landscaping.OPERATION.SMOOTH then
 					FSDensityMapUtil.removeFieldArea(x, z, x1, z1, x2, z2, false)
 					FSDensityMapUtil.removeWeedArea(x, z, x1, z1, x2, z2)
+					FSDensityMapUtil.removeStoneArea(x, z, x1, z1, x2, z2)
 				end
 
 				FSDensityMapUtil.eraseTireTrack(x, z, x1, z1, x2, z2)
@@ -340,11 +347,9 @@ function Landscaping:onSculptingApplied(errorCode, displacedVolumeOrArea, _)
 		self.callbackFunction(errorCode, displacedVolumeOrArea)
 	end
 
-	if self.currentTerrainDeformation ~= nil then
-		self.currentTerrainDeformation:delete()
+	self.currentTerrainDeformation:delete()
 
-		self.currentTerrainDeformation = nil
-	end
+	self.currentTerrainDeformation = nil
 end
 
 function Landscaping:getCost(displacedVolumeOrArea)

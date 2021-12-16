@@ -8,9 +8,6 @@ function PlaceableChargingStation.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getChargeState", PlaceableChargingStation.getChargeState)
 end
 
-function PlaceableChargingStation.registerOverwrittenFunctions(placeableType)
-end
-
 function PlaceableChargingStation.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceableChargingStation)
 	SpecializationUtil.registerEventListener(placeableType, "onUpdate", PlaceableChargingStation)

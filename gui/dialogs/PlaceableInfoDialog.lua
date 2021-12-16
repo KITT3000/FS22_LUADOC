@@ -33,7 +33,8 @@ end
 
 function PlaceableInfoDialog:setPlaceable(placeable)
 	local name = placeable:getName()
-	local sellPrice = g_i18n:formatMoney(placeable:getSellPrice())
+	local price, forFullPrice = placeable:getSellPrice()
+	local sellPrice = g_i18n:formatMoney(price)
 	local canRename = placeable:getCanBeRenamedByFarm(g_currentMission:getFarmId())
 	local imageFilename = placeable.storeItem.imageFilename
 	local canSell = placeable:canBeSold() and placeable.storeItem.canBeSold and g_currentMission:getFarmId() == placeable:getOwnerFarmId()
@@ -86,13 +87,13 @@ function PlaceableInfoDialog:sendCallback(didSell)
 end
 
 function PlaceableInfoDialog:onClickSell()
-	local price = g_currentMission.economyManager:getSellPrice(self.placeable)
+	local price, forFullPrice = self.placeable:getSellPrice()
 
 	g_gui:showYesNoDialog({
 		text = string.format(g_i18n:getText("ui_constructionSellConfirmation"), self.placeable:getName(), g_i18n:formatMoney(price, 0, true, true)),
 		callback = function (yes)
 			if yes then
-				g_client:getServerConnection():sendEvent(SellPlaceableEvent.new(self.placeable))
+				g_client:getServerConnection():sendEvent(SellPlaceableEvent.new(self.placeable, nil, forFullPrice))
 			end
 		end
 	})

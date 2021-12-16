@@ -67,6 +67,7 @@ function Wheels.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "loadWheelBaseData", Wheels.loadWheelBaseData)
 	SpecializationUtil.registerFunction(vehicleType, "loadWheelDataFromExternalXML", Wheels.loadWheelDataFromExternalXML)
 	SpecializationUtil.registerFunction(vehicleType, "loadWheelSharedData", Wheels.loadWheelSharedData)
+	SpecializationUtil.registerFunction(vehicleType, "loadWheelVisualData", Wheels.loadWheelVisualData)
 	SpecializationUtil.registerFunction(vehicleType, "loadWheelPhysicsData", Wheels.loadWheelPhysicsData)
 	SpecializationUtil.registerFunction(vehicleType, "loadWheelSteeringData", Wheels.loadWheelSteeringData)
 	SpecializationUtil.registerFunction(vehicleType, "loadAdditionalWheelsFromXML", Wheels.loadAdditionalWheelsFromXML)
@@ -114,6 +115,7 @@ function Wheels.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getAllowTireTracks", Wheels.getAllowTireTracks)
 	SpecializationUtil.registerFunction(vehicleType, "getTireTrackColor", Wheels.getTireTrackColor)
 	SpecializationUtil.registerFunction(vehicleType, "forceUpdateWheelPhysics", Wheels.forceUpdateWheelPhysics)
+	SpecializationUtil.registerFunction(vehicleType, "onWheelSnowHeightChanged", Wheels.onWheelSnowHeightChanged)
 end
 
 function Wheels.registerOverwrittenFunctions(vehicleType)
@@ -288,6 +290,10 @@ function Wheels.registerWheelSharedDataXMLPaths(schema, key)
 	schema:register(XMLValueType.FLOAT, key .. ".tire#sideDeformOffset", "Offset from lowerst point in center to lowerest point on the side in percentage (0.95: Radius on the side is 5% smaller than in the center)", 1)
 	schema:register(XMLValueType.BOOL, key .. ".tire#isCareWheel", "Is care wheel")
 	schema:register(XMLValueType.FLOAT, key .. ".physics#smoothGroundRadius", "Smooth ground radius", "width * 0.75")
+	Wheels.registerWheelVisualDataXMLPaths(schema, key)
+end
+
+function Wheels.registerWheelVisualDataXMLPaths(schema, key)
 	schema:register(XMLValueType.STRING, key .. ".tire#filename", "Path to tire i3d file")
 	schema:register(XMLValueType.BOOL, key .. ".tire#isInverted", "Tire profile is inverted")
 	schema:register(XMLValueType.STRING, key .. ".tire#node", "Node Index inside tire i3d")
@@ -396,6 +402,7 @@ function Wheels.registerWheelAdditionalWheelsXMLPaths(schema, key)
 	schema:register(XMLValueType.FLOAT, key .. "#offset", "X Offset", 0)
 	Wheels.registerConnectorXMLPaths(schema, key .. ".connector")
 	Wheels.registerWheelParticleSystemXMLPaths(schema, key .. ".wheelParticleSystem")
+	Wheels.registerWheelVisualDataXMLPaths(schema, key)
 end
 
 function Wheels.registerConnectorXMLPaths(schema, key)
@@ -655,6 +662,8 @@ function Wheels:onLoad(savegame)
 	spec.forceIsActiveTime = 3000
 	spec.forceIsActiveTimer = 0
 	spec.dirtyFlag = self:getNextDirtyFlag()
+
+	g_messageCenter:subscribe(MessageType.SNOW_HEIGHT_CHANGED, self.onWheelSnowHeightChanged, self)
 end
 
 function Wheels:onLoadFinished(savegame)
@@ -1000,23 +1009,25 @@ function Wheels:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, 
 			spec.currentUpdateIndex = 1
 		end
 
-		local numTireTrackNodes = #spec.tireTrackNodes
+		if self.isActive then
+			local numTireTrackNodes = #spec.tireTrackNodes
 
-		if numTireTrackNodes > 0 then
-			local allowTireTracks = self:getAllowTireTracks()
+			if numTireTrackNodes > 0 then
+				local allowTireTracks = self:getAllowTireTracks()
 
-			for i = 1, numTireTrackNodes do
-				local tireTrackNode = spec.tireTrackNodes[i]
+				for i = 1, numTireTrackNodes do
+					local tireTrackNode = spec.tireTrackNodes[i]
 
-				self:updateTireTrackNode(tireTrackNode, allowTireTracks, groundWetness)
+					self:updateTireTrackNode(tireTrackNode, allowTireTracks, groundWetness)
+				end
 			end
-		end
 
-		if numWheels > 0 and g_currentMission.missionInfo.fruitDestruction and not self:getIsAIActive() and (self.getBlockFoliageDestruction == nil or not self:getBlockFoliageDestruction()) then
-			for i = 1, numWheels do
-				local wheel = spec.wheels[i]
+			if numWheels > 0 and g_currentMission.missionInfo.fruitDestruction and not self:getIsAIActive() and (self.getBlockFoliageDestruction == nil or not self:getBlockFoliageDestruction()) then
+				for i = 1, numWheels do
+					local wheel = spec.wheels[i]
 
-				self:updateWheelDestruction(wheel, dt)
+					self:updateWheelDestruction(wheel, dt)
+				end
 			end
 		end
 
@@ -1449,6 +1460,19 @@ function Wheels:loadWheelSharedData(xmlFile, configKey, wheelKey, wheel, skipCon
 	wheel.deformation = 0
 	wheel.isCareWheel = Utils.getNoNil(self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".tire#isCareWheel", wheel.isCareWheel), true)
 	wheel.smoothGroundRadius = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".physics#smoothGroundRadius", math.max(0.6, wheel.width * 0.75))
+
+	self:loadWheelVisualData(xmlFile, configKey, wheelKey, wheel, configIndex)
+
+	return true
+end
+
+function Wheels:loadWheelVisualData(xmlFile, configKey, wheelKey, wheel, configIndex)
+	local key = "nodeLeft"
+
+	if not wheel.isLeft then
+		key = "nodeRight"
+	end
+
 	wheel.tireFilename = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".tire#filename", wheel.tireFilename)
 	wheel.tireIsInverted = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".tire#isInverted", wheel.tireIsInverted)
 	wheel.tireNodeStr = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".tire#node") or self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".tire#" .. key, wheel.tireNodeStr)
@@ -1467,8 +1491,6 @@ function Wheels:loadWheelSharedData(xmlFile, configKey, wheelKey, wheel, skipCon
 	wheel.additionalScale = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".additional#scale", wheel.additionalScale, true)
 	wheel.additionalMass = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".additional#mass", wheel.additionalMass) or 0
 	wheel.additionalWidthAndDiam = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".additional#widthAndDiam", wheel.additionalWidthAndDiam, true)
-
-	return true
 end
 
 function Wheels:loadWheelPhysicsData(xmlFile, configKey, wheelKey, wheel)
@@ -1692,6 +1714,7 @@ function Wheels:loadAdditionalWheelsFromXML(xmlFile, configKey, wheelKey, wheel)
 				additionalWheel.hasTireTracks = Utils.getNoNil(self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, additionalWheelKey .. "#hasTireTracks", wheel.hasTireTracks), false)
 				additionalWheel.offset = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, additionalWheelKey .. "#offset", 0)
 
+				self:loadWheelVisualData(xmlFile, configKey, additionalWheelKey, additionalWheel, wheel.configIndex)
 				self:loadAdditionalWheelConnectorFromXML(wheel, additionalWheel, xmlFile, configKey, additionalWheelKey)
 				table.insert(additionalWheels, additionalWheel)
 
@@ -1752,7 +1775,14 @@ function Wheels:loadAdditionalWheelConnectorFromXML(wheel, additionalWheel, xmlF
 			connector.startPos = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#startPos")
 			connector.endPos = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#endPos")
 			connector.scale = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#uniformScale")
-			connector.color = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#color", nil, true) or ConfigurationUtil.getColorByConfigId(self, "rimColor", self.configurations.rimColor) or wheel.color or spec.rimColor
+			connector.color = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#color", nil, true)
+
+			if connector.color == nil then
+				connector.color = ConfigurationUtil.getColorByConfigId(self, "rimColor", self.configurations.rimColor) or wheel.color or spec.rimColor
+			else
+				connector.color[4] = nil
+			end
+
 			additionalWheel.connector = connector
 		end
 	end
@@ -2053,21 +2083,17 @@ function Wheels:onWheelHubI3DLoaded(i3dNode, failedReason, args)
 				end
 			end
 
-			if color ~= nil and hub.colors[j] == nil then
-				Logging.xmlWarning(xmlFile, "ColorShader 'color%d' is not supported by '%s'.", j, hub.xmlFilename)
-			else
-				color = color or hub.colors[j]
+			color = color or hub.colors[j]
 
-				if color ~= nil then
-					local r, g, b, mat = unpack(color)
-					local _ = nil
+			if color ~= nil then
+				local r, g, b, mat = unpack(color)
+				local _ = nil
 
-					if mat == nil then
-						_, _, _, mat = I3DUtil.getShaderParameterRec(hub.node, string.format("colorMat%d", j))
-					end
-
-					I3DUtil.setShaderParameterRec(hub.node, string.format("colorMat%d", j), r, g, b, mat, false)
+				if mat == nil then
+					_, _, _, mat = I3DUtil.getShaderParameterRec(hub.node, string.format("colorMat%d", j))
 				end
+
+				I3DUtil.setShaderParameterRec(hub.node, string.format("colorMat%d", j), r, g, b, mat, false)
 			end
 		end
 
@@ -2287,6 +2313,7 @@ function Wheels:finalizeWheel(wheel, parentWheel)
 		wheel.contact = Wheels.WHEEL_NO_CONTACT
 		wheel.hasSnowContact = false
 		wheel.snowScale = 0
+		wheel.lastSnowScale = 0
 		wheel.steeringAngle = 0
 		wheel.lastSteeringAngle = 0
 		wheel.lastMovement = 0
@@ -2646,12 +2673,15 @@ function Wheels:onWheelPartI3DLoaded(i3dNode, failedReason, args)
 					end
 				end
 			elseif name == "wheelAdditional" then
-				local additionalColor = Utils.getNoNil(wheel.additionalColor, rimColor)
+				local additionalColor = Utils.getNoNil(wheel.additionalColor or parentWheel ~= nil and parentWheel.additionalColor or nil, rimColor)
 
 				if wheel.wheelAdditional ~= nil and additionalColor ~= nil then
 					local r, g, b, _ = unpack(additionalColor)
 					local _, _, _, w = I3DUtil.getShaderParameterRec(wheel.wheelAdditional, "colorMat0")
-					w = wheel.additionalMaterial or w
+
+					if not wheel.additionalMaterial and parentWheel ~= nil then
+						w = parentWheel.additionalMaterial or w
+					end
 
 					I3DUtil.setShaderParameterRec(wheel.wheelAdditional, "colorMat0", r, g, b, w, false)
 				end
@@ -2700,14 +2730,10 @@ function Wheels:onAdditionalWheelConnectorI3DLoaded(i3dNode, failedReason, args)
 			end
 
 			if connector.color ~= nil and getHasShaderParameter(connector.node, "colorMat0") then
-				local r, g, b, mat = unpack(connector.color)
+				local r, g, b, mat1 = unpack(connector.color)
+				local _, _, _, mat2 = I3DUtil.getShaderParameterRec(connector.node, "colorMat0")
 
-				if mat == nil then
-					local _ = nil
-					_, _, _, mat = I3DUtil.getShaderParameterRec(connector.node, "colorMat0")
-				end
-
-				I3DUtil.setShaderParameterRec(connector.node, "colorMat0", r, g, b, mat, false)
+				I3DUtil.setShaderParameterRec(connector.node, "colorMat0", r, g, b, mat1 or mat2, false)
 			end
 		end
 
@@ -2940,6 +2966,7 @@ function Wheels:validateWashableNode(superFunc, node)
 
 				function nodeData.loadFromSavegameFunc(xmlFile, key)
 					nodeData.wheel.snowScale = xmlFile:getValue(key .. "#snowScale", 0)
+					nodeData.wheel.lastSnowScale = nodeData.wheel.snowScale
 					local defaultColor, snowColor = g_currentMission.environment:getDirtColors()
 					local r, g, b = MathUtil.lerp3(defaultColor[1], defaultColor[2], defaultColor[3], snowColor[1], snowColor[2], snowColor[3], nodeData.wheel.snowScale)
 					local washableNode = self:getWashableNodeByCustomIndex(wheel)
@@ -2971,7 +2998,7 @@ function Wheels:updateWheelDirtAmount(nodeData, dt, allowsWashingByRain, rainSca
 	local dirtAmount = self:updateDirtAmount(nodeData, dt, allowsWashingByRain, rainScale, timeSinceLastRain, temperature)
 	local allowManipulation = true
 
-	if nodeData.wheel ~= nil and nodeData.wheel.contact == Wheels.WHEEL_NO_CONTACT then
+	if nodeData.wheel ~= nil and nodeData.wheel.contact == Wheels.WHEEL_NO_CONTACT and nodeData.wheel.forceWheelDirtUpdate ~= true then
 		allowManipulation = false
 	end
 
@@ -3004,17 +3031,21 @@ function Wheels:updateWheelDirtAmount(nodeData, dt, allowsWashingByRain, rainSca
 			dirtAmount = 0
 		end
 
-		local factor = nodeData.wheel.hasSnowContact and 1 or -0.25
+		local factor = nodeData.wheel.hasSnowContact and (temperature or 0) < 1 and 1 or -0.25
 		local speedFactor = math.min(lastSpeed / 5, 2)
 		local lastSnowScale = nodeData.wheel.snowScale
 		nodeData.wheel.snowScale = math.min(math.max(lastSnowScale + factor * dt * nodeData.dirtColorChangeSpeed * speedFactor, 0), 1)
 
-		if nodeData.wheel.snowScale ~= lastSnowScale then
+		if nodeData.wheel.snowScale ~= nodeData.wheel.lastSnowScale then
 			local defaultColor, snowColor = g_currentMission.environment:getDirtColors()
 			local r, g, b = MathUtil.lerp3(defaultColor[1], defaultColor[2], defaultColor[3], snowColor[1], snowColor[2], snowColor[3], nodeData.wheel.snowScale)
 
 			self:setNodeDirtColor(nodeData, r, g, b)
+
+			nodeData.wheel.lastSnowScale = nodeData.wheel.snowScale
 		end
+
+		nodeData.wheel.forceWheelDirtUpdate = false
 	end
 
 	return dirtAmount
@@ -3136,6 +3167,25 @@ function Wheels:forceUpdateWheelPhysics(dt)
 	end
 end
 
+function Wheels:onWheelSnowHeightChanged(heightPct, heightAbs)
+	if heightPct <= 0 then
+		local spec = self.spec_wheels
+		local changedSnowScale = false
+
+		for i = 1, #spec.wheels do
+			if spec.wheels[i].snowScale > 0 then
+				spec.wheels[i].snowScale = 0
+				spec.wheels[i].forceWheelDirtUpdate = true
+				changedSnowScale = true
+			end
+		end
+
+		if changedSnowScale then
+			self:raiseActive()
+		end
+	end
+end
+
 function Wheels:addTireTrackNode(wheel, isAdditionalTrack, parent, linkNode, tireTrackAtlasIndex, width, radius, xOffset, inverted, activeFunc)
 	local spec = self.spec_wheels
 	local tireTrackNode = {
@@ -3246,7 +3296,7 @@ function Wheels:getCurrentSurfaceSound()
 end
 
 function Wheels:getAreSurfaceSoundsActive()
-	return self.isActive
+	return self.isActiveForLocalSound
 end
 
 function Wheels:updateWheelDensityMapHeight(wheel, dt)
@@ -3620,17 +3670,23 @@ end
 
 function Wheels:destroySnowArea(x0, z0, x1, z1, x2, z2)
 	local spec = self.spec_wheels
+	local worldSnowHeight = spec.snowSystem.height
 	local curHeight = spec.snowSystem:getSnowHeightAtArea(x0, z0, x1, z1, x2, z2)
-	local sinkHeight = curHeight
+	local reduceSnow = MathUtil.equalEpsilon(worldSnowHeight, curHeight, 0.005)
+	local isOnSnowHeap = worldSnowHeight < 0.005 and curHeight > 1
 
-	if curHeight > SnowSystem.MAX_HEIGHT * 1.5 then
-		sinkHeight = curHeight * 0.9
-	elseif curHeight == spec.snowSystem.height then
-		sinkHeight = math.min(spec.snowSystem.height, SnowSystem.MAX_HEIGHT) * 0.7
-	end
+	if SnowSystem.MIN_LAYER_HEIGHT < curHeight and (reduceSnow or isOnSnowHeap) then
+		local sink = 0.7 * worldSnowHeight
 
-	if SnowSystem.MIN_LAYER_HEIGHT <= sinkHeight and sinkHeight ~= curHeight then
-		spec.snowSystem:setSnowHeightAtArea(x0, z0, x1, z1, x2, z2, sinkHeight)
+		if isOnSnowHeap then
+			sink = 0.1 * curHeight
+		end
+
+		local sinkLayers = math.floor(math.min(sink, curHeight) / SnowSystem.MIN_LAYER_HEIGHT)
+
+		if sinkLayers > 0 then
+			spec.snowSystem:removeSnow(x0, z0, x1, z1, x2, z2, sinkLayers)
+		end
 	end
 end
 
@@ -3986,7 +4042,7 @@ function Wheels.getWheelMassFromExternalFile(filename, wheelConfigId)
 	return mass
 end
 
-function Wheels.loadSpecValueWheelWeight(xmlFile, customEnvironment)
+function Wheels.loadSpecValueWheelWeight(xmlFile, customEnvironment, baseDir)
 	local configurationSaveIdToIndex, configurationIndexToBaseConfig = Wheels.createConfigSaveIdMapping(xmlFile)
 	local defaultConfigIndex = 0
 
@@ -4011,7 +4067,7 @@ function Wheels.loadSpecValueWheelWeight(xmlFile, customEnvironment)
 
 			if filename ~= nil then
 				local wheelConfigId = Wheels.getConfigurationValue(configurationSaveIdToIndex, configurationIndexToBaseConfig, xmlFile, defaultConfigIndex, defaultConfigKey, string.format(".wheels.wheel(%d)#configId", index - 1))
-				filename = Utils.getFilename(filename, customEnvironment)
+				filename = Utils.getFilename(filename, baseDir)
 				configMass = configMass + Wheels.getWheelMassFromExternalFile(filename, wheelConfigId)
 			else
 				configMass = configMass + 0.1
@@ -4022,7 +4078,7 @@ function Wheels.loadSpecValueWheelWeight(xmlFile, customEnvironment)
 
 				if additionalFilename ~= nil then
 					local wheelConfigId = Wheels.getConfigurationValue(configurationSaveIdToIndex, configurationIndexToBaseConfig, xmlFile, defaultConfigIndex, defaultConfigKey, string.format(".wheels.wheel(%d).additionalWheel(%d)#configId", index - 1, additionalIndex - 1))
-					additionalFilename = Utils.getFilename(additionalFilename, customEnvironment)
+					additionalFilename = Utils.getFilename(additionalFilename, baseDir)
 					configMass = configMass + Wheels.getWheelMassFromExternalFile(additionalFilename, wheelConfigId)
 				end
 			end)
@@ -4032,7 +4088,7 @@ function Wheels.loadSpecValueWheelWeight(xmlFile, customEnvironment)
 	return configMass
 end
 
-function Wheels.loadSpecValueWheels(xmlFile, customEnvironment)
+function Wheels.loadSpecValueWheels(xmlFile, customEnvironment, baseDir)
 	return nil
 end
 

@@ -73,7 +73,7 @@ function DebugInfoTable:createWithNode(node, info, size)
 	local x, y, z = getWorldTranslation(node)
 	local rotX, rotY, rotZ = getWorldRotation(node)
 
-	self:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, info, size)
+	return self:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, info, size)
 end
 
 function DebugInfoTable:createWithNodeToCamera(node, yOffset, info, size)
@@ -82,7 +82,7 @@ function DebugInfoTable:createWithNodeToCamera(node, yOffset, info, size)
 	local dirX, _, dirZ = MathUtil.vector3Normalize(cx - x, cy - y, cz - z)
 	local rotY = MathUtil.getYRotationFromDirection(dirX, dirZ)
 
-	self:createWithWorldPosAndRot(x, y, z, 0, rotY, 0, info, size)
+	return self:createWithWorldPosAndRot(x, y, z, 0, rotY, 0, info, size)
 end
 
 function DebugInfoTable:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, info, size)
@@ -94,4 +94,6 @@ function DebugInfoTable:createWithWorldPosAndRot(x, y, z, rotX, rotY, rotZ, info
 	self.rotX = rotX
 	self.information = info
 	self.size = size * 2.5
+
+	return self
 end

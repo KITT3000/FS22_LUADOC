@@ -175,7 +175,7 @@ function FSDensityMapUtil.cutFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 
 		stubbleShredModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
-		_, stubbleTotalDelta, _ = stubbleShredModifier:executeGet(fruitFilter, functionData.stubbleShredFilter)
+		_, _, stubbleTotalDelta, _ = stubbleShredModifier:executeAdd(-1, fruitFilter, functionData.stubbleShredFilter)
 	end
 
 	local terrainDetailPixelsSum, _, _ = groundTypeModifier:executeGet(fruitFilter)
@@ -598,6 +598,34 @@ function FSDensityMapUtil.addStoneArea(startWorldX, startWorldZ, widthWorldX, wi
 	stoneModifier:executeSet(stoneMaxValue, stoneMaxReachedFilter)
 end
 
+function FSDensityMapUtil.removeStoneArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+	local numPixels = 0
+	local totalNumPixels = 0
+	local stoneSystem = g_currentMission.stoneSystem
+
+	if stoneSystem:getMapHasStones() then
+		local functionData = FSDensityMapUtil.functionCache.removeStoneArea
+
+		if functionData == nil then
+			local terrainRootNode = g_currentMission.terrainRootNode
+			local stoneMapId, stoneFirstChannel, stoneNumChannels = stoneSystem:getDensityMapData()
+			functionData = {
+				stoneModifier = DensityMapModifier.new(stoneMapId, stoneFirstChannel, stoneNumChannels, terrainRootNode)
+			}
+			FSDensityMapUtil.functionCache.removeStoneArea = functionData
+		end
+
+		local stoneModifier = functionData.stoneModifier
+
+		stoneModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+
+		local _ = nil
+		_, numPixels, totalNumPixels = stoneModifier:executeSet(0)
+	end
+
+	return numPixels, totalNumPixels
+end
+
 function FSDensityMapUtil.getStoneArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 	local stoneSystem = g_currentMission.stoneSystem
 
@@ -655,6 +683,7 @@ function FSDensityMapUtil.updateStonePickerArea(startWorldX, startWorldZ, widthW
 		local fieldGroundSystem = g_currentMission.fieldGroundSystem
 		local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
 		local groundAngleMapId, groundAngleFirstChannel, groundAngleNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_ANGLE)
+		local sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_TYPE)
 		local stoneMapId, stoneFirstChannel, stoneNumChannels = stoneSystem:getDensityMapData()
 		local stoneMinValue, stoneMaxValue = stoneSystem:getMinMaxValues()
 		local cultivatedType = fieldGroundSystem:getFieldGroundValue(FieldGroundType.CULTIVATED)
@@ -676,6 +705,7 @@ function FSDensityMapUtil.updateStonePickerArea(startWorldX, startWorldZ, widthW
 		functionData.stoneMinValue = stoneMinValue
 		functionData.cultivatedType = cultivatedType
 		functionData.pickedValue = pickedValue
+		functionData.sprayTypeModifier = DensityMapModifier.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode)
 		FSDensityMapUtil.functionCache.updateStonePickerArea = functionData
 	end
 
@@ -687,16 +717,19 @@ function FSDensityMapUtil.updateStonePickerArea(startWorldX, startWorldZ, widthW
 	local stoneMinValue = functionData.stoneMinValue
 	local cultivatedType = functionData.cultivatedType
 	local pickedValue = functionData.pickedValue
+	local sprayTypeModifier = functionData.sprayTypeModifier
 	angle = angle or 0
 
 	groundTypeModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	groundAngleModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	stoneModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+	sprayTypeModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
 	local density, area, totalArea = stoneModifier:executeSet(pickedValue, stoneFilter, sowableFilter)
 
 	groundTypeModifier:executeSet(cultivatedType, sowableFilter)
 	groundAngleModifier:executeSet(angle, sowableFilter)
+	sprayTypeModifier:executeSet(0, sowableFilter)
 
 	density = math.max(0, density - area * (stoneMinValue - 1))
 	local stoneFactor = 0
@@ -773,7 +806,7 @@ function FSDensityMapUtil.removeFieldArea(startWorldX, startWorldZ, widthWorldX,
 	removeFieldMultiModifier:execute(false)
 end
 
-function FSDensityMapUtil.updateCultivatorArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, createField, limitFruitDestructionToField, angle, blockedSprayTypeIndex, setsWeeds)
+function FSDensityMapUtil.updateCultivatorArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, createField, limitFruitDestructionToField, angle, blockedSprayTypeIndex, setsWeeds, disableStones)
 	local functionData = FSDensityMapUtil.functionCache.updateCultivatorArea
 	local missionInfo = g_currentMission.missionInfo
 
@@ -841,7 +874,7 @@ function FSDensityMapUtil.updateCultivatorArea(startWorldX, startWorldZ, widthWo
 		filterField = nil
 	end
 
-	if missionInfo.stonesEnabled then
+	if missionInfo.stonesEnabled and disableStones ~= true then
 		FSDensityMapUtil.addStoneArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, 1, filterField, notCultivatedFilter)
 	end
 
@@ -1124,7 +1157,7 @@ function FSDensityMapUtil.updateSubsoilerArea(startWorldX, startWorldZ, widthWor
 	return changedArea, totalArea
 end
 
-function FSDensityMapUtil.updatePlowArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, createField, limitFruitDestructionToField, angle, resetPlowLevel)
+function FSDensityMapUtil.updatePlowArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, createField, limitFruitDestructionToField, angle, resetPlowLevel, stonesDisabled)
 	local functionData = FSDensityMapUtil.functionCache.updatePlowArea
 
 	if functionData == nil then
@@ -1198,7 +1231,7 @@ function FSDensityMapUtil.updatePlowArea(startWorldX, startWorldZ, widthWorldX, 
 		FSDensityMapUtil.clearDecoArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 	end
 
-	if g_currentMission.missionInfo.stonesEnabled then
+	if g_currentMission.missionInfo.stonesEnabled and stonesDisabled ~= true then
 		FSDensityMapUtil.addStoneArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, 1, fieldFilter, notPlowedFilter)
 	end
 
@@ -1586,64 +1619,69 @@ function FSDensityMapUtil.updateLimeArea(startWorldX, startWorldZ, widthWorldX, 
 		local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
 		local limeLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.LIME_LEVEL)
 		local firstSowableValue, lastSowableValue = fieldGroundSystem:getSowableRange()
+		local modifierSprayType = DensityMapModifier.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode)
+		local modifierLimeLevel = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+		local filterLimeLevel = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+
+		filterLimeLevel:setValueCompareParams(DensityValueCompareType.BETWEEN, 0, limeLevelMaxValue - 1)
+
+		local filterLimeLevelMax = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+
+		filterLimeLevelMax:setValueCompareParams(DensityValueCompareType.EQUAL, limeLevelMaxValue)
+
+		local fieldFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
+
+		fieldFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+
+		local groundFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
+
+		groundFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, firstSowableValue, lastSowableValue)
+
 		functionData = {
-			modifierSprayType = DensityMapModifier.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode),
-			modifierLimeLevel = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode),
-			filterLimeLevel = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+			multiModifier = DensityMapMultiModifier.new(),
+			modifierLimeLevel = modifierLimeLevel,
+			filterLimeLevelMax = filterLimeLevelMax
 		}
-
-		functionData.filterLimeLevel:setValueCompareParams(DensityValueCompareType.BETWEEN, 0, limeLevelMaxValue - 1)
-
-		functionData.groundFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
-
-		functionData.groundFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, firstSowableValue, lastSowableValue)
-
-		functionData.fieldFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
-
-		functionData.fieldFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
-
-		functionData.cutFruitFilters = {}
-		functionData.limeLevelMaxValue = limeLevelMaxValue
+		local multiModifier = functionData.multiModifier
+		local fruitFilter = nil
 
 		for index, desc in pairs(g_fruitTypeManager:getFruitTypes()) do
 			if desc.terrainDataPlaneId ~= nil then
-				local cutFruitFilter = DensityMapFilter.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
+				if fruitFilter == nil then
+					fruitFilter = DensityMapFilter.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
+				else
+					fruitFilter:resetDensityMapAndChannels(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
+				end
 
-				cutFruitFilter:setValueCompareParams(DensityValueCompareType.EQUAL, desc.cutState)
-
-				functionData.cutFruitFilters[index] = cutFruitFilter
+				fruitFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 1)
+				multiModifier:addExecuteSet(groundType, modifierSprayType, fieldFilter, fruitFilter)
+				multiModifier:addExecuteSet(limeLevelMaxValue, modifierLimeLevel, fieldFilter, fruitFilter, filterLimeLevel)
+				fruitFilter:setValueCompareParams(DensityValueCompareType.GREATER, desc.cutState - 1)
+				multiModifier:addExecuteSet(groundType, modifierSprayType, fieldFilter, fruitFilter)
+				multiModifier:addExecuteSet(limeLevelMaxValue, modifierLimeLevel, fieldFilter, fruitFilter, filterLimeLevel)
 			end
 		end
+
+		multiModifier:addExecuteSet(groundType, modifierSprayType, groundFilter)
+		multiModifier:addExecuteSet(limeLevelMaxValue, modifierLimeLevel, groundFilter, filterLimeLevel)
 
 		FSDensityMapUtil.functionCache.updateLimeArea = functionData
 	end
 
-	local modifierSprayType = functionData.modifierSprayType
+	local multiModifier = functionData.multiModifier
 	local modifierLimeLevel = functionData.modifierLimeLevel
-	local filterLimeLevel = functionData.filterLimeLevel
-	local cutFruitFilters = functionData.cutFruitFilters
-	local groundFilter = functionData.groundFilter
-	local fieldFilter = functionData.fieldFilter
-	local limeLevelMaxValue = functionData.limeLevelMaxValue
+	local filterLimeLevelMax = functionData.filterLimeLevelMax
 
-	modifierSprayType:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	modifierLimeLevel:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
-	local numPixels = 0
-	local totalNumPixels = nil
+	local _, areaBefore, totalNumPixels = modifierLimeLevel:executeGet(filterLimeLevelMax)
 
-	for index, cutFruitFilter in pairs(cutFruitFilters) do
-		local _, _, _ = modifierSprayType:executeSet(groundType, fieldFilter, cutFruitFilter)
-		local _, numP, _ = modifierLimeLevel:executeSet(limeLevelMaxValue, fieldFilter, cutFruitFilter, filterLimeLevel)
-		numPixels = numPixels + numP
-	end
+	multiModifier:updateParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+	multiModifier:execute(false)
 
-	local _, _, _ = modifierSprayType:executeSet(groundType, groundFilter)
-	local _, numP, totalNumP = modifierLimeLevel:executeSet(limeLevelMaxValue, groundFilter, filterLimeLevel)
-	numPixels = numPixels + numP
-	totalNumPixels = totalNumP
+	local _, areaAfter, _ = modifierLimeLevel:executeGet(filterLimeLevelMax)
 
-	return numPixels, totalNumPixels
+	return areaAfter - areaBefore, totalNumPixels
 end
 
 function FSDensityMapUtil.updateHerbicideArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, groundType)
@@ -1660,21 +1698,16 @@ function FSDensityMapUtil.updateHerbicideArea(startWorldX, startWorldZ, widthWor
 			local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
 			local sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_TYPE)
 			local weedMapId, weedFirstChannel, weedNumChannels = weedSystem:getDensityMapData()
-			local cultivatedType = fieldGroundSystem:getFieldGroundValue(FieldGroundType.CULTIVATED)
-			local plowedType = fieldGroundSystem:getFieldGroundValue(FieldGroundType.PLOWED)
+			local firstSowableValue, lastSowableValue = fieldGroundSystem:getSowableRange()
 			local replacementData = weedSystem:getHerbicideReplacements()
 			functionData = {
 				replacements = replacementData.weed.replacements,
 				weedModifier = DensityMapModifier.new(weedMapId, weedFirstChannel, weedNumChannels, terrainRootNode),
 				sprayModifier = DensityMapModifier.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode),
-				cultivatorFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
+				groundFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
 			}
 
-			functionData.cultivatorFilter:setValueCompareParams(DensityValueCompareType.EQUAL, cultivatedType)
-
-			functionData.plowFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
-
-			functionData.plowFilter:setValueCompareParams(DensityValueCompareType.EQUAL, plowedType)
+			functionData.groundFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, firstSowableValue, lastSowableValue)
 
 			functionData.weedFilters = {}
 
@@ -1730,8 +1763,7 @@ function FSDensityMapUtil.updateHerbicideArea(startWorldX, startWorldZ, widthWor
 		local weedFilters = functionData.weedFilters
 		local fruitFilters = functionData.fruitFilters
 		local sprayModifier = functionData.sprayModifier
-		local cultivatorFilter = functionData.cultivatorFilter
-		local plowFilter = functionData.plowFilter
+		local groundFilter = functionData.groundFilter
 		local multiModifierCustom = functionData.multiModifierCustom
 
 		weedModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
@@ -1767,15 +1799,9 @@ function FSDensityMapUtil.updateHerbicideArea(startWorldX, startWorldZ, widthWor
 				end
 			end
 
-			sprayModifier:executeSet(groundType, cultivatorFilter, weedFilter)
+			sprayModifier:executeSet(groundType, groundFilter, weedFilter)
 
-			local _, numP, totalNumP = weedModifier:executeSet(targetState, cultivatorFilter, weedFilter)
-			numPixels = numPixels + numP
-			totalNumPixels = totalNumPixels + totalNumP
-
-			sprayModifier:executeSet(groundType, plowFilter, weedFilter)
-
-			_, numP, totalNumP = weedModifier:executeSet(targetState, plowFilter, weedFilter)
+			local _, numP, totalNumP = weedModifier:executeSet(targetState, groundFilter, weedFilter)
 			numPixels = numPixels + numP
 			totalNumPixels = totalNumPixels + totalNumP
 		end
@@ -2196,6 +2222,8 @@ function FSDensityMapUtil.updateMulcherArea(startWorldX, startWorldZ, widthWorld
 		FSDensityMapUtil.functionCache.updateMulcherArea = functionData
 	end
 
+	DensityMapHeightUtil.clearArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+
 	local multiModifier = functionData.multiModifier
 
 	multiModifier:updateParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
@@ -2605,7 +2633,7 @@ function FSDensityMapUtil.updateDirectSowingArea(fruitIndex, startWorldX, startW
 				end
 
 				if fruitDesc.cutState > 1 then
-					fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, fruitDesc.numGrowthStages)
+					fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, fruitDesc.cutState - 1)
 					multiModifier:addExecuteAdd(1, sprayLevelModifier, sprayLevelFilter, fieldFilter, fruitFilter)
 					multiModifier:addExecuteSet(1, sprayTypeModifier, sprayLevelFilter, fruitFilter)
 				end
@@ -2619,7 +2647,7 @@ function FSDensityMapUtil.updateDirectSowingArea(fruitIndex, startWorldX, startW
 						multiModifier:addExecuteSet(stubbleTillagedType, groundTypeModifier, fieldFilter, fruitFilter)
 					end
 
-					if fruitDesc.mulcher.state ~= nil and fruitDesc.mulcher.state > 0 then
+					if fruitDesc.mulcher.state ~= nil and fruitDesc.mulcher.state > 0 and fruitDesc.mulcher.state ~= growthState then
 						fruitFilter:setValueCompareParams(DensityValueCompareType.EQUAL, fruitDesc.mulcher.state)
 						multiModifier:addExecuteSet(stubbleTillagedType, groundTypeModifier, fieldFilter, fruitFilter)
 					end
@@ -2652,6 +2680,8 @@ function FSDensityMapUtil.updateDirectSowingArea(fruitIndex, startWorldX, startW
 
 	if g_currentMission.missionInfo.weedsEnabled and desc.plantsWeed then
 		FSDensityMapUtil.setSowingWeedArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+	else
+		FSDensityMapUtil.removeWeedArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 	end
 
 	local rollerLevelValue = 0
@@ -2801,7 +2831,7 @@ function FSDensityMapUtil.clearDecoArea(startWorldX, startWorldZ, widthWorldX, w
 	return 0, 0, false
 end
 
-function FSDensityMapUtil.createVineArea(fruitId, startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+function FSDensityMapUtil.createVineArea(fruitId, startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, customState)
 	local functionData = FSDensityMapUtil.functionCache.createVineArea
 
 	if functionData == nil then
@@ -2876,7 +2906,7 @@ function FSDensityMapUtil.createVineArea(fruitId, startWorldX, startWorldZ, widt
 		limeLevelModifier:executeSet(functionData.limeLevelMaxValue)
 	end
 
-	local _, area = fruitModifier:executeSet(1, fruitFilter)
+	local _, area = fruitModifier:executeSet(customState or 1, fruitFilter)
 
 	groundModifier:executeSet(grassType)
 
@@ -3447,10 +3477,10 @@ end
 
 function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, callbackFunc, callbackTarget)
 	g_asyncTaskManager:addTask(function ()
-		local weedSystem = g_currentMission.weedSystem
 		local functionData = FSDensityMapUtil.functionCache.getFieldStatusAsync
 
 		if functionData == nil then
+			local weedSystem = g_currentMission.weedSystem
 			local terrainRootNode = g_currentMission.terrainRootNode
 			local fieldGroundSystem = g_currentMission.fieldGroundSystem
 			local plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.PLOW_LEVEL)
@@ -3467,7 +3497,7 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 			functionData.plowLevelModifier = DensityMapModifier.new(plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels, terrainRootNode)
 			functionData.plowLevelFilter = DensityMapFilter.new(plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels, terrainRootNode)
 
-			functionData.plowLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
+			functionData.plowLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
 
 			functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
 			functionData.limeLevelFilter = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
@@ -3477,6 +3507,22 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 			functionData.sprayLevelModifier = DensityMapModifier.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
 			functionData.sprayLevelFilter = DensityMapFilter.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
 			functionData.sprayLevelMaxValue = sprayLevelMaxValue
+
+			if weedSystem:getMapHasWeed() then
+				local states = weedSystem:getFieldInfoStates()
+				local weedMapId, weedFirstChannel, weedNumChannels = weedSystem:getDensityMapData()
+				functionData.weedModifier = DensityMapModifier.new(weedMapId, weedFirstChannel, weedNumChannels, terrainRootNode)
+				functionData.weedStateFilters = {}
+
+				for state, _ in pairs(states) do
+					local filter = DensityMapFilter.new(weedMapId, weedFirstChannel, weedNumChannels, terrainRootNode)
+
+					filter:setValueCompareParams(DensityValueCompareType.EQUAL, state)
+
+					functionData.weedStateFilters[state] = filter
+				end
+			end
+
 			functionData.fruitModifiers = {}
 			functionData.fruitFilters = {}
 
@@ -3522,12 +3568,6 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 			status.cultivatorFactor = numPixels / fieldArea
 		end)
 		g_asyncTaskManager:addSubtask(function ()
-			local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
-			local plowedType = fieldGroundSystem:getFieldGroundValue(FieldGroundType.PLOWED)
-			local _, numPixels, _ = FSDensityMapUtil.getAreaDensity(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels, plowedType, startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
-			status.plowFactor = numPixels / fieldArea
-		end)
-		g_asyncTaskManager:addSubtask(function ()
 			local limeLevelModifier = functionData.limeLevelModifier
 			local limeLevelFilter = functionData.limeLevelFilter
 
@@ -3543,13 +3583,13 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 			plowLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
 			local _, numPixels, _ = plowLevelModifier:executeGet(plowLevelFilter, fieldFilter)
-			status.needsPlowFactor = numPixels / fieldArea
+			status.plowFactor = numPixels / fieldArea
 		end)
 		g_asyncTaskManager:addSubtask(function ()
-			status.rollerFactor = FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+			status.needsRollingFactor = FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 		end)
 		g_asyncTaskManager:addSubtask(function ()
-			status.stubbleFactor = FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+			status.stubbleFactor = FSDensityMapUtil.getStubbleFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 		end)
 		g_asyncTaskManager:addSubtask(function ()
 			local sprayLevelModifier = functionData.sprayLevelModifier
@@ -3572,6 +3612,7 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 
 		status.fruits = {}
 		status.fruitPixels = {}
+		local fruitMaxPixels = 0
 
 		for index, desc in pairs(g_fruitTypeManager:getFruitTypes()) do
 			if desc.terrainDataPlaneId ~= nil then
@@ -3595,11 +3636,32 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 
 					status.fruits[desc.index] = maxState
 					status.fruitPixels[desc.index] = maxPixels
+
+					if fruitMaxPixels < maxPixels then
+						status.fruitTypeMax = desc.index
+						status.fruitStateMax = maxState
+						fruitMaxPixels = maxPixels
+					end
 				end)
 			end
 		end
 
-		if weedSystem:getMapHasWeed() then
+		local weedModifier = functionData.weedModifier
+
+		if weedModifier ~= nil then
+			status.weed = {}
+
+			weedModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+
+			local weedStateFilters = functionData.weedStateFilters
+
+			for state, filter in pairs(weedStateFilters) do
+				g_asyncTaskManager:addSubtask(function ()
+					local _, numPixels, _ = weedModifier:executeGet(filter, fieldFilter)
+					status.weed[state] = numPixels
+				end)
+			end
+
 			g_asyncTaskManager:addSubtask(function ()
 				status.weedFactor = 1 - FSDensityMapUtil.getWeedFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 			end)

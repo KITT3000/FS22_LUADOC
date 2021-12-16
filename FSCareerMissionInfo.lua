@@ -135,7 +135,9 @@ function FSCareerMissionInfo:loadFromXML(xmlFile)
 		self.weedsEnabled = Utils.getNoNil(getXMLBool(xmlFile, key .. ".settings.weedsEnabled"), true)
 		self.limeRequired = Utils.getNoNil(getXMLBool(xmlFile, key .. ".settings.limeRequired"), true)
 		self.automaticMotorStartEnabled = Utils.getNoNil(getXMLBool(xmlFile, key .. ".settings.automaticMotorStartEnabled"), true)
-		self.fuelUsageLow = Utils.getNoNil(getXMLBool(xmlFile, key .. ".settings.fuelUsageLow"), true)
+		local fuelUsageLow = getXMLBool(xmlFile, key .. ".settings.fuelUsageLow")
+		local defaultFuelUsage = fuelUsageLow == true and 1 or 2
+		self.fuelUsage = Utils.getNoNil(getXMLInt(xmlFile, key .. ".settings.fuelUsage"), defaultFuelUsage)
 		self.helperBuyFuel = Utils.getNoNil(getXMLBool(xmlFile, key .. ".settings.helperBuyFuel"), true)
 		self.helperBuySeeds = Utils.getNoNil(getXMLBool(xmlFile, key .. ".settings.helperBuySeeds"), true)
 		self.helperBuyFertilizer = Utils.getNoNil(getXMLBool(xmlFile, key .. ".settings.helperBuyFertilizer"), true)
@@ -254,7 +256,7 @@ function FSCareerMissionInfo:saveToXMLFile()
 		setXMLBool(xmlFile, key .. ".settings.weedsEnabled", self.weedsEnabled)
 		setXMLBool(xmlFile, key .. ".settings.limeRequired", self.limeRequired)
 		setXMLBool(xmlFile, key .. ".settings.isSnowEnabled", self.isSnowEnabled)
-		setXMLBool(xmlFile, key .. ".settings.fuelUsageLow", self.fuelUsageLow)
+		setXMLInt(xmlFile, key .. ".settings.fuelUsage", self.fuelUsage)
 		setXMLBool(xmlFile, key .. ".settings.helperBuyFuel", self.helperBuyFuel)
 		setXMLBool(xmlFile, key .. ".settings.helperBuySeeds", self.helperBuySeeds)
 		setXMLBool(xmlFile, key .. ".settings.helperBuyFertilizer", self.helperBuyFertilizer)
@@ -533,7 +535,7 @@ function FSCareerMissionInfo:setDifficulty(difficulty)
 		self.helperBuyFertilizer = true
 		self.helperSlurrySource = 2
 		self.helperManureSource = 2
-		self.fuelUsageLow = true
+		self.fuelUsage = 1
 		self.plowingRequiredEnabled = false
 	elseif self.difficulty == 2 then
 		self.stopAndGoBraking = true
@@ -546,7 +548,7 @@ function FSCareerMissionInfo:setDifficulty(difficulty)
 		self.helperBuyFertilizer = true
 		self.helperSlurrySource = 2
 		self.helperManureSource = 2
-		self.fuelUsageLow = false
+		self.fuelUsage = 2
 	else
 		self.stopAndGoBraking = false
 		self.trailerFillLimit = false
@@ -558,7 +560,7 @@ function FSCareerMissionInfo:setDifficulty(difficulty)
 		self.helperBuyFertilizer = false
 		self.helperSlurrySource = 1
 		self.helperManureSource = 1
-		self.fuelUsageLow = false
+		self.fuelUsage = 3
 	end
 
 	self.buyPriceMultiplier = self:getBuyPriceMultiplier()

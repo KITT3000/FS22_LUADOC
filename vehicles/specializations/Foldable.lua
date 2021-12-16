@@ -1524,7 +1524,7 @@ function Foldable:getCanAIImplementContinueWork(superFunc)
 	local spec = self.spec_foldable
 
 	if #spec.foldingParts > 0 and spec.allowUnfoldingByAI then
-		canContinue = spec.foldAnimTime == spec.foldMiddleAnimTime or spec.foldAnimTime == 0 or spec.foldAnimTime == 1
+		canContinue = spec.foldMiddleAnimTime == nil or math.abs(spec.foldAnimTime - spec.foldMiddleAnimTime) < 0.001 or spec.foldAnimTime == 0 or spec.foldAnimTime == 1
 	end
 
 	return canContinue

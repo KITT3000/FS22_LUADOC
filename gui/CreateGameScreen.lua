@@ -348,6 +348,8 @@ function CreateGameScreen:onClickOk()
 		g_gameSettings:setTableValue("createGame", "autoAccept", self.autoAccept)
 		g_gameSettings:saveToXMLFile(g_savegameXML)
 
+		self.settingsLoaded = false
+
 		if not GS_IS_CONSOLE_VERSION then
 			self.missionDynamicInfo.serverPort = port
 		else

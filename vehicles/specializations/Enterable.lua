@@ -161,6 +161,7 @@ function Enterable:onLoad(savegame)
 	spec.playerStyle = nil
 	spec.canUseEnter = true
 	spec.controllerFarmId = 0
+	spec.controllerUserId = 0
 	spec.disableCharacterOnLeave = true
 	spec.forceSelectionOnEnter = self.xmlFile:getValue("vehicle.enterable.forceSelectionOnEnter", false)
 	spec.enterReferenceNode = self.xmlFile:getValue("vehicle.enterable.enterReferenceNode#node", nil, self.components, self.i3dMappings)
@@ -387,8 +388,9 @@ function Enterable:onReadStream(streamId, connection)
 		playerStyle:readStream(streamId, connection)
 
 		local farmId = streamReadUIntN(streamId, FarmManager.FARM_ID_SEND_NUM_BITS)
+		local userId = streamReadInt32(streamId)
 
-		self:enterVehicle(false, playerStyle, farmId)
+		self:enterVehicle(false, playerStyle, farmId, userId)
 	end
 end
 
@@ -398,6 +400,7 @@ function Enterable:onWriteStream(streamId, connection)
 	if streamWriteBool(streamId, spec.isControlled) then
 		spec.playerStyle:writeStream(streamId, connection)
 		streamWriteUIntN(streamId, spec.controllerFarmId, FarmManager.FARM_ID_SEND_NUM_BITS)
+		streamWriteInt32(streamId, spec.controllerUserId)
 	end
 end
 
@@ -414,8 +417,12 @@ end
 function Enterable:saveStatsToXMLFile(xmlFile, key)
 	local spec = self.spec_enterable
 
-	if spec.isControlled and spec.playerStyle ~= nil and spec.playerStyle.playerName ~= nil then
-		setXMLString(xmlFile, key .. "#controller", HTMLUtil.encodeToHTML(tostring(spec.playerStyle.playerName)))
+	if spec.isControlled then
+		local name = self:getControllerName()
+
+		if name ~= nil then
+			setXMLString(xmlFile, key .. "#controller", HTMLUtil.encodeToHTML(name))
+		end
 	end
 
 	return nil
@@ -771,7 +778,7 @@ function Enterable:resetCharacterTargetNodeStateDefaults(referenceNode)
 	end
 end
 
-function Enterable:enterVehicle(isControlling, playerStyle, farmId)
+function Enterable:enterVehicle(isControlling, playerStyle, farmId, userId)
 	local spec = self.spec_enterable
 
 	self:raiseActive()
@@ -781,6 +788,7 @@ function Enterable:enterVehicle(isControlling, playerStyle, farmId)
 	spec.playerStyle = playerStyle
 	spec.canUseEnter = false
 	spec.controllerFarmId = farmId
+	spec.controllerUserId = userId
 	g_currentMission.controlledVehicles[self] = self
 
 	if spec.forceSelectionOnEnter then
@@ -821,6 +829,8 @@ function Enterable:enterVehicle(isControlling, playerStyle, farmId)
 			self:playAnimation(spec.enterAnimation, 1, nil, true)
 		end
 	end
+
+	self.isActiveForLocalSound = self:getIsActiveForInput(true, true)
 
 	SpecializationUtil.raiseEvent(self, "onEnterVehicle", isControlling)
 	self.rootVehicle:raiseStateChange(Vehicle.STATE_CHANGE_ENTER_VEHICLE, self, isControlling)
@@ -876,6 +886,7 @@ function Enterable:leaveVehicle()
 	spec.playerColorIndex = 0
 	spec.canUseEnter = true
 	spec.controllerFarmId = 0
+	spec.controllerUserId = 0
 	g_currentMission.controlledVehicles[self] = nil
 
 	g_currentMission:setLastInteractionTime(200)
@@ -1243,7 +1254,15 @@ function Enterable:getIsControlled()
 end
 
 function Enterable:getControllerName()
-	return self.spec_enterable.playerStyle.playerName
+	local user = nil
+
+	if self.isServer then
+		user = g_currentMission.userManager:getUserByConnection(self:getOwner())
+	else
+		user = g_currentMission.userManager:getUserByUserId(self.spec_enterable.controllerUserId)
+	end
+
+	return user:getNickname()
 end
 
 function Enterable:getActiveCamera()

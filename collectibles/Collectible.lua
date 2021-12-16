@@ -36,6 +36,7 @@ function Collectible.new(node)
 
 	self.activatable = CollectibleActivatable.new(self)
 	self.isActive = false
+	self.mapHotspotVisible = false
 
 	g_currentMission.collectiblesSystem:addCollectible(self)
 
@@ -62,6 +63,11 @@ function Collectible:activate()
 		setVisibility(self.node, true)
 		addTrigger(self.triggerNode, "triggerCallback", self)
 
+		self.mapHotspot = CollectibleHotspot.new(self)
+
+		self.mapHotspot:setVisible(self.mapHotspotVisible)
+		g_currentMission:addMapHotspot(self.mapHotspot)
+
 		self.isActive = true
 	end
 end
@@ -72,8 +78,19 @@ function Collectible:deactivate()
 		removeTrigger(self.triggerNode)
 		delete(self.node)
 		g_currentMission.activatableObjectsSystem:removeActivatable(self.activatable)
+		g_currentMission:removeMapHotspot(self.mapHotspot)
+		self.mapHotspot:delete()
 
+		self.mapHotspot = nil
 		self.isActive = false
+	end
+end
+
+function Collectible:setHotspotVisible(visible)
+	self.mapHotspotVisible = visible
+
+	if self.mapHotspot ~= nil then
+		self.mapHotspot:setVisible(visible)
 	end
 end
 

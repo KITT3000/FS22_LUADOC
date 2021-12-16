@@ -14,6 +14,7 @@ local MissionManager_mt = Class(MissionManager, AbstractManager)
 
 function MissionManager.new(customMt)
 	local self = AbstractManager.new(customMt or MissionManager_mt)
+	self.pendingMissionVehicleFiles = {}
 	self.missionTypes = {}
 	self.missionTypeIdToType = {}
 	self.defaultMissionMapWidth = 512
@@ -72,8 +73,12 @@ function MissionManager:loadMapData(xmlFile)
 		local path = Utils.getFilename(missionVehicleXmlFilename, g_currentMission.baseDirectory)
 
 		if path ~= nil then
-			self:loadMissionVehicles(path)
+			self:loadMissionVehicles(path, g_currentMission.baseDirectory)
 		end
+	end
+
+	for _, info in ipairs(self.pendingMissionVehicleFiles) do
+		self:loadMissionVehicles(info[1], info[2])
 	end
 
 	if g_currentMission:getIsServer() then
@@ -90,7 +95,8 @@ function MissionManager:loadMapData(xmlFile)
 
 	if g_addTestCommands then
 		addConsoleCommand("gsFieldGenerateMission", "Force generating a new mission for given field", "consoleGenerateFieldMission", self)
-		addConsoleCommand("gsMissionLoadAllVehicles", "Loading and unloading all field mission vehicles", "consoleLoadAllFieldMissionVehicles", self)
+		addConsoleCommand("gsMissionLoadVehiclesAll", "Loading and unloading all field mission vehicles", "consoleLoadAllFieldMissionVehicles", self)
+		addConsoleCommand("gsMissionLoadVehicles", "Load vehicles for a specific mission", "consoleLoadMissionVehicles", self)
 		addConsoleCommand("gsMissionHarvestField", "Harvest a field and print the liters", "consoleHarvestField", self)
 		addConsoleCommand("gsMissionTestHarvests", "Run an expansive tests for harvest missions", "consoleHarvestTests", self)
 	end
@@ -185,97 +191,77 @@ function MissionManager:loadTransportMissions(xmlFilename)
 	return true
 end
 
-function MissionManager:loadMissionVehicles(xmlFilename)
-	local xmlFile = loadXMLFile("MissionVehicles", xmlFilename)
+function MissionManager:addPendingMissionVehiclesFile(filename, baseDirectory)
+	table.insert(self.pendingMissionVehicleFiles, {
+		filename,
+		baseDirectory
+	})
+end
 
-	if xmlFile == 0 then
+function MissionManager:loadMissionVehicles(xmlFilename, baseDirectory)
+	local xmlFile = XMLFile.load("MissionVehicles", xmlFilename)
+
+	if xmlFile == nil then
 		return false
 	end
 
-	local i = 0
+	xmlFile:iterate("missionVehicles.mission", function (_, missionKey)
+		local missionType = xmlFile:getString(missionKey .. "#type")
 
-	while true do
-		local key = string.format("missionVehicles.mission(%d)", i)
-
-		if not hasXMLProperty(xmlFile, key) then
-			break
-		end
-
-		local type = getXMLString(xmlFile, key .. "#type")
-
-		if type == nil then
+		if missionType == nil then
 			Logging.error("(%s) Property type must exist on each mission", xmlFilename)
-			delete(xmlFile)
 
 			return false
 		end
 
-		local groups = {}
-		local j = 0
+		if self.missionVehicles[missionType] == nil then
+			self.missionVehicles[missionType] = {}
+		end
 
-		while true do
-			local groupKey = string.format("%s.group(%d)", key, j)
+		local groups = self.missionVehicles[missionType]
 
-			if not hasXMLProperty(xmlFile, groupKey) then
-				break
-			end
-
-			local fieldSize = Utils.getNoNil(getXMLString(xmlFile, groupKey .. "#fieldSize"), "MEDIUM")
-			local rewardScale = Utils.getNoNil(getXMLFloat(xmlFile, groupKey .. "#rewardScale"), 1)
+		xmlFile:iterate(missionKey .. ".group", function (_, groupKey)
+			local fieldSize = xmlFile:getString(groupKey .. "#fieldSize", "medium")
+			local rewardScale = xmlFile:getFloat(groupKey .. "#rewardScale", 1)
 			local vehicles = {}
 			local group = {
 				rewardScale = rewardScale,
 				vehicles = vehicles,
-				variant = getXMLString(xmlFile, groupKey .. "#variant")
+				variant = xmlFile:getString(groupKey .. "#variant")
 			}
-			local k = 0
 
-			while true do
-				local vehicleKey = string.format("%s.vehicle(%d)", groupKey, k)
-
-				if not hasXMLProperty(xmlFile, vehicleKey) then
-					break
-				end
-
-				local filename = Utils.getFilename(getXMLString(xmlFile, vehicleKey .. "#filename"), g_currentMission.baseDirectory)
+			xmlFile:iterate(groupKey .. ".vehicle", function (_, vehicleKey)
+				local filename = Utils.getFilename(xmlFile:getString(vehicleKey .. "#filename"), baseDirectory)
 
 				if filename == nil then
 					Logging.error("(%s) Property filename must exist on each vehicle", xmlFilename)
-				else
-					local storeItem = g_storeManager:getItemByXMLFilename(filename)
 
-					if storeItem == nil then
-						Logging.error("%s: Unable to load store item for '%s'", xmlFilename, filename)
-					else
-						local configurations = {}
-						local p = 0
-
-						while true do
-							local configKey = string.format("%s.configuration(%d)", vehicleKey, p)
-
-							if not hasXMLProperty(xmlFile, configKey) then
-								break
-							end
-
-							local name = getXMLString(xmlFile, configKey .. "#name")
-							local id = getXMLInt(xmlFile, configKey .. "#id")
-
-							if name ~= nil and id ~= nil then
-								configurations[name] = id
-							end
-
-							p = p + 1
-						end
-
-						table.insert(vehicles, {
-							filename = filename,
-							configurations = configurations
-						})
-					end
+					return
 				end
 
-				k = k + 1
-			end
+				local storeItem = g_storeManager:getItemByXMLFilename(filename)
+
+				if storeItem == nil then
+					Logging.error("%s: Unable to load store item for '%s'", xmlFilename, filename)
+
+					return
+				end
+
+				local configurations = {}
+
+				xmlFile:iterate(vehicleKey .. ".configuration", function (_, configKey)
+					local name = xmlFile:getString(configKey .. "#name")
+					local id = xmlFile:getInt(configKey .. "#id")
+
+					if name ~= nil and id ~= nil then
+						configurations[name] = id
+					end
+				end)
+				table.insert(vehicles, {
+					filename = filename,
+					configurations = configurations
+				})
+			end)
 
 			if groups[fieldSize] == nil then
 				groups[fieldSize] = {}
@@ -284,14 +270,9 @@ function MissionManager:loadMissionVehicles(xmlFilename)
 			table.insert(groups[fieldSize], group)
 
 			group.identifier = table.getn(groups[fieldSize])
-			j = j + 1
-		end
-
-		self.missionVehicles[type] = groups
-		i = i + 1
-	end
-
-	delete(xmlFile)
+		end)
+	end)
+	xmlFile:delete()
 
 	return true
 end
@@ -311,7 +292,8 @@ function MissionManager:unloadMapData()
 
 	if g_addTestCommands then
 		removeConsoleCommand("gsFieldGenerateMission")
-		removeConsoleCommand("gsMissionLoadAllVehicles")
+		removeConsoleCommand("gsMissionLoadVehiclesAll")
+		removeConsoleCommand("gsMissionLoadVehicles")
 		removeConsoleCommand("gsMissionHarvestField")
 		removeConsoleCommand("gsMissionTestHarvests")
 	end
@@ -1000,6 +982,81 @@ function MissionManager:consoleGenerateFieldMission(fieldId)
 	return "Generated mission and added to mission list"
 end
 
+function MissionManager:consoleLoadMissionVehicles(missionTypeName, fieldSize, groupIndex)
+	local usage = "gsMissionLoadVehicles <missionType> <groupIndex>"
+	local missionVehicles = self.missionVehicles[missionTypeName or ""]
+
+	if missionVehicles == nil then
+		return string.format("No mission vehicles for mission type '%s' found. %s", tostring(missionTypeName), usage)
+	end
+
+	local group = missionVehicles[fieldSize]
+
+	if group == nil then
+		return string.format("No group for field size '%s' found. %s", tostring(fieldSize), usage)
+	end
+
+	groupIndex = tonumber(groupIndex)
+	local groupItem = group[groupIndex]
+
+	if groupItem == nil then
+		return string.format("No vehicles for group index '%s' found. %s", tostring(groupIndex), usage)
+	end
+
+	local vehicles = groupItem.vehicles
+	local vehiclesToLoad = {}
+
+	for _, vehicle in ipairs(vehicles) do
+		table.insert(vehiclesToLoad, vehicle)
+	end
+
+	self:consoleLoadMissionNextVehicle(nil, nil, vehiclesToLoad)
+end
+
+function MissionManager:consoleLoadMissionNextVehicle(_, _, vehicles)
+	local nextVehicle = table.remove(vehicles, 1)
+
+	if nextVehicle == nil then
+		print("Loaded all vehicles for mission type")
+
+		return
+	end
+
+	local filename = nextVehicle.filename
+	local storeItem = g_storeManager:getItemByXMLFilename(filename)
+
+	if storeItem == nil then
+		Logging.error("Trying to load invalid store item '%s' for mission.", filename)
+
+		return false
+	end
+
+	g_asyncTaskManager:addTask(function ()
+		local size = StoreItemUtil.getSizeValues(storeItem.xmlFilename, "vehicle", storeItem.rotation, nextVehicle.configurations)
+		local places = g_currentMission.storeSpawnPlaces
+		local usedPlaces = g_currentMission.usedStorePlaces
+		local x, _, z, place, width, _ = PlacementUtil.getPlace(places, size, usedPlaces)
+
+		if x == nil then
+			Logging.error("No space for vehicle '%s'.", filename)
+
+			return false
+		end
+
+		local yRot = MathUtil.getYRotationFromDirection(place.dirPerpX, place.dirPerpZ)
+		yRot = yRot + storeItem.rotation
+		local location = {
+			yOffset = 0,
+			x = x,
+			z = z,
+			yRot = yRot
+		}
+
+		PlacementUtil.markPlaceUsed(usedPlaces, place, width)
+		VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, g_currentMission.player.farmId, nextVehicle.configurations, nil, self.consoleLoadMissionNextVehicle, self, vehicles)
+	end)
+end
+
 function MissionManager:consoleLoadAllFieldMissionVehicles()
 	local vehiclesToLoad = {}
 
@@ -1148,28 +1205,30 @@ function MissionManager:consoleHarvestTests(fieldId)
 							for plowingState = 0, 1 do
 								for limeState = 0, 3 do
 									for fertilizerState = 0, 2 do
-										g_fieldManager:setFieldFruit(field, fruitDesc, growthState, 1, fertilizerState, plowingState, weedState, limeState)
-										g_missionManager:cancelMissionOnField(field)
+										for stubbleState = 0, 1 do
+											g_fieldManager:setFieldFruit(field, fruitDesc, growthState, 1, fertilizerState, plowingState, weedState, limeState, stubbleState)
+											g_missionManager:cancelMissionOnField(field)
 
-										local mission = self:generateNewFieldMission(field)
+											local mission = self:generateNewFieldMission(field)
 
-										if mission ~= nil and mission.type.name == "harvest" then
-											mission:register()
-											table.insert(self.missions, mission)
+											if mission ~= nil and mission.type.name == "harvest" then
+												mission:register()
+												table.insert(self.missions, mission)
 
-											self.fieldToMission[field.fieldId] = mission
-											local cutLiters = self:testHarvestField(field)
-											local expectedLiters = mission:getMaxCutLiters()
+												self.fieldToMission[field.fieldId] = mission
+												local cutLiters = self:testHarvestField(field)
+												local expectedLiters = mission:getMaxCutLiters()
 
-											if cutLiters < expectedLiters * 0.95 then
-												log("Error: Found wrong field setup. Field", field.fieldId, "expected", expectedLiters, "got", cutLiters, "for", fruitDesc.name, growthState, 1, fertilizerState, plowingState, weedState, limeState, false)
+												if cutLiters < expectedLiters * 0.95 then
+													log("Error: Found wrong field setup. Field", field.fieldId, "expected", expectedLiters, "got", cutLiters, "for", fruitDesc.name, growthState, 1, fertilizerState, plowingState, weedState, limeState, false)
 
-												numHarvestsFailed = numHarvestsFailed + 1
-											else
-												log("OK: Found correct field setup. Field", field.fieldId, "expected", expectedLiters, "got", cutLiters, "for", fruitDesc.name, growthState, 1, fertilizerState, plowingState, weedState, limeState, false)
+													numHarvestsFailed = numHarvestsFailed + 1
+												else
+													log("OK: Found correct field setup. Field", field.fieldId, "expected", expectedLiters, "got", cutLiters, "for", fruitDesc.name, growthState, 1, fertilizerState, plowingState, weedState, limeState, false)
+												end
+
+												numHarvests = numHarvests + 1
 											end
-
-											numHarvests = numHarvests + 1
 										end
 									end
 								end

@@ -285,7 +285,7 @@ function PlaceableHighPressureWasher:canBeSold(superFunc)
 end
 
 function PlaceableHighPressureWasher:getHighPressureWasherIsPlayerInRange(actionRadius, player)
-	if self.rootNode ~= 0 then
+	if self.rootNode ~= nil then
 		local distance = calcDistanceFrom(player.rootNode, self.rootNode)
 
 		return distance < actionRadius, player, distance
@@ -298,10 +298,7 @@ HighPressureWasherActivatable = {}
 local HighPressureWasherActivatable_mt = Class(HighPressureWasherActivatable)
 
 function HighPressureWasherActivatable.new(placeable)
-	local self = {}
-
-	setmetatable(self, HighPressureWasherActivatable_mt)
-
+	local self = setmetatable({}, HighPressureWasherActivatable_mt)
 	self.placeable = placeable
 	self.activateText = "unknown"
 
@@ -345,4 +342,14 @@ function HighPressureWasherActivatable:updateActivateText()
 	else
 		self.activateText = string.format(g_i18n:getText("action_turnOnOBJECT"), g_i18n:getText("typeDesc_highPressureWasher"))
 	end
+end
+
+function HighPressureWasherActivatable:getDistance(x, y, z)
+	if self.placeable.rootNode ~= nil then
+		local tx, ty, tz = getWorldTranslation(self.placeable.rootNode)
+
+		return MathUtil.vector3Length(x - tx, y - ty, z - tz)
+	end
+
+	return math.huge
 end

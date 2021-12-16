@@ -44,7 +44,8 @@ function Dischargeable.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.BOOL, basePath .. ".dischargeNode(?)#canDischargeToObject", "Can discharge to object", true)
 	schema:register(XMLValueType.BOOL, basePath .. ".dischargeNode(?)#canStartDischargeAutomatically", "Can start discharge automatically", false)
 	schema:register(XMLValueType.BOOL, basePath .. ".dischargeNode(?)#canStartGroundDischargeAutomatically", "Can start discharge to ground automatically", false)
-	schema:register(XMLValueType.BOOL, basePath .. ".dischargeNode(?)#stopDischargeIfNotPossible", "Stop discharge if not possible", false)
+	schema:register(XMLValueType.BOOL, basePath .. ".dischargeNode(?)#stopDischargeIfNotPossible", "Stop discharge if not possible", "default 'true' while having discharge trigger")
+	schema:register(XMLValueType.BOOL, basePath .. ".dischargeNode(?)#canDischargeToGroundAnywhere", "Can discharge to ground independent of land owned state", false)
 	schema:register(XMLValueType.FLOAT, basePath .. ".dischargeNode(?)#emptySpeed", "Empty speed in l/sec", "fill unit capacity")
 	schema:register(XMLValueType.TIME, basePath .. ".dischargeNode(?)#effectTurnOffThreshold", "After this time has passed and nothing has been harvested the effects are turned off", 0.25)
 	schema:register(XMLValueType.STRING, basePath .. ".dischargeNode(?)#toolType", "Tool type", "dischargable")
@@ -558,7 +559,8 @@ function Dischargeable:loadDischargeNode(xmlFile, key, entry)
 	entry.canDischargeToObject = xmlFile:getValue(key .. "#canDischargeToObject", true)
 	entry.canStartDischargeAutomatically = xmlFile:getValue(key .. "#canStartDischargeAutomatically", Platform.gameplay.automaticDischarge)
 	entry.canStartGroundDischargeAutomatically = xmlFile:getValue(key .. "#canStartGroundDischargeAutomatically", false)
-	entry.stopDischargeIfNotPossible = xmlFile:getValue(key .. "#stopDischargeIfNotPossible", false)
+	entry.stopDischargeIfNotPossible = xmlFile:getValue(key .. "#stopDischargeIfNotPossible", xmlFile:hasProperty(key .. ".trigger#node"))
+	entry.canDischargeToGroundAnywhere = xmlFile:getValue(key .. "#canDischargeToGroundAnywhere", false)
 	entry.emptySpeed = xmlFile:getValue(key .. "#emptySpeed", self:getFillUnitCapacity(entry.fillUnitIndex)) / 1000
 	entry.effectTurnOffThreshold = xmlFile:getValue(key .. "#effectTurnOffThreshold", 0.25)
 	entry.lineOffset = 0
@@ -754,8 +756,8 @@ function Dischargeable:getIsPowerTakeOffActive(superFunc)
 	return self:getDischargeState() ~= Dischargeable.DISCHARGE_STATE_OFF or superFunc(self)
 end
 
-function Dischargeable:getAllowLoadTriggerActivation(superFunc)
-	if superFunc(self) then
+function Dischargeable:getAllowLoadTriggerActivation(superFunc, rootVehicle)
+	if superFunc(self, rootVehicle) then
 		return true
 	end
 
@@ -765,7 +767,11 @@ function Dischargeable:getAllowLoadTriggerActivation(superFunc)
 		local object = spec.currentDischargeNode.dischargeHitObject
 
 		if object ~= nil and object.getAllowLoadTriggerActivation ~= nil then
-			return object:getAllowLoadTriggerActivation()
+			if object == rootVehicle then
+				return false
+			end
+
+			return object:getAllowLoadTriggerActivation(rootVehicle)
 		end
 	end
 
@@ -939,6 +945,10 @@ end
 function Dischargeable:getCanDischargeToLand(dischargeNode)
 	if dischargeNode == nil then
 		return false
+	end
+
+	if dischargeNode.canDischargeToGroundAnywhere then
+		return true
 	end
 
 	local info = dischargeNode.info
@@ -1242,6 +1252,8 @@ function Dischargeable:handleDischarge(dischargeNode, dischargedLiters, minDropR
 		if dischargeNode.stopDischargeIfNotPossible and dischargedLiters == 0 and not canDrop then
 			self:setDischargeState(Dischargeable.DISCHARGE_STATE_OFF)
 		end
+	elseif dischargeNode.stopDischargeIfNotPossible and dischargedLiters == 0 then
+		self:setDischargeState(Dischargeable.DISCHARGE_STATE_OFF)
 	end
 end
 

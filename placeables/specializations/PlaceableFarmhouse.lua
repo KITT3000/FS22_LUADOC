@@ -113,14 +113,12 @@ function PlaceableFarmhouse:farmhouseSleepingTriggerCallback(triggerId, otherAct
 			g_currentMission.player:onEnterFarmhouse()
 		end
 
-		if self:getOwnerFarmId() == g_currentMission.player.farmId then
-			local spec = self.spec_farmhouse
+		local spec = self.spec_farmhouse
 
-			if onEnter then
-				g_currentMission.activatableObjectsSystem:addActivatable(spec.activatable)
-			else
-				g_currentMission.activatableObjectsSystem:removeActivatable(spec.activatable)
-			end
+		if onEnter then
+			g_currentMission.activatableObjectsSystem:addActivatable(spec.activatable)
+		else
+			g_currentMission.activatableObjectsSystem:removeActivatable(spec.activatable)
 		end
 	end
 end

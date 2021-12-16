@@ -298,6 +298,7 @@ function InGameMenuAnimalsFrame:updateFoodDisplay(husbandry)
 
 	self.foodRowTotalValue:setText(totalValueText)
 	self:setStatusBarValue(self.foodRowTotalStatusBar, totalRatio, false)
+	self.foodHeader:setText(string.format("%s (%s)", g_i18n:getText("ui_total"), g_i18n:getText("animals_foodMixEffectiveness")))
 end
 
 function InGameMenuAnimalsFrame:displayCluster(cluster, husbandry)
@@ -341,17 +342,9 @@ function InGameMenuAnimalsFrame:displayCluster(cluster, husbandry)
 			end
 		end
 
-		local infoText = self.l10n:getText(InGameMenuAnimalsFrame.L10N_SYMBOL.DESC_LIVESTOCK)
+		local animalDescriptionText = husbandry:getAnimalDescription(cluster)
 
-		if subType.typeIndex == AnimalType.CHICKEN then
-			infoText = self.l10n:getText(InGameMenuAnimalsFrame.L10N_SYMBOL.DESC_CHICKEN)
-		elseif subType.typeIndex == AnimalType.HORSE then
-			infoText = self.l10n:getText(InGameMenuAnimalsFrame.L10N_SYMBOL.DESC_HORSE)
-		end
-
-		local foodText = self:getFoodDescription(subType.typeIndex)
-
-		self.detailDescriptionText:setText(infoText .. " " .. foodText)
+		self.detailDescriptionText:setText(animalDescriptionText)
 	end
 
 	self:updateConditionDisplay(husbandry)
@@ -406,31 +399,6 @@ function InGameMenuAnimalsFrame:getFoodDescription(animalTypeIndex)
 		foodDescription = self.l10n:getText(InGameMenuAnimalsFrame.L10N_SYMBOL.FOOD_DESCRIPTION_PARALLEL)
 	else
 		foodDescription = self.l10n:getText(InGameMenuAnimalsFrame.L10N_SYMBOL.FOOD_DESCRIPTION_SERIAL)
-	end
-
-	foodDescription = foodDescription .. "\n"
-	local weightLabel = self.l10n:getText(InGameMenuAnimalsFrame.L10N_SYMBOL.FOOD_MIX_EFFECTIVENESS)
-	local line = nil
-
-	for i, group in ipairs(foodGroups) do
-		local fillTypeNames = ""
-
-		for j, fillTypeIndex in ipairs(group.fillTypes) do
-			local fillType = self.fillTypeManager:getFillTypeByIndex(fillTypeIndex)
-			fillTypeNames = fillTypeNames .. fillType.title
-
-			if j < #group.fillTypes then
-				fillTypeNames = fillTypeNames .. InGameMenuAnimalsFrame.FILL_TYPE_SEPARATOR
-			end
-		end
-
-		line = "- " .. fillTypeNames
-		line = line .. string.format(" (%s: %.0f%%)", weightLabel, group.productionWeight * 100)
-		foodDescription = foodDescription .. line
-
-		if i < #foodGroups then
-			foodDescription = foodDescription .. "\n"
-		end
 	end
 
 	return foodDescription
@@ -531,23 +499,19 @@ end
 
 InGameMenuAnimalsFrame.FILL_TYPE_SEPARATOR = " / "
 InGameMenuAnimalsFrame.L10N_SYMBOL = {
-	FOOD_MIX_EFFECTIVENESS = "animals_foodMixEffectiveness",
+	CLEANLINESS = "statistic_cleanliness",
 	BUTTON_CONFIRM = "button_confirm",
 	REMOVE_MARKER = "action_untag",
-	HORSE_FITNESS = "ui_horseFitness",
 	FOOD_DESCRIPTION_PARALLEL = "animals_foodMixDescriptionParallel",
+	FOOD_DESCRIPTION_SERIAL = "animals_foodMixDescriptionSerial",
 	IME_PROMPT_RENAME = "ui_horseName",
 	BUTTON_HOTSPOT = "button_showOnMap",
 	FOOD_MIX_QUANITITY = "animals_foodMixQuantity",
-	FOOD_DESCRIPTION_SERIAL = "animals_foodMixDescriptionSerial",
+	WATER = "statistic_water",
 	PROMPT_RENAME = "ui_enterHorseName",
-	DESC_HORSE = "animals_descriptionHorse",
+	HORSE_FITNESS = "ui_horseFitness",
 	BUTTON_RENAME = "button_rename",
 	SET_MARKER = "action_tag",
-	DESC_CHICKEN = "animals_descriptionChicken",
-	WATER = "statistic_water",
-	DESC_LIVESTOCK = "animals_descriptionGeneric",
-	CLEANLINESS = "statistic_cleanliness",
 	STRAW = "statistic_strawStorage"
 }
 InGameMenuAnimalsFrame.STATUS_BAR_HIGH = 0.66

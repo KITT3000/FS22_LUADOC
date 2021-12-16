@@ -209,6 +209,7 @@ function InGameMenuAIFrame:onFrameOpen()
 	g_messageCenter:subscribe(MessageType.AI_JOB_STARTED, self.onAIJobStarted, self)
 	g_messageCenter:subscribe(MessageType.AI_JOB_STOPPED, self.onAIJobStopped, self)
 	g_messageCenter:subscribe(MessageType.AI_JOB_REMOVED, self.onAIJobRemoved, self)
+	g_messageCenter:subscribe(MessageType.PAUSE, self.onPauseChanged, self)
 
 	local currentVehicle = g_currentMission.controlledVehicle
 
@@ -233,6 +234,7 @@ function InGameMenuAIFrame:onFrameClose()
 	g_messageCenter:unsubscribe(MessageType.AI_JOB_STARTED, self)
 	g_messageCenter:unsubscribe(MessageType.AI_JOB_STOPPED, self)
 	g_messageCenter:unsubscribe(MessageType.AI_JOB_REMOVED, self)
+	g_messageCenter:unsubscribe(MessageType.PAUSE, self)
 	self.ingameMap:onClose()
 	self:toggleMapInput(false)
 
@@ -243,6 +245,7 @@ function InGameMenuAIFrame:onFrameClose()
 	self.isOpen = false
 
 	self:setJobMenuVisible(false)
+	g_inputBinding:setContextEventsActive(InGameMenuAIFrame.INPUT_CONTEXT_NAME, InputAction.MENU_AXIS_LEFT_RIGHT, true)
 
 	self.statusMessages = {}
 
@@ -317,10 +320,12 @@ end
 function InGameMenuAIFrame:update(dt)
 	InGameMenuAIFrame:superClass().update(self, dt)
 
-	local currentInputHelpMode = self.inputManager:getInputHelpMode()
+	local currentInputHelpMode = self.inputManager:getLastInputMode()
 
 	if currentInputHelpMode ~= self.lastInputHelpMode then
 		self.lastInputHelpMode = currentInputHelpMode
+
+		g_inputBinding:setShowMouseCursor(currentInputHelpMode ~= GS_INPUT_HELP_MODE_GAMEPAD)
 
 		if not GS_IS_MOBILE_VERSION then
 			self:updateInputGlyphs()
@@ -760,7 +765,7 @@ function InGameMenuAIFrame:onVehiclesChanged(vehicle, wasAdded, isExitingGame)
 	self:selectFirstHotspot()
 end
 
-function InGameMenuAIFrame:notifyPause()
+function InGameMenuAIFrame:onPauseChanged(isActive)
 	self:setMapSelectionItem(self.currentHotspot)
 end
 
@@ -1184,15 +1189,7 @@ end
 function InGameMenuAIFrame:setJobMenuVisible(isVisible)
 	g_inputBinding:setActionEventActive(self.eventIdSwitchVehicle, not isVisible)
 	g_inputBinding:setActionEventActive(self.eventIdSwitchVehicleBack, not isVisible)
-
-	local eventIds = g_gui:getActionEventIds(InputAction.MENU_AXIS_LEFT_RIGHT)
-
-	if eventIds ~= nil then
-		for _, eventId in ipairs(eventIds) do
-			g_inputBinding:setActionEventActive(eventId, isVisible)
-		end
-	end
-
+	g_inputBinding:setContextEventsActive(InGameMenuAIFrame.INPUT_CONTEXT_NAME, InputAction.MENU_AXIS_LEFT_RIGHT, isVisible)
 	self.errorMessage:setText("")
 	self.actionMessage:setText("")
 	self.jobMenu:setVisible(isVisible)

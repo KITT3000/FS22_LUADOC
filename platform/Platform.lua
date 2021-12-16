@@ -81,7 +81,9 @@ function Platform.Default:apply()
 		15,
 		30,
 		60,
-		120
+		120,
+		240,
+		360
 	}
 	self.gameplay.timeScaleDevSettings = {
 		2000,

@@ -17,6 +17,7 @@ if GS_IS_MOBILE_VERSION then
 		"purchaseFuel",
 		"purchaseSeeds",
 		"purchaseFertilizer",
+		"animalUpkeep",
 		"other"
 	}
 else
@@ -31,7 +32,6 @@ else
 		"fieldSelling",
 		"vehicleRunningCost",
 		"vehicleLeasingCost",
-		"animalUpkeep",
 		"propertyMaintenance",
 		"propertyIncome",
 		"productionCosts",

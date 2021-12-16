@@ -4,6 +4,7 @@ Cultivator = {
 		FieldGroundType.PLOWED,
 		FieldGroundType.ROLLED_SEEDBED,
 		FieldGroundType.SOWN,
+		FieldGroundType.DIRECT_SOWN,
 		FieldGroundType.PLANTED,
 		FieldGroundType.RIDGE,
 		FieldGroundType.ROLLER_LINES,
@@ -18,6 +19,7 @@ Cultivator = {
 		FieldGroundType.PLOWED,
 		FieldGroundType.ROLLED_SEEDBED,
 		FieldGroundType.SOWN,
+		FieldGroundType.DIRECT_SOWN,
 		FieldGroundType.PLANTED,
 		FieldGroundType.RIDGE,
 		FieldGroundType.ROLLER_LINES,
@@ -127,11 +129,11 @@ function Cultivator:processCultivatorArea(workArea, dt)
 	local spec = self.spec_cultivator
 	local realArea = 0
 	local area = 0
+	local xs, _, zs = getWorldTranslation(workArea.start)
+	local xw, _, zw = getWorldTranslation(workArea.width)
+	local xh, _, zh = getWorldTranslation(workArea.height)
 
 	if spec.isEnabled then
-		local xs, _, zs = getWorldTranslation(workArea.start)
-		local xw, _, zw = getWorldTranslation(workArea.width)
-		local xh, _, zh = getWorldTranslation(workArea.height)
 		local params = spec.workAreaParameters
 
 		if spec.useDeepMode then
@@ -145,13 +147,13 @@ function Cultivator:processCultivatorArea(workArea, dt)
 		params.lastChangedArea = params.lastChangedArea + realArea
 		params.lastStatsArea = params.lastStatsArea + realArea
 		params.lastTotalArea = params.lastTotalArea + area
-
-		if spec.isSubsoiler then
-			FSDensityMapUtil.updateSubsoilerArea(xs, zs, xw, zw, xh, zh)
-		end
-
-		FSDensityMapUtil.eraseTireTrack(xs, zs, xw, zw, xh, zh)
 	end
+
+	if spec.isSubsoiler then
+		FSDensityMapUtil.updateSubsoilerArea(xs, zs, xw, zw, xh, zh)
+	end
+
+	FSDensityMapUtil.eraseTireTrack(xs, zs, xw, zw, xh, zh)
 
 	spec.isWorking = self:getLastSpeed() > 0.5
 
@@ -208,6 +210,10 @@ function Cultivator:updateCultivatorEnabledState()
 				return
 			end
 		end
+	elseif SpecializationUtil.hasSpecialization(SowingMachine, self.specializations) and self:getUseSowingMachineAIRequirements() and self.spec_sowingMachine.useDirectPlanting then
+		spec.isEnabled = false
+
+		return
 	end
 
 	spec.isEnabled = true
@@ -309,15 +315,18 @@ function Cultivator:onEndWorkAreaProcessing(dt)
 	local spec = self.spec_cultivator
 
 	if self.isServer then
+		local stats = g_currentMission:farmStats(self:getLastTouchedFarmlandFarmId())
 		local lastStatsArea = spec.workAreaParameters.lastStatsArea
 
 		if lastStatsArea > 0 then
 			local ha = MathUtil.areaToHa(lastStatsArea, g_currentMission:getFruitPixelsToSqm())
-			local stats = g_currentMission:farmStats(self:getLastTouchedFarmlandFarmId())
 
 			stats:updateStats("cultivatedHectares", ha)
-			stats:updateStats("cultivatedTime", dt / 60000)
 			self:updateLastWorkedArea(lastStatsArea)
+		end
+
+		if spec.isWorking then
+			stats:updateStats("cultivatedTime", dt / 60000)
 		end
 	end
 
@@ -340,6 +349,36 @@ function Cultivator:onStateChange(state, data)
 	if state == Vehicle.STATE_CHANGE_ATTACH or state == Vehicle.STATE_CHANGE_DETACH then
 		self:updateCultivatorAIRequirements()
 		self:updateCultivatorEnabledState()
+	end
+
+	if self.isServer and (state == Vehicle.STATE_CHANGE_TURN_ON or state == Vehicle.STATE_CHANGE_TURN_OFF) then
+		local spec = self.spec_cultivator
+
+		if spec.isPowerHarrow then
+			if data == self and self.getAttachedImplements ~= nil then
+				for _, implement in pairs(self:getAttachedImplements()) do
+					local vehicle = implement.object
+
+					if vehicle ~= nil then
+						if state == Vehicle.STATE_CHANGE_TURN_ON then
+							vehicle:setIsTurnedOn(true)
+						elseif vehicle:getIsTurnedOn() then
+							vehicle:setIsTurnedOn(false)
+						end
+					end
+				end
+			elseif data.getAttacherVehicle ~= nil then
+				local attacherVehicle = data:getAttacherVehicle()
+
+				if attacherVehicle ~= nil and attacherVehicle == self then
+					if state == Vehicle.STATE_CHANGE_TURN_ON then
+						self:setIsTurnedOn(true)
+					elseif self:getIsTurnedOn() then
+						self:setIsTurnedOn(false)
+					end
+				end
+			end
+		end
 	end
 end
 

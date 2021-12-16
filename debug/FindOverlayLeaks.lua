@@ -8,10 +8,13 @@ function FindOverlayLeaks.init()
 
 	function createImageOverlay(filename, ...)
 		local id = oldOverlayCreate(filename, ...)
-		FindOverlayLeaks.overlays[id] = {
-			trace = debug.traceback(),
-			filename = filename
-		}
+
+		if id ~= 0 then
+			FindOverlayLeaks.overlays[id] = {
+				trace = debug.traceback(),
+				filename = filename
+			}
+		end
 
 		return id
 	end

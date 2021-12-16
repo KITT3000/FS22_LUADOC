@@ -63,9 +63,9 @@ function Animation.calculateTurnOffFadeTime(currentSpeedFactor, currentSpeed, di
 	end
 
 	local int, fraction = math.modf((finalPos - targetPosition) / wrapPosition)
-	local targetRad = int * wrapPosition
+	local targetRad = int * wrapPosition + targetPosition
 
-	if direction > 0 and math.abs(fraction) > 0.2 or direction < 0 and math.abs(fraction) < 0.2 or direction > 0 and targetRad < position or direction < 0 and position < targetRad then
+	if direction > 0 and math.abs(fraction) > 0.2 or direction < 0 and math.abs(fraction) < 0.2 or math.abs(targetRad - position) < wrapPosition * 0.5 then
 		int = int + direction
 	end
 

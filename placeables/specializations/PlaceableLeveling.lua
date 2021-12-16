@@ -48,7 +48,7 @@ function PlaceableLeveling:onLoad(savegame)
 	spec.smoothingGroundType = xmlFile:getValue("placeable.leveling#smoothingGroundType")
 
 	if not self.xmlFile:hasProperty("placeable.leveling") then
-		Logging.xmlWarning(self.xmlFile, "Missing levling areas")
+		Logging.xmlWarning(self.xmlFile, "Missing leveling areas")
 	end
 
 	spec.levelAreas = {}

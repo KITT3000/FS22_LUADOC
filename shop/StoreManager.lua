@@ -890,7 +890,7 @@ function StoreManager:loadItem(rawXMLFilename, baseDir, customEnvironment, isMod
 				local value = xmlFile:getValue(key)
 
 				if xmlFile:getValue(key .. "#isFilename", false) then
-					value = Utils.getFilename(value, customEnvironment)
+					value = Utils.getFilename(value, baseDir)
 				end
 
 				parameters[index] = value

@@ -399,6 +399,11 @@ function InlineWrapper:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 
 				self:setCurrentInlineBale(inlineBale)
 				g_currentMission.activatableObjectsSystem:addActivatable(spec.activatable)
+
+				local stats = g_currentMission:farmStats(self:getOwnerFarmId())
+				local total = stats:updateStats("wrappedBales", 1)
+
+				g_achievementManager:tryUnlock("WrappedBales", total)
 				self:raiseDirtyFlags(spec.inlineBalesDirtyFlag)
 			end
 		end
@@ -1088,7 +1093,7 @@ function InlineWrapper:pushOffInlineBale()
 	end
 end
 
-function InlineWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, roundBaleWrapper)
+function InlineWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, roundBaleWrapper)
 	local rootName = xmlFile:getRootName()
 	local baleSizeAttributes = {
 		maxDiameter = -math.huge,
@@ -1150,12 +1155,12 @@ function InlineWrapper.getSpecValueBaleSize(storeItem, realItem, configurations,
 	end
 end
 
-function InlineWrapper.loadSpecValueBaleSizeRound(xmlFile, customEnvironment)
-	return InlineWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, true)
+function InlineWrapper.loadSpecValueBaleSizeRound(xmlFile, customEnvironment, baseDir)
+	return InlineWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, true)
 end
 
-function InlineWrapper.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment)
-	return InlineWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, false)
+function InlineWrapper.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment, baseDir)
+	return InlineWrapper.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir, false)
 end
 
 function InlineWrapper.getSpecValueBaleSizeRound(storeItem, realItem, configurations, saleItem, returnValues, returnRange)

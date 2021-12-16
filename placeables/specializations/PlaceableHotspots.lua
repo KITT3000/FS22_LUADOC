@@ -8,14 +8,11 @@ function PlaceableHotspots.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getHotspot", PlaceableHotspots.getHotspot)
 end
 
-function PlaceableHotspots.registerOverwrittenFunctions(placeableType)
-	SpecializationUtil.registerOverwrittenFunction(placeableType, "setOwnerFarmId", PlaceableHotspots.setOwnerFarmId)
-end
-
 function PlaceableHotspots.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceableHotspots)
 	SpecializationUtil.registerEventListener(placeableType, "onDelete", PlaceableHotspots)
 	SpecializationUtil.registerEventListener(placeableType, "onPostFinalizePlacement", PlaceableHotspots)
+	SpecializationUtil.registerEventListener(placeableType, "onOwnerChanged", PlaceableHotspots)
 end
 
 function PlaceableHotspots.registerXMLPaths(schema, basePath)
@@ -114,14 +111,13 @@ function PlaceableHotspots:onPostFinalizePlacement()
 	end
 end
 
-function PlaceableHotspots:setOwnerFarmId(superFunc, ownerFarmId, noEventSend)
-	superFunc(self, ownerFarmId, noEventSend)
-
+function PlaceableHotspots:onOwnerChanged()
 	local spec = self.spec_hotspots
 
 	if spec.mapHotspots ~= nil then
 		for _, hotspot in ipairs(spec.mapHotspots) do
-			hotspot:setOwnerFarmId(ownerFarmId)
+			hotspot:setOwnerFarmId(self.ownerFarmId)
+			hotspot:setVisible(self.ownerFarmId ~= AccessHandler.NOBODY)
 		end
 	end
 end

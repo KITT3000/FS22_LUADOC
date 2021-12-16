@@ -22,6 +22,7 @@ end
 function Wipers.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", Wipers)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", Wipers)
+	SpecializationUtil.registerEventListener(vehicleType, "onFinishAnimation", Wipers)
 end
 
 function Wipers:onLoad(savegame)
@@ -39,6 +40,8 @@ function Wipers:onLoad(savegame)
 		local wiper = {}
 
 		if self:loadWiperFromXML(self.xmlFile, key, wiper) then
+			wiper.lastValidState = 1
+
 			table.insert(spec.wipers, wiper)
 		end
 
@@ -62,7 +65,7 @@ function Wipers:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 		for _, wiper in pairs(spec.wipers) do
 			local stateIdToUse = 0
 
-			if self:getIsActiveForWipers() and spec.lastRainScale > 0 then
+			if self:getIsActiveForWipers() and spec.lastRainScale > 0.01 then
 				for stateIndex, state in ipairs(wiper.states) do
 					if spec.lastRainScale <= state.maxRainValue then
 						stateIdToUse = stateIndex
@@ -79,10 +82,6 @@ function Wipers:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 			if stateIdToUse > 0 then
 				local currentState = wiper.states[stateIdToUse]
 
-				if self:getAnimationTime(wiper.animName) == 1 then
-					self:playAnimation(wiper.animName, -currentState.animSpeed, 1, true)
-				end
-
 				if (wiper.nextStartTime == nil or wiper.nextStartTime < g_currentMission.time) and not self:getIsAnimationPlaying(wiper.animName) then
 					self:playAnimation(wiper.animName, currentState.animSpeed, 0, true)
 
@@ -92,7 +91,21 @@ function Wipers:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 				if wiper.nextStartTime == nil then
 					wiper.nextStartTime = g_currentMission.time + wiper.animDuration / currentState.animSpeed * 2 + currentState.animPause
 				end
+
+				wiper.lastValidState = stateIdToUse
 			end
+		end
+	end
+end
+
+function Wipers:onFinishAnimation(name)
+	local spec = self.spec_wipers
+
+	for _, wiper in pairs(spec.wipers) do
+		if wiper.animName == name and self:getAnimationTime(wiper.animName) == 1 then
+			local lastValidState = wiper.states[wiper.lastValidState]
+
+			self:playAnimation(wiper.animName, -lastValidState.animSpeed, 1, true)
 		end
 	end
 end

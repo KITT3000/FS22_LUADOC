@@ -121,13 +121,11 @@ function PlaceableManureHeap:onFinalizePlacement()
 			end
 		end
 
-		if spec.isExtension then
-			local lastFoundUnloadingStations = storageSystem:getExtendableUnloadingStationsInRange(spec.manureHeap, ownerFarmId)
-			local lastFoundLoadingStations = storageSystem:getExtendableLoadingStationsInRange(spec.manureHeap, ownerFarmId)
+		local lastFoundUnloadingStations = storageSystem:getExtendableUnloadingStationsInRange(spec.manureHeap, ownerFarmId)
+		local lastFoundLoadingStations = storageSystem:getExtendableLoadingStationsInRange(spec.manureHeap, ownerFarmId)
 
-			storageSystem:addStorageToUnloadingStations(spec.manureHeap, lastFoundUnloadingStations)
-			storageSystem:addStorageToLoadingStations(spec.manureHeap, lastFoundLoadingStations)
-		end
+		storageSystem:addStorageToUnloadingStations(spec.manureHeap, lastFoundUnloadingStations)
+		storageSystem:addStorageToLoadingStations(spec.manureHeap, lastFoundLoadingStations)
 	end
 end
 
@@ -240,7 +238,7 @@ function PlaceableManureHeap:updateInfo(superFunc, infoTable)
 	table.insert(infoTable, spec.infoFillLevel)
 end
 
-function PlaceableManureHeap.loadSpecValueCapacity(xmlFile, customEnvironment)
+function PlaceableManureHeap.loadSpecValueCapacity(xmlFile, customEnvironment, baseDir)
 	return xmlFile:getValue("placeable.manureHeap#capacity")
 end
 

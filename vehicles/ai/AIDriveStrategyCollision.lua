@@ -89,7 +89,7 @@ end
 function AIDriveStrategyCollision:generateTriggerPath(vehicle, trigger)
 	trigger.positions[1], trigger.positions[2], trigger.positions[3] = getWorldTranslation(trigger.node)
 	trigger.positions[2] = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, trigger.positions[1], trigger.positions[2], trigger.positions[3]) + trigger.height * 0.5
-	trigger.isValid = self.vehicle.movingDirection >= 0 or trigger.hasCollision
+	trigger.isValid = self:getCollisionCheckActive() or trigger.hasCollision
 
 	if trigger.isValid then
 		if not trigger.hasCollision then
@@ -149,8 +149,20 @@ function AIDriveStrategyCollision:generateTriggerPath(vehicle, trigger)
 	end
 end
 
+function AIDriveStrategyCollision:getCollisionCheckActive()
+	if self.vehicle:getReverserDirection() > 0 then
+		if self.vehicle.movingDirection < 0 and self.vehicle:getLastSpeed(true) > 2 then
+			return false
+		end
+	elseif self.vehicle.movingDirection > 0 and self.vehicle:getLastSpeed(true) > 2 then
+		return false
+	end
+
+	return true
+end
+
 function AIDriveStrategyCollision:getDriveData(dt, vX, vY, vZ)
-	if self.vehicle.movingDirection < 0 and self.vehicle:getLastSpeed(true) > 2 then
+	if not self:getCollisionCheckActive() then
 		return nil, nil, nil, nil, nil
 	end
 

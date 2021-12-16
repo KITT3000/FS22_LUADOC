@@ -13,6 +13,13 @@ ConstructionBrushSculpt.CURSOR_SIZES = {
 	16,
 	32
 }
+ConstructionBrushSculpt.CURSOR_STRENGTHS = {
+	0.25,
+	0.5,
+	1,
+	2,
+	4
+}
 
 function ConstructionBrushSculpt.new(subclass_mt, cursor)
 	local self = ConstructionBrushSculpt:superClass().new(subclass_mt or ConstructionBrushSculpt_mt, cursor)
@@ -22,7 +29,10 @@ function ConstructionBrushSculpt.new(subclass_mt, cursor)
 	self.supportsSecondaryDragging = true
 	self.supportsTertiaryButton = true
 	self.supportsPrimaryAxis = true
+	self.supportsSecondaryAxis = true
 	self.requiredPermission = Farm.PERMISSION.LANDSCAPING
+	self.maxBrushRadius = ConstructionBrushSculpt.CURSOR_SIZES[#ConstructionBrushSculpt.CURSOR_SIZES] / 2
+	self.maxBrushStrength = ConstructionBrushSculpt.CURSOR_STRENGTHS[#ConstructionBrushSculpt.CURSOR_STRENGTHS]
 
 	return self
 end
@@ -41,7 +51,8 @@ function ConstructionBrushSculpt:activate()
 	self.cursor:setTerrainOnly(true)
 	self.cursor:setColorMode(GuiTopDownCursor.SHAPES_COLORS.SCULPTING)
 	self.cursor:setCursorTerrainOffset(true)
-	self:setBrushSize(1)
+	self:setBrushSize(2)
+	self:setBrushStrength(1)
 end
 
 function ConstructionBrushSculpt:deactivate()
@@ -51,6 +62,7 @@ end
 
 function ConstructionBrushSculpt:copyState(from)
 	self:setBrushSize(from.cursorSizeIndex)
+	self:setBrushStrength(from.cursorStrengthIndex)
 
 	self.brushShape = from.brushShape
 
@@ -71,6 +83,14 @@ function ConstructionBrushSculpt:setBrushSize(index)
 	self.brushRadius = size / 2
 
 	self.cursor:setShapeSize(size)
+end
+
+function ConstructionBrushSculpt:setBrushStrength(index)
+	self.cursorStrengthIndex = MathUtil.clamp(index, 1, #ConstructionBrushSculpt.CURSOR_STRENGTHS)
+	self.brushStrength = ConstructionBrushSculpt.CURSOR_STRENGTHS[self.cursorStrengthIndex]
+	local alpha = math.sqrt(self.brushStrength / ConstructionBrushSculpt.CURSOR_STRENGTHS[#ConstructionBrushSculpt.CURSOR_STRENGTHS]) * 0.8
+
+	self.cursor:setColorMode(GuiTopDownCursor.SHAPES_COLORS.SCULPTING, alpha)
 end
 
 function ConstructionBrushSculpt:toggleBrushShape()
@@ -110,32 +130,29 @@ end
 function ConstructionBrushSculpt:shift(x, y, z, direction)
 	local currentRadius = self.brushRadius
 	local validateOnly = false
-	local strength = 0.5
 	local operation = direction > 0 and Landscaping.OPERATION.RAISE or Landscaping.OPERATION.LOWER
-	local requestLandscaping = LandscapingSculptEvent.new(validateOnly, operation, x, y, z, nil, nil, nil, nil, nil, nil, currentRadius, strength, self.brushShape, Landscaping.TERRAIN_UNIT)
+	local requestLandscaping = LandscapingSculptEvent.new(validateOnly, operation, x, y, z, nil, nil, nil, nil, nil, nil, currentRadius, self.brushStrength, self.brushShape, Landscaping.TERRAIN_UNIT)
 
 	g_client:getServerConnection():sendEvent(requestLandscaping)
 end
 
 function ConstructionBrushSculpt:flatten(x, y, z)
 	local validateOnly = false
-	local strength = 0.5
 	local operation = Landscaping.OPERATION.FLATTEN
 
 	if self.flattenHeight == nil then
 		self.flattenHeight = y
 	end
 
-	local request = LandscapingSculptEvent.new(validateOnly, operation, x, self.flattenHeight, z, nil, nil, nil, nil, nil, nil, self.brushRadius, strength, self.brushShape, Landscaping.TERRAIN_UNIT)
+	local request = LandscapingSculptEvent.new(validateOnly, operation, x, self.flattenHeight, z, nil, nil, nil, nil, nil, nil, self.brushRadius, self.brushStrength, self.brushShape, Landscaping.TERRAIN_UNIT)
 
 	g_client:getServerConnection():sendEvent(request)
 end
 
 function ConstructionBrushSculpt:smooth(x, y, z)
 	local validateOnly = false
-	local strength = 1
 	local operation = Landscaping.OPERATION.SMOOTH
-	local requestLandscaping = LandscapingSculptEvent.new(validateOnly, operation, x, y, z, nil, nil, nil, nil, nil, nil, self.brushRadius, strength, self.brushShape, Landscaping.TERRAIN_UNIT)
+	local requestLandscaping = LandscapingSculptEvent.new(validateOnly, operation, x, y, z, nil, nil, nil, nil, nil, nil, self.brushRadius, self.brushStrength * 2, self.brushShape, Landscaping.TERRAIN_UNIT)
 
 	g_client:getServerConnection():sendEvent(requestLandscaping)
 end
@@ -188,6 +205,8 @@ function ConstructionBrushSculpt:slopeSetTarget(x, y, z)
 end
 
 function ConstructionBrushSculpt:onButtonPrimary(isDown, isDrag, isUp)
+	self:setActiveSound(ConstructionSound.ID.NONE)
+
 	if isUp then
 		self.flattenHeight = nil
 		self.slopeSourceX, self.slopeSourceY, self.slopeSourceZ = nil
@@ -218,9 +237,13 @@ function ConstructionBrushSculpt:onButtonPrimary(isDown, isDrag, isUp)
 	elseif self.mode == ConstructionBrushSculpt.MODE.SLOPE then
 		self:slope(x, y, z)
 	end
+
+	self:setActiveSound(ConstructionSound.ID.SCULPT, 1 - self.brushRadius / self.maxBrushRadius * 0.75 - self.brushStrength / self.maxBrushStrength * 0.25)
 end
 
 function ConstructionBrushSculpt:onButtonSecondary(isDown, isDrag, isUp)
+	self:setActiveSound(ConstructionSound.ID.NONE)
+
 	if isUp then
 		return
 	end
@@ -233,6 +256,7 @@ function ConstructionBrushSculpt:onButtonSecondary(isDown, isDrag, isUp)
 
 	if self.mode == ConstructionBrushSculpt.MODE.SHIFT then
 		self:shift(x, y, z, -1)
+		self:setActiveSound(ConstructionSound.ID.SCULPT, 1 - self.brushRadius / self.maxBrushRadius * 0.75 - self.brushStrength / self.maxBrushStrength * 0.25)
 	elseif self.mode == ConstructionBrushSculpt.MODE.SLOPE then
 		self:slopeSetTarget(x, y, z)
 	end
@@ -244,6 +268,10 @@ end
 
 function ConstructionBrushSculpt:onAxisPrimary(inputValue)
 	self:setBrushSize(self.cursorSizeIndex + inputValue)
+end
+
+function ConstructionBrushSculpt:onAxisSecondary(inputValue)
+	self:setBrushStrength(self.cursorStrengthIndex + inputValue)
 end
 
 function ConstructionBrushSculpt:getButtonPrimaryText()
@@ -276,6 +304,10 @@ end
 
 function ConstructionBrushSculpt:getAxisPrimaryText()
 	return "$l10n_input_CONSTRUCTION_BRUSH_SIZE"
+end
+
+function ConstructionBrushSculpt:getAxisSecondaryText()
+	return "$l10n_input_CONSTRUCTION_BRUSH_STRENGTH"
 end
 
 function ConstructionBrushSculpt:getButtonTertiaryText()

@@ -84,7 +84,11 @@ function TextInputElement:loadFromXML(xmlFile, key)
 	}))
 	self.cursorOffset = GuiUtils.getNormalizedValues(getXMLString(xmlFile, key .. "#cursorOffset"), self.outputSize, self.cursorOffset)
 	self.cursorSize = GuiUtils.getNormalizedValues(getXMLString(xmlFile, key .. "#cursorSize"), self.outputSize, self.cursorSize)
-	self.cursorSize[1] = math.max(self.cursorSize[1], 1 / g_screenWidth)
+
+	if g_screenWidth > 1 then
+		self.cursorSize[1] = math.max(self.cursorSize[1], 1 / g_screenWidth)
+	end
+
 	self.enterWhenClickOutside = Utils.getNoNil(getXMLBool(xmlFile, key .. "#enterWhenClickOutside"), self.enterWhenClickOutside)
 
 	GuiOverlay.loadOverlay(self, self.cursor, "cursor", self.imageSize, nil, xmlFile, key)
@@ -110,7 +114,9 @@ function TextInputElement:loadProfile(profile, applyProfile)
 
 	GuiOverlay.loadOverlay(self, self.cursor, "cursor", self.imageSize, profile, nil, nil)
 
-	self.cursorSize[1] = math.max(self.cursorSize[1], 1 / g_screenWidth)
+	if g_screenWidth > 1 then
+		self.cursorSize[1] = math.max(self.cursorSize[1], 1 / g_screenWidth)
+	end
 
 	if applyProfile then
 		self:applyTextInputAspectScale()
@@ -169,7 +175,7 @@ function TextInputElement:finalize()
 	end
 
 	if self.maxInputTextWidth and self.maxInputTextWidth <= getTextWidth(self.textSize, self.frontDotsText) + self.cursorNeededSize[1] + getTextWidth(self.textSize, self.backDotsText) then
-		print(string.format("Error: TextInputElement loading specified \"maxInputTextWidth\" is too small (%.4f) to display needed data", self.maxInputTextWidth))
+		Logging.warning("Warning: TextInputElement loading specified \"maxInputTextWidth\" is too small (%.4f) to display needed data", self.maxInputTextWidth)
 	end
 end
 

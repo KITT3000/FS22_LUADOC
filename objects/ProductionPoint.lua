@@ -1,6 +1,7 @@
 ProductionPoint = {
 	NO_PALLET_SPACE_COOLDOWN = 15000,
-	DIRECT_SELL_PRICE_FACTOR = 0.8,
+	DIRECT_SELL_PRICE_FACTOR = 0.9,
+	DIRECT_DELIVERY_PRICE = 3.5000000000000004e-05,
 	OUTPUT_MODE = {}
 }
 ProductionPoint.OUTPUT_MODE.KEEP = 0
@@ -38,9 +39,11 @@ function ProductionPoint.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".productions.production(?)#id", "Unique string used for identifying the production", nil, true)
 	schema:register(XMLValueType.L10N_STRING, basePath .. ".productions.production(?)#name", "Name of the production used inside the UI", "unnamed production")
 	schema:register(XMLValueType.STRING, basePath .. ".productions.production(?)#params", "Optional parameters formatted into #name")
-	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#cyclesPerHour", "Number of performed production cycles per ingame hour (divided by the number of enabled productions, unless sharedThroughputCapacity is set to false)", 60)
+	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#cyclesPerMonth", "Number of performed production cycles per ingame month (divided by the number of enabled productions, unless sharedThroughputCapacity is set to false)", 1440)
+	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#cyclesPerHour", "Number of production cycles per ingame hour per day (==month) (divided by the number of enabled productions, unless sharedThroughputCapacity is set to false)", 60)
 	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#cyclesPerMinute", "Number of performed production cycles per ingame minute (divided by the number of enabled productions)", 1)
-	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#costsPerActiveHour", "Costs per ingame hour if this production is enabled (regardless of whether it is producing or not)", 60)
+	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#costsPerActiveMonth", "Costs per ingame hour if this production is enabled per ingame month (regardless of whether it is producing or not)", 1440)
+	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#costsPerActiveHour", "Costs per ingame hour if this production is enabled per day (==month) (regardless of whether it is producing or not)", 60)
 	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?)#costsPerActiveMinute", "Costs per ingame minute if this production is enabled (regardless of whether it is producing or not)", 1)
 	schema:register(XMLValueType.STRING, basePath .. ".productions.production(?).inputs.input(?)#fillType", "Input fillType", nil, true)
 	schema:register(XMLValueType.FLOAT, basePath .. ".productions.production(?).inputs.input(?)#amount", "Used amount per cycle", 1)
@@ -88,7 +91,6 @@ function ProductionPoint.new(isServer, isClient, customMt)
 	self.activatable = ProductionPointActivatable.new(self)
 
 	g_messageCenter:subscribe(MessageType.TIMESCALE_CHANGED, self.onTimescaleChanged, self)
-	g_messageCenter:subscribe(MessageType.HOUR_CHANGED, self.onHourChanged, self)
 
 	self.infoTables = {
 		activeProds = {
@@ -161,12 +163,18 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 
 		table.insert(usedProdIds, production.id)
 
+		local cyclesPerMonth = xmlFile:getValue(productionKey .. "#cyclesPerMonth")
 		local cyclesPerHour = xmlFile:getValue(productionKey .. "#cyclesPerHour")
-		production.cyclesPerMinute = cyclesPerHour and cyclesPerHour / 60 or xmlFile:getValue(productionKey .. "#cyclesPerMinute") or 1
+		local cyclesPerMinute = xmlFile:getValue(productionKey .. "#cyclesPerMinute")
+		production.cyclesPerMinute = cyclesPerMonth and cyclesPerMonth / 60 / 24 or cyclesPerHour and cyclesPerHour / 60 or cyclesPerMinute or 1
 		production.cyclesPerHour = cyclesPerHour or production.cyclesPerMinute * 60
-		local costsPerActiveMinute = xmlFile:getValue(productionKey .. "#costsPerActiveHour")
-		production.costsPerActiveMinute = costsPerActiveMinute and costsPerActiveMinute / 60 or xmlFile:getValue(productionKey .. "#costsPerActiveMinute") or 1
-		production.costsPerActiveHour = costsPerActiveMinute or costsPerActiveMinute / 60
+		production.cyclesPerMonth = cyclesPerMonth or production.cyclesPerHour * 24
+		local costsPerActiveMinute = xmlFile:getValue(productionKey .. "#costsPerActiveMinute")
+		local costsPerActiveHour = xmlFile:getValue(productionKey .. "#costsPerActiveHour")
+		local costsPerActiveMonth = xmlFile:getValue(productionKey .. "#costsPerActiveMonth")
+		production.costsPerActiveMinute = costsPerActiveMonth and costsPerActiveMonth / 60 / 24 or costsPerActiveHour and costsPerActiveHour / 60 or costsPerActiveMinute or 1
+		production.costsPerActiveHour = costsPerActiveHour or production.costsPerActiveMinute * 60
+		production.costsPerActiveMonth = costsPerActiveMonth or production.costsPerActiveHour * 24
 		production.status = ProductionPoint.PROD_STATUS.INACTIVE
 		production.inputs = {}
 
@@ -616,15 +624,16 @@ function ProductionPoint:updateProduction()
 	end
 
 	local dt = MathUtil.clamp(g_time - self.lastUpdatedTime, 0, 30000)
+	local timeAdjust = g_currentMission.environment.timeAdjustment
 	local numActiveProductions = #self.activeProductions
 
 	if numActiveProductions > 0 then
-		local minuteFactorTimescaledDt = dt * self.minuteFactorTimescaled
-		local minuteFactorDt = dt / 60000
+		local minuteFactorTimescaledDt = dt * self.minuteFactorTimescaled * timeAdjust
+		local minuteFactorDt = dt / 60000 * timeAdjust
 
 		for n = 1, numActiveProductions do
 			local production = self.activeProductions[n]
-			local cyclesPerMinuteMinuteFactor = production.cyclesPerMinute * minuteFactorTimescaledDt * g_currentMission.environment.timeAdjustment
+			local cyclesPerMinuteMinuteFactor = production.cyclesPerMinute * minuteFactorTimescaledDt
 			local cyclesPerMinuteFactorNoTimescale = production.cyclesPerMinute * minuteFactorDt
 			local enoughInputResources = true
 			local enoughOutputSpace = true
@@ -779,14 +788,6 @@ function ProductionPoint:renderDebugTexts()
 	end
 end
 
-function ProductionPoint:onHourChanged()
-	if self.isOwned and self.isServer then
-		self:claimProductionCosts()
-		self:directlySellOutputs()
-		self:updateBalaceDirectlySoldOutputs()
-	end
-end
-
 function ProductionPoint:onTimescaleChanged()
 	self.minuteFactorTimescaled = self.mission:getEffectiveTimeScale() / 1000 / 60
 end
@@ -802,7 +803,15 @@ end
 function ProductionPoint:updateBalaceDirectlySoldOutputs()
 	if self.isOwned and self.isServer then
 		for fillTypeId, amount in pairs(self.soldFillTypesToPayOut) do
-			self.mission:addMoney(amount * g_currentMission.economyManager:getPricePerLiter(fillTypeId), self.ownerFarmId, MoneyType.HARVEST_INCOME, true)
+			local moneyType = MoneyType.HARVEST_INCOME
+
+			if g_fillTypeManager:getIsFillTypeInCategory(fillTypeId, "PRODUCT") then
+				moneyType = MoneyType.SOLD_PRODUCTS
+			elseif g_fillTypeManager:getIsFillTypeInCategory(fillTypeId, "PRODUCT_BGA") then
+				moneyType = MoneyType.INCOME_BGA
+			end
+
+			self.mission:addMoney(amount * g_currentMission.economyManager:getPricePerLiter(fillTypeId), self.ownerFarmId, moneyType, true)
 
 			self.soldFillTypesToPayOut[fillTypeId] = 0
 		end
@@ -1083,7 +1092,7 @@ function ProductionPoint:toString()
 	return string.format("PP %s (%s): productions:(%i/%i) - owner: %i", paddedName, self:tableId(), #self.activeProductions, #self.productions, self.ownerFarmId)
 end
 
-function ProductionPoint.loadSpecValueInputFillTypes(xmlFile, customEnvironment)
+function ProductionPoint.loadSpecValueInputFillTypes(xmlFile, customEnvironment, baseDir)
 	local fillTypeNames = nil
 
 	xmlFile:iterate("placeable.productionPoint.productions.production", function (_, productionKey)
@@ -1105,7 +1114,7 @@ function ProductionPoint.getSpecValueInputFillTypes(storeItem, realItem)
 	return g_fillTypeManager:getFillTypesByNames(table.concatKeys(storeItem.specs.prodPointInputFillTypes, " "))
 end
 
-function ProductionPoint.loadSpecValueOutputFillTypes(xmlFile, customEnvironment)
+function ProductionPoint.loadSpecValueOutputFillTypes(xmlFile, customEnvironment, baseDir)
 	local fillTypeNames = nil
 
 	xmlFile:iterate("placeable.productionPoint.productions.production", function (_, productionKey)

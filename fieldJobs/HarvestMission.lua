@@ -229,7 +229,7 @@ function HarvestMission:getHighestSellPointPrice()
 	local sellPoint = nil
 
 	for _, unloadingStation in pairs(self.mission.storageSystem:getUnloadingStations()) do
-		if unloadingStation.owningPlaceable ~= nil and unloadingStation.isSellingPoint and unloadingStation.acceptedFillTypes[self.fillType] then
+		if unloadingStation.owningPlaceable ~= nil and unloadingStation.isSellingPoint and unloadingStation.allowMissions and unloadingStation.acceptedFillTypes[self.fillType] then
 			local price = unloadingStation:getEffectiveFillTypePrice(self.fillType)
 
 			if highestPrice < price then

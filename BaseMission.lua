@@ -47,6 +47,8 @@ function BaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.drawables = {}
 	self.triggerMarkers = {}
 	self.triggerMarkersAreVisible = true
+	self.helpTriggers = {}
+	self.helpTriggersAreVisible = true
 	self.dynamicallyLoadedObjects = {}
 	self.isPlayerFrozen = false
 	self.environment = nil
@@ -336,6 +338,7 @@ function BaseMission:onStartMission()
 	self.isMissionStarted = true
 
 	self:setShowTriggerMarker(g_gameSettings:getValue("showTriggerMarker"))
+	self:setShowHelpTrigger(g_gameSettings:getValue("showHelpTrigger"))
 
 	if self:getIsClient() then
 		local context = Player.INPUT_CONTEXT_NAME
@@ -947,6 +950,8 @@ function BaseMission:doPauseGame()
 		callbackFunc(target, self.paused)
 	end
 
+	g_messageCenter:publish(MessageType.PAUSE, true)
+
 	if self.trafficSystem ~= nil then
 		self.trafficSystem:setEnabled(false)
 	end
@@ -978,6 +983,8 @@ function BaseMission:doUnpauseGame()
 	for target, callbackFunc in pairs(self.pauseListeners) do
 		callbackFunc(target, self.paused)
 	end
+
+	g_messageCenter:publish(MessageType.PAUSE, false)
 
 	if self.trafficSystem ~= nil then
 		self.trafficSystem:setEnabled(g_currentMission.missionInfo.trafficEnabled)
@@ -1285,6 +1292,8 @@ end
 function BaseMission:draw()
 	local isNotFading = not self.hud:getIsFading()
 
+	g_sleepManager:draw()
+
 	if self:getIsClient() and self.isRunning and not g_gui:getIsGuiVisible() and isNotFading then
 		self.hud:drawControlledEntityHUD()
 
@@ -1382,7 +1391,7 @@ function BaseMission:enterVehicleWithPlayer(vehicle, player)
 	end
 end
 
-function BaseMission:onEnterVehicle(vehicle, playerStyle, farmId)
+function BaseMission:onEnterVehicle(vehicle, playerStyle, farmId, userId)
 	if self.controlPlayer then
 		self.player:onLeave()
 	elseif self.controlledVehicle ~= nil then
@@ -1398,7 +1407,7 @@ function BaseMission:onEnterVehicle(vehicle, playerStyle, farmId)
 
 	self.controlledVehicle = vehicle
 
-	self.controlledVehicle:enterVehicle(true, playerStyle, farmId)
+	self.controlledVehicle:enterVehicle(true, playerStyle, farmId, userId)
 
 	if g_gui:getIsGuiVisible() and oldContext ~= Vehicle.INPUT_CONTEXT_NAME then
 		self.inputManager:setContext(oldContext, false, false)
@@ -1578,6 +1587,7 @@ end
 
 function BaseMission:removeTriggerMarker(id)
 	table.removeElement(self.triggerMarkers, id)
+	setVisibility(id, false)
 end
 
 function BaseMission:setShowTriggerMarker(areVisible)
@@ -1586,6 +1596,39 @@ function BaseMission:setShowTriggerMarker(areVisible)
 	for _, node in ipairs(self.triggerMarkers) do
 		setVisibility(node, areVisible)
 	end
+end
+
+function BaseMission:addHelpTrigger(id)
+	setVisibility(id, self.helpTriggersAreVisible)
+	table.addElement(self.helpTriggers, id)
+end
+
+function BaseMission:removeHelpTrigger(id)
+	table.removeElement(self.helpTriggers, id)
+end
+
+function BaseMission:setShowHelpTrigger(areVisible)
+	self.helpTriggersAreVisible = areVisible
+
+	self:updateHelpTriggerVisibility()
+end
+
+function BaseMission:updateHelpTriggerVisibility()
+	local visible = self:getCanShowHelpTriggers()
+
+	for _, node in ipairs(self.helpTriggers) do
+		setVisibility(node, visible)
+
+		if visible then
+			addToPhysics(node)
+		else
+			removeFromPhysics(node)
+		end
+	end
+end
+
+function BaseMission:getCanShowHelpTriggers()
+	return self.helpTriggersAreVisible
 end
 
 function BaseMission:setShowFieldInfo(isVisible)
@@ -1833,6 +1876,7 @@ function BaseMission:subscribeSettingsChangeMessages()
 	self.messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.USE_ACRE], self.setUseAcre, self)
 	self.messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.USE_FAHRENHEIT], self.setUseFahrenheit, self)
 	self.messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.SHOW_TRIGGER_MARKER], self.setShowTriggerMarker, self)
+	self.messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.SHOW_HELP_TRIGGER], self.setShowHelpTrigger, self)
 	self.messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.SHOW_FIELD_INFO], self.setShowFieldInfo, self)
 end
 

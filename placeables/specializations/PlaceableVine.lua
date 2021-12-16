@@ -22,6 +22,7 @@ function PlaceableVine.registerOverwrittenFunctions(placeableType)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "generateSegmentPoles", PlaceableVine.generateSegmentPoles)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "deleteSegment", PlaceableVine.deleteSegment)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "getCanBePlacedAt", PlaceableVine.getCanBePlacedAt)
+	SpecializationUtil.registerOverwrittenFunction(placeableType, "getHasParallelSnapping", PlaceableVine.getHasParallelSnapping)
 end
 
 function PlaceableVine.registerEventListeners(placeableType)
@@ -204,7 +205,7 @@ function PlaceableVine:generateSegmentPoles(superFunc, segment, sync)
 	superFunc(self, segment, sync)
 end
 
-function PlaceableVine:onCreateSegmentPanel(isPreview, segment, panel, poleIndex, dy)
+function PlaceableVine:onCreateSegmentPanel(isPreview, segment, panel, poleIndex, dy, pole)
 	local spec = self.spec_vine
 
 	if not isPreview then
@@ -217,31 +218,12 @@ function PlaceableVine:onCreateSegmentPanel(isPreview, segment, panel, poleIndex
 
 		table.insert(spec.vineSegments[segment], data)
 
-		local x, _, z = getWorldTranslation(node)
-		local dirX, _, dirZ = localDirectionToWorld(node, 0, 0, 1)
+		local x, _, z = getWorldTranslation(panel)
+		local dirX, _, dirZ = localDirectionToWorld(panel, 0, 0, 1)
+		dirX, dirZ = MathUtil.vector2Normalize(dirX, dirZ)
 		local normX, _, normZ = MathUtil.crossProduct(dirX, 0, dirZ, 0, 1, 0)
+		normX, normZ = MathUtil.vector2Normalize(normX, normZ)
 		local sizeHalfX = spec.width * 0.5
-		data.sections = {}
-
-		for i = 1, spec.numSections do
-			local startX = x + dirX * spec.sectionLength * (i - 1) + normX * -sizeHalfX
-			local startZ = z + dirZ * spec.sectionLength * (i - 1) + normZ * -sizeHalfX
-			local widthX = startX + normX * spec.width
-			local widthZ = startZ + normZ * spec.width
-			local heightX = startX + dirX * spec.sectionLength
-			local heightZ = startZ + dirZ * spec.sectionLength
-			data.sections[i] = {
-				startX,
-				startZ,
-				widthX,
-				widthZ,
-				heightX,
-				heightZ
-			}
-
-			FSDensityMapUtil.createVineArea(spec.fruitType.index, startX, startZ, widthX, widthZ, heightX, heightZ)
-		end
-
 		data.growthStates = {}
 
 		for nodeIndex, foliageStates in pairs(spec.growthStates) do
@@ -280,6 +262,56 @@ function PlaceableVine:onCreateSegmentPanel(isPreview, segment, panel, poleIndex
 						end
 					end
 				end
+			end
+		end
+
+		local maxState = 1
+		local maxPixels = 0
+		data.sections = {}
+		data.growthValues = {}
+		local sectionLength = spec.sectionLength
+
+		for i = 1, spec.numSections do
+			local startX = x + dirX * sectionLength * (i - 1) + normX * -sizeHalfX
+			local startZ = z + dirZ * sectionLength * (i - 1) + normZ * -sizeHalfX
+			local widthX = startX + normX * spec.width
+			local widthZ = startZ + normZ * spec.width
+			local heightX = startX + dirX * sectionLength
+			local heightZ = startZ + dirZ * sectionLength
+			data.sections[i] = {
+				startX,
+				startZ,
+				widthX,
+				widthZ,
+				heightX,
+				heightZ
+			}
+			data.growthValues[i] = {
+				totalArea = 0,
+				values = {}
+			}
+
+			for stateNode, growthStateData in pairs(data.growthStates) do
+				for _, foliageData in ipairs(growthStateData.foliageStates) do
+					data.growthValues[i].values[foliageData.state] = 0
+				end
+			end
+
+			data.growthValues[i].totalArea = FSDensityMapUtil.updateVineAreaValues(spec.fruitType.index, startX, startZ, widthX, widthZ, heightX, heightZ, data.growthValues[i].values)
+
+			for state, value in pairs(data.growthValues[i].values) do
+				if maxPixels < value then
+					maxPixels = value
+					maxState = state
+				end
+			end
+		end
+
+		if not self.isLoadingFromSavegameXML then
+			for i = 1, spec.numSections do
+				local section = data.sections[i]
+
+				FSDensityMapUtil.createVineArea(spec.fruitType.index, section[1], section[2], section[3], section[4], section[5], section[6], maxState)
 			end
 		end
 
@@ -334,13 +366,19 @@ function PlaceableVine:getCanBePlacedAt(superFunc, x, y, z, farmId)
 	return superFunc(self, x, y, z)
 end
 
+function PlaceableVine:getHasParallelSnapping(superFunc)
+	return true
+end
+
 function PlaceableVine:destroyVineArea(data)
 	local spec = self.spec_vine
 
-	for i = 1, spec.numSections do
-		local section = data.sections[i]
+	if self.isServer then
+		for i = 1, spec.numSections do
+			local section = data.sections[i]
 
-		FSDensityMapUtil.destroyVineArea(spec.fruitType.index, section[1], section[2], section[3], section[4], section[5], section[6])
+			FSDensityMapUtil.destroyVineArea(spec.fruitType.index, section[1], section[2], section[3], section[4], section[5], section[6])
+		end
 	end
 end
 
@@ -356,6 +394,10 @@ function PlaceableVine:updateVineNode(node, isGrowing)
 		return
 	end
 
+	if not entityExists(node) then
+		return
+	end
+
 	if isGrowing then
 		local startX, startZ, widthX, widthZ, heightX, heightZ = self:getVineAreaByNode(node)
 
@@ -363,7 +405,7 @@ function PlaceableVine:updateVineNode(node, isGrowing)
 			local totalArea = FSDensityMapUtil.updateVineAreaValues(spec.fruitType.index, startX, startZ, widthX, widthZ, heightX, heightZ, resetState.values)
 			local factor = resetState.values[resetState.state] / totalArea
 
-			if factor < 1 and resetState.threshold < factor then
+			if self.isServer and factor < 1 and resetState.threshold < factor then
 				FSDensityMapUtil.resetVineArea(spec.fruitType.index, startX, startZ, widthX, widthZ, heightX, heightZ, resetState.targetState)
 
 				break
@@ -417,7 +459,7 @@ function PlaceableVine:updateVineVisuals(data)
 				local value = data.growthValues[i].values[foliageState.state]
 				growthStateData.value = growthStateData.value + value
 
-				if maxSectionValue < value then
+				if maxSectionValue <= value then
 					growthStateData.sectionStates[i] = foliageState.sectionState
 					maxSectionValue = value
 				end
@@ -463,7 +505,7 @@ function PlaceableVine:harvestVine(node, startX, startY, startZ, currentX, curre
 			local area, totalArea, weedFactor, sprayFactor, plowFactor = FSDensityMapUtil.updateVineCutArea(spec.fruitType.index, section[1], section[2], section[3], section[4], section[5], section[6])
 
 			if area > 0 then
-				callback(target, self, area, totalArea, weedFactor, sprayFactor, plowFactor)
+				callback(target, self, area, totalArea, weedFactor, sprayFactor, plowFactor, spec.sectionLength)
 
 				needsUpdate = true
 			end

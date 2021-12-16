@@ -71,6 +71,8 @@ function DebugPath:addPoint(x, y, z)
 			z
 		})
 	end
+
+	return self
 end
 
 function DebugPath:setVisible(isVisible)
@@ -85,4 +87,6 @@ function DebugPath:setColor(r, g, b)
 	self.color[1] = r or self.color[1]
 	self.color[2] = g or self.color[2]
 	self.color[3] = b or self.color[3]
+
+	return self
 end

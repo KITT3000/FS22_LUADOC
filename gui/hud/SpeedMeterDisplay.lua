@@ -306,7 +306,7 @@ function SpeedMeterDisplay:updateDamageGauge(dt)
 		for i = 1, #vehicles do
 			local vehicle = vehicles[i]
 
-			if vehicle.getDamageAmount ~= nil then
+			if vehicle.getDamageShowOnHud ~= nil and vehicle:getDamageShowOnHud() then
 				gaugeValue = math.min(gaugeValue, 1 - vehicle:getDamageAmount())
 			end
 		end

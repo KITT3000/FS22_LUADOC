@@ -44,6 +44,7 @@ function ShopItemsFrame.new(subclass_mt, shopController, l10n, brandManager)
 	self.notifySelectedDisplayItemCallback = NO_CALLBACK
 	self.displayItems = {}
 	self.clonedElements = {}
+	self.marqueeBoxes = {}
 
 	return self
 end
@@ -212,7 +213,7 @@ function ShopItemsFrame:assignItemFillTypesData(baseIconProfile, iconFilenames, 
 	end
 
 	if attributeIndex > #self.attrValue or #iconFilenames == 0 then
-		parentBox:setVisible(false)
+		parentBox.parent:setVisible(false)
 
 		return attributeIndex
 	end
@@ -222,7 +223,7 @@ function ShopItemsFrame:assignItemFillTypesData(baseIconProfile, iconFilenames, 
 
 	self.attrIcon[attributeIndex]:applyProfile(baseIconProfile)
 	self.attrIcon[attributeIndex]:setVisible(true)
-	parentBox:setVisible(true)
+	parentBox.parent:setVisible(true)
 	self.attrValue[attributeIndex]:setVisible(false)
 
 	for i = 1, #iconFilenames do
@@ -233,19 +234,22 @@ function ShopItemsFrame:assignItemFillTypesData(baseIconProfile, iconFilenames, 
 
 		totalWidth = totalWidth + icon.absSize[1] + icon.margin[1] + icon.margin[3]
 
-		if maxWidth <= totalWidth then
-			icon:applyProfile(ShopItemsFrame.PROFILE.ICON_FILL_TYPES_PLUS)
-			icon:setImageFilename(g_baseUIFilename)
-
-			break
-		else
-			icon:applyProfile(ShopItemsFrame.PROFILE.ICON_FRUIT_TYPE)
-			icon:setImageFilename(iconFilenames[i])
-		end
+		icon:applyProfile(ShopItemsFrame.PROFILE.ICON_FRUIT_TYPE)
+		icon:setImageFilename(iconFilenames[i])
 	end
 
+	local parentSize = math.min(maxWidth, totalWidth)
+
+	parentBox:setPosition(0)
+	parentBox.parent:setSize(parentSize, nil)
 	parentBox:setSize(totalWidth, nil)
 	parentBox:invalidateLayout()
+
+	if parentSize < totalWidth then
+		self.marqueeBoxes[parentBox] = 0
+	else
+		self.marqueeBoxes[parentBox] = nil
+	end
 
 	return attributeIndex + 1
 end
@@ -283,7 +287,7 @@ function ShopItemsFrame:assignItemTextData(displayItem)
 
 		self.attrValue[i]:setVisible(attributeVisible)
 		self.attrIcon[i]:setVisible(attributeVisible)
-		self.attrIconsLayout[i]:setVisible(false)
+		self.attrIconsLayout[i].parent:setVisible(false)
 
 		if attributeVisible then
 			numAttributesUsed = numAttributesUsed + 1
@@ -298,6 +302,10 @@ function ShopItemsFrame:assignItemAttributeData(displayItem)
 		clone:delete()
 
 		self.clonedElements[k] = nil
+	end
+
+	for k, _ in pairs(self.marqueeBoxes) do
+		self.marqueeBoxes[k] = nil
 	end
 
 	local numAttributesUsed = self:assignItemTextData(displayItem)
@@ -437,6 +445,33 @@ function ShopItemsFrame:populateCellForItemInSection(list, section, index, cell)
 		else
 			cell:getAttribute("modDlc"):setText("")
 		end
+	end
+end
+
+function ShopItemsFrame:update(dt)
+	ShopItemsFrame:superClass().update(self, dt)
+	self:updateMarqueeAnimation(dt)
+end
+
+function ShopItemsFrame:updateMarqueeAnimation(dt)
+	for box, time in pairs(self.marqueeBoxes) do
+		local contentWidth = box.absSize[1]
+		local visibleWidth = box.parent.absSize[1]
+		local scrollAmount = contentWidth - visibleWidth
+		local scrollLengthFactor = scrollAmount / visibleWidth
+		local scrollDuration = 9000 * scrollLengthFactor
+		time = time + dt
+
+		if scrollDuration <= time then
+			time = -scrollDuration
+		end
+
+		local alpha = MathUtil.smoothstep(0.2, 0.8, math.abs(time) / scrollDuration)
+		local offset = scrollAmount * alpha
+
+		box:setPosition(-offset)
+
+		self.marqueeBoxes[box] = time
 	end
 end
 

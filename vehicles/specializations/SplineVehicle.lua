@@ -216,7 +216,7 @@ function SplineVehicle:getIsDischargeNodeActive(superFunc, dischargeNode)
 	if dischargeNode.needsIsEntered then
 		local rootVehicle = self:getRootVehicle()
 
-		if rootVehicle ~= nil and rootVehicle.getIsEntered ~= nil and not rootVehicle:getIsEntered() then
+		if rootVehicle ~= nil and rootVehicle.getIsControlled ~= nil and not rootVehicle:getIsControlled() then
 			return false
 		end
 	end

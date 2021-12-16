@@ -102,8 +102,8 @@ end
 function AbstractMission:updateTick(dt)
 	if self.isServer and self.status == AbstractMission.STATUS_RUNNING then
 		if self.lastCompletion == nil then
-			self.lastCompletion = self.mission.time
-		elseif self.lastCompletion < self.mission.time - 2500 then
+			self.lastCompletion = g_currentMission.time
+		elseif self.lastCompletion < g_currentMission.time - 2500 then
 			self.completion = self:getCompletion()
 
 			if self.completion >= 0.995 then

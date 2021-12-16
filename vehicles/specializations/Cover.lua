@@ -62,6 +62,7 @@ function Cover.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", Cover)
 	SpecializationUtil.registerEventListener(vehicleType, "onRegisterActionEvents", Cover)
 	SpecializationUtil.registerEventListener(vehicleType, "onStartTipping", Cover)
+	SpecializationUtil.registerEventListener(vehicleType, "onOpenBackDoor", Cover)
 	SpecializationUtil.registerEventListener(vehicleType, "onFillUnitTriggerChanged", Cover)
 	SpecializationUtil.registerEventListener(vehicleType, "onRemovedFillUnitTrigger", Cover)
 end
@@ -138,6 +139,14 @@ function Cover:onPostLoad(savegame)
 
 		if savegame ~= nil then
 			state = savegame.xmlFile:getValue(savegame.key .. ".cover#state", state)
+		else
+			for i = 1, #spec.covers do
+				local cover = spec.covers[i]
+
+				if cover.startOpenState then
+					state = i
+				end
+			end
 		end
 
 		if state == 0 then
@@ -273,7 +282,7 @@ end
 function Cover:setCoverState(state, noEventSend)
 	local spec = self.spec_cover
 
-	if spec.hasCovers and state >= 0 and state <= #spec.covers then
+	if spec.hasCovers and state >= 0 and state <= #spec.covers and spec.state ~= state then
 		SetCoverStateEvent.sendEvent(self, state, noEventSend)
 
 		local startAnim = #spec.runningAnimations == 0
@@ -319,7 +328,6 @@ end
 
 function Cover:playCoverAnimation(animation)
 	if animation.startTime ~= nil then
-		log("anim", animation.startTime)
 		self:setAnimationTime(animation.name, animation.startTime, true)
 	end
 
@@ -419,6 +427,19 @@ function Cover:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnoreSe
 end
 
 function Cover:onStartTipping(tipSide)
+	if self.spec_cover.openCoverWhileTipping then
+		local trailerSpec = self.spec_trailer
+		local tipSideDesc = trailerSpec.tipSides[tipSide]
+		local dischargeNode = self:getDischargeNodeByIndex(tipSideDesc.dischargeNodeIndex)
+		local cover = self:getCoverByFillUnitIndex(dischargeNode.fillUnitIndex)
+
+		if cover ~= nil then
+			self:setCoverState(cover.index, true)
+		end
+	end
+end
+
+function Cover:onOpenBackDoor(tipSide)
 	if self.spec_cover.openCoverWhileTipping then
 		local trailerSpec = self.spec_trailer
 		local tipSideDesc = trailerSpec.tipSides[tipSide]

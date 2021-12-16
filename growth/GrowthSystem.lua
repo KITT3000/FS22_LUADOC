@@ -1,6 +1,7 @@
 GrowthSystem = {}
 local GrowthSystem_mt = Class(GrowthSystem)
 GrowthSystem.MAX_MS_PER_FRAME = 0.5
+GrowthSystem.MAX_MS_PER_FRAME_SLEEPING = 1.5
 GrowthSystem.MODE = {
 	SEASONAL = 1,
 	DAILY = 2,
@@ -15,6 +16,8 @@ function GrowthSystem.new(mission, isServer, customMt)
 	self.fieldCropsUpdatersCellSize = 16
 	self.growthQueue = {}
 	self.currentGrowthPeriod = nil
+
+	g_messageCenter:subscribe(MessageType.SLEEPING, self.onSleepChanged, self)
 
 	return self
 end
@@ -89,20 +92,20 @@ function GrowthSystem:loadFromXMLFile(xmlFilename)
 			if setApplyCropsGrowthFinishedCallback(updater.updater, "onEngineStepFinished", self) then
 				self.numEngineStepsActive = self.numEngineStepsActive + 1
 
-				setApplyCropsGrowthMaxTimePerFrame(updater.updater, GrowthSystem.MAX_MS_PER_FRAME)
+				setApplyCropsGrowthMaxTimePerFrame(updater.updater, self:getMaxUpdateTime())
 			end
 		end
 
 		if self.weedUpdater ~= nil and self.missionInfo.weedsEnabled and setDensityMapUpdaterApplyFinishedCallback(self.weedUpdater, "onEngineStepFinished", self) then
 			self.numEngineStepsActive = self.numEngineStepsActive + 1
 
-			setDensityMapUpdaterApplyMaxTimePerFrame(self.weedUpdater, GrowthSystem.MAX_MS_PER_FRAME)
+			setDensityMapUpdaterApplyMaxTimePerFrame(self.weedUpdater, self:getMaxUpdateTime())
 		end
 
 		if self.stoneUpdater ~= nil and self.missionInfo.stonesEnabled and setDensityMapUpdaterApplyFinishedCallback(self.stoneUpdater, "onEngineStepFinished", self) then
 			self.numEngineStepsActive = self.numEngineStepsActive + 1
 
-			setDensityMapUpdaterApplyMaxTimePerFrame(self.stoneUpdater, GrowthSystem.MAX_MS_PER_FRAME)
+			setDensityMapUpdaterApplyMaxTimePerFrame(self.stoneUpdater, self:getMaxUpdateTime())
 		end
 
 		if self.numEngineStepsActive == 0 then
@@ -217,6 +220,14 @@ function GrowthSystem:setFruitLayer(mapName, fruitType, layerName, id)
 
 	local updater = self.fieldCropsUpdaters[mapName]
 	updater.ids[fruitType.layerName] = id
+end
+
+function GrowthSystem:getMaxUpdateTime()
+	if g_sleepManager.isSleeping then
+		return GrowthSystem.MAX_MS_PER_FRAME_SLEEPING
+	else
+		return GrowthSystem.MAX_MS_PER_FRAME
+	end
 end
 
 function GrowthSystem:loadGrowthData(xmlFile, root)
@@ -433,6 +444,22 @@ function GrowthSystem:onPeriodChanged()
 	self:triggerGrowth(transitionPeriod)
 end
 
+function GrowthSystem:onSleepChanged(isSleeping)
+	if self.isServer then
+		for _, updater in pairs(self.fieldCropsUpdaters) do
+			setApplyCropsGrowthMaxTimePerFrame(updater.updater, self:getMaxUpdateTime())
+		end
+
+		if self.weedUpdater ~= nil and self.missionInfo.weedsEnabled then
+			setDensityMapUpdaterApplyMaxTimePerFrame(self.weedUpdater, self:getMaxUpdateTime())
+		end
+
+		if self.stoneUpdater ~= nil and self.missionInfo.stonesEnabled then
+			setDensityMapUpdaterApplyMaxTimePerFrame(self.stoneUpdater, self:getMaxUpdateTime())
+		end
+	end
+end
+
 function GrowthSystem:setMonthEngineState(period)
 	for _, updater in pairs(self.fieldCropsUpdaters) do
 		for name, id in pairs(updater.ids) do
@@ -507,19 +534,19 @@ function GrowthSystem:startEngineGrowth(period)
 	for _, updater in pairs(self.fieldCropsUpdaters) do
 		self.numEngineStepsActive = self.numEngineStepsActive + 1
 
-		applyCropsGrowth(updater.updater, "onEngineStepFinished", self, GrowthSystem.MAX_MS_PER_FRAME)
+		applyCropsGrowth(updater.updater, "onEngineStepFinished", self, self:getMaxUpdateTime())
 	end
 
 	if self.weedUpdater ~= nil and self.missionInfo.weedsEnabled then
 		self.numEngineStepsActive = self.numEngineStepsActive + 1
 
-		applyDensityMapUpdater(self.weedUpdater, "onEngineStepFinished", self, GrowthSystem.MAX_MS_PER_FRAME)
+		applyDensityMapUpdater(self.weedUpdater, "onEngineStepFinished", self, self:getMaxUpdateTime())
 	end
 
 	if self.stoneUpdater ~= nil and self.missionInfo.stonesEnabled then
 		self.numEngineStepsActive = self.numEngineStepsActive + 1
 
-		applyDensityMapUpdater(self.stoneUpdater, "onEngineStepFinished", self, GrowthSystem.MAX_MS_PER_FRAME)
+		applyDensityMapUpdater(self.stoneUpdater, "onEngineStepFinished", self, self:getMaxUpdateTime())
 	end
 
 	self:performScriptBasedGrowth(period)

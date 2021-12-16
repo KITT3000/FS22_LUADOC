@@ -1006,18 +1006,18 @@ function Cutter:onEndWorkAreaProcessing(dt, hasProcessed)
 				spec.aiNoValidGroundTimer = 0
 			end
 		elseif self:getAllowCutterAIFruitRequirements() and hasProcessed then
-			if self:getIsAIActive() and self:getLastSpeed() > 5 then
-				spec.aiNoValidGroundTimer = spec.aiNoValidGroundTimer + dt
+			local rootVehicle = self.rootVehicle
 
-				if spec.aiNoValidGroundTimer > 5000 then
-					local rootVehicle = self.rootVehicle
+			if rootVehicle.getAIFieldWorkerIsTurning ~= nil then
+				if rootVehicle:getIsAIActive() and rootVehicle:getLastSpeed() > 5 and not rootVehicle:getAIFieldWorkerIsTurning() then
+					spec.aiNoValidGroundTimer = spec.aiNoValidGroundTimer + dt
 
-					if rootVehicle.stopCurrentAIJob ~= nil then
+					if spec.aiNoValidGroundTimer > 5000 and rootVehicle.stopCurrentAIJob ~= nil then
 						rootVehicle:stopCurrentAIJob(AIMessageErrorUnknown.new())
 					end
+				else
+					spec.aiNoValidGroundTimer = 0
 				end
-			else
-				spec.aiNoValidGroundTimer = 0
 			end
 		end
 	end

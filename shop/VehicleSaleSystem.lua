@@ -332,11 +332,11 @@ function VehicleSaleSystem:generateRandomVehicle()
 	end
 
 	local age = math.random(6, 40)
-	local damage = math.random() * 0.8 + 0.2
+	local damage = math.random() * 0.4 + 0.2
 	local wear = math.random() * 0.8 + 0.2
 	local operatingTime = age * (math.random() * 0.8 + 0.5) * 60 * 60 * 1000
 	local defaultPrice = StoreItemUtil.getDefaultPrice(storeItem, boughtConfigurations)
-	local repairPrice = Wearable.calculateRepairPrice(defaultPrice, damage, true)
+	local repairPrice = Wearable.calculateRepairPrice(defaultPrice, damage, age)
 	local repaintPrice = Wearable.calculateRepaintPrice(defaultPrice, wear)
 	local price = Vehicle.calculateSellPrice(storeItem, age, operatingTime, defaultPrice, repairPrice, repaintPrice)
 

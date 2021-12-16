@@ -20,18 +20,18 @@ GameSettings.SETTING = {
 	USE_MILES = "useMiles",
 	IS_GAMEPAD_ENABLED = "isGamepadEnabled",
 	INVERT_Y_LOOK = "invertYLook",
-	VEHICLE_ARM_SENSITIVITY = "vehicleArmSensitivity",
+	SHOW_HELP_TRIGGER = "showHelpTrigger",
 	EASY_ARM_CONTROL = "easyArmControl",
 	HEAD_TRACKING_ENABLED_SET_BY_USER = "headTrackingEnabledSetByUser",
-	GEAR_SHIFT_MODE = "gearShiftMode",
+	INPUT_HELP_MODE = "inputHelpMode",
 	USE_WORLD_CAMERA = "useWorldCamera",
 	DIRECTION_CHANGE_MODE = "directionChangeMode",
 	USE_FAHRENHEIT = "useFahrenheit",
-	VOLUME_GUI = "volumeGUI",
+	GEAR_SHIFT_MODE = "gearShiftMode",
 	REAL_BEACON_LIGHTS = "realBeaconLights",
 	RADIO_VEHICLE_ONLY = "radioVehicleOnly",
+	VOLUME_GUI = "volumeGUI",
 	VOLUME_VOICE = "volumeVoice",
-	VOICE_MODE = "voiceMode",
 	LIGHTS_PROFILE = "lightsProfile",
 	FOV_Y = "fovY",
 	VOLUME_VOICE_INPUT = "volumeVoiceInput",
@@ -39,27 +39,29 @@ GameSettings.SETTING = {
 	UI_SCALE = "uiScale",
 	ACTIVE_SUSPENSION_CAMERA = "activeSuspensionCamera",
 	LAST_PLAYER_STYLE_MALE = "lastPlayerStyleMale",
+	VOICE_MODE = "voiceMode",
 	CAMERA_SENSITIVITY = "cameraSensitivity",
-	INPUT_HELP_MODE = "inputHelpMode",
 	DEFAULT_SERVER_PORT = "defaultServerPort",
+	VEHICLE_ARM_SENSITIVITY = "vehicleArmSensitivity",
 	STEERING_BACK_SPEED = "steeringBackSpeed",
 	INGAME_MAP_STATE = "ingameMapState",
 	INGAME_MAP_FILTER = "ingameMapFilter",
-	RADIO_IS_ACTIVE = "radioIsActive",
 	RESET_CAMERA = "resetCamera",
 	STEERING_SENSITIVITY = "steeringSensitivity",
+	SHOWN_FREEMODE_WARNING = "shownFreemodeWarning",
 	VOLUME_MUSIC = "musicVolume",
-	JOYSTICK_VIBRATION_ENABLED = "joystickVibrationEnabled",
 	MOTOR_STOP_TIMER_DURATION = "motorStopTimerDuration",
 	VOLUME_MASTER = "masterVolume",
-	GYROSCOPE_STEERING = "gyroscopeSteering",
+	JOYSTICK_VIBRATION_ENABLED = "joystickVibrationEnabled",
 	SHOW_HELP_ICONS = "showHelpIcons",
+	GYROSCOPE_STEERING = "gyroscopeSteering",
 	CAMERA_TILTING = "cameraTilting",
-	IS_HEAD_TRACKING_ENABLED = "isHeadTrackingEnabled",
 	SHOW_FIELD_INFO = "showFieldInfo",
 	HUD_SPEED_GAUGE = "hudSpeedGauge",
 	MP_LANGUAGE = "mpLanguage",
+	IS_HEAD_TRACKING_ENABLED = "isHeadTrackingEnabled",
 	FORCE_FEEDBACK = "forceFeedback",
+	RADIO_IS_ACTIVE = "radioIsActive",
 	IS_SOUND_PLAYER_STREAM_ACCESS_ALLOWED = "isSoundPlayerStreamAccessAllowed"
 }
 GameSettings.PERFORMANCE_CLASS_PRESETS = {
@@ -135,15 +137,15 @@ function GameSettings.new(customMt, messageCenter)
 	self[GameSettings.SETTING.UI_SCALE] = 1
 	self[GameSettings.SETTING.HINTS] = true
 	self[GameSettings.SETTING.CAMERA_TILTING] = Platform.gameplay.defaultCameraTilt
-	self[GameSettings.SETTING.SHOW_ALL_MODS] = false
+	self[GameSettings.SETTING.SHOW_ALL_MODS] = true
 	self[GameSettings.SETTING.ONLINE_PRESENCE_NAME] = getUserName():trim()
 	self[GameSettings.SETTING.LAST_PLAYER_STYLE_MALE] = true
 	self[GameSettings.SETTING.INVERT_Y_LOOK] = false
 	self[GameSettings.SETTING.VOLUME_MASTER] = 1
-	self[GameSettings.SETTING.VOLUME_MUSIC] = 0.5
+	self[GameSettings.SETTING.VOLUME_MUSIC] = 0.45
 	self[GameSettings.SETTING.VOLUME_VEHICLE] = 1
 	self[GameSettings.SETTING.VOLUME_ENVIRONMENT] = 0.7
-	self[GameSettings.SETTING.VOLUME_RADIO] = 0.5
+	self[GameSettings.SETTING.VOLUME_RADIO] = 0.6
 	self[GameSettings.SETTING.VOLUME_GUI] = 0.5
 	self[GameSettings.SETTING.VOLUME_VOICE] = 1
 	self[GameSettings.SETTING.VOLUME_VOICE_INPUT] = 1
@@ -163,6 +165,7 @@ function GameSettings.new(customMt, messageCenter)
 	self[GameSettings.SETTING.USE_FAHRENHEIT] = false
 	self[GameSettings.SETTING.USE_ACRE] = false
 	self[GameSettings.SETTING.SHOW_TRIGGER_MARKER] = true
+	self[GameSettings.SETTING.SHOW_HELP_TRIGGER] = true
 	self[GameSettings.SETTING.SHOW_FIELD_INFO] = true
 	self[GameSettings.SETTING.RESET_CAMERA] = false
 	self[GameSettings.SETTING.USE_WORLD_CAMERA] = true
@@ -179,6 +182,7 @@ function GameSettings.new(customMt, messageCenter)
 	self[GameSettings.SETTING.HUD_SPEED_GAUGE] = SpeedMeterDisplay.GAUGE_MODE_RPM
 	self[GameSettings.SETTING.INGAME_MAP_FILTER] = 0
 	self[GameSettings.SETTING.INGAME_MAP_STATE] = IngameMap.STATE_MINIMAP_ROUND
+	self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING] = false
 
 	if GS_IS_CONSOLE_VERSION then
 		self[GameSettings.SETTING.IS_GAMEPAD_ENABLED] = true
@@ -202,6 +206,7 @@ function GameSettings.new(customMt, messageCenter)
 		[GameSettings.SETTING.VOLUME_RADIO] = "Setting 'Radio Volume': %.3f",
 		[GameSettings.SETTING.VOLUME_GUI] = "Setting 'GUI Volume': %.3f",
 		[GameSettings.SETTING.SHOW_TRIGGER_MARKER] = "Setting 'Show Trigger Marker': %s",
+		[GameSettings.SETTING.SHOW_HELP_TRIGGER] = "Setting 'Show Help Trigger': %s",
 		[GameSettings.SETTING.IS_TRAIN_TABBABLE] = "Setting 'Is Train Tabbable': %s",
 		[GameSettings.SETTING.RADIO_IS_ACTIVE] = "Setting 'Radio Active': %s",
 		[GameSettings.SETTING.RADIO_VEHICLE_ONLY] = "Setting 'Radio Vehicle Only': %s",
@@ -438,6 +443,7 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.USE_COLORBLIND_MODE, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.useColorblindMode"), self[GameSettings.SETTING.USE_COLORBLIND_MODE]))
 		self:setValue(GameSettings.SETTING.EASY_ARM_CONTROL, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.easyArmControl"), self[GameSettings.SETTING.EASY_ARM_CONTROL]))
 		self:setValue(GameSettings.SETTING.SHOW_TRIGGER_MARKER, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.showTriggerMarker"), self[GameSettings.SETTING.SHOW_TRIGGER_MARKER]))
+		self:setValue(GameSettings.SETTING.SHOW_HELP_TRIGGER, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.showHelpTrigger"), self[GameSettings.SETTING.SHOW_HELP_TRIGGER]))
 		self:setValue(GameSettings.SETTING.SHOW_FIELD_INFO, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.showFieldInfo"), self[GameSettings.SETTING.SHOW_FIELD_INFO]))
 		self:setValue(GameSettings.SETTING.RESET_CAMERA, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.resetCamera"), self[GameSettings.SETTING.RESET_CAMERA]))
 		self:setValue(GameSettings.SETTING.ACTIVE_SUSPENSION_CAMERA, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.activeSuspensionCamera"), self[GameSettings.SETTING.ACTIVE_SUSPENSION_CAMERA]))
@@ -456,6 +462,7 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.VOLUME_VOICE_INPUT, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.volume.voiceInput"), self[GameSettings.SETTING.VOLUME_VOICE_INPUT]))
 		self:setValue(GameSettings.SETTING.VOICE_MODE, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.voice#mode"), self[GameSettings.SETTING.VOICE_MODE]))
 		self:setValue(GameSettings.SETTING.FORCE_FEEDBACK, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.forceFeedback"), self[GameSettings.SETTING.FORCE_FEEDBACK]))
+		self:setValue(GameSettings.SETTING.SHOWN_FREEMODE_WARNING, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.shownFreemodeWarning"), self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING]))
 		self:setValue(GameSettings.SETTING.CAMERA_SENSITIVITY, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.cameraSensitivity"), self[GameSettings.SETTING.CAMERA_SENSITIVITY]))
 		self:setValue(GameSettings.SETTING.VEHICLE_ARM_SENSITIVITY, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.vehicleArmSensitivity"), self[GameSettings.SETTING.VEHICLE_ARM_SENSITIVITY]))
 		self:setValue(GameSettings.SETTING.STEERING_BACK_SPEED, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.steeringBackSpeed"), self[GameSettings.SETTING.STEERING_BACK_SPEED]))
@@ -473,6 +480,17 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.HINTS, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.hints"), self[GameSettings.SETTING.HINTS]))
 		self:setValue(GameSettings.SETTING.CAMERA_TILTING, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.cameraTilting"), self[GameSettings.SETTING.CAMERA_TILTING]))
 		self:setValue(GameSettings.SETTING.CAMERA_BOBBING, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.cameraBobbing"), self[GameSettings.SETTING.CAMERA_BOBBING]))
+
+		local wrapped = XMLFile.wrap(xmlFile)
+		self.lastCreatedLicensePlate = g_licensePlateManager.loadLicensePlateDataFromXML(wrapped, "gameSettings.lastCreatedLicensePlate", true)
+
+		if wrapped:hasProperty("gameSettings.lastPlayerStyle") then
+			self.lastPlayerStyle = PlayerStyle.new()
+
+			self.lastPlayerStyle:loadFromXMLFile(wrapped, "gameSettings.lastPlayerStyle")
+		end
+
+		wrapped:delete()
 
 		self.notifyOnChange = true
 	end
@@ -542,6 +560,7 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLBool(xmlFile, "gameSettings.units.acre", self[GameSettings.SETTING.USE_ACRE])
 		setXMLBool(xmlFile, "gameSettings.isTrainTabbable", self[GameSettings.SETTING.IS_TRAIN_TABBABLE])
 		setXMLBool(xmlFile, "gameSettings.showTriggerMarker", self[GameSettings.SETTING.SHOW_TRIGGER_MARKER])
+		setXMLBool(xmlFile, "gameSettings.showHelpTrigger", self[GameSettings.SETTING.SHOW_HELP_TRIGGER])
 		setXMLBool(xmlFile, "gameSettings.showFieldInfo", self[GameSettings.SETTING.SHOW_FIELD_INFO])
 		setXMLBool(xmlFile, "gameSettings.showHelpIcons", self[GameSettings.SETTING.SHOW_HELP_ICONS])
 		setXMLBool(xmlFile, "gameSettings.showHelpMenu", self[GameSettings.SETTING.SHOW_HELP_MENU])
@@ -554,6 +573,7 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLInt(xmlFile, "gameSettings.directionChangeMode", self[GameSettings.SETTING.DIRECTION_CHANGE_MODE])
 		setXMLInt(xmlFile, "gameSettings.gearShiftMode", self[GameSettings.SETTING.GEAR_SHIFT_MODE])
 		setXMLInt(xmlFile, "gameSettings.hudSpeedGauge", self[GameSettings.SETTING.HUD_SPEED_GAUGE])
+		setXMLBool(xmlFile, "gameSettings.shownFreemodeWarning", self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING])
 		setXMLBool(xmlFile, "gameSettings.useColorblindMode", self[GameSettings.SETTING.USE_COLORBLIND_MODE])
 		setXMLInt(xmlFile, "gameSettings.maxNumMirrors", self[GameSettings.SETTING.MAX_NUM_MIRRORS])
 		setXMLInt(xmlFile, "gameSettings.lightsProfile", self[GameSettings.SETTING.LIGHTS_PROFILE])
@@ -561,6 +581,16 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLFloat(xmlFile, "gameSettings.uiScale", self[GameSettings.SETTING.UI_SCALE])
 		setXMLBool(xmlFile, "gameSettings.realBeaconLights", self[GameSettings.SETTING.REAL_BEACON_LIGHTS])
 		setXMLBool(xmlFile, "gameSettings.cameraBobbing", self[GameSettings.SETTING.CAMERA_BOBBING])
+
+		local wrapped = XMLFile.wrap(xmlFile)
+
+		g_licensePlateManager.saveLicensePlateDataToXML(wrapped, "gameSettings.lastCreatedLicensePlate", self.lastCreatedLicensePlate, true)
+
+		if self.lastPlayerStyle ~= nil then
+			self.lastPlayerStyle:saveToXMLFile(wrapped, "gameSettings.lastPlayerStyle")
+		end
+
+		wrapped:delete()
 		saveXMLFile(xmlFile)
 		syncProfileFiles()
 	end
@@ -570,4 +600,12 @@ function GameSettings:setXMLValue(xmlFile, func, xPath, value)
 	if value ~= nil then
 		func(xmlFile, xPath, value)
 	end
+end
+
+function GameSettings:setLastPlayerStyle(playerStyle)
+	if self.lastPlayerStyle == nil then
+		self.lastPlayerStyle = PlayerStyle.new()
+	end
+
+	self.lastPlayerStyle:copyMinimalFrom(playerStyle)
 end

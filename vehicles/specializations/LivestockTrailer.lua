@@ -549,7 +549,7 @@ function LivestockTrailer:getAnimalUnloadPlaces()
 	return places
 end
 
-function LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, animalTypeName)
+function LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, baseDir, animalTypeName)
 	local maxNumAnimals = nil
 	local i = 0
 	local root = xmlFile:getRootName()
@@ -575,20 +575,20 @@ function LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment,
 	return maxNumAnimals
 end
 
-function LivestockTrailer.loadSpecValueNumberAnimalsCow(xmlFile, customEnvironment)
-	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, "cow")
+function LivestockTrailer.loadSpecValueNumberAnimalsCow(xmlFile, customEnvironment, baseDir)
+	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, baseDir, "cow")
 end
 
-function LivestockTrailer.loadSpecValueNumberAnimalsPig(xmlFile, customEnvironment)
-	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, "pig")
+function LivestockTrailer.loadSpecValueNumberAnimalsPig(xmlFile, customEnvironment, baseDir)
+	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, baseDir, "pig")
 end
 
-function LivestockTrailer.loadSpecValueNumberAnimalsSheep(xmlFile, customEnvironment)
-	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, "sheep")
+function LivestockTrailer.loadSpecValueNumberAnimalsSheep(xmlFile, customEnvironment, baseDir)
+	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, baseDir, "sheep")
 end
 
-function LivestockTrailer.loadSpecValueNumberAnimalsHorse(xmlFile, customEnvironment)
-	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, "horse")
+function LivestockTrailer.loadSpecValueNumberAnimalsHorse(xmlFile, customEnvironment, baseDir)
+	return LivestockTrailer.loadSpecValueNumberAnimals(xmlFile, customEnvironment, baseDir, "horse")
 end
 
 function LivestockTrailer.getSpecValueNumberAnimals(storeItem, realItem, specName)

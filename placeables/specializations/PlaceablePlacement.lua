@@ -16,10 +16,13 @@ function PlaceablePlacement.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getHasOverlapWithPlaces", PlaceablePlacement.getHasOverlapWithPlaces)
 	SpecializationUtil.registerFunction(placeableType, "getHasOverlapWithZones", PlaceablePlacement.getHasOverlapWithZones)
 	SpecializationUtil.registerFunction(placeableType, "getTestParallelogramAtWorldPosition", PlaceablePlacement.getTestParallelogramAtWorldPosition)
+	SpecializationUtil.registerFunction(placeableType, "playPlaceSound", PlaceablePlacement.playPlaceSound)
+	SpecializationUtil.registerFunction(placeableType, "playDestroySound", PlaceablePlacement.playDestroySound)
 end
 
 function PlaceablePlacement.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceablePlacement)
+	SpecializationUtil.registerEventListener(placeableType, "onDelete", PlaceablePlacement)
 	SpecializationUtil.registerEventListener(placeableType, "onPreFinalizePlacement", PlaceablePlacement)
 end
 
@@ -36,6 +39,9 @@ function PlaceablePlacement.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. ".placement#placementPositionSnapSize", "Position snap size", 0)
 	schema:register(XMLValueType.FLOAT, basePath .. ".placement#placementPositionSnapOffset", "Position snap offset", 0)
 	schema:register(XMLValueType.ANGLE, basePath .. ".placement#placementRotationSnapAngle", "Rotation snap angle", 0)
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".placement.sounds", "place")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".placement.sounds", "placeLayered")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".placement.sounds", "destroy")
 	schema:setXMLSpecializationType()
 end
 
@@ -117,6 +123,26 @@ function PlaceablePlacement:onLoad(savegame)
 			spec.alignToWorldY = true
 
 			Logging.xmlWarning(xmlFile, "pos1Node, pos2Node and pos3Node has to be set when alignToWorldY is false!")
+		end
+	end
+
+	if self.isClient then
+		spec.samples = {
+			place = g_soundManager:loadSample2DFromXML(xmlFile.handle, "placeable.placement.sounds", "place", self.baseDirectory, 1, AudioGroup.GUI),
+			placeLayered = g_soundManager:loadSample2DFromXML(xmlFile.handle, "placeable.placement.sounds", "placeLayered", self.baseDirectory, 1, AudioGroup.GUI),
+			destroy = g_soundManager:loadSample2DFromXML(xmlFile.handle, "placeable.placement.sounds", "destroy", self.baseDirectory, 1, AudioGroup.GUI)
+		}
+	end
+end
+
+function PlaceablePlacement:onDelete()
+	if self.isClient then
+		local spec = self.spec_placement
+
+		if spec.samples ~= nil then
+			g_soundManager:deleteSample(spec.samples.place)
+			g_soundManager:deleteSample(spec.samples.placeLayered)
+			g_soundManager:deleteSample(spec.samples.destroy)
 		end
 	end
 end
@@ -389,4 +415,23 @@ function PlaceablePlacement:getTestParallelogramAtWorldPosition(testArea, x, z, 
 	local heightZ2 = widthZ + dirZ * heightOffset
 
 	return startX, startZ, widthX, widthZ, heightX, heightZ, heightX2, heightZ2
+end
+
+function PlaceablePlacement:playPlaceSound()
+	if self.isClient then
+		local spec = self.spec_placement
+
+		g_soundManager:playSample(spec.samples.place)
+		g_soundManager:playSample(spec.samples.placeLayered)
+	end
+end
+
+function PlaceablePlacement:playDestroySound(onlyIfNotPlaying)
+	if self.isClient then
+		local spec = self.spec_placement
+
+		if not onlyIfNotPlaying or not g_soundManager:getIsSamplePlaying(spec.samples.destroy) then
+			g_soundManager:playSample(spec.samples.destroy)
+		end
+	end
 end

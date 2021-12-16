@@ -61,7 +61,7 @@ end
 
 function PedestrianSystem:load(xmlFilename, transformId, referenceNodeIdCharacter, referenceNodeIdPedestrian)
 	local blockingCollisionMask = CollisionFlag.VEHICLE
-	local pedestrianSystemId = createPedestrianSystem(xmlFilename, transformId, referenceNodeIdCharacter, referenceNodeIdPedestrian, CollisionMask.TERRAIN, blockingCollisionMask)
+	local pedestrianSystemId = createPedestrianSystem(xmlFilename, transformId, referenceNodeIdCharacter, referenceNodeIdPedestrian, CollisionMask.TERRAIN, blockingCollisionMask, AudioGroup.ENVIRONMENT)
 
 	if pedestrianSystemId == 0 then
 		Logging.error("Unable to create PedestrianSystem from '%s' and '%s'", xmlFilename, I3DUtil.getNodePath(transformId))
@@ -171,4 +171,24 @@ end
 
 function PedestrianSystem:onIndoorStateChanged(isIndoor)
 	setPedestrianSystemUseOutdoorAudioSetup(self.pedestrianSystemId, not g_soundManager:getIsIndoor())
+end
+
+function PedestrianSystem:getSplineByIndex(splineIndex)
+	local splineTargetIndex = splineIndex
+	local currentIndex = 0
+	local foundSpine = nil
+
+	I3DUtil.interateRecursively(self.transformId, function (child)
+		if I3DUtil.getIsSpline(child) then
+			if currentIndex == splineTargetIndex then
+				foundSpine = child
+
+				return false
+			end
+
+			currentIndex = currentIndex + 1
+		end
+	end)
+
+	return foundSpine
 end

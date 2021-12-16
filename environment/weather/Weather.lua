@@ -192,6 +192,16 @@ function Weather:load(xmlFile, key)
 
 	self.forecast:load()
 	self.temperatureUpdater:setDayLength(self.owner.dayLength)
+
+	local ambientSoundSystem = g_currentMission.ambientSoundSystem
+	local ambientSoundModifiers = {
+		setIsSun = ambientSoundSystem:registerModifier("sun", nil),
+		setIsRain = ambientSoundSystem:registerModifier("rain", nil),
+		setIsCloudy = ambientSoundSystem:registerModifier("cloudy", nil),
+		setIsSnow = ambientSoundSystem:registerModifier("snow", nil)
+	}
+	self.ambientSoundModifiers = ambientSoundModifiers
+
 	g_messageCenter:unsubscribeAll(self)
 	g_messageCenter:subscribe(MessageType.HOUR_CHANGED, self.onHourChanged, self)
 	g_messageCenter:subscribe(MessageType.TIMESCALE_CHANGED, self.onTimeScaleChanged, self)
@@ -482,7 +492,7 @@ function Weather:update(dt)
 				self:toggleFog(false, MathUtil.hoursToMs(0.5))
 			end
 
-			self.owner:onWeatherChanged(nextWeatherObject)
+			self:onWeatherChanged(nextWeatherObject)
 			table.remove(self.forecastItems, 1)
 
 			if g_server ~= nil then
@@ -522,22 +532,29 @@ function Weather:update(dt)
 
 	if not g_currentMission.missionInfo.isSnowEnabled then
 		self.snowHeight = math.max(self.snowHeight - 0.005 * dt / 1000 * timeScale / 100, 0)
-	elseif self:getIsRaining() and currentTemperature < 0 then
-		self.snowHeight = MathUtil.clamp(self.snowHeight + 0.0003 * dt / 1000 * timeScale / 100 * self:getRainFallScale(), 0, 0.5)
+	elseif self:getIsRaining() and currentTemperature < 3 then
+		local tempScale = 1 - math.max(0, currentTemperature) / 4
+		self.snowHeight = MathUtil.clamp(self.snowHeight + 0.0003 * dt / 1000 * timeScale / 100 * self:getRainFallScale() * tempScale, 0, 0.5)
 	elseif currentTemperature >= 5 then
 		self.snowHeight = 0
-	elseif currentTemperature > 0 and self.snowHeight > 0 then
-		local rainFactor = self:getIsRaining() and 3 or 1
-		self.snowHeight = MathUtil.clamp(self.snowHeight - currentTemperature * 0.0005 * dt / 1000 * timeScale / 100 * rainFactor, 0, 0.5)
-	end
 
-	if oldHeight ~= self.snowHeight then
+		g_currentMission.snowSystem:removeAll()
+	elseif currentTemperature > 2 and self.snowHeight > 0 then
+		local rainFactor = self:getIsRaining() and 3 or 1
+		self.snowHeight = MathUtil.clamp(self.snowHeight - currentTemperature * 0.001 * dt / 1000 * timeScale / 100 * rainFactor, 0, 0.5)
+
 		if self.snowHeight == 0 then
 			g_currentMission.snowSystem:removeAll()
-		else
-			g_currentMission.snowSystem:setSnowHeight(self.snowHeight)
 		end
 	end
+
+	g_currentMission.snowSystem:setSnowHeight(self.snowHeight)
+
+	local rainFallScale = self:getRainFallScale(true)
+	local snowFallScale = self:getRainFallScale(false) - rainFallScale
+
+	self.ambientSoundModifiers.setIsRain(rainFallScale > 0)
+	self.ambientSoundModifiers.setIsSnow(snowFallScale > 0)
 end
 
 function Weather:draw()
@@ -813,17 +830,33 @@ function Weather:init()
 		weatherObject:setWindValues(windDirX, windDirZ, windVelocity, cirrusCloudSpeedFactor)
 	end
 
-	self.owner:onWeatherChanged(weatherObject)
+	self:onWeatherChanged(weatherObject)
 	g_currentMission.snowSystem:setSnowHeight(self.snowHeight)
+end
+
+function Weather:onWeatherChanged(weatherObject)
+	self.owner:onWeatherChanged(weatherObject)
+
+	local typeIndex = weatherObject.weatherType.index
+	local ambientSoundModifiers = self.ambientSoundModifiers
+
+	if ambientSoundModifiers ~= nil then
+		ambientSoundModifiers.setIsSun(typeIndex == WeatherType.SUN)
+		ambientSoundModifiers.setIsCloudy(typeIndex == WeatherType.CLOUDY)
+	end
 end
 
 function Weather:rebuild()
 	if g_currentMission:getIsServer() then
+		local currentWeatherObject = self:getWeatherObjectByIndex(self.forecastItems[1].season, self.forecastItems[1].objectIndex)
+
+		currentWeatherObject:deactivate(1)
+		currentWeatherObject:update(9999999)
+
 		self.forecastItems = {}
 
 		self:addStartWeather()
-		self:fillWeatherForecast()
-		g_server:broadcastEvent(WeatherAddObjectEvent.new(self.forecastItems, true))
+		self:fillWeatherForecast(true)
 		g_server:broadcastEvent(FogStateEvent.new(self.fogUpdater.targetMieScale, self.fogUpdater.lastMieScale, self.fogUpdater.alpha, self.fogUpdater.duration, self.fog.nightFactor, self.fog.dayFactor))
 	end
 end
@@ -859,7 +892,7 @@ function Weather:addStartWeather()
 	self:addWeatherForecast(weatherInstance)
 end
 
-function Weather:fillWeatherForecast()
+function Weather:fillWeatherForecast(isRebuild)
 	local newObjects = {}
 	local lastItem = self.forecastItems[#self.forecastItems]
 	local maxNumOfforecastItemsItems = 2^Weather.SEND_BITS_NUM_OBJECTS - 1
@@ -884,7 +917,7 @@ function Weather:fillWeatherForecast()
 	end
 
 	if #newObjects > 0 then
-		g_server:broadcastEvent(WeatherAddObjectEvent.new(newObjects, false))
+		g_server:broadcastEvent(WeatherAddObjectEvent.new(newObjects, isRebuild or false))
 	end
 end
 
@@ -893,7 +926,8 @@ function Weather:createRandomWeatherInstance(season, startDay, startDayTime, fir
 	local weatherObject = self:getWeatherObjectByIndex(season, weatherObjectIndex)
 	local variation = weatherObject:getVariationByIndex(weatherObjectVariationIndex)
 	local duration = MathUtil.hoursToMs(math.max(math.random(variation.minHours, variation.maxHours), 1))
-	local isSeasonBoundary = startDay % 3 == 0
+	local seasonNextDay = self.owner:getVisualSeasonAtDay(startDay + 1)
+	local isSeasonBoundary = season ~= seasonNextDay
 
 	if isSeasonBoundary then
 		local wholeDay = 86400000
@@ -939,15 +973,18 @@ function Weather:getForecast()
 	return self.forecast
 end
 
-function Weather:getRainFallScale()
+function Weather:getRainFallScale(ignoreSnow)
 	local maxScale = 0
+	ignoreSnow = Utils.getNoNil(ignoreSnow, false)
 
 	for season = 0, 3 do
 		local objs = self.weatherObjects[season]
 
 		for i = 1, #objs do
-			if objs[i].getRainFallScale ~= nil then
-				maxScale = math.max(maxScale, objs[i]:getRainFallScale())
+			local weatherObject = objs[i]
+
+			if weatherObject.getRainFallScale ~= nil and (not ignoreSnow or weatherObject.weatherType.index ~= WeatherType.SNOW) then
+				maxScale = math.max(maxScale, objs[i]:getRainFallScale(ignoreSnow))
 			end
 		end
 	end
@@ -1270,20 +1307,22 @@ function Weather:consoleCommandWeatherToggleDebug()
 end
 
 function Weather:consoleCommandWeatherReloadData()
-	local xmlFile = loadXMLFile(self.xmlFilename, self.xmlFilename)
+	local xmlFile = XMLFile.load("weather", self.owner.xmlFilename)
 	local currentWeatherObject = self:getWeatherObjectByIndex(self.forecastItems[1].season, self.forecastItems[1].objectIndex)
 
 	currentWeatherObject:deactivate(1)
 	currentWeatherObject:update(9999999)
 
-	for _, object in ipairs(self.weatherObjects) do
-		object:delete()
+	for season, objects in ipairs(self.weatherObjects) do
+		for _, object in ipairs(objects) do
+			object:delete()
+		end
 	end
 
 	self.weatherObjects = {}
 
 	self:load(xmlFile, "environment")
-	delete(xmlFile)
+	xmlFile:delete()
 
 	return "Reloaded weather data"
 end

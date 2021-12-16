@@ -82,8 +82,14 @@ function LightWildlife:load(xmlFilename)
 
 		if self.type ~= nil and i3dFilename ~= nil then
 			self.i3dFilename = Utils.getFilename(i3dFilename, self.baseDirectory)
+			local node, sharedLoadRequestId = g_i3DManager:loadSharedI3DFile(self.i3dFilename, false, false)
 
-			g_i3DManager:pinSharedI3DFileInCache(self.i3dFilename)
+			if node ~= 0 then
+				delete(node)
+
+				self.cacheLoadRequestId = sharedLoadRequestId
+			end
+
 			delete(xmlFile)
 
 			return true
@@ -126,10 +132,10 @@ function LightWildlife:delete()
 	delete(self.soundsNode)
 	self:removeAllAnimals()
 
-	if self.i3dFilename ~= nil then
-		g_i3DManager:unpinSharedI3DFileInCache(self.i3dFilename)
+	if self.cacheLoadRequestId ~= nil then
+		g_i3DManager:releaseSharedI3DFile(self.cacheLoadRequestId)
 
-		self.i3dFilename = nil
+		self.cacheLoadRequestId = nil
 	end
 end
 

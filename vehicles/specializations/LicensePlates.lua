@@ -10,6 +10,7 @@ function LicensePlates.initSpecialization()
 	local schema = Vehicle.xmlSchema
 
 	schema:setXMLSpecializationType("LicensePlates")
+	schema:register(XMLValueType.STRING, "vehicle.licensePlates#defaultPlacement", "Defines the default placement index independent of map setting (NONE|BOTH|BACK_ONLY)", false)
 	schema:register(XMLValueType.NODE_INDEX, "vehicle.licensePlates.licensePlate(?)#node", "License plate node")
 	schema:register(XMLValueType.STRING, "vehicle.licensePlates.licensePlate(?)#preferedType", "Prefered license plate type to be placed if available")
 	schema:register(XMLValueType.VECTOR_4, "vehicle.licensePlates.licensePlate(?)#placementArea", "Defines the available area around the node (top, right, bottom, left) ('-' means unlimited)")
@@ -31,6 +32,7 @@ function LicensePlates.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getLicensePlatesData", LicensePlates.getLicensePlatesData)
 	SpecializationUtil.registerFunction(vehicleType, "getLicensePlatesDataIsEqual", LicensePlates.getLicensePlatesDataIsEqual)
 	SpecializationUtil.registerFunction(vehicleType, "getHasLicensePlates", LicensePlates.getHasLicensePlates)
+	SpecializationUtil.registerFunction(vehicleType, "getLicensePlateDialogSettings", LicensePlates.getLicensePlateDialogSettings)
 end
 
 function LicensePlates.registerEventListeners(vehicleType)
@@ -44,6 +46,11 @@ end
 function LicensePlates:onLoad(savegame)
 	local spec = self.spec_licensePlates
 	spec.licensePlates = {}
+	local defaultPlacementName = self.xmlFile:getValue("vehicle.licensePlates#defaultPlacement")
+
+	if defaultPlacementName ~= nil then
+		spec.defaultPlacementIndex = LicensePlateManager.PLACEMENT_OPTION[defaultPlacementName:upper()]
+	end
 
 	if g_licensePlateManager:getAreLicensePlatesAvailable() then
 		local i = 0
@@ -275,7 +282,24 @@ function LicensePlates:getHasLicensePlates()
 	return #self.spec_licensePlates.licensePlates > 0
 end
 
-function LicensePlates.loadSpecValuePlateText(xmlFile, customEnvironment)
+function LicensePlates:getLicensePlateDialogSettings()
+	local spec = self.spec_licensePlates
+	local hasFrontPlate = false
+
+	for i = 1, #spec.licensePlates do
+		local licensePlate = spec.licensePlates[i]
+
+		if licensePlate.position == LicensePlateManager.PLATE_POSITION.FRONT then
+			hasFrontPlate = true
+
+			break
+		end
+	end
+
+	return spec.defaultPlacementIndex, hasFrontPlate
+end
+
+function LicensePlates.loadSpecValuePlateText(xmlFile, customEnvironment, baseDir)
 	return nil
 end
 

@@ -163,7 +163,7 @@ end
 
 function PlaceableProductionPoint:canBuy(superFunc)
 	if not g_currentMission.productionChainManager:getHasFreeSlots() then
-		return false, "max number of production points reached"
+		return false, "maximum number of production points reached"
 	end
 
 	return superFunc(self)

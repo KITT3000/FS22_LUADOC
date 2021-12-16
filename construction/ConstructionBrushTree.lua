@@ -30,6 +30,7 @@ function ConstructionBrushTree:activate()
 	self.cursor:setColorMode(GuiTopDownCursor.SHAPES_COLORS.SUCCESS)
 	self.cursor:setTerrainOnly(true)
 	self:loadTree()
+	self:randomlyRotateCursor()
 end
 
 function ConstructionBrushTree:deactivate()
@@ -105,6 +106,10 @@ end
 
 function ConstructionBrushTree:getPrice()
 	return g_currentMission.economyManager:getBuyPrice(self.storeItem)
+end
+
+function ConstructionBrushTree:randomlyRotateCursor()
+	self.cursor:setRotation(math.random() * 2 * math.pi)
 end
 
 function ConstructionBrushTree:loadTree()
@@ -202,11 +207,14 @@ function ConstructionBrushTree:onButtonPrimary()
 		else
 			g_client:getServerConnection():sendEvent(TreePlantEvent.new(self.treeTypeIndex, x, y, z, rx, ry, rz, self.treeGrowth, nil, growing, self:getPrice(), g_currentMission.player.farmId))
 		end
+
+		self:playSound(ConstructionSound.ID.TREE, 1 - self.treeGrowth)
+		self:randomlyRotateCursor()
 	end
 end
 
 function ConstructionBrushTree:onButtonTertiary()
-	self.cursor:setRotation(math.random() * 2 * math.pi)
+	self:randomlyRotateCursor()
 end
 
 function ConstructionBrushTree:getButtonPrimaryText()

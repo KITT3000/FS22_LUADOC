@@ -157,13 +157,12 @@ function MultipleItemPurchase:loadItemAtPosition(position)
 				yRot = ry,
 				zRot = rz
 			}
+			self.subLoadingTasksFinished = false
+			self.numPendingSubLoadingTasks = self.numPendingSubLoadingTasks + 1
 			local registerVehicle = self.propertyState ~= Vehicle.PROPERTY_STATE_SHOP_CONFIG
 			local forceServer = self.propertyState == Vehicle.PROPERTY_STATE_SHOP_CONFIG
 
 			VehicleLoadingUtil.loadVehicle(spec.itemFilename, location, true, 0, self.propertyState, self:getActiveFarm(), nil, nil, self.onFinishLoadingVehicle, self, nil, registerVehicle, forceServer)
-
-			self.subLoadingTasksFinished = false
-			self.numPendingSubLoadingTasks = self.numPendingSubLoadingTasks + 1
 		end
 	end
 end

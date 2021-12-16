@@ -15,6 +15,9 @@ ReverseDriving = {
 		schema:register(XMLValueType.STRING, "vehicle.reverseDriving#animationName", "Animation name", "reverseDriving")
 		schema:register(XMLValueType.BOOL, "vehicle.reverseDriving#hideCharacterOnChange", "Hide the chracter while chaning the direction", true)
 		schema:register(XMLValueType.BOOL, "vehicle.reverseDriving#inverseTransmission", "Inverse the transmission gear ratio when direction has changed", false)
+		schema:register(XMLValueType.NODE_INDEX, "vehicle.reverseDriving.ai#directionNode", "Direction Node while in reverse driving mode")
+		schema:register(XMLValueType.NODE_INDEX, "vehicle.reverseDriving.ai#steeringNode", "Steering Node while in reverse driving mode")
+		AIImplement.registerAICollisionTriggerXMLPaths(schema, "vehicle.reverseDriving.ai")
 		schema:register(XMLValueType.BOOL, Dashboard.GROUP_XML_KEY .. "#isReverseDriving", "Is Reverse driving")
 
 		for i = 1, #Lights.ADDITIONAL_LIGHT_ATTRIBUTES_KEYS do
@@ -50,6 +53,9 @@ function ReverseDriving.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeSelected", ReverseDriving.getCanBeSelected)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadAdditionalLightAttributesFromXML", ReverseDriving.loadAdditionalLightAttributesFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsLightActive", ReverseDriving.getIsLightActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAIDirectionNode", ReverseDriving.getAIDirectionNode)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAISteeringNode", ReverseDriving.getAISteeringNode)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAIImplementCollisionTrigger", ReverseDriving.getAIImplementCollisionTrigger)
 end
 
 function ReverseDriving.registerEventListeners(vehicleType)
@@ -87,6 +93,13 @@ function ReverseDriving:onLoad(savegame)
 	spec.reverseDrivingAnimation = self.xmlFile:getValue("vehicle.reverseDriving#animationName", "reverseDriving")
 	spec.hideCharacterOnChange = self.xmlFile:getValue("vehicle.reverseDriving#hideCharacterOnChange", true)
 	spec.inverseTransmission = self.xmlFile:getValue("vehicle.reverseDriving#inverseTransmission", false)
+	spec.aiDirectionNode = self.xmlFile:getValue("vehicle.reverseDriving.ai#directionNode", nil, self.components, self.i3dMappings)
+	spec.aiSteeringNode = self.xmlFile:getValue("vehicle.reverseDriving.ai#steeringNode", nil, self.components, self.i3dMappings)
+
+	if self.loadAICollisionTriggerFromXML ~= nil then
+		spec.aiCollisionTrigger = self:loadAICollisionTriggerFromXML(self.xmlFile, "vehicle.reverseDriving.ai")
+	end
+
 	spec.hasReverseDriving = self:getAnimationExists(spec.reverseDrivingAnimation)
 	spec.isChangingDirection = false
 	spec.isReverseDriving = false
@@ -313,6 +326,36 @@ function ReverseDriving:getIsLightActive(superFunc, light)
 	end
 
 	return superFunc(self, light)
+end
+
+function ReverseDriving:getAIDirectionNode(superFunc)
+	local spec = self.spec_reverseDriving
+
+	if spec.isReverseDriving then
+		return spec.aiDirectionNode or superFunc(self)
+	end
+
+	return superFunc(self)
+end
+
+function ReverseDriving:getAISteeringNode(superFunc)
+	local spec = self.spec_reverseDriving
+
+	if spec.isReverseDriving then
+		return spec.aiSteeringNode or superFunc(self)
+	end
+
+	return superFunc(self)
+end
+
+function ReverseDriving:getAIImplementCollisionTrigger(superFunc)
+	local spec = self.spec_reverseDriving
+
+	if spec.isReverseDriving then
+		return spec.aiCollisionTrigger or superFunc(self)
+	end
+
+	return superFunc(self)
 end
 
 function ReverseDriving:onVehicleCharacterChanged(character)

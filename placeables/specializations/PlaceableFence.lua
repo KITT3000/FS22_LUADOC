@@ -42,15 +42,20 @@ function PlaceableFence.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getTotalNumberOfPoles", PlaceableFence.getTotalNumberOfPoles)
 	SpecializationUtil.registerFunction(placeableType, "isPoleInAnySegment", PlaceableFence.isPoleInAnySegment)
 	SpecializationUtil.registerFunction(placeableType, "recursivelyAddPickingNodes", PlaceableFence.recursivelyAddPickingNodes)
-	SpecializationUtil.registerFunction(placeableType, "regeneratePickingNodes", PlaceableFence.regeneratePickingNodes)
+	SpecializationUtil.registerFunction(placeableType, "addPickingNodesForSegment", PlaceableFence.addPickingNodesForSegment)
+	SpecializationUtil.registerFunction(placeableType, "removePickingNodesForSegment", PlaceableFence.removePickingNodesForSegment)
 	SpecializationUtil.registerFunction(placeableType, "setPreviewSegment", PlaceableFence.setPreviewSegment)
 	SpecializationUtil.registerFunction(placeableType, "updatePanelVisuals", PlaceableFence.updatePanelVisuals)
 	SpecializationUtil.registerFunction(placeableType, "updateSegmentShapes", PlaceableFence.updateSegmentShapes)
 	SpecializationUtil.registerFunction(placeableType, "updateSegmentUpdateQueue", PlaceableFence.updateSegmentUpdateQueue)
 	SpecializationUtil.registerFunction(placeableType, "updateDirtyAreas", PlaceableFence.updateDirtyAreas)
+	SpecializationUtil.registerFunction(placeableType, "getSupportsParallelSnapping", PlaceableFence.getSupportsParallelSnapping)
 	SpecializationUtil.registerFunction(placeableType, "getBoundingCheckWidth", PlaceableFence.getBoundingCheckWidth)
+	SpecializationUtil.registerFunction(placeableType, "getSnapDistance", PlaceableFence.getSnapDistance)
+	SpecializationUtil.registerFunction(placeableType, "getSnapCheckDistance", PlaceableFence.getSnapCheckDistance)
 	SpecializationUtil.registerFunction(placeableType, "getAllowExtendingOnly", PlaceableFence.getAllowExtendingOnly)
 	SpecializationUtil.registerFunction(placeableType, "getMaxCornerAngle", PlaceableFence.getMaxCornerAngle)
+	SpecializationUtil.registerFunction(placeableType, "getHasParallelSnapping", PlaceableFence.getHasParallelSnapping)
 end
 
 function PlaceableFence.registerOverwrittenFunctions(placeableType)
@@ -78,8 +83,11 @@ function PlaceableFence.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.ANGLE, basePath .. ".fence#maxVerticalAngle", "Maximum angle for vertical offset")
 	schema:register(XMLValueType.ANGLE, basePath .. ".fence#maxVerticalGateAngle", "Maximum angle for vertical offset with gates")
 	schema:register(XMLValueType.FLOAT, basePath .. ".fence#boundingCheckWidth", "With of the bounding box used to check collision", 0.25)
+	schema:register(XMLValueType.FLOAT, basePath .. ".fence#snapDistance", "Snap distance", nil)
+	schema:register(XMLValueType.FLOAT, basePath .. ".fence#snapCheckDistance", "Snap distance", nil)
 	schema:register(XMLValueType.BOOL, basePath .. ".fence#extendingOnly", "Whether to only allow extending a segment and no attaching to the center", false)
 	schema:register(XMLValueType.ANGLE, basePath .. ".fence#maxCornerAngle", "Maximum angle between two connected segments", 180)
+	schema:register(XMLValueType.BOOL, basePath .. ".fence#supportsParallelSnapping", "Whether parallel snapping is an option", false)
 	schema:register(XMLValueType.BOOL, basePath .. ".fence#hasInvisiblePoles", "Poles are not visible so another display method is used", false)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".fence.gate(?)#node", "Gate node")
 	schema:register(XMLValueType.FLOAT, basePath .. ".fence.gate(?)#length", "Length of the gate from pole to pole", 1)
@@ -118,7 +126,10 @@ function PlaceableFence:onLoad(savegame)
 	spec.maxVerticalAngle = xmlFile:getValue("placeable.fence#maxVerticalAngle", 35)
 	spec.maxVerticalGateAngle = xmlFile:getValue("placeable.fence#maxVerticalGateAngle", 5)
 	spec.hasInvisiblePoles = xmlFile:getValue("placeable.fence#hasInvisiblePoles", false)
+	spec.supportsParallelSnapping = xmlFile:getValue("placeable.fence#supportsParallelSnapping", false)
 	spec.boundingCheckWidth = xmlFile:getValue("placeable.fence#boundingCheckWidth", 0.25)
+	spec.snapDistance = xmlFile:getValue("placeable.fence#snapDistance", nil)
+	spec.snapCheckDistance = xmlFile:getValue("placeable.fence#snapCheckDistance", 0.25)
 	spec.allowExtendingOnly = xmlFile:getValue("placeable.fence#extendingOnly", false)
 	spec.maxCornerAngle = xmlFile:getValue("placeable.fence#maxCornerAngle", 180)
 	spec.poles = {}
@@ -339,6 +350,12 @@ function PlaceableFence:getPoleNear(x, y, z, maxDistance)
 	local spec = self.spec_fence
 	spec.getPoleNearResult = nil
 	spec.getPoleNearResultSegment = nil
+	spec.getPoleNearResultDistance = math.huge
+	spec.getPoleNearResultPosition = {
+		x,
+		y,
+		z
+	}
 
 	overlapSphere(x, y, z, maxDistance, "getPoleNearOverlapCallback", self, CollisionFlag.STATIC_OBJECTS, false, true, true, false)
 
@@ -356,17 +373,20 @@ function PlaceableFence:getPoleNearOverlapCallback(hitObjectId)
 
 	local sGroup = getParent(getParent(hitObjectId))
 	local spec = self.spec_fence
+	local x, y, z = getWorldTranslation(hitObjectId)
+	local distance = MathUtil.vector3Length(x - spec.getPoleNearResultPosition[1], y - spec.getPoleNearResultPosition[2], z - spec.getPoleNearResultPosition[3])
 
-	for _, segment in ipairs(spec.segments) do
-		if segment.group == sGroup then
-			if getNumOfChildren(hitObjectId) < 3 then
+	if distance < spec.getPoleNearResultDistance then
+		for _, segment in ipairs(spec.segments) do
+			if segment.group == sGroup and getNumOfChildren(hitObjectId) < 3 then
 				spec.getPoleNearResult = hitObjectId
 				spec.getPoleNearResultSegment = segment
+				spec.getPoleNearResultDistance = distance
 			end
-
-			return
 		end
 	end
+
+	return true
 end
 
 function PlaceableFence:getPolePosition(node, allowPanel)
@@ -493,7 +513,6 @@ function PlaceableFence:addSegment(segment, sync)
 	spec.segments[#spec.segments + 1] = segment
 
 	self:generateSegmentPoles(segment, sync)
-	self:regeneratePickingNodes()
 end
 
 function PlaceableFence:deleteSegment(segment)
@@ -581,12 +600,28 @@ function PlaceableFence:getBoundingCheckWidth()
 	return self.spec_fence.boundingCheckWidth
 end
 
+function PlaceableFence:getSnapDistance()
+	return self.spec_fence.snapDistance
+end
+
+function PlaceableFence:getSnapCheckDistance()
+	return self.spec_fence.snapCheckDistance
+end
+
 function PlaceableFence:getAllowExtendingOnly()
 	return self.spec_fence.allowExtendingOnly
 end
 
 function PlaceableFence:getMaxCornerAngle()
 	return self.spec_fence.maxCornerAngle
+end
+
+function PlaceableFence:getHasParallelSnapping()
+	return false
+end
+
+function PlaceableFence:getSupportsParallelSnapping()
+	return self.spec_fence.supportsParallelSnapping
 end
 
 function PlaceableFence:deletePanel(node)
@@ -648,6 +683,7 @@ function PlaceableFence:doDeletePanel(segment, segmentIndex, poleIndex)
 				deletedPoles[#deletedPoles + 1] = segment.poles[4]
 			end
 
+			self:removePickingNodesForSegment(segment)
 			self:deleteSegment(segment)
 		else
 			segment.x1 = segment.poles[3]
@@ -699,7 +735,6 @@ function PlaceableFence:doDeletePanel(segment, segmentIndex, poleIndex)
 	end
 
 	self:updateDirtyAreas(originalSegment)
-	self:regeneratePickingNodes()
 
 	return true
 end
@@ -877,8 +912,9 @@ function PlaceableFence:generateSegmentPoles(segment, sync)
 	end
 
 	if sync then
+		self:removePickingNodesForSegment(segment)
 		self:updateSegmentShapes(segment)
-		self:regeneratePickingNodes()
+		self:addPickingNodesForSegment(segment)
 	else
 		self:addSegmentShapesToUpdate(segment)
 	end
@@ -1124,49 +1160,56 @@ function PlaceableFence:updateSegmentUpdateQueue()
 		local segment = spec.segmentsToUpdate[1]
 
 		table.remove(spec.segmentsToUpdate, 1)
+		self:removePickingNodesForSegment(segment)
 		self:updateSegmentShapes(segment)
-
-		if #spec.segmentsToUpdate == 0 then
-			self:regeneratePickingNodes()
-		end
-
+		self:addPickingNodesForSegment(segment)
 		self:raiseActive()
 	end
 end
 
-function PlaceableFence:regeneratePickingNodes()
-	local spec = self.spec_fence
-
-	for i = 1, #spec.pickObjects do
-		g_currentMission:removeNodeObject(spec.pickObjects[i])
-
-		spec.pickObjects[i] = nil
+function PlaceableFence:addPickingNodesForSegment(segment)
+	if segment == self.spec_fence.previewSegment then
+		return
 	end
 
-	for _, segment in ipairs(spec.segments) do
-		if segment.group ~= nil then
-			self:recursivelyAddPickingNodes(segment.group)
+	if segment.group ~= nil then
+		local objects = {}
+
+		self:recursivelyAddPickingNodes(objects, segment.group)
+
+		for i = 1, #objects do
+			g_currentMission:addNodeObject(objects[i], self)
 		end
-	end
-
-	for _, node in ipairs(spec.pickObjects) do
-		g_currentMission:addNodeObject(node, self)
 	end
 
 	self.overlayColorNodes = nil
 end
 
-function PlaceableFence:recursivelyAddPickingNodes(node)
-	local spec = self.spec_fence
+function PlaceableFence:removePickingNodesForSegment(segment)
+	if segment == self.spec_fence.previewSegment then
+		return
+	end
 
+	if segment.group ~= nil then
+		local objects = {}
+
+		self:recursivelyAddPickingNodes(objects, segment.group)
+
+		for i = 1, #objects do
+			g_currentMission:removeNodeObject(objects[i])
+		end
+	end
+end
+
+function PlaceableFence:recursivelyAddPickingNodes(objects, node)
 	if getRigidBodyType(node) ~= RigidBodyType.NONE then
-		table.insert(spec.pickObjects, node)
+		table.insert(objects, node)
 	end
 
 	local numChildren = getNumOfChildren(node)
 
 	for i = 1, numChildren do
-		self:recursivelyAddPickingNodes(getChildAt(node, i - 1))
+		self:recursivelyAddPickingNodes(objects, getChildAt(node, i - 1))
 	end
 end
 
@@ -1179,9 +1222,7 @@ function PlaceableFence:previewNodeDestructionNodes(superFunc, node)
 end
 
 function PlaceableFence:performNodeDestruction(superFunc, node)
-	self:deletePanel(node)
-
-	return true
+	return self:deletePanel(node)
 end
 
 function PlaceableFence:collectPickObjects(superFunc, node)

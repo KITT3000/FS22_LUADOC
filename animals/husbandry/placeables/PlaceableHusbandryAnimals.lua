@@ -42,6 +42,7 @@ function PlaceableHusbandryAnimals.registerOverwrittenFunctions(placeableType)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "canBeSold", PlaceableHusbandryAnimals.canBeSold)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "getConditionInfos", PlaceableHusbandryAnimals.getConditionInfos)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "getAnimalInfos", PlaceableHusbandryAnimals.getAnimalInfos)
+	SpecializationUtil.registerOverwrittenFunction(placeableType, "getAnimalDescription", PlaceableHusbandryAnimals.getAnimalDescription)
 end
 
 function PlaceableHusbandryAnimals.registerEventListeners(placeableType)
@@ -707,7 +708,7 @@ function PlaceableHusbandryAnimals:getIsInAnimalDeliveryArea(x, z)
 	return false
 end
 
-function PlaceableHusbandryAnimals.loadSpecValueNumberAnimals(xmlFile, customEnvironment)
+function PlaceableHusbandryAnimals.loadSpecValueNumberAnimals(xmlFile, customEnvironment, baseDir)
 	local data = nil
 
 	if xmlFile:hasProperty("placeable.husbandry.animals") then
@@ -789,6 +790,13 @@ function PlaceableHusbandryAnimals:getAnimalInfos(superFunc, cluster)
 	cluster:addInfos(infos)
 
 	return infos
+end
+
+function PlaceableHusbandryAnimals:getAnimalDescription(superFunc, cluster)
+	local text = superFunc(self, cluster)
+	local visual = g_currentMission.animalSystem:getVisualByAge(cluster.subTypeIndex, cluster:getAge())
+
+	return text .. visual.store.description
 end
 
 function PlaceableHusbandryAnimals:consoleCommandAddAnimals(numAnimals, subTypeIndex)

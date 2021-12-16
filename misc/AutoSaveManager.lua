@@ -170,7 +170,7 @@ function AutoSaveManager:consoleCommandAutoSaveInterval(interval)
 			return "AutoSaveInterval = " .. string.format("%1.3f", g_autoSaveManager:getInterval() / 60 / 1000) .. ". Arguments: interval[minutes]"
 		end
 
-		g_autoSaveManager:setInterval(math.max(interval, 1) * 60 * 1000)
+		g_autoSaveManager:setInterval(math.max(interval, 1))
 
 		return "AutoSaveInterval = " .. interval
 	end

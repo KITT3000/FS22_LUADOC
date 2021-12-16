@@ -9,12 +9,13 @@ function VehicleEnterResponseEvent.emptyNew()
 	return self
 end
 
-function VehicleEnterResponseEvent.new(id, isOwner, playerStyle, farmId)
+function VehicleEnterResponseEvent.new(id, isOwner, playerStyle, farmId, userId)
 	local self = VehicleEnterResponseEvent.emptyNew()
 	self.id = id
 	self.isOwner = isOwner
 	self.playerStyle = playerStyle
 	self.farmId = farmId
+	self.userId = userId
 
 	return self
 end
@@ -30,6 +31,7 @@ function VehicleEnterResponseEvent:readStream(streamId, connection)
 	self.playerStyle:readStream(streamId, connection)
 
 	self.farmId = streamReadUIntN(streamId, FarmManager.FARM_ID_SEND_NUM_BITS)
+	self.userId = streamReadInt32(streamId)
 
 	self:run(connection)
 end
@@ -39,6 +41,7 @@ function VehicleEnterResponseEvent:writeStream(streamId, connection)
 	streamWriteBool(streamId, self.isOwner)
 	self.playerStyle:writeStream(streamId, connection)
 	streamWriteUIntN(streamId, self.farmId, FarmManager.FARM_ID_SEND_NUM_BITS)
+	streamWriteInt32(streamId, self.userId)
 end
 
 function VehicleEnterResponseEvent:run(connection)
@@ -46,12 +49,12 @@ function VehicleEnterResponseEvent:run(connection)
 
 	if object ~= nil and object:getIsSynchronized() then
 		if self.isOwner then
-			g_currentMission:onEnterVehicle(object, self.playerStyle, self.farmId)
+			g_currentMission:onEnterVehicle(object, self.playerStyle, self.farmId, self.userId)
 		else
 			local enterableSpec = object.spec_enterable
 
 			if enterableSpec ~= nil and not enterableSpec.isEntered then
-				object:enterVehicle(false, self.playerStyle, self.farmId)
+				object:enterVehicle(false, self.playerStyle, self.farmId, self.userId)
 			end
 		end
 	end

@@ -41,7 +41,6 @@ function ShopController.new(messageCenter, l10n, storeManager, brandManager, fil
 	self.updateShopItemsCallback = nil
 	self.updateAllItemsCallback = nil
 	self.switchToConfigurationCallback = nil
-	self.startPlacementModeCallback = nil
 	self.saleItemBoughtCallback = nil
 
 	self:subscribeEvents(messageCenter)
@@ -138,7 +137,7 @@ function ShopController:load()
 						isMod = storeItem.isMod,
 						label = storeItem.dlcTitle,
 						iconFilename = g_modManager:getModByName(storeItem.customEnvironment).iconFilename,
-						sortValue = storeItem.dlcTitle
+						sortValue = (not storeItem.isMod and "    " or "") .. storeItem.dlcTitle
 					}
 					foundDLCs[storeItem.customEnvironment] = true
 
@@ -212,12 +211,6 @@ end
 
 function ShopController:setSwitchToConfigurationCallback(callback, target)
 	function self.switchToConfigurationCallback(...)
-		callback(target, ...)
-	end
-end
-
-function ShopController:setStartPlacementModeCallback(callback, target)
-	function self.startPlacementModeCallback(...)
 		callback(target, ...)
 	end
 end
@@ -761,9 +754,7 @@ function ShopController:getLeasedCategories()
 	local categories = {}
 
 	for storeItem, _ in pairs(self.leasedFarmItems) do
-		if storeItem.showInStore then
-			categories[storeItem.categoryName] = storeItem.imageFilename
-		end
+		categories[storeItem.categoryName] = storeItem.imageFilename
 	end
 
 	for categoryName, iconFilename in pairs(categories) do
@@ -909,9 +900,7 @@ function ShopController:buy(storeItem, saleItem, outsideBuy, configurations)
 	if StoreItemUtil.getIsVehicle(storeItem) then
 		self:buyVehicle(storeItem, saleItem, price, outsideBuy, configurations)
 	elseif self:canBeBought(storeItem, price) then
-		if StoreItemUtil.getIsPlaceable(storeItem) then
-			self.startPlacementModeCallback(storeItem, false)
-		elseif StoreItemUtil.getIsObject(storeItem) then
+		if StoreItemUtil.getIsObject(storeItem) then
 			self:buyObject(storeItem, price, outsideBuy)
 		elseif StoreItemUtil.getIsHandTool(storeItem) then
 			self:buyHandTool(storeItem, price, outsideBuy)
@@ -1074,28 +1063,6 @@ function ShopController:onSellItem(storeItem, concreteItem)
 	end
 end
 
-function ShopController:sellPlaceable(placeableStoreItem, placeable)
-	if self.currentMission:getNumOwnedItems(placeableStoreItem, g_currentMission:getFarmId()) == 1 then
-		self.isSelling = true
-
-		g_gui:showMessageDialog({
-			visible = true,
-			text = self.l10n:getText(ShopController.L10N_SYMBOL.SELLING_VEHICLE)
-		})
-
-		if placeable:isMapBound() then
-			placeable:setOwnerFarmId(AccessHandler.EVERYONE)
-			self:onPlaceableSold(g_currentMission.economyManager:getSellPrice(placeable))
-		elseif NetworkUtil.getObjectId(placeable) ~= nil then
-			self.client:getServerConnection():sendEvent(SellPlaceableEvent.new(placeable))
-		else
-			self:onPlaceableSellFailed()
-		end
-	elseif self.currentMission:getNumOwnedItems(placeableStoreItem, g_currentMission:getFarmId()) > 1 then
-		self.startPlacementModeCallback(placeableStoreItem, true, placeable)
-	end
-end
-
 function ShopController:sellHandTool(handToolStoreItem)
 	if self.playerFarm:hasHandtool(handToolStoreItem.xmlFilename) then
 		self.isSelling = true
@@ -1146,6 +1113,7 @@ function ShopController:setConfigurations(vehicle, leaseItem, storeItem, configs
 		self.buyItemIsLeasing = leaseItem
 		self.buyItemSaleItem = saleItem
 
+		g_currentMission:setLastCreatedLicensePlate(licensePlateData)
 		self:finalizeBuy()
 	end
 end

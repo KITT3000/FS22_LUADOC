@@ -10,6 +10,7 @@ function Shovel.initSpecialization()
 
 	schema:setXMLSpecializationType("Shovel")
 	schema:register(XMLValueType.BOOL, "vehicle.shovel#ignoreFillUnitFillType", "Ignore fill unit fill type", false)
+	schema:register(XMLValueType.BOOL, "vehicle.shovel#useSpeedLimit", "Use speed limit while shovel is turned on", false)
 	schema:register(XMLValueType.NODE_INDEX, Shovel.SHOVEL_NODE_XML_KEY .. "#node", "Shovel node")
 	schema:register(XMLValueType.INT, Shovel.SHOVEL_NODE_XML_KEY .. "#fillUnitIndex", "Fill unit index", 1)
 	schema:register(XMLValueType.INT, Shovel.SHOVEL_NODE_XML_KEY .. "#loadInfoIndex", "Load info index", 1)
@@ -21,6 +22,9 @@ function Shovel.initSpecialization()
 	schema:register(XMLValueType.FLOAT, Shovel.SHOVEL_NODE_XML_KEY .. "#fillLitersPerSecond", "Fill liters per second", "inf.")
 	schema:register(XMLValueType.ANGLE, Shovel.SHOVEL_NODE_XML_KEY .. "#maxPickupAngle", "Max. pickup angle")
 	schema:register(XMLValueType.BOOL, Shovel.SHOVEL_NODE_XML_KEY .. "#needsAttacherVehicle", "Needs attacher vehicle connected", true)
+	schema:register(XMLValueType.BOOL, Shovel.SHOVEL_NODE_XML_KEY .. "#resetFillLevel", "Reset fill level to zero while the shovel node is not active", false)
+	schema:register(XMLValueType.BOOL, Shovel.SHOVEL_NODE_XML_KEY .. "#ignoreFillLevel", "Ignore fill level of the fill unit while filling", false)
+	schema:register(XMLValueType.BOOL, Shovel.SHOVEL_NODE_XML_KEY .. "#ignoreFarmlandState", "Ignore farmland state for pickup", false)
 	schema:register(XMLValueType.BOOL, Shovel.SHOVEL_NODE_XML_KEY .. ".smoothing#allowed", "Leveler smoothes while driving backward", false)
 	schema:register(XMLValueType.FLOAT, Shovel.SHOVEL_NODE_XML_KEY .. ".smoothing#radius", "Smooth ground radius", 0.5)
 	schema:register(XMLValueType.FLOAT, Shovel.SHOVEL_NODE_XML_KEY .. ".smoothing#overlap", "Radius overlap", 1.7)
@@ -49,6 +53,7 @@ function Shovel.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleDischargeToObject", Shovel.getCanToggleDischargeToObject)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleDischargeToGround", Shovel.getCanToggleDischargeToGround)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getWearMultiplier", Shovel.getWearMultiplier)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "doCheckSpeedLimit", Shovel.doCheckSpeedLimit)
 end
 
 function Shovel.registerEventListeners(vehicleType)
@@ -73,6 +78,7 @@ function Shovel:onLoad(savegame)
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.shovel#pickUpNeedsToBeTurnedOn", "vehicle.shovel.shovelNode#needsActivation")
 
 	spec.ignoreFillUnitFillType = self.xmlFile:getValue("vehicle.shovel#ignoreFillUnitFillType", false)
+	spec.useSpeedLimit = self.xmlFile:getValue("vehicle.shovel#useSpeedLimit", false)
 	spec.shovelNodes = {}
 	local i = 0
 
@@ -113,10 +119,12 @@ function Shovel:onLoad(savegame)
 
 	if self.isClient then
 		spec.fillEffects = g_effectManager:loadEffect(self.xmlFile, "vehicle.shovel.fillEffect", self.components, self, self.i3dMappings)
+		spec.fillEffectTime = 0
 	end
 
 	spec.effectDirtyFlag = self:getNextDirtyFlag()
 	spec.loadingFillType = FillType.UNKNOWN
+	spec.lastValidFillType = FillType.UNKNOWN
 	spec.smoothAccumulation = 0
 
 	if #spec.shovelNodes == 0 then
@@ -177,7 +185,7 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 				local fillLevel = self:getFillUnitFillLevel(shovelNode.fillUnitIndex)
 				local capacity = self:getFillUnitCapacity(shovelNode.fillUnitIndex)
 
-				if fillLevel < capacity then
+				if fillLevel < capacity or shovelNode.ignoreFillLevel then
 					local pickupFillType = self:getFillUnitFillType(shovelNode.fillUnitIndex)
 
 					if fillLevel / capacity < self:getFillTypeChangeThreshold() then
@@ -185,7 +193,7 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 					end
 
 					local minValidLiter = g_densityMapHeightManager:getMinValidLiterValue(pickupFillType) or 0
-					local freeCapacity = math.min(capacity - fillLevel, shovelNode.fillLitersPerSecond * dt)
+					local freeCapacity = math.min(shovelNode.ignoreFillLevel and math.huge or capacity - fillLevel, shovelNode.fillLitersPerSecond * dt)
 					local sx, sy, sz = localToWorld(shovelNode.node, -shovelNode.width * 0.5, shovelNode.yOffset, shovelNode.zOffset)
 					local ex, ey, ez = localToWorld(shovelNode.node, shovelNode.width * 0.5, shovelNode.yOffset, shovelNode.zOffset)
 					local innerRadius = shovelNode.length
@@ -200,7 +208,7 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 							local fillDelta, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(self, -freeCapacity - minValidLiter, pickupFillType, sx, sy, sz, ex, ey, ez, innerRadius, radius, shovelNode.lineOffset, true, nil)
 							shovelNode.lineOffset = lineOffset
 
-							if freeCapacity < -fillDelta then
+							if not shovelNode.ignoreFillLevel and freeCapacity < -fillDelta then
 								self:setFillUnitCapacity(shovelNode.fillUnitIndex, fillLevel - fillDelta)
 
 								shovelNode.capacityChanged = true
@@ -217,6 +225,12 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 							end
 						end
 					end
+				end
+			elseif shovelNode.resetFillLevel then
+				local fillLevel = self:getFillUnitFillLevel(shovelNode.fillUnitIndex)
+
+				if fillLevel > 0 then
+					self:addFillUnitFillLevel(self:getOwnerFarmId(), shovelNode.fillUnitIndex, -fillLevel, self:getFillUnitFillType(shovelNode.fillUnitIndex), ToolType.UNDEFINED)
 				end
 			end
 
@@ -240,6 +254,16 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 					end
 				end
 			end
+		end
+
+		if validPickupFillType == FillType.UNKNOWN then
+			spec.fillEffectTime = spec.fillEffectTime - dt
+
+			if spec.fillEffectTime > 0 then
+				validPickupFillType = spec.loadingFillType
+			end
+		else
+			spec.fillEffectTime = 500
 		end
 
 		if spec.loadingFillType ~= validPickupFillType then
@@ -301,6 +325,9 @@ function Shovel:loadShovelNode(xmlFile, key, shovelNode)
 	shovelNode.fillLitersPerSecond = xmlFile:getValue(key .. "#fillLitersPerSecond", math.huge) / 1000
 	shovelNode.maxPickupAngle = xmlFile:getValue(key .. "#maxPickupAngle")
 	shovelNode.needsAttacherVehicle = xmlFile:getValue(key .. "#needsAttacherVehicle", true)
+	shovelNode.resetFillLevel = xmlFile:getValue(key .. "#resetFillLevel", false)
+	shovelNode.ignoreFillLevel = xmlFile:getValue(key .. "#ignoreFillLevel", false)
+	shovelNode.ignoreFarmlandState = xmlFile:getValue(key .. "#ignoreFarmlandState", false)
 	shovelNode.allowsSmoothing = xmlFile:getValue(key .. ".smoothing#allowed", false)
 	shovelNode.smoothGroundRadius = xmlFile:getValue(key .. ".smoothing#radius", 0.5)
 	shovelNode.smoothOverlap = xmlFile:getValue(key .. ".smoothing#overlap", 1.7)
@@ -362,7 +389,7 @@ end
 function Shovel:handleDischarge(superFunc, dischargeNode, dischargedLiters, minDropReached, hasMinDropFillLevel)
 	local spec = self.spec_shovel
 
-	if dischargeNode.index ~= spec.shovelDischargeInfo.dischargeNodeIndex or self.spec_shovel.shovelDischargeInfo.node == nil then
+	if dischargeNode.index ~= spec.shovelDischargeInfo.dischargeNodeIndex or spec.shovelDischargeInfo.node == nil then
 		superFunc(self, dischargeNode, dischargedLiters, minDropReached, hasMinDropFillLevel)
 	end
 end
@@ -374,7 +401,9 @@ function Shovel:handleDischargeOnEmpty(superFunc, dischargedLiters, minDropReach
 end
 
 function Shovel:handleDischargeRaycast(superFunc, dischargeNode, hitObject, hitShape, hitDistance, hitFillUnitIndex, hitTerrain)
-	if self.spec_shovel.shovelDischargeInfo.dischargeNodeIndex == dischargeNode.index then
+	local spec = self.spec_shovel
+
+	if spec.shovelDischargeInfo.node ~= nil and spec.shovelDischargeInfo.dischargeNodeIndex == dischargeNode.index then
 		if hitObject ~= nil then
 			local fillType = self:getDischargeFillType(dischargeNode)
 			local allowFillType = hitObject:getFillUnitAllowsFillType(hitFillUnitIndex, fillType)
@@ -453,9 +482,17 @@ function Shovel:getWearMultiplier(superFunc)
 	return multiplier
 end
 
+function Shovel:doCheckSpeedLimit(superFunc)
+	return superFunc(self) or self.spec_shovel.useSpeedLimit and (self.getIsTurnedOn == nil or self:getIsTurnedOn())
+end
+
 function Shovel:getCanShovelAtPosition(shovelNode)
 	if shovelNode == nil then
 		return false
+	end
+
+	if shovelNode.ignoreFarmlandState then
+		return true
 	end
 
 	local sx, _, sz = localToWorld(shovelNode.node, -shovelNode.width * 0.5, 0, 0)

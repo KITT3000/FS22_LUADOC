@@ -121,6 +121,8 @@ function AbstractFieldMission:loadFromXMLFile(xmlFile, key)
 
 		self:addToMissionMap()
 		g_messageCenter:subscribe(MessageType.VEHICLE_RESET, self.onVehicleReset, self)
+
+		self.needsFieldHotspotActivation = self.isClient
 	end
 
 	return true
@@ -179,6 +181,14 @@ end
 function AbstractFieldMission:update(dt)
 	AbstractFieldMission:superClass().update(self, dt)
 
+	if self.needsFieldHotspotActivation then
+		if g_currentMission.player.farmId == self.farmId then
+			self.field:setMissionActive(true)
+		end
+
+		self.needsFieldHotspotActivation = false
+	end
+
 	if self.vehicleIndexToLoadNext ~= nil and self.lastVehicleIndexToLoad == self.vehicleIndexToLoadNext then
 		if self.vehicleLoadWaitFrameCounter == nil then
 			self.vehicleIndexToLoadNext = self.vehicleIndexToLoadNext + 1
@@ -217,7 +227,7 @@ function AbstractFieldMission:start(spawnVehicles)
 
 	self:addToMissionMap()
 
-	if g_currentMission.player.farmId == self.farmId then
+	if self.isClient and g_currentMission.player.farmId == self.farmId then
 		self.field:setMissionActive(true)
 	end
 
@@ -489,12 +499,10 @@ function AbstractFieldMission:getMaxCutLiters()
 	local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(self.field.fruitType)
 	local multiplier = g_currentMission:getHarvestScaleMultiplier(self.fruitType, self.sprayFactor, self.fieldPlowFactor, self.limeFactor, self.weedFactor, self.stubbleFactor, self.rollerFactor)
 	local area = self.field.fieldArea * multiplier
-	local literPerSqm = nil
+	local literPerSqm = fruitDesc.literPerSqm
 
 	if fruitDesc.hasWindrow then
-		literPerSqm = fruitDesc.windrowLiterPerSqm
-	else
-		literPerSqm = fruitDesc.literPerSqm
+		literPerSqm = math.min(literPerSqm, fruitDesc.windrowLiterPerSqm)
 	end
 
 	return literPerSqm * area * 10000

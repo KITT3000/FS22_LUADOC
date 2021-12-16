@@ -212,6 +212,9 @@ function DebugUtil.drawDebugCube(node, sizeX, sizeY, sizeZ, r, g, b, offsetX, of
 	sizeZ = sizeZ * 0.5
 	sizeY = sizeY * 0.5
 	sizeX = sizeX * 0.5
+	r = r or 1
+	g = g or 1
+	b = b or 1
 	local x, y, z = localToWorld(node, offsetX or 0, offsetY or 0, offsetZ or 0)
 	local up1X, up1Y, up1Z = localDirectionToWorld(node, 1, 0, 0)
 	local upX, upY, upZ = localDirectionToWorld(node, 0, 1, 0)

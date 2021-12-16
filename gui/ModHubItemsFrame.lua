@@ -204,20 +204,18 @@ end
 function ModHubItemsFrame:updateDownloadStates()
 	if #self.itemsList.elements > 0 then
 		for i = self.itemsList.elements[1].indexInSection, self.itemsList.elements[#self.itemsList.elements].indexInSection do
-			self:updateModDownloadState(i)
+			local cell = self.itemsList:getElementAtSectionIndex(1, index)
+
+			if cell ~= nil then
+				self:updateModDownloadState(cell, i)
+			end
 		end
 	end
 
 	self.updateModTimer = self.updateModInterval
 end
 
-function ModHubItemsFrame:updateModDownloadState(index)
-	local cell = self.itemsList:getElementAtSectionIndex(1, index)
-
-	if cell == nil then
-		return
-	end
-
+function ModHubItemsFrame:updateModDownloadState(cell, index)
 	local modInfo = self.mods[index]
 	local isDownloading = modInfo:getIsDownloading()
 	local isInstalled = modInfo:getIsInstalled()
@@ -239,7 +237,7 @@ function ModHubItemsFrame:updateModDownloadState(index)
 
 	local statusBar = cell:getAttribute("statusBar")
 
-	statusBar:setSize(statusBar.parent.absSize[1] * percent, nil)
+	statusBar:setSize(statusBar.parent.size[1] * percent, nil)
 
 	local text = ""
 
@@ -313,7 +311,7 @@ function ModHubItemsFrame:setModInfo(modInfo)
 			end
 		end
 
-		self.modAttributePrice:setText(self.l10n:getText("modHub_flag_highEnd"), true)
+		self.modAttributePrice:setText(self.l10n:getText("modHub_flag_crossplay"), true)
 
 		priceVisible = isTop
 	else
@@ -373,6 +371,7 @@ function ModHubItemsFrame:populateCellForItemInSection(list, section, index, cel
 	iconElement:setIsWebOverlay(not modInfo:getIsIconLocal())
 	iconElement:setImageFilename(modInfo:getIconFilename())
 	cell:getAttribute("nameLabel"):setText(modInfo:getName())
+	self:updateModDownloadState(cell, index)
 end
 
 ModHubItemsFrame.PROFILE = {

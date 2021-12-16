@@ -11,9 +11,6 @@ function PlaceableColorable.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getHasColors", PlaceableColorable.getHasColors)
 end
 
-function PlaceableColorable.registerOverwrittenFunctions(placeableType)
-end
-
 function PlaceableColorable.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceableColorable)
 	SpecializationUtil.registerEventListener(placeableType, "onWriteStream", PlaceableColorable)

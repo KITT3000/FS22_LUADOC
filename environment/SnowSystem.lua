@@ -2,6 +2,7 @@ SnowSystem = {
 	MAX_HEIGHT = 0.5,
 	MIN_LAYER_HEIGHT = 0.06,
 	MAX_MS_PER_FRAME = 1,
+	MAX_MS_PER_FRAME_SLEEPING = 3,
 	DELTA_REMOVE_ALL = -100
 }
 local SnowSystem_mt = Class(SnowSystem)
@@ -17,8 +18,15 @@ function SnowSystem.new(mission, isServer, customMt)
 	self.vehicleWakeUpIndex = 0
 	self.vehicleWakeUpDelay = 500
 	self.vehicleWakeUpTimer = 0
+	self.itemWakeUpIndex = 0
+	self.itemWakeUpDelay = 100
+	self.itemWakeUpTimer = 0
 
 	setSharedShaderParameter(Shader.PARAM_SHARED_SNOW, 0)
+
+	if self.isServer then
+		g_messageCenter:subscribe(MessageType.SLEEPING, self.onSleepChanged, self)
+	end
 
 	return self
 end
@@ -39,7 +47,7 @@ function SnowSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 	self.environment = self.mission.environment
 	self.indoorMask = self.mission.indoorMask
 
-	if g_addCheatCommands then
+	if g_addCheatCommands and g_currentMission:getIsServer() then
 		addConsoleCommand("gsSnowAdd", "Add snow", "consoleCommandAddSnow", self)
 		addConsoleCommand("gsSnowSet", "Set snow", "consoleCommandSetSnow", self)
 		addConsoleCommand("gsSnowReset", "Reset snow", "consoleCommandResetSnow", self)
@@ -65,6 +73,11 @@ function SnowSystem:loadFromXMLFile(filename)
 		self.currentApplyingDelta = xmlFile:getFloat("environment.snow.queue#current")
 
 		xmlFile:delete()
+	end
+
+	if g_currentMission.environment.weather.snowHeight == 0 and self.exactHeight ~= 0 then
+		Logging.info("Weather indicates there must be no snow, snow system disagrees. Resetting snow.")
+		self:setSnowHeight(0)
 	end
 
 	self:updateSnowShader()
@@ -153,6 +166,26 @@ function SnowSystem:update(dt)
 			self.vehicleWakeUpTimer = 0
 		end
 	end
+
+	if self.itemWakeUpIndex > 0 then
+		self.itemWakeUpTimer = self.itemWakeUpTimer + dt
+
+		if self.itemWakeUpDelay < self.itemWakeUpTimer then
+			local item = self.mission.itemSystem.sortedItemsToSave[self.itemWakeUpIndex]
+
+			if item == nil then
+				self.itemWakeUpIndex = 0
+			else
+				if item.item.wakeUp ~= nil then
+					item.item:wakeUp()
+				end
+
+				self.itemWakeUpIndex = self.itemWakeUpIndex + 1
+			end
+
+			self.itemWakeUpTimer = 0
+		end
+	end
 end
 
 function SnowSystem:applySnow(delta)
@@ -200,7 +233,7 @@ function SnowSystem:startApplication(delta)
 
 	local useCollisionMap = false
 
-	applyDensityMapHeightUpdate(self.updater, self.snowHeightTypeIndex, delta, heightLimit, false, useCollisionMap, blockMaskId, blockMaskFirstChannel, blockMaskNumChannels, "onApplicationFinished", self, SnowSystem.MAX_MS_PER_FRAME)
+	applyDensityMapHeightUpdate(self.updater, self.snowHeightTypeIndex, delta, heightLimit, false, useCollisionMap, blockMaskId, blockMaskFirstChannel, blockMaskNumChannels, "onApplicationFinished", self, self:getMaxUpdateTime())
 end
 
 function SnowSystem:onApplicationFinished()
@@ -223,35 +256,15 @@ end
 
 function SnowSystem:onHeightChanged(delta)
 	self.vehicleWakeUpIndex = 1
+	self.itemWakeUpIndex = 1
+
+	g_messageCenter:publish(MessageType.SNOW_HEIGHT_CHANGED, math.max(self.height / SnowSystem.MAX_HEIGHT, 0), math.max(self.height, 0))
 end
 
 function SnowSystem:removeSnowUnderObjects(delta)
 	for _, object in pairs(self.mission.itemSystem.itemsToSave) do
-		if object.className == "Bale" then
-			local width, length = nil
-			local bale = object.item
-
-			if bale.diameter ~= nil then
-				width = bale.width
-				length = bale.diameter
-
-				if bale.sendRotX > 1.5 then
-					width = bale.diameter
-				end
-			elseif bale.length ~= nil then
-				width = bale.width
-				length = bale.length
-			end
-
-			local scale = 0.65
-			local x0 = bale.sendPosX + width * scale
-			local x1 = bale.sendPosX - width * scale
-			local x2 = bale.sendPosX + width * scale
-			local z0 = bale.sendPosZ - length * scale
-			local z1 = bale.sendPosZ - length * scale
-			local z2 = bale.sendPosZ + length * scale
-
-			self:removeSnow(x0, z0, x1, z1, x2, z2, delta / self.layerHeight)
+		if object.item.doDensityMapItemAreaUpdate ~= nil then
+			object.item:doDensityMapItemAreaUpdate(self.removeSnow, self, delta / self.layerHeight)
 		end
 	end
 
@@ -283,12 +296,21 @@ function SnowSystem:saltArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ,
 	filter1:setValueCompareParams(DensityValueCompareType.EQUAL, self.snowHeightTypeIndex)
 	filter2:setValueCompareParams(DensityValueCompareType.EQUAL, 1)
 
-	local _, area, totalArea = modifier:executeSet(0, filter1, filter2)
+	local density, area, totalArea = modifier:executeSet(0, filter1, filter2)
 	modifiers = self.modifiers.sprayLevel
 	modifier = modifiers.modifier
 
 	modifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	modifier:executeSet(0)
+
+	if density ~= 0 then
+		modifiers = self.modifiers.fillType
+		modifier = modifiers.modifierType
+
+		modifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+		filter2:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
+		modifier:executeSet(0, filter2)
+	end
 
 	return area, totalArea
 end
@@ -364,12 +386,12 @@ function SnowSystem:removeSnow(startWorldX, startWorldZ, widthWorldX, widthWorld
 end
 
 function SnowSystem:setSnowHeight(height)
-	if not self.mission.missionInfo.isSnowEnabled then
+	height = MathUtil.clamp(height, -4.02, SnowSystem.MAX_HEIGHT)
+	self.exactHeight = math.max(height, 0)
+
+	if self.height == height then
 		return
 	end
-
-	height = MathUtil.clamp(height, -4.02, SnowSystem.MAX_HEIGHT)
-	self.exactHeight = height
 
 	if self.height < 0 and height > 0 then
 		self.height = 0
@@ -401,13 +423,30 @@ function SnowSystem:updateSnowShader()
 end
 
 function SnowSystem:removeAll()
-	self:applySnow(SnowSystem.DELTA_REMOVE_ALL)
+	if self.height > 0 or self.exactHeight > 0 then
+		self:applySnow(SnowSystem.DELTA_REMOVE_ALL)
 
-	self.height = 0
+		self.height = 0
+		self.exactHeight = 0
+
+		self:updateSnowShader()
+	end
 end
 
 function SnowSystem:getHeight()
 	return self.height
+end
+
+function SnowSystem:getMaxUpdateTime()
+	if g_sleepManager.isSleeping then
+		return SnowSystem.MAX_MS_PER_FRAME_SLEEPING
+	else
+		return SnowSystem.MAX_MS_PER_FRAME
+	end
+end
+
+function SnowSystem:onSleepChanged(isSleeping)
+	setDensityMapHeightUpdateApplyMaxTimePerFrame(self.updater, self:getMaxUpdateTime())
 end
 
 function SnowSystem:consoleCommandAddSnow(layers)

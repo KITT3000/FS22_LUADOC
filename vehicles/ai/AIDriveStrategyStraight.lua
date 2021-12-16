@@ -146,6 +146,7 @@ function AIDriveStrategyStraight:setAIVehicle(vehicle)
 	self.driveExtraDistanceToFieldBorder = false
 	self.toolLineStates = {}
 	self.isTurning = false
+	self.isFirstRow = true
 end
 
 function AIDriveStrategyStraight:update(dt)
@@ -179,6 +180,7 @@ function AIDriveStrategyStraight:getDriveData(dt, vX, vY, vZ)
 		end
 
 		self.isTurning = true
+		self.isFirstRow = false
 		local tX, tZ, moveForwards, maxSpeed, distanceToStop = self.activeTurnStrategy:getDriveData(dt, vX, vY, vZ, self.turnData)
 
 		if tX ~= nil then
@@ -863,10 +865,15 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 					end
 				end
 
-				local hasLeftGab = gabPos > 0 and gabPos < 0.5
-				local hasRightGab = gabPos >= 0.5
-				self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and not hasLeftGab
-				self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and not hasRightGab
+				if self.isFirstRow then
+					local hasLeftGab = gabPos > 0 and gabPos < 0.5
+					local hasRightGab = gabPos >= 0.5
+					self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and not hasLeftGab
+					self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and not hasRightGab
+				else
+					self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and gabPos < 0
+					self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and gabPos < 0
+				end
 			end
 
 			local hasHadFieldContact = false

@@ -62,6 +62,7 @@ end
 function WorkArea.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadSpeedRotatingPartFromXML", WorkArea.loadSpeedRotatingPartFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsSpeedRotatingPartActive", WorkArea.getIsSpeedRotatingPartActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "checkMovingPartDirtyUpdateNode", WorkArea.checkMovingPartDirtyUpdateNode)
 end
 
 function WorkArea.registerEventListeners(vehicleType)
@@ -564,4 +565,18 @@ function WorkArea:getIsSpeedRotatingPartActive(superFunc, speedRotatingPart)
 	end
 
 	return superFunc(self, speedRotatingPart)
+end
+
+function WorkArea:checkMovingPartDirtyUpdateNode(superFunc, node, movingPart)
+	superFunc(self, node, movingPart)
+
+	local spec = self.spec_workArea
+
+	for i = 1, #spec.workAreas do
+		local workArea = spec.workAreas[i]
+
+		if node == workArea.start or node == workArea.width or node == workArea.height then
+			Logging.xmlError(self.xmlFile, "Found work area node '%s' in active dirty moving part '%s' with limited update distance. Remove limit or adjust hierarchy for correct function. (maxUpdateDistance='-')", getName(node), getName(movingPart.node))
+		end
+	end
 end

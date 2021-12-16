@@ -305,8 +305,14 @@ function Plow:processPlowArea(workArea, dt)
 	local xw, _, zw = getWorldTranslation(workArea.width)
 	local xh, _, zh = getWorldTranslation(workArea.height)
 	local params = spec.workAreaParameters
-	local changedArea, totalArea = FSDensityMapUtil.updatePlowArea(xs, zs, xw, zw, xh, zh, not params.limitToField, params.limitFruitDestructionToField, params.angle)
-	changedArea = changedArea + FSDensityMapUtil.updateVineCultivatorArea(xs, zs, xw, zw, xh, zh)
+	local changedArea = 0
+	local totalArea = 0
+
+	if self.tailwaterDepth < 0.1 then
+		changedArea, totalArea = FSDensityMapUtil.updatePlowArea(xs, zs, xw, zw, xh, zh, not params.limitToField, params.limitFruitDestructionToField, params.angle)
+		changedArea = changedArea + FSDensityMapUtil.updateVineCultivatorArea(xs, zs, xw, zw, xh, zh)
+	end
+
 	params.lastChangedArea = params.lastChangedArea + changedArea
 	params.lastStatsArea = params.lastStatsArea + changedArea
 	params.lastTotalArea = params.lastTotalArea + totalArea
@@ -701,15 +707,18 @@ function Plow:onEndWorkAreaProcessing(dt)
 	local spec = self.spec_plow
 
 	if self.isServer then
+		local stats = g_currentMission:farmStats(self:getLastTouchedFarmlandFarmId())
 		local lastStatsArea = spec.workAreaParameters.lastStatsArea
 
 		if lastStatsArea > 0 then
 			local ha = MathUtil.areaToHa(lastStatsArea, g_currentMission:getFruitPixelsToSqm())
-			local stats = g_currentMission:farmStats(self:getLastTouchedFarmlandFarmId())
 
 			stats:updateStats("plowedHectares", ha)
-			stats:updateStats("plowedTime", dt / 60000)
 			self:updateLastWorkedArea(lastStatsArea)
+		end
+
+		if spec.isWorking then
+			stats:updateStats("plowedTime", dt / 60000)
 		end
 	end
 
@@ -815,7 +824,7 @@ function Plow:onRootVehicleChanged(rootVehicle)
 
 			spec.controlledActionRotate:setCallback(self, Plow.actionControllerRotateEvent)
 			spec.controlledActionRotate:setFinishedFunctions(self, function (vehicle)
-				return vehicle.spec_foldable.rotationMax
+				return not vehicle.spec_foldable.rotationMax
 			end, false, false)
 			spec.controlledActionRotate:addAIEventListener(self, "onAIImplementPrepare", -1, true)
 		elseif spec.controlledActionRotate ~= nil then
@@ -846,4 +855,6 @@ function Plow:actionControllerRotateEvent(direction)
 	if spec.rotationPart.turnAnimation ~= nil and self:getIsPlowRotationAllowed() and spec.rotationMax then
 		self:setRotationMax(false)
 	end
+
+	return true
 end

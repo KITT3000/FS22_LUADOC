@@ -203,7 +203,11 @@ function LicensePlate:updateData(variationIndex, position, characters, validate)
 				setTranslation(value.node, value.posX, value.posY, value.posZ)
 
 				local samePosition = (value.position == LicensePlateManager.PLATE_POSITION.ANY or value.position == position) and value.position ~= LicensePlateManager.PLATE_POSITION.NONE
-				local targetChar = value.character or characters:sub(stringPos, stringPos)
+				local targetChar = value.character
+
+				if not value.locked then
+					targetChar = characters:sub(stringPos, stringPos) or targetChar
+				end
 
 				if not value.isStatic and targetChar ~= "" and targetChar ~= "_" and samePosition then
 					self.font:updateSingleCharacter(value.singleCharacter, targetChar)

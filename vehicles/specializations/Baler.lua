@@ -30,6 +30,7 @@ function Baler.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.baleAnimation#closeAnimationSpeed", "Close animation speed", 1)
 	schema:register(XMLValueType.BOOL, "vehicle.baler.automaticDrop#enabled", "Automatic drop default enabled", "true on mobile")
 	schema:register(XMLValueType.BOOL, "vehicle.baler.automaticDrop#toggleable", "Automatic bale drop can be toggled", "false on mobile")
+	schema:register(XMLValueType.L10N_STRING, "vehicle.baler.baleTypes#changeText", "Change bale size text", "action_changeBaleSize")
 	schema:register(XMLValueType.BOOL, "vehicle.baler.baleTypes.baleType(?)#isRoundBale", "Is round bale", false)
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.baleTypes.baleType(?)#width", "Bale width", 1.2)
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.baleTypes.baleType(?)#height", "Bale height", 0.9)
@@ -44,11 +45,15 @@ function Baler.initSpecialization()
 	schema:register(XMLValueType.STRING, "vehicle.baler.baleTypes.baleType(?).animations#unloadAnimation", "Unload animation while this bale type is active")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.baleTypes.baleType(?).animations#unloadAnimationSpeed", "Unload animation speed", 1)
 	schema:register(XMLValueType.TIME, "vehicle.baler.baleTypes.baleType(?).animations#dropAnimationTime", "Specific time in #unloadAnimation when to drop the bale", "At the end of the unloading animation")
+	schema:register(XMLValueType.NODE_INDEX, "vehicle.baler.baleTypes.baleType(?).detailVisibilityCutNode(?)#node", "Reference node for details visibility cut")
+	schema:register(XMLValueType.INT, "vehicle.baler.baleTypes.baleType(?).detailVisibilityCutNode(?)#axis", "Axis of visibility cut [1, 3]", 3)
+	schema:register(XMLValueType.INT, "vehicle.baler.baleTypes.baleType(?).detailVisibilityCutNode(?)#direction", "Direction of visibility cut [-1, 1]", 1)
 	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.baler.baleTypes.baleType(?)")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler#unfinishedBaleThreshold", "Threshold to unload a unfinished bale", 2000)
 	schema:register(XMLValueType.BOOL, "vehicle.baler#canUnloadUnfinishedBale", "Can unload unfinished bale", false)
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "work")
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "eject")
+	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "unload")
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "door")
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "knotCleaning")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.baler.animationNodes")
@@ -68,7 +73,6 @@ function Baler.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.baleUnloading#foldThreshold", "Bale unloading fold threshold", 0.25)
 	schema:register(XMLValueType.L10N_STRING, "vehicle.baler.automaticDrop#textPos", "Positive toggle automatic drop text", "action_toggleAutomaticBaleDropPos")
 	schema:register(XMLValueType.L10N_STRING, "vehicle.baler.automaticDrop#textNeg", "Negative toggle automatic drop text", "action_toggleAutomaticBaleDropNeg")
-	schema:register(XMLValueType.L10N_STRING, "vehicle.baleTypes#changeText", "Change bale size text", "action_changeBaleSize")
 	schema:register(XMLValueType.STRING, "vehicle.baler.platform#animationName", "Platform animation")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.platform#nextBaleTime", "Animation time when directly the next bale is unloaded after dropping from platform", 0)
 	schema:register(XMLValueType.BOOL, "vehicle.baler.platform#automaticDrop", "Bale is automatically dropped from platform", "true on mobile")
@@ -92,6 +96,9 @@ function Baler.initSpecialization()
 	schema:register(XMLValueType.STRING, "vehicle.baler.variableSpeedLimit.target(?)#fillType", "Name of fill type")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.variableSpeedLimit.target(?)#targetLiterPerSecond", "Target liters per second with this fill type", 200)
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.variableSpeedLimit.target(?)#defaultSpeedLimit", "Default speed limit with this fill type", 10)
+	schema:register(XMLValueType.INT, "vehicle.baler.additives#fillUnitIndex", "Additives fill unit index")
+	schema:register(XMLValueType.FLOAT, "vehicle.baler.additives#usage", "Usage per picked up liter", 2.75e-05)
+	schema:register(XMLValueType.STRING, "vehicle.baler.additives#fillTypes", "Fill types to apply additives", "GRASS_WINDROW")
 	schema:register(XMLValueType.BOOL, FillUnit.ALARM_TRIGGER_XML_KEY .. "#needsBaleLoaded", "Alarm triggers only when a full bale is loaded", false)
 	schema:setXMLSpecializationType()
 
@@ -287,6 +294,21 @@ function Baler:onLoad(savegame)
 				unloadingSpeed = self.xmlFile:getValue(key .. ".animations#unloadAnimationSpeed", 1)
 			}
 			baleTypeDefinition.animations.dropAnimationTime = self.xmlFile:getValue(key .. ".animations#dropAnimationTime", self:getAnimationDuration(baleTypeDefinition.animations.unloading) / 1000)
+			baleTypeDefinition.detailVisibilityCutNodes = {}
+
+			self.xmlFile:iterate(key .. ".detailVisibilityCutNode", function (_, detailsVisNodeKey)
+				local detailVisibilityCutNode = {
+					node = self.xmlFile:getValue(detailsVisNodeKey .. "#node", nil, self.components, self.i3dMappings)
+				}
+
+				if detailVisibilityCutNode.node ~= nil then
+					detailVisibilityCutNode.axis = self.xmlFile:getValue(detailsVisNodeKey .. "#axis", 3)
+					detailVisibilityCutNode.direction = self.xmlFile:getValue(detailsVisNodeKey .. "#direction", 1)
+
+					table.insert(baleTypeDefinition.detailVisibilityCutNodes, detailVisibilityCutNode)
+				end
+			end)
+
 			baleTypeDefinition.changeObjects = {}
 
 			ObjectChangeUtil.loadObjectChangeFromXML(self.xmlFile, key, baleTypeDefinition.changeObjects, self.components, self)
@@ -304,7 +326,7 @@ function Baler:onLoad(savegame)
 		ObjectChangeUtil.setObjectChanges(defaultBaleType.changeObjects, true, self, self.setMovingToolDirty)
 	end
 
-	spec.changeBaleTypeText = self.xmlFile:getValue("vehicle.baleTypes#changeText", "action_changeBaleSize", self.customEnvironment)
+	spec.changeBaleTypeText = self.xmlFile:getValue("vehicle.baler.baleTypes#changeText", "action_changeBaleSize", self.customEnvironment)
 	spec.preSelectedBaleTypeIndex = defaultBaleTypeIndex
 	spec.currentBaleTypeIndex = defaultBaleTypeIndex
 	spec.currentBaleXMLFilename = nil
@@ -338,6 +360,7 @@ function Baler:onLoad(savegame)
 		spec.samples = {
 			work = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.baler.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self),
 			eject = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.baler.sounds", "eject", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self),
+			unload = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.baler.sounds", "unload", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self),
 			door = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.baler.sounds", "door", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self),
 			knotCleaning = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.baler.sounds", "knotCleaning", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self)
 		}
@@ -450,6 +473,13 @@ function Baler:onLoad(savegame)
 		end
 	end)
 
+	spec.additives = {
+		fillUnitIndex = self.xmlFile:getValue("vehicle.baler.additives#fillUnitIndex")
+	}
+	spec.additives.available = self:getFillUnitByIndex(spec.additives.fillUnitIndex) ~= nil
+	spec.additives.usage = self.xmlFile:getValue("vehicle.baler.additives#usage", 2.75e-05)
+	local additivesFillTypeNames = self.xmlFile:getValue("vehicle.baler.additives#fillTypes", "GRASS_WINDROW")
+	spec.additives.fillTypes = g_fillTypeManager:getFillTypesByNames(additivesFillTypeNames, "Warning: '" .. self.xmlFile:getFilename() .. "' has invalid fillType '%s'.")
 	spec.isBaleUnloading = false
 	spec.texts = {
 		warningFoldingBaleLoaded = g_i18n:getText("warning_foldingNotWhileBaleLoaded"),
@@ -731,15 +761,45 @@ end
 function Baler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	local spec = self.spec_baler
 
-	if self.isClient and spec.baleToMount ~= nil then
-		local baleObject = NetworkUtil.getObject(spec.baleToMount.baleServerId)
+	if self.isClient then
+		if spec.baleToMount ~= nil then
+			local baleObject = NetworkUtil.getObject(spec.baleToMount.baleServerId)
 
-		if baleObject ~= nil then
-			baleObject:mountKinematic(self, spec.baleToMount.jointNode, 0, 0, 0, 0, 0, 0)
+			if baleObject ~= nil then
+				baleObject:mountKinematic(self, spec.baleToMount.jointNode, 0, 0, 0, 0, 0, 0)
 
-			spec.baleToMount.baleInfo.baleObject = baleObject
-			spec.baleToMount.baleInfo.baleServerId = spec.baleToMount.baleServerId
-			spec.baleToMount = nil
+				spec.baleToMount.baleInfo.baleObject = baleObject
+				spec.baleToMount.baleInfo.baleServerId = spec.baleToMount.baleServerId
+				spec.baleToMount = nil
+			end
+		end
+
+		local baleTypeDef = spec.baleTypes[spec.currentBaleTypeIndex]
+
+		if baleTypeDef ~= nil and #baleTypeDef.detailVisibilityCutNodes > 0 then
+			for i = 1, #spec.bales do
+				local bale = spec.bales[i]
+
+				if bale.baleObject ~= nil then
+					bale.baleObject:resetDetailVisibilityCut()
+
+					if bale.time < 1 then
+						for j = 1, #baleTypeDef.detailVisibilityCutNodes do
+							local detailVisibilityCutNode = baleTypeDef.detailVisibilityCutNodes[j]
+
+							bale.baleObject:setDetailVisibilityCutNode(detailVisibilityCutNode.node, detailVisibilityCutNode.axis, detailVisibilityCutNode.direction)
+						end
+					end
+				end
+			end
+
+			if spec.dummyBale.currentBale ~= nil then
+				for j = 1, #baleTypeDef.detailVisibilityCutNodes do
+					local detailVisibilityCutNode = baleTypeDef.detailVisibilityCutNodes[j]
+
+					Bale.setBaleMeshVisibilityCut(spec.dummyBale.currentBale, detailVisibilityCutNode.node, detailVisibilityCutNode.axis, detailVisibilityCutNode.direction, true)
+				end
+			end
 		end
 	end
 
@@ -895,7 +955,7 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 					end
 
 					if self:getFillUnitFillLevel(spec.fillUnitIndex) == 0 and spec.preSelectedBaleTypeIndex ~= spec.currentBaleTypeIndex then
-						self:setBaleTypeIndex(spec.preSelectedBaleTypeIndex)
+						self:setBaleTypeIndex(spec.preSelectedBaleTypeIndex, true)
 					end
 				end
 			end
@@ -1045,15 +1105,6 @@ function Baler:getIsFoldAllowed(superFunc, direction, onAiTurnOn)
 	return superFunc(self, direction, onAiTurnOn)
 end
 
-function Baler:onDeactivate()
-	local spec = self.spec_baler
-
-	if self.isClient then
-		g_effectManager:stopEffects(spec.fillEffects)
-		g_soundManager:stopSamples(spec.samples)
-	end
-end
-
 function Baler:onChangedFillType(fillUnitIndex, fillTypeIndex, oldFillTypeIndex)
 	local spec = self.spec_baler
 
@@ -1189,7 +1240,7 @@ function Baler:setBaleTypeIndex(baleTypeIndex, force, noEventSend)
 	end
 
 	Baler.updateActionEvents(self)
-	BalerBaleTypeEvent.sendEvent(self, baleTypeIndex, noEventSend)
+	BalerBaleTypeEvent.sendEvent(self, baleTypeIndex, force, noEventSend)
 end
 
 function Baler:isUnloadingAllowed()
@@ -1288,6 +1339,10 @@ function Baler:setIsUnloadingBale(isUnloadingBale, noEventSend)
 		BalerSetIsUnloadingBaleEvent.sendEvent(self, isUnloadingBale, noEventSend)
 
 		spec.isBaleUnloading = true
+
+		if self.isClient then
+			g_soundManager:playSample(spec.samples.unload)
+		end
 	end
 end
 
@@ -1348,6 +1403,10 @@ function Baler:setBaleTime(i, baleTime, noEventSend)
 
 			if #spec.bales == 0 then
 				spec.isBaleUnloading = false
+
+				if self.isClient then
+					g_soundManager:stopSample(spec.samples.unload)
+				end
 			end
 
 			if self.isServer and (noEventSend == nil or not noEventSend) then
@@ -1378,7 +1437,7 @@ function Baler:finishBale()
 				g_server:broadcastEvent(BalerCreateBaleEvent.new(self, fillTypeIndex, bale.time), nil, nil, self)
 
 				if self:getFillUnitFillLevel(spec.fillUnitIndex) == 0 and spec.preSelectedBaleTypeIndex ~= spec.currentBaleTypeIndex then
-					self:setBaleTypeIndex(spec.preSelectedBaleTypeIndex)
+					self:setBaleTypeIndex(spec.preSelectedBaleTypeIndex, true)
 				end
 			else
 				Logging.error("Failed to create bale!")
@@ -1827,6 +1886,33 @@ function Baler:processBalerArea(workArea, dt)
 		if pickedUpLiters > 0 then
 			if self.isServer then
 				spec.fillEffectType = fillTypeIndex
+
+				if spec.additives.available then
+					local fillTypeSupported = false
+
+					for i = 1, #spec.additives.fillTypes do
+						if fillTypeIndex == spec.additives.fillTypes[i] then
+							fillTypeSupported = true
+
+							break
+						end
+					end
+
+					if fillTypeSupported then
+						local additivesFillLevel = self:getFillUnitFillLevel(spec.additives.fillUnitIndex)
+
+						if additivesFillLevel > 0 then
+							local usage = spec.additives.usage * pickedUpLiters
+
+							if usage > 0 then
+								local availableUsage = math.min(additivesFillLevel / usage, 1)
+								pickedUpLiters = pickedUpLiters * (1 + 0.05 * availableUsage)
+
+								self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.additives.fillUnitIndex, -usage, self:getFillUnitFillType(spec.additives.fillUnitIndex), ToolType.UNDEFINED)
+							end
+						end
+					end
+				end
 			end
 
 			spec.pickupFillTypes[fillTypeIndex] = spec.pickupFillTypes[fillTypeIndex] + pickedUpLiters
@@ -2046,7 +2132,7 @@ function Baler:updateActionEvents()
 	end
 end
 
-function Baler.loadSpecValueBaleSize(xmlFile, customEnvironment)
+function Baler.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir)
 	local rootName = xmlFile:getRootName()
 	local baleSizeAttributes = {
 		isRoundBaler = false,
@@ -2103,16 +2189,16 @@ function Baler.getSpecValueBaleSize(storeItem, realItem, configurations, saleIte
 	end
 end
 
-function Baler.loadSpecValueBaleSizeRound(xmlFile, customEnvironment)
-	local baleSizeAttributes = Baler.loadSpecValueBaleSize(xmlFile, customEnvironment)
+function Baler.loadSpecValueBaleSizeRound(xmlFile, customEnvironment, baseDir)
+	local baleSizeAttributes = Baler.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir)
 
 	if baleSizeAttributes ~= nil and baleSizeAttributes.isRoundBaler then
 		return baleSizeAttributes
 	end
 end
 
-function Baler.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment)
-	local baleSizeAttributes = Baler.loadSpecValueBaleSize(xmlFile, customEnvironment)
+function Baler.loadSpecValueBaleSizeSquare(xmlFile, customEnvironment, baseDir)
+	local baleSizeAttributes = Baler.loadSpecValueBaleSize(xmlFile, customEnvironment, baseDir)
 
 	if baleSizeAttributes ~= nil and not baleSizeAttributes.isRoundBaler then
 		return baleSizeAttributes

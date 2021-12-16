@@ -998,6 +998,11 @@ end
 
 function InputBinding:setActionEventActive(eventId, isActive)
 	local event = self.events[eventId]
+
+	self:setEventActive(event, isActive)
+end
+
+function InputBinding:setEventActive(event, isActive)
 	local hasChange = false
 
 	if event then
@@ -3420,6 +3425,16 @@ function InputBinding:getBindingForceFeedbackInfo(binding)
 	return isSupported, device, axisIndex
 end
 
+function InputBinding:setContextEventsActive(contextName, actionName, isActive)
+	local context = self.contexts[contextName] or {}
+	local action = self.nameActions[actionName]
+	local actionEvents = context.actionEvents[action]
+
+	for _, event in ipairs(actionEvents) do
+		self:setEventActive(event, isActive)
+	end
+end
+
 function InputBinding.getIsPhysicalFullAxis(inputAxisName)
 	local isMouseAxis = InputBinding.MOUSE_AXES[inputAxisName] ~= nil
 	local axisId = Input.axisIdNameToId[inputAxisName]
@@ -3578,7 +3593,7 @@ function InputBinding:debugRenderInputContext(contextName)
 		end
 
 		setTextColor(1, 1, 1, 1)
-		renderText(posX, posY, 0.012, "Action " .. action.name)
+		renderText(posX, posY, 0.012, "Action " .. action.name .. " (" .. tostring(action) .. ")")
 
 		posY = posY - 0.013
 
@@ -3605,7 +3620,7 @@ function InputBinding:debugRenderInputContext(contextName)
 			renderText(posX + 0.005, posY, 0.012, "E: Active: " .. tostring(event.isActive))
 			renderText(posX + 0.05, posY, 0.012, "Visible: " .. tostring(event.displayIsVisible))
 			renderText(posX + 0.105, posY, 0.012, "Triggered: " .. tostring(event.hasFrameTriggered))
-			renderText(posX + 0.16, posY, 0.012, "Target: " .. tostring(event.targetObject))
+			renderText(posX + 0.16, posY, 0.012, "Target: " .. tostring(event.targetObject) .. " | " .. tostring(event))
 
 			posY = posY - 0.013
 		end

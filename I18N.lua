@@ -64,8 +64,10 @@ function I18N:load()
 	self.decimalSeparator = Utils.getNoNil(self:getText("unit_decimalSymbol"), ".")
 
 	if g_gameSettings ~= nil then
-		self.moneyUnit = g_gameSettings:getValue("moneyUnit")
-		self.useMiles = g_gameSettings:getValue("useMiles")
+		self.moneyUnit = g_gameSettings:getValue(GameSettings.SETTING.MONEY_UNIT)
+		self.useMiles = g_gameSettings:getValue(GameSettings.SETTING.USE_MILES)
+		self.useFahrenheit = g_gameSettings:getValue(GameSettings.SETTING.USE_FAHRENHEIT)
+		self.useAcre = g_gameSettings:getValue(GameSettings.SETTING.USE_ACRE)
 	end
 
 	g_messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.MONEY_UNIT], self.setMoneyUnit, self)
@@ -208,6 +210,14 @@ function I18N:addModI18N(modName)
 
 	function modi18n.hasModText(i18nInstance, name)
 		return i18nInstance.texts[name] ~= nil
+	end
+
+	function modi18n.setGlobalText(i18nInstance, name, value)
+		name = modName .. "." .. name
+
+		if self.texts[name] == nil then
+			self.texts[name] = value
+		end
 	end
 
 	return modi18n
@@ -705,9 +715,7 @@ function I18N:formatDayInPeriod(dayInPeriod, period, useShort)
 	if daysPerPeriod == 1 then
 		return period
 	else
-		local dateEquivalent = 1 + 30 / daysPerPeriod * (dayInPeriod - 1)
-
-		return string.format("%s %d", period, dateEquivalent)
+		return string.format("%s %d", period, dayInPeriod)
 	end
 end
 

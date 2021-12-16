@@ -133,6 +133,7 @@ function FSBaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.connectionWasAccepted = false
 	self.checkRecordingDeviceTimer = 0
 	self.lastRecordingDeviceState = not Platform.isStadia
+	self.lastConstructionScreenOpenTime = -1
 	self.cameraPaths = {}
 	self.cameraPathIsPlaying = false
 	self.cullingWorldXZOffset = 0
@@ -520,7 +521,7 @@ function FSBaseMission:onStartMission()
 		Logging.info("Savegame Setting 'dirtInterval': %d", self.missionInfo.dirtInterval)
 		Logging.info("Savegame Setting 'snowEnabled': %s", self.missionInfo.isSnowEnabled)
 		Logging.info("Savegame Setting 'growthMode': %d", self.missionInfo.growthMode)
-		Logging.info("Savegame Setting 'fuelUsageLow': %s", self.missionInfo.fuelUsageLow)
+		Logging.info("Savegame Setting 'fuelUsage': %d", self.missionInfo.fuelUsage)
 		Logging.info("Savegame Setting 'plowingRequiredEnabled': %s", self.missionInfo.plowingRequiredEnabled)
 		Logging.info("Savegame Setting 'weedsEnabled': %s", self.missionInfo.weedsEnabled)
 		Logging.info("Savegame Setting 'limeRequired': %s", self.missionInfo.limeRequired)
@@ -598,7 +599,6 @@ function FSBaseMission:createPlayer(connection, isOwner, farmId, userId)
 			self.playerInfoStorage:addNewPlayer(uniqueUserId, playerStyle)
 		end
 
-		player:setUIText(nickname)
 		player:setStyleAsync(playerStyle, nil, false)
 	end
 end
@@ -755,7 +755,6 @@ function FSBaseMission:setPlayerNickname(player, nickname, userId, noEventSend)
 			local user = self.userManager:getUserByUserId(player.userId)
 
 			user:setNickname(nickname)
-			player:setUIText(user:getNickname())
 
 			if self.player == player then
 				self.playerNickname = nickname
@@ -774,9 +773,6 @@ function FSBaseMission:setPlayerNickname(player, nickname, userId, noEventSend)
 
 		if user ~= nil then
 			user:setNickname(nickname)
-			player:setUIText(user:getNickname())
-		else
-			player:setUIText(nickname)
 		end
 
 		if self.player == player then
@@ -1062,6 +1058,7 @@ function FSBaseMission:sendInitialClientState(connection, user, farm)
 
 	connection:sendEvent(FarmlandInitialStateEvent.new())
 	connection:sendEvent(GreatDemandsEvent.new(self.economyManager.greatDemands))
+	connection:sendEvent(PricingHistoryInitialEvent.new())
 	self.vehicleSaleSystem:sendAllToClient(connection)
 	self.collectiblesSystem:onClientJoined(connection)
 	self.aiSystem:onClientJoined(connection)
@@ -1672,8 +1669,9 @@ function FSBaseMission:loadMapFinished(node, failedReason, arguments, callAsyncC
 		end
 	end
 
-	if setTrafficSystemVehicleNavigationMap ~= nil and self.trafficSystem ~= nil and self.trafficSystem.trafficSystemId ~= nil and self.aiSystem.navigationMap ~= nil then
+	if self.trafficSystem ~= nil and self.trafficSystem.trafficSystemId ~= nil and self.aiSystem ~= nil and self.aiSystem.navigationMap ~= nil then
 		setTrafficSystemVehicleNavigationMap(self.trafficSystem.trafficSystemId, self.aiSystem.navigationMap)
+		setVehicleNavigationMapTrafficSystem(self.aiSystem.navigationMap, self.trafficSystem.trafficSystemId)
 	end
 
 	if (callAsyncCallback == nil or callAsyncCallback) and asyncCallbackFunction ~= nil then
@@ -2548,6 +2546,7 @@ end
 
 function FSBaseMission:setMissionInfo(missionInfo, missionDynamicInfo)
 	resetSplitShapes()
+	Logging.info("resetSplitShapes()")
 	setUseKinematicSplitShapes(not self:getIsServer())
 
 	if missionInfo.isValid then
@@ -2577,7 +2576,11 @@ function FSBaseMission:setMissionInfo(missionInfo, missionDynamicInfo)
 	end
 
 	if missionInfo:getAreSplitShapesValid(self) then
-		loadSplitShapesFromFile(missionInfo.savegameDirectory .. "/splitShapes.gmss")
+		local splitShapesFilePath = missionInfo.savegameDirectory .. "/splitShapes.gmss"
+
+		if fileExists(splitShapesFilePath) and not loadSplitShapesFromFile(splitShapesFilePath) then
+			Logging.error("Unable to load split shapes from '%s'", splitShapesFilePath)
+		end
 	elseif missionInfo.isValid then
 		Logging.warning("splitshapes are not valid, ignoring splitshapes from savegame")
 	end
@@ -2902,6 +2905,7 @@ function FSBaseMission:setPlowingRequiredEnabled(isEnabled, noEventSend)
 
 		SavegameSettingsEvent.sendEvent(noEventSend)
 		Logging.info("Savegame Setting 'plowingRequiredEnabled': %s", isEnabled)
+		self.inGameMenu:onSoilSettingChanged()
 	end
 end
 
@@ -2911,6 +2915,7 @@ function FSBaseMission:setStonesEnabled(isEnabled, noEventSend)
 
 		SavegameSettingsEvent.sendEvent(noEventSend)
 		Logging.info("Savegame Setting 'stonesEnabled': %s", isEnabled)
+		self.inGameMenu:onSoilSettingChanged()
 	end
 end
 
@@ -2920,6 +2925,7 @@ function FSBaseMission:setLimeRequired(isEnabled, noEventSend)
 
 		SavegameSettingsEvent.sendEvent(noEventSend)
 		Logging.info("Savegame Setting 'limeRequired': %s", isEnabled)
+		self.inGameMenu:onSoilSettingChanged()
 	end
 end
 
@@ -2930,6 +2936,7 @@ function FSBaseMission:setWeedsEnabled(isEnabled, noEventSend)
 		self.growthSystem:onWeedGrowthChanged()
 		SavegameSettingsEvent.sendEvent(noEventSend)
 		Logging.info("Savegame Setting 'weedsEnabled': %s", isEnabled)
+		self.inGameMenu:onSoilSettingChanged()
 	end
 end
 
@@ -2981,12 +2988,12 @@ function FSBaseMission:setDirtInterval(dirtInterval, noEventSend)
 	end
 end
 
-function FSBaseMission:setFuelUsageLow(fuelUsageLow, noEventSend)
-	if fuelUsageLow ~= self.missionInfo.fuelUsageLow then
-		self.missionInfo.fuelUsageLow = fuelUsageLow
+function FSBaseMission:setFuelUsage(fuelUsage, noEventSend)
+	if fuelUsage ~= self.missionInfo.fuelUsage then
+		self.missionInfo.fuelUsage = fuelUsage
 
 		SavegameSettingsEvent.sendEvent(noEventSend)
-		Logging.info("Savegame Setting 'fuelUsageLow': %s", fuelUsageLow)
+		Logging.info("Savegame Setting 'fuelUsage': %d", fuelUsage)
 	end
 end
 
@@ -3170,8 +3177,8 @@ function FSBaseMission:getVehicleName(vehicle)
 	return name
 end
 
-function FSBaseMission:onEnterVehicle(vehicle, playerStyle, farmId)
-	FSBaseMission:superClass().onEnterVehicle(self, vehicle, playerStyle, farmId)
+function FSBaseMission:onEnterVehicle(vehicle, playerStyle, farmId, userId)
+	FSBaseMission:superClass().onEnterVehicle(self, vehicle, playerStyle, farmId, userId)
 
 	if g_soundPlayer ~= nil then
 		if not self:getIsRadioPlaying() then
@@ -3790,7 +3797,7 @@ function FSBaseMission:consoleCommandFillUnitAdd(fillUnitIndex, fillTypeName, am
 	local usage = "Usage: 'gsFillUnitAdd <fillUnitIndex> <fillTypeName> [amount]'"
 	local fillableVehicle = nil
 
-	if self.controlledVehicle.getSelectedObject ~= nil then
+	if self.controlledVehicle ~= nil and self.controlledVehicle.getSelectedObject ~= nil then
 		local selectedObject = self.controlledVehicle:getSelectedObject()
 
 		if selectedObject ~= nil and selectedObject.vehicle.addFillUnitFillLevel ~= nil then
@@ -3798,8 +3805,16 @@ function FSBaseMission:consoleCommandFillUnitAdd(fillUnitIndex, fillTypeName, am
 		end
 	end
 
-	if fillableVehicle == nil and self.controlledVehicle.addFillUnitFillLevel ~= nil then
+	if fillableVehicle == nil and self.controlledVehicle ~= nil and self.controlledVehicle.addFillUnitFillLevel ~= nil then
 		fillableVehicle = self.controlledVehicle
+	end
+
+	if fillableVehicle == nil and self.player ~= nil and self.player.isControlled and self.player.lastFoundAnyObject ~= nil then
+		local object = g_currentMission.nodeToObject[self.player.lastFoundAnyObject]
+
+		if object ~= nil and object:isa(Vehicle) and object.addFillUnitFillLevel ~= nil then
+			fillableVehicle = object
+		end
 	end
 
 	local farmId = self:getFarmId()
@@ -3824,10 +3839,6 @@ function FSBaseMission:consoleCommandFillUnitAdd(fillUnitIndex, fillTypeName, am
 
 	if not self:getIsServer() then
 		return "Error: 'gsFillUnitAdd' can only be called on server side!"
-	end
-
-	if self.controlledVehicle == nil then
-		return "Error: 'gsFillUnitAdd' can only be used from within a controlled vehicle!"
 	end
 
 	fillUnitIndex = tonumber(fillUnitIndex)
@@ -3995,46 +4006,49 @@ function FSBaseMission:consoleCommandAddPallet(palletType)
 	palletType = string.upper(palletType or "")
 	local xmlFilename = pallets[palletType]
 
-	if xmlFilename ~= nil then
-		local x = 0
-		local y = 0
-		local z = 0
-		local dirX = 1
-		local dirZ = 0
-		local _ = nil
-
-		if self.controlPlayer then
-			if self.player ~= nil and self.player.isControlled and self.player.rootNode ~= nil and self.player.rootNode ~= 0 then
-				x, y, z = getWorldTranslation(self.player.rootNode)
-				dirZ = -math.cos(self.player.rotY)
-				dirX = -math.sin(self.player.rotY)
-			end
-		elseif self.controlledVehicle ~= nil then
-			x, y, z = getWorldTranslation(self.controlledVehicle.rootNode)
-			dirX, _, dirZ = localDirectionToWorld(self.controlledVehicle.rootNode, 0, 0, 1)
-		end
-
-		z = z + dirZ * 4
-		x = x + dirX * 4
-		y = y + 1.5
-		local location = {
-			x = x,
-			y = y,
-			z = z
-		}
-
-		local function asyncCallbackFunction(_, vehicle, vehicleLoadState, arguments)
-			if vehicleLoadState == VehicleLoadingUtil.VEHICLE_LOAD_OK then
-				local fillTypeIndex = vehicle:getFillUnitFirstSupportedFillType(1)
-
-				vehicle:addFillUnitFillLevel(1, 1, math.huge, fillTypeIndex, ToolType.UNDEFINED, nil)
-			end
-		end
-
-		VehicleLoadingUtil.loadVehicle(xmlFilename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, 1, nil, nil, asyncCallbackFunction, nil)
-	else
-		return "Invalid pallet type. Valid types are " .. table.concatKeys(pallets, " ")
+	if xmlFilename == nil then
+		return "Error: Invalid pallet type. Valid types are " .. table.concatKeys(pallets, " ")
 	end
+
+	local x = 0
+	local y = 0
+	local z = 0
+	local dirX = 1
+	local dirZ = 0
+	local _ = nil
+
+	if self.controlPlayer then
+		if self.player ~= nil and self.player.isControlled and self.player.rootNode ~= nil and self.player.rootNode ~= 0 then
+			x, y, z = getWorldTranslation(self.player.rootNode)
+			dirZ = -math.cos(self.player.rotY)
+			dirX = -math.sin(self.player.rotY)
+		end
+	elseif self.controlledVehicle ~= nil then
+		x, y, z = getWorldTranslation(self.controlledVehicle.rootNode)
+		dirX, _, dirZ = localDirectionToWorld(self.controlledVehicle.rootNode, 0, 0, 1)
+	end
+
+	z = z + dirZ * 4
+	x = x + dirX * 4
+	y = y + 1.5
+	local location = {
+		x = x,
+		y = y,
+		z = z
+	}
+
+	local function asyncCallbackFunction(_, vehicle, vehicleLoadState, arguments)
+		if vehicleLoadState == VehicleLoadingUtil.VEHICLE_LOAD_OK then
+			local fillTypeIndex = vehicle:getFillUnitFirstSupportedFillType(1)
+
+			vehicle:addFillUnitFillLevel(1, 1, math.huge, fillTypeIndex, ToolType.UNDEFINED, nil)
+		end
+	end
+
+	local farmId = g_currentMission:getFarmId()
+	farmId = farmId ~= FarmManager.SPECTATOR_FARM_ID and farmId or 1
+
+	VehicleLoadingUtil.loadVehicle(xmlFilename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, farmId, nil, nil, asyncCallbackFunction, nil)
 end
 
 function FSBaseMission:consoleActivateCameraPath(cameraPathIndex)
@@ -4194,7 +4208,7 @@ function FSBaseMission:updateGameStatsXML()
 
 			local capacity = self.missionDynamicInfo.capacity or 0
 
-			setXMLString(xmlFile, key .. "#game", "Farming Simulator 20")
+			setXMLString(xmlFile, key .. "#game", "Farming Simulator 22")
 			setXMLString(xmlFile, key .. "#version", g_gameVersionDisplay .. g_gameVersionDisplayExtra)
 			setXMLString(xmlFile, key .. "#name", HTMLUtil.encodeToHTML(gameName))
 			setXMLString(xmlFile, key .. "#mapName", HTMLUtil.encodeToHTML(mapName))
@@ -4461,10 +4475,7 @@ end
 function FSBaseMission:onToggleMap()
 	if not self.isSynchronizingWithPlayers then
 		g_gui:changeScreen(nil, InGameMenu)
-
-		if GS_IS_MOBILE_VERSION then
-			self.inGameMenu:goToPage(self.inGameMenu.pageMapOverview)
-		end
+		self.inGameMenu:goToPage(self.inGameMenu.pageMapOverview)
 	end
 end
 
@@ -4515,7 +4526,7 @@ function FSBaseMission:onToggleRadio()
 end
 
 function FSBaseMission:onChangeTimescale(_, _, indexStep)
-	if (self:getIsServer() or self.isMasterUser) and not g_sleepManager:getIsSleeping() then
+	if (self:getIsServer() or self.isMasterUser) and not g_sleepManager:getIsSleeping() and not g_currentMission.guidedTour:getIsRunning() then
 		local timeScaleIndex = Utils.getTimeScaleIndex(self.missionInfo.timeScale)
 		local newTimeScale = Utils.getTimeScaleFromIndex(timeScaleIndex + indexStep)
 
@@ -4576,6 +4587,8 @@ function FSBaseMission:subscribeMessages()
 	self.messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.RADIO_IS_ACTIVE], self.onRadioIsActiveChanged, self)
 	self.messageCenter:subscribe(MessageType.APP_SUSPENDED, self.onAppSuspended, self)
 	self.messageCenter:subscribe(MessageType.APP_RESUMED, self.onAppResumed, self)
+	self.messageCenter:subscribe(MessageType.MISSION_TOUR_STARTED, self.onGuidedTourStarted, self)
+	self.messageCenter:subscribe(MessageType.MISSION_TOUR_FINISHED, self.onGuidedTourFinished, self)
 end
 
 function FSBaseMission:onAppSuspended()
@@ -4593,6 +4606,22 @@ function FSBaseMission:onAppResumed()
 		g_autoSaveManager:resetTime()
 		g_gui:changeScreen(nil, InGameMenu)
 	end
+end
+
+function FSBaseMission:getCanShowHelpTriggers()
+	if self.guidedTour ~= nil and self.guidedTour.isRunning then
+		return false
+	end
+
+	return FSBaseMission:superClass().getCanShowHelpTriggers(self)
+end
+
+function FSBaseMission:onGuidedTourStarted()
+	self:updateHelpTriggerVisibility()
+end
+
+function FSBaseMission:onGuidedTourFinished()
+	self:updateHelpTriggerVisibility()
 end
 
 function FSBaseMission:notifyPlayerFarmChanged(player)
@@ -4689,4 +4718,44 @@ function FSBaseMission:getDefaultServerName()
 	end
 
 	return name
+end
+
+function FSBaseMission:setLastCreatedLicensePlate(licensePlateData)
+	if licensePlateData.placementIndex ~= LicensePlateManager.PLATE_POSITION.NONE then
+		local copy = {
+			variation = licensePlateData.variation,
+			colorIndex = licensePlateData.colorIndex,
+			placementIndex = licensePlateData.placementIndex,
+			characters = table.copy(licensePlateData.characters),
+			xmlFilename = g_licensePlateManager.xmlFilename
+		}
+		g_gameSettings.lastCreatedLicensePlate = copy
+
+		g_gameSettings:saveToXMLFile(g_savegameXML)
+	end
+end
+
+function FSBaseMission:getLastCreatedLicensePlate()
+	local data = g_gameSettings.lastCreatedLicensePlate
+
+	if data == nil then
+		return nil
+	end
+
+	if data.xmlFilename ~= g_licensePlateManager.xmlFilename then
+		return nil
+	end
+
+	if data.characters ~= nil then
+		local copy = {
+			variation = data.variation,
+			colorIndex = data.colorIndex,
+			placementIndex = data.placementIndex,
+			characters = table.copy(data.characters)
+		}
+
+		return copy
+	end
+
+	return nil
 end

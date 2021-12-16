@@ -109,6 +109,10 @@ function PricingDynamics:getBaseCurveTrend()
 	return PricingDynamics.TREND_CLIMBING
 end
 
+function PricingDynamics:evaluateForTrend(timeDelta)
+	return self.meanValue + self:evaluateCurve(self.baseCurve, timeDelta)
+end
+
 function PricingDynamics:saveToXMLFile(xmlFile, key, usedModNames)
 	xmlFile:setValue(key .. "#priceVersion", PricingDynamics.VERSION)
 	xmlFile:setValue(key .. "#isInPlateau", self.isInPlateau)
@@ -199,8 +203,10 @@ function PricingDynamics:updateCurve(curve, dt)
 	end
 end
 
-function PricingDynamics:evaluateCurve(curve)
-	return curve.amplitude * math.sin(2 * math.pi * curve.time / curve.period)
+function PricingDynamics:evaluateCurve(curve, atTimeDelta)
+	atTimeDelta = atTimeDelta or 0
+
+	return curve.amplitude * math.sin(2 * math.pi * (curve.time + atTimeDelta) / curve.period)
 end
 
 function PricingDynamics:getRandomValue(center, deviation, distribution)

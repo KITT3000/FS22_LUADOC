@@ -8,6 +8,9 @@ TurnOnVehicle = {
 }
 
 function TurnOnVehicle.initSpecialization()
+	Vehicle.registerStateChange("TURN_ON")
+	Vehicle.registerStateChange("TURN_OFF")
+
 	local schema = Vehicle.xmlSchema
 
 	schema:setXMLSpecializationType("TurnOnVehicle")
@@ -294,10 +297,14 @@ function TurnOnVehicle:setIsTurnedOn(isTurnedOn, noEventSend)
 			SpecializationUtil.raiseEvent(self, "onTurnedOn")
 
 			text = string.format(spec.turnOffText, self.typeDesc)
+
+			self.rootVehicle:raiseStateChange(Vehicle.STATE_CHANGE_TURN_ON, self)
 		else
 			SpecializationUtil.raiseEvent(self, "onTurnedOff")
 
 			text = string.format(spec.turnOnText, self.typeDesc)
+
+			self.rootVehicle:raiseStateChange(Vehicle.STATE_CHANGE_TURN_OFF, self)
 		end
 
 		if actionEvent ~= nil then
@@ -708,6 +715,14 @@ end
 
 function TurnOnVehicle:actionControllerTurnOnEvent(direction)
 	if direction > 0 then
+		if self:getIsAIActive() then
+			local rootVehicle = self.rootVehicle
+
+			if rootVehicle.getAIFieldWorkerIsTurning ~= nil and rootVehicle:getAIFieldWorkerIsTurning() then
+				return false
+			end
+		end
+
 		if self:getCanBeTurnedOn() then
 			self:setIsTurnedOn(true)
 

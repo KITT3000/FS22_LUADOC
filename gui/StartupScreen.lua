@@ -25,11 +25,11 @@ function StartupScreen:onOpen()
 	self.eventList = {}
 
 	if not StartParams.getIsSet("skipStartVideos") then
-		self:addStartupVideo("de en cz pl fr es jp ru hu it cs ct nl pt br tr ro kr ea da fi no sv fc", "dataS/videos/GIANTSLogo.ogv", 0.4, false, {
+		self:addStartupVideo("de en cz pl fr es jp ru hu it cs ct nl pt br tr ro kr ea da fi no sv fc", "dataS/videos/GIANTSLogo.ogv", 1, false, {
 			1,
 			0.5625
 		})
-		self:addStartupVideo("de en cz pl fr es jp ru hu it cs ct nl pt br tr ro kr ea da fi no sv fc", "dataS/videos/FS22Teaser.ogv", 0.15, false, {
+		self:addStartupVideo("de en cz pl fr es jp ru hu it cs ct nl pt br tr ro kr ea da fi no sv fc", "dataS/videos/FS22Teaser.ogv", 0.25, false, {
 			1,
 			0.5625
 		})

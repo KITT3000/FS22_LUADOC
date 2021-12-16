@@ -28,6 +28,7 @@ function ConstructionBrushPlaceable.new(subclass_mt, cursor)
 	self.supportsPrimaryButton = true
 	self.supportsPrimaryAxis = true
 	self.primaryAxisIsContinuous = false
+	self.supportsTertiaryButton = true
 	self.supportsSecondaryAxis = false
 	self.secondaryAxisIsContinuous = false
 	self.placeable = nil
@@ -41,6 +42,7 @@ function ConstructionBrushPlaceable.new(subclass_mt, cursor)
 	self.loadingText = g_i18n:getText("ui_construction_loadingItem")
 	self.errorText = nil
 	self.errorEndTime = 0
+	self.freeMode = false
 	self.activeValidationCount = 0
 	self.requiredPermission = Farm.PERMISSION.BUY_PLACEABLE
 
@@ -75,6 +77,10 @@ end
 
 function ConstructionBrushPlaceable:setParameters(filename)
 	self:setPlaceableFilename(filename)
+end
+
+function ConstructionBrushPlaceable:copyState(from)
+	self.freeMode = from.freeMode
 end
 
 function ConstructionBrushPlaceable:update(dt)
@@ -193,7 +199,7 @@ function ConstructionBrushPlaceable:verifyPlacement(x, y, z, rotY)
 		return ConstructionBrushPlaceable.ERROR.CANNOT_BE_PLACED_HERE, placingFailedMessage
 	end
 
-	if self.placeable.getHasOverlap ~= nil then
+	if not self.freeMode and self.placeable.getHasOverlap ~= nil then
 		local hasOverlap, node = self.placeable:getHasOverlap(x, y, z, rotY)
 
 		if hasOverlap then
@@ -225,13 +231,17 @@ function ConstructionBrushPlaceable:verifyPlacement(x, y, z, rotY)
 		end
 	end
 
-	if self.placeable.getRequiresLeveling ~= nil and self.placeable:getRequiresLeveling() and self.activeValidationCount < ConstructionBrushPlaceable.MAX_ACTIVE_VALIDATIONS then
+	if not self.freeMode and self.placeable.getRequiresLeveling ~= nil and self.placeable:getRequiresLeveling() and self.activeValidationCount < ConstructionBrushPlaceable.MAX_ACTIVE_VALIDATIONS then
 		self.terrainValidationPending = true
 		self.activeValidationCount = self.activeValidationCount + 1
 
 		self.placeable:applyDeformation(true, function (...)
 			self:onTerrainValidationFinished(...)
 		end)
+	end
+
+	if self.freeMode then
+		self.displacementCosts = 0
 	end
 
 	return nil
@@ -341,7 +351,7 @@ function ConstructionBrushPlaceable:onButtonPrimary()
 	end
 
 	local displacementCosts = self:getDisplacementCost()
-	local modifyingTerrain = true
+	local modifyingTerrain = not self.freeMode
 	local x, y, z = self.cursor:getPosition()
 	local rotY = self.cursor:getRotation()
 
@@ -359,6 +369,23 @@ function ConstructionBrushPlaceable:onButtonPrimary()
 
 	g_messageCenter:subscribe(BuyPlaceableEvent, self.onPlaceableCreated, self)
 	g_client:getServerConnection():sendEvent(BuyPlaceableEvent.new(self.placeableXMLFilename, x, y, z, 0, rotY, 0, displacementCosts, g_currentMission:getFarmId(), modifyingTerrain, self.colorIndex))
+
+	if self.placeable.playPlaceSound ~= nil then
+		self.placeable:playPlaceSound()
+	end
+end
+
+function ConstructionBrushPlaceable:onButtonTertiary()
+	self.freeMode = not self.freeMode
+
+	self:setInputTextDirty()
+
+	if self.freeMode and not g_gameSettings:getValue(GameSettings.SETTING.SHOWN_FREEMODE_WARNING) then
+		g_gui:showInfoDialog({
+			text = g_i18n:getText("ui_constructionFreeModeWarning")
+		})
+		g_gameSettings:setValue(GameSettings.SETTING.SHOWN_FREEMODE_WARNING, true)
+	end
 end
 
 function ConstructionBrushPlaceable:onAxisPrimary(inputValue)
@@ -411,6 +438,10 @@ end
 
 function ConstructionBrushPlaceable:getButtonPrimaryText()
 	return "$l10n_input_CONSTRUCTION_PLACE"
+end
+
+function ConstructionBrushPlaceable:getButtonTertiaryText()
+	return string.format(g_i18n:getText("input_CONSTRUCTION_FREEMODE"), g_i18n:getText(self.freeMode and "ui_on" or "ui_off"))
 end
 
 function ConstructionBrushPlaceable:getAxisPrimaryText()

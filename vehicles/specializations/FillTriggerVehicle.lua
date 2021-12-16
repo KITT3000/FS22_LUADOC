@@ -20,6 +20,8 @@ end
 function FillTriggerVehicle.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", FillTriggerVehicle)
 	SpecializationUtil.registerEventListener(vehicleType, "onDelete", FillTriggerVehicle)
+	SpecializationUtil.registerEventListener(vehicleType, "onReadStream", FillTriggerVehicle)
+	SpecializationUtil.registerEventListener(vehicleType, "onWriteStream", FillTriggerVehicle)
 end
 
 function FillTriggerVehicle:onLoad(savegame)
@@ -31,8 +33,10 @@ function FillTriggerVehicle:onLoad(savegame)
 		spec.litersPerSecond = self.xmlFile:getValue("vehicle.fillTriggerVehicle#litersPerSecond", 200)
 		spec.fillTrigger = FillTrigger.new(triggerNode, self, spec.fillUnitIndex, spec.litersPerSecond)
 
-		if self:getPropertyState() ~= Vehicle.PROPERTY_STATE_SHOP_CONFIG then
-			spec.fillTrigger:finalize()
+		if self:getPropertyState() ~= Vehicle.PROPERTY_STATE_SHOP_CONFIG and self.isServer then
+			local moneyChangeType = MoneyType.register("other", "finance_purchaseFuel")
+
+			spec.fillTrigger:setMoneyChangeType(moneyChangeType)
 		end
 	end
 end
@@ -44,6 +48,29 @@ function FillTriggerVehicle:onDelete()
 		spec.fillTrigger:delete()
 
 		spec.fillTrigger = nil
+	end
+end
+
+function FillTriggerVehicle:onReadStream(streamId, connection)
+	if connection:getIsServer() then
+		local spec = self.spec_fillTriggerVehicle
+
+		if spec.fillTrigger ~= nil then
+			local moneyTypeId = streamReadUInt16(streamId)
+			local moneyChangeType = MoneyType.registerWithId(moneyTypeId, "other", "finance_purchaseFuel")
+
+			spec.fillTrigger:setMoneyChangeType(moneyChangeType)
+		end
+	end
+end
+
+function FillTriggerVehicle:onWriteStream(streamId, connection)
+	if not connection:getIsServer() then
+		local spec = self.spec_fillTriggerVehicle
+
+		if spec.fillTrigger ~= nil then
+			streamWriteUInt16(streamId, spec.fillTrigger.moneyChangeType.id)
+		end
 	end
 end
 

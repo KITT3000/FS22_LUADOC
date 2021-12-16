@@ -833,12 +833,12 @@ function ControlBarDisplay:setPositionState(state, force)
 
 		local sequence = TweenSequence.new(self)
 
-		sequence:insertTween(MultiValueTween:new(self.setSwitchIconsAlpha, {
+		sequence:insertTween(MultiValueTween.new(self.setSwitchIconsAlpha, {
 			startAlpha
 		}, {
 			endAlpha
 		}, speed / 2), 0)
-		sequence:insertTween(MultiValueTween:new(self.setPosition, {
+		sequence:insertTween(MultiValueTween.new(self.setPosition, {
 			startX,
 			startY
 		}, {

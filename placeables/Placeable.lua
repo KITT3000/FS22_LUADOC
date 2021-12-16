@@ -22,6 +22,7 @@ Placeable.DESTRUCTION = {
 	PER_NODE = 2,
 	SELL = 1
 }
+Placeable.UNDO_DURATION = 900000
 
 g_xmlManager:addCreateSchemaFunction(function ()
 	Placeable.xmlSchema = XMLSchema.new("placeable")
@@ -54,6 +55,7 @@ function Placeable.registerEvents(placeableType)
 	SpecializationUtil.registerEvent(placeableType, "onFarmlandStateChanged")
 	SpecializationUtil.registerEvent(placeableType, "onBuy")
 	SpecializationUtil.registerEvent(placeableType, "onSell")
+	SpecializationUtil.registerEvent(placeableType, "onOwnerChanged")
 end
 
 function Placeable.registerFunctions(placeableType)
@@ -107,7 +109,8 @@ function Placeable.init()
 	local savegameSchema = Placeable.xmlSchemaSavegame
 	local basePathSavegame = "placeables.placeable(?)"
 
-	savegameSchema:register(XMLValueType.BOOL, "placeables#loadAnyFarmInSingleplayer", "Load any farm in singleplayer", false)
+	savegameSchema:register(XMLValueType.BOOL, "placeables#loadAnyFarmInSingleplayer", "Load any farm in singleplayer. Causes any placeable with any farmId to be loaded.", false)
+	savegameSchema:register(XMLValueType.INT, "placeables#version", "Version of map placeables file")
 	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. "#name", "Custom name set by player to be used instead of store item name")
 	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. "#mapBoundId", "Map bound identifier (defines that a placeable is placed on a map directly, and with a unique ID)")
 	savegameSchema:register(XMLValueType.VECTOR_TRANS, basePathSavegame .. "#position", "Position")
@@ -117,8 +120,9 @@ function Placeable.init()
 	savegameSchema:register(XMLValueType.FLOAT, basePathSavegame .. "#price", "Price of placeable")
 	savegameSchema:register(XMLValueType.INT, basePathSavegame .. "#farmId", "Owner farmland", 0)
 	savegameSchema:register(XMLValueType.INT, basePathSavegame .. "#id", "Save id")
-	savegameSchema:register(XMLValueType.BOOL, basePathSavegame .. "#defaultFarmProperty", "Is property of default farm", false)
+	savegameSchema:register(XMLValueType.BOOL, basePathSavegame .. "#defaultFarmProperty", "Is property of default farm. Causes object to be removed on non-starter games.", false)
 	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. "#modName", "Name of mod")
+	savegameSchema:register(XMLValueType.INT, basePathSavegame .. "#sinceVersion", "Version of xml file when this placeable was added. Will cause placeable to appear on older, existing saves")
 
 	for name, spec in pairs(g_placeableSpecializationManager:getSpecializations()) do
 		local classObj = ClassUtil.getClassObject(spec.className)
@@ -155,6 +159,7 @@ function Placeable.new(isServer, isClient, customMt)
 	self.price = 0
 	self.farmlandId = 0
 	self.pickObjects = {}
+	self.undoTimer = 0
 	self.mapBoundId = nil
 	self.synchronizedConnections = {}
 
@@ -331,6 +336,7 @@ function Placeable:onFinishedLoading()
 
 	if self.isServer and self.savegame ~= nil then
 		self.currentSavegameId = self.savegame.xmlFile:getValue(self.savegame.key .. "#id")
+		self.isLoadingFromSavegameXML = true
 
 		for id, spec in pairs(self.specializations) do
 			local name = self.specializationNames[id]
@@ -340,6 +346,7 @@ function Placeable:onFinishedLoading()
 			end
 		end
 
+		self.isLoadingFromSavegameXML = false
 		self.mapBoundId = self.savegame.xmlFile:getValue(self.savegame.key .. "#mapBoundId", self.mapBoundId)
 		self.name = self.savegame.xmlFile:getValue(self.savegame.key .. "#name")
 		self.age = self.savegame.xmlFile:getValue(self.savegame.key .. "#age", 0)
@@ -466,6 +473,7 @@ function Placeable:finalizePlacement()
 	end
 
 	g_messageCenter:subscribe(MessageType.PERIOD_CHANGED, self.periodChanged, self)
+	g_messageCenter:publish(MessageType.FARM_PROPERTY_CHANGED, self:getOwnerFarmId())
 end
 
 function Placeable:delete()
@@ -754,9 +762,7 @@ function Placeable:onBuy()
 end
 
 function Placeable:onSell()
-	g_messageCenter:publish(MessageType.FARM_PROPERTY_CHANGED, {
-		self:getOwnerFarmId()
-	})
+	g_messageCenter:publish(MessageType.FARM_PROPERTY_CHANGED, self:getOwnerFarmId())
 	SpecializationUtil.raiseEvent(self, "onSell")
 end
 
@@ -809,6 +815,9 @@ function Placeable:onFarmlandStateChanged(farmlandId, farmId)
 	end
 end
 
+function Placeable:onOwnerChanged()
+end
+
 function Placeable:setOwnerFarmId(farmId, noEventSend)
 	if self.buysFarmland then
 		g_farmlandManager:setLandOwnership(self.farmlandId, farmId)
@@ -828,12 +837,13 @@ function Placeable:updateOwnership(updateOwner)
 
 	local farmId = g_farmlandManager:getFarmlandOwner(self.farmlandId)
 
-	if not storeItem.canBeSold and farmId == AccessHandler.EVERYONE then
+	if (not storeItem.canBeSold or self.boughtWithFarmland) and farmId == FarmlandManager.NO_OWNER_FARM_ID then
 		farmId = AccessHandler.NOBODY
 	end
 
-	if self.isServer and updateOwner then
+	if self.isServer and updateOwner and self.ownerFarmId ~= farmId then
 		self:setOwnerFarmId(farmId)
+		SpecializationUtil.raiseEvent(self, "onOwnerChanged")
 	end
 
 	g_currentMission:removeOwnedItem(self)
@@ -907,6 +917,10 @@ function Placeable:getDailyUpkeep()
 end
 
 function Placeable:getSellPrice()
+	if self.undoTimer > g_time - Placeable.UNDO_DURATION and g_currentMission.lastConstructionScreenOpenTime < self.undoTimer and g_currentMission.lastConstructionScreenOpenTime > 0 then
+		return self.price, true
+	end
+
 	local priceMultiplier = 0.5
 	local maxAge = self.storeItem.lifetime
 

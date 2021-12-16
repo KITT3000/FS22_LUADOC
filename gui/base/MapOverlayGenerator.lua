@@ -32,7 +32,6 @@ function MapOverlayGenerator.new(l10n, fruitTypeManager, fillTypeManager, farmla
 	self.fillTypeManager = fillTypeManager
 	self.farmlandManager = farmlandManager
 	self.farmManager = farmManager
-	self.weedSystem = weedSystem
 	self.missionFruitTypes = {}
 	self.isColorBlindMode = nil
 	self.foliageStateOverlay = createDensityMapVisualizationOverlay("foliageState", unpack(self:adjustedOverlayResolution(MapOverlayGenerator.OVERLAY_RESOLUTION.FOLIAGE_STATE)))
@@ -115,6 +114,11 @@ function MapOverlayGenerator:setMissionFruitTypes(missionFruitTypes)
 	end
 
 	self.displayCropTypes = self:getDisplayCropTypes()
+	self.displayGrowthStates = self:getDisplayGrowthStates()
+	self.displaySoilStates = self:getDisplaySoilStates()
+end
+
+function MapOverlayGenerator:updateStates()
 	self.displayGrowthStates = self:getDisplayGrowthStates()
 	self.displaySoilStates = self:getDisplaySoilStates()
 end
@@ -208,68 +212,102 @@ function MapOverlayGenerator:buildGrowthStateMapOverlay(growthStateFilter, fruit
 		local cultivatorValue = mission.fieldGroundSystem:getFieldGroundValue(FieldGroundType.CULTIVATED)
 		local color = self.displayGrowthStates[MapOverlayGenerator.GROWTH_STATE_INDEX.CULTIVATED].colors[self.isColorBlindMode][1]
 
-		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, cultivatorValue, color[1], color[2], color[3])
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, 0, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, cultivatorValue, color[1], color[2], color[3])
 	end
 
 	if growthStateFilter[MapOverlayGenerator.GROWTH_STATE_INDEX.PLOWED] then
 		local color = self.displayGrowthStates[MapOverlayGenerator.GROWTH_STATE_INDEX.PLOWED].colors[self.isColorBlindMode][1]
 		local plowValue = mission.fieldGroundSystem:getFieldGroundValue(FieldGroundType.PLOWED)
 
-		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, plowValue, color[1], color[2], color[3])
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, 0, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, plowValue, color[1], color[2], color[3])
 	end
 
 	if growthStateFilter[MapOverlayGenerator.GROWTH_STATE_INDEX.STUBBLE_TILLAGE] then
 		local color = self.displayGrowthStates[MapOverlayGenerator.GROWTH_STATE_INDEX.STUBBLE_TILLAGE].colors[self.isColorBlindMode][1]
 		local stubbleTillageValue = mission.fieldGroundSystem:getFieldGroundValue(FieldGroundType.STUBBLE_TILLAGE)
 
-		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, stubbleTillageValue, color[1], color[2], color[3])
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, 0, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, stubbleTillageValue, color[1], color[2], color[3])
 	end
 
 	if growthStateFilter[MapOverlayGenerator.GROWTH_STATE_INDEX.SEEDBED] then
 		local color = self.displayGrowthStates[MapOverlayGenerator.GROWTH_STATE_INDEX.SEEDBED].colors[self.isColorBlindMode][1]
 		local seedBedValue = mission.fieldGroundSystem:getFieldGroundValue(FieldGroundType.SEEDBED)
 
-		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, seedBedValue, color[1], color[2], color[3])
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, 0, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, seedBedValue, color[1], color[2], color[3])
 
 		local rolledSeedBedValue = mission.fieldGroundSystem:getFieldGroundValue(FieldGroundType.ROLLED_SEEDBED)
 
-		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, rolledSeedBedValue, color[1], color[2], color[3])
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, groundTypeMapId, 0, fieldMask, groundTypeFirstChannel, groundTypeNumChannels, rolledSeedBedValue, color[1], color[2], color[3])
 	end
 end
 
 function MapOverlayGenerator:buildSoilStateMapOverlay(soilStateFilter)
 	local mission = g_currentMission
 	local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
-	local fieldMask = bitShiftLeft(bitShiftLeft(1, groundTypeFirstChannel) - 1, groundTypeNumChannels)
+	local fieldMask = bitShiftLeft(bitShiftLeft(1, groundTypeNumChannels) - 1, groundTypeFirstChannel)
 
-	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.WEEDS] then
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.WEEDS] and g_currentMission.missionInfo.weedsEnabled then
 		local weedSystem = g_currentMission.weedSystem
 
-		if weedSystem:getMapHasWeed() then
-			local weedMapId, weedFirstChannel, weedNumChannels = weedSystem:getDensityMapData()
-			local minDisplayState = 3
-			local maxDisplayState = 6
-			local mapColor, mapColorBlind = self.weedSystem:getColors()
-			local color = self.isColorBlindMode and mapColorBlind or mapColor
+		if weedSystem ~= nil and weedSystem:getMapHasWeed() then
+			local weedMapId, _, _ = weedSystem:getDensityMapData()
+			local mapColor, mapColorBlind = weedSystem:getColors()
+			local colors = self.isColorBlindMode and mapColorBlind or mapColor
 
-			for i = minDisplayState, maxDisplayState do
-				setDensityMapVisualizationOverlayGrowthStateColor(self.foliageStateOverlay, weedMapId, i, color[1], color[2], color[3])
+			for k, data in ipairs(colors) do
+				local stateColor = data.color
+
+				for _, state in ipairs(data.states) do
+					setDensityMapVisualizationOverlayGrowthStateColor(self.foliageStateOverlay, weedMapId, state, stateColor[1], stateColor[2], stateColor[3])
+				end
 			end
 		end
 	end
 
-	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING] then
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.STONES] and g_currentMission.missionInfo.stonesEnabled then
+		local stoneSystem = g_currentMission.stoneSystem
+
+		if stoneSystem ~= nil and stoneSystem:getMapHasStones() then
+			local stoneMapId, _, _ = stoneSystem:getDensityMapData()
+			local mapColor, mapColorBlind = stoneSystem:getColors()
+			local colors = self.isColorBlindMode and mapColorBlind or mapColor
+
+			for k, data in ipairs(colors) do
+				local stateColor = data.color
+
+				for _, state in ipairs(data.states) do
+					setDensityMapVisualizationOverlayGrowthStateColor(self.foliageStateOverlay, stoneMapId, state, stateColor[1], stateColor[2], stateColor[3])
+				end
+			end
+		end
+	end
+
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING] and g_currentMission.missionInfo.plowingRequiredEnabled then
 		local color = self.displaySoilStates[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING].colors[self.isColorBlindMode][1]
 		local mapId, plowLevelFirstChannel, plowLevelNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.PLOW_LEVEL)
 
-		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, mapId, 0, plowLevelFirstChannel, plowLevelNumChannels, 0, color[1], color[2], color[3])
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, mapId, groundTypeMapId, fieldMask, plowLevelFirstChannel, plowLevelNumChannels, 0, color[1], color[2], color[3])
 	end
 
-	if not GS_IS_MOBILE_VERSION and soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_LIME] then
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_ROLLING] then
+		local color = self.displaySoilStates[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_ROLLING].colors[self.isColorBlindMode][1]
+		local mapId, rollerLevelFirstChannel, rollerLevelNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.ROLLER_LEVEL)
+
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, mapId, 0, fieldMask, rollerLevelFirstChannel, rollerLevelNumChannels, 1, color[1], color[2], color[3])
+	end
+
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.MULCHED] then
+		local color = self.displaySoilStates[MapOverlayGenerator.SOIL_STATE_INDEX.MULCHED].colors[self.isColorBlindMode][1]
+		local mapId, mulchFirstChannel, mulchNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.STUBBLE_SHRED)
+
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, mapId, 0, fieldMask, mulchFirstChannel, mulchNumChannels, 1, color[1], color[2], color[3])
+	end
+
+	if not GS_IS_MOBILE_VERSION and soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_LIME] and g_currentMission.missionInfo.limeRequired then
 		local color = self.displaySoilStates[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_LIME].colors[self.isColorBlindMode][1]
 		local mapId, limeLevelFirstChannel, limeLevelNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
 
-		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, mapId, 0, limeLevelFirstChannel, limeLevelNumChannels, 0, color[1], color[2], color[3])
+		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, mapId, groundTypeMapId, fieldMask, limeLevelFirstChannel, limeLevelNumChannels, 0, color[1], color[2], color[3])
 	end
 
 	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.FERTILIZED] then
@@ -280,7 +318,7 @@ function MapOverlayGenerator:buildSoilStateMapOverlay(soilStateFilter)
 		for level = 1, maxSprayLevel do
 			local color = colors[math.min(level, #colors)]
 
-			setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, sprayMapId, 0, sprayLevelFirstChannel, sprayLevelNumChannels, level, color[1], color[2], color[3])
+			setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, sprayMapId, 0, fieldMask, sprayLevelFirstChannel, sprayLevelNumChannels, level, color[1], color[2], color[3])
 		end
 	end
 end
@@ -293,9 +331,9 @@ function MapOverlayGenerator:buildFieldMapOverlay(overlay)
 
 	for i = 1, bitShiftLeft(1, groundTypeNumChannels) - 1 do
 		if i == FieldGroundType.GRASS or i == FieldGroundType.GRASS_CUT then
-			setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, groundTypeFirstChannel, groundTypeNumChannels, i, grassColor[1], grassColor[2], grassColor[3])
+			setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, 0, groundTypeFirstChannel, groundTypeNumChannels, i, grassColor[1], grassColor[2], grassColor[3])
 		else
-			setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, groundTypeFirstChannel, groundTypeNumChannels, i, color[1], color[2], color[3])
+			setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, 0, groundTypeFirstChannel, groundTypeNumChannels, i, color[1], color[2], color[3])
 		end
 	end
 end
@@ -311,7 +349,7 @@ function MapOverlayGenerator:buildFarmlandsMapOverlay(selectedFarmland)
 
 		if ownerFarmId ~= FarmlandManager.NOT_BUYABLE_FARM_ID then
 			if selectedFarmland ~= nil and farmland.id == selectedFarmland.id then
-				setDensityMapVisualizationOverlayStateColor(self.farmlandStateOverlay, map, 0, 0, getBitVectorMapNumChannels(map), k, unpack(MapOverlayGenerator.COLOR.FIELD_SELECTED))
+				setDensityMapVisualizationOverlayStateColor(self.farmlandStateOverlay, map, 0, 0, 0, getBitVectorMapNumChannels(map), k, unpack(MapOverlayGenerator.COLOR.FIELD_SELECTED))
 			else
 				local color = MapOverlayGenerator.COLOR.FIELD_UNOWNED
 
@@ -323,7 +361,7 @@ function MapOverlayGenerator:buildFarmlandsMapOverlay(selectedFarmland)
 					end
 				end
 
-				setDensityMapVisualizationOverlayStateColor(self.farmlandStateOverlay, map, 0, 0, getBitVectorMapNumChannels(map), k, unpack(color))
+				setDensityMapVisualizationOverlayStateColor(self.farmlandStateOverlay, map, 0, 0, 0, getBitVectorMapNumChannels(map), k, unpack(color))
 			end
 		end
 	end
@@ -545,6 +583,7 @@ function MapOverlayGenerator:getDisplaySoilStates()
 
 	local res = {
 		[MapOverlayGenerator.SOIL_STATE_INDEX.FERTILIZED] = {
+			isActive = true,
 			colors = fertilizerColors,
 			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_FERTILIZED)
 		}
@@ -560,11 +599,9 @@ function MapOverlayGenerator:getDisplaySoilStates()
 					MapOverlayGenerator.FRUIT_COLOR_NEEDS_LIME[false]
 				}
 			},
-			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_NEED_LIME)
+			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_NEED_LIME),
+			isActive = g_currentMission.missionInfo.limeRequired
 		}
-	end
-
-	if not GS_IS_MOBILE_VERSION then
 		res[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING] = {
 			colors = {
 				[true] = {
@@ -574,35 +611,76 @@ function MapOverlayGenerator:getDisplaySoilStates()
 					MapOverlayGenerator.FRUIT_COLOR_NEEDS_PLOWING[false]
 				}
 			},
-			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_NEED_PLOWING)
+			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_NEED_PLOWING),
+			isActive = g_currentMission.missionInfo.plowingRequiredEnabled
+		}
+		res[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_ROLLING] = {
+			isActive = true,
+			colors = {
+				[true] = {
+					MapOverlayGenerator.FRUIT_COLOR_NEEDS_ROLLING[true]
+				},
+				[false] = {
+					MapOverlayGenerator.FRUIT_COLOR_NEEDS_ROLLING[false]
+				}
+			},
+			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_NEED_ROLLING)
+		}
+		res[MapOverlayGenerator.SOIL_STATE_INDEX.MULCHED] = {
+			isActive = true,
+			colors = {
+				[true] = {
+					MapOverlayGenerator.FRUIT_COLOR_MULCHED[true]
+				},
+				[false] = {
+					MapOverlayGenerator.FRUIT_COLOR_MULCHED[false]
+				}
+			},
+			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_MULCHED)
 		}
 	end
 
-	if self.weedSystem:getMapHasWeed() then
-		local mapColor, mapColorBlind = self.weedSystem:getColors()
-		local weedBlindColor = mapColorBlind or {
-			0,
-			0,
-			0,
-			0
+	local weedSystem = g_currentMission.weedSystem
+
+	if weedSystem ~= nil and weedSystem:getMapHasWeed() then
+		local mapColor, mapColorBlind = weedSystem:getColors()
+		local description = weedSystem:getTitle() or ""
+		local colors = {
+			[true] = {},
+			[false] = {}
 		}
-		local weedColor = mapColor or {
-			0,
-			0,
-			0,
-			0
-		}
-		local weedDescription = self.weedSystem:getTitle() or ""
+
+		for k, data in ipairs(mapColor) do
+			table.insert(colors[true], mapColorBlind[k].color)
+			table.insert(colors[false], data.color)
+		end
+
 		res[MapOverlayGenerator.SOIL_STATE_INDEX.WEEDS] = {
-			colors = {
-				[true] = {
-					weedBlindColor
-				},
-				[false] = {
-					weedColor
-				}
-			},
-			description = weedDescription
+			colors = colors,
+			description = description,
+			isActive = g_currentMission.missionInfo.weedsEnabled
+		}
+	end
+
+	local stoneSystem = g_currentMission.stoneSystem
+
+	if stoneSystem ~= nil and stoneSystem:getMapHasStones() then
+		local mapColor, mapColorBlind = stoneSystem:getColors()
+		local description = stoneSystem:getTitle() or ""
+		local colors = {
+			[true] = {},
+			[false] = {}
+		}
+
+		for k, data in ipairs(mapColor) do
+			table.insert(colors[true], mapColorBlind[k].color)
+			table.insert(colors[false], data.color)
+		end
+
+		res[MapOverlayGenerator.SOIL_STATE_INDEX.STONES] = {
+			colors = colors,
+			description = description,
+			isActive = g_currentMission.missionInfo.stonesEnabled
 		}
 	end
 
@@ -621,11 +699,27 @@ MapOverlayGenerator.GROWTH_STATE_INDEX = {
 	TOPPING = 8
 }
 MapOverlayGenerator.SOIL_STATE_INDEX = {
-	WEEDS = GS_IS_MOBILE_VERSION and 4 or 1,
-	FERTILIZED = GS_IS_MOBILE_VERSION and 1 or 2,
-	NEEDS_PLOWING = GS_IS_MOBILE_VERSION and 3 or 3,
-	NEEDS_LIME = GS_IS_MOBILE_VERSION and 2 or 4
+	NEEDS_PLOWING = 3,
+	NEEDS_LIME = 4,
+	MULCHED = 6,
+	STONES = 7,
+	FERTILIZED = 2,
+	WEEDS = 1,
+	NEEDS_ROLLING = 5
 }
+
+if GS_IS_MOBILE_VERSION then
+	MapOverlayGenerator.SOIL_STATE_INDEX = {
+		NEEDS_LIME = 2,
+		NEEDS_PLOWING = 3,
+		MULCHED = 5,
+		STONES = 6,
+		FERTILIZED = 1,
+		WEEDS = 7,
+		NEEDS_ROLLING = 4
+	}
+end
+
 MapOverlayGenerator.FRUIT_COLORS_GROWING = {
 	[false] = {
 		{
@@ -838,6 +932,34 @@ MapOverlayGenerator.FRUIT_COLOR_NEEDS_LIME = {
 		1
 	}
 }
+MapOverlayGenerator.FRUIT_COLOR_NEEDS_ROLLING = {
+	[false] = {
+		0.0967,
+		0.3758,
+		0.7084,
+		1
+	},
+	[true] = {
+		0.2918,
+		0.3564,
+		0.7011,
+		1
+	}
+}
+MapOverlayGenerator.FRUIT_COLOR_MULCHED = {
+	[false] = {
+		0.0908,
+		0.0467,
+		0.0865,
+		1
+	},
+	[true] = {
+		0.0469,
+		0.0484,
+		0.0597,
+		1
+	}
+}
 MapOverlayGenerator.FRUIT_COLOR_REMOVE_TOPS = {
 	[false] = {
 		0.7011,
@@ -980,7 +1102,7 @@ MapOverlayGenerator.FARMLANDS_BORDER_THICKNESS = 3
 MapOverlayGenerator.L10N_SYMBOL = {
 	GROWTH_MAP_STUBBLE_TILLAGE = "ui_growthMapStubbleTillage",
 	GROWTH_MAP_WITHERED = "ui_growthMapWithered",
-	GROWTH_MAP_PLOWED = "ui_growthMapPlowed",
+	SOIL_MAP_NEED_ROLLING = "ui_growthMapNeedsRolling",
 	GROWTH_MAP_GROWING = "ui_growthMapGrowing",
 	SOIL_MAP_NEED_PLOWING = "ui_growthMapNeedsPlowing",
 	GROWTH_MAP_SEEDBED = "ui_growthMapSeedbed",
@@ -989,5 +1111,7 @@ MapOverlayGenerator.L10N_SYMBOL = {
 	GROWTH_MAP_TOPPING = "ui_growthMapReadyToPrepareForHarvest",
 	GROWTH_MAP_CULTIVATED = "ui_growthMapCultivated",
 	SOIL_MAP_FERTILIZED = "ui_growthMapFertilized",
-	GROWTH_MAP_HARVEST = "ui_growthMapReadyToHarvest"
+	GROWTH_MAP_PLOWED = "ui_growthMapPlowed",
+	GROWTH_MAP_HARVEST = "ui_growthMapReadyToHarvest",
+	SOIL_MAP_MULCHED = "ui_growthMapMulched"
 }

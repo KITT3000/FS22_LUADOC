@@ -32,11 +32,11 @@ end
 
 function PlaceableGreenhouse.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "loadPlantFromXml", PlaceableGreenhouse.loadPlantFromXml)
+	SpecializationUtil.registerFunction(placeableType, "plantI3DLoadedCallback", PlaceableGreenhouse.plantI3DLoadedCallback)
 	SpecializationUtil.registerFunction(placeableType, "addPlantPlace", PlaceableGreenhouse.addPlantPlace)
 	SpecializationUtil.registerFunction(placeableType, "updatePlantDistribution", PlaceableGreenhouse.updatePlantDistribution)
 	SpecializationUtil.registerFunction(placeableType, "setPlantAtPlace", PlaceableGreenhouse.setPlantAtPlace)
 	SpecializationUtil.registerFunction(placeableType, "updatePlantsStage", PlaceableGreenhouse.updatePlantsStage)
-	SpecializationUtil.registerFunction(placeableType, "setPlantPlaceStage", PlaceableGreenhouse.setPlantPlaceStage)
 end
 
 function PlaceableGreenhouse.registerEventListeners(placeableType)
@@ -45,6 +45,7 @@ function PlaceableGreenhouse.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onFinalizePlacement", PlaceableGreenhouse)
 	SpecializationUtil.registerEventListener(placeableType, "onOutputFillTypesChanged", PlaceableGreenhouse)
 	SpecializationUtil.registerEventListener(placeableType, "onProductionStatusChanged", PlaceableGreenhouse)
+	SpecializationUtil.registerEventListener(placeableType, "onUpdate", PlaceableGreenhouse)
 end
 
 function PlaceableGreenhouse.registerXMLPaths(schema, basePath)
@@ -158,33 +159,51 @@ function PlaceableGreenhouse:loadPlantFromXml(xmlFilename)
 
 		if i3dFilename ~= nil then
 			plant.i3dFilename = Utils.getFilename(i3dFilename, self.baseDirectory)
-			plant.i3dNode, plant.sharedLoadRequestId = g_i3DManager:loadSharedI3DFile(plant.i3dFilename, false, false)
-
-			if plant.i3dNode ~= nil then
-				plantXml:iterate("greenhousePlant.stages.growing", function (index, key)
-					local growingNode = plantXml:getValue(key .. "#node", nil, plant.i3dNode)
-
-					if growingNode ~= nil then
-						local childIndex = getChildIndex(growingNode)
-
-						table.insert(plant.stages.growing, childIndex)
-					end
-				end)
-
-				plant.stages.first = plant.stages.growing[1]
-				plant.stages.last = plant.stages.growing[#plant.stages.growing]
-				local witheredNode = plantXml:getValue("greenhousePlant.stages.withered#node", nil, plant.i3dNode)
-
-				if witheredNode ~= nil then
-					plant.stages.withered = getChildIndex(witheredNode)
-				end
-			end
+			local loadingTask = self:createLoadingTask()
+			plant.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(plant.i3dFilename, false, false, self.plantI3DLoadedCallback, self, {
+				plant,
+				plantXml,
+				loadingTask
+			})
 		end
-
-		plantXml:delete()
 	end
 
 	return plant
+end
+
+function PlaceableGreenhouse:plantI3DLoadedCallback(i3dNode, failedReason, args)
+	local plant, plantXmlFile, loadingTask = unpack(args)
+
+	if i3dNode ~= 0 then
+		local components = {}
+		local i3dMappings = {}
+
+		I3DUtil.loadI3DComponents(i3dNode, components)
+		I3DUtil.loadI3DMapping(plantXmlFile, i3dNode, components, i3dMappings)
+
+		plant.i3dNode = i3dNode
+
+		plantXmlFile:iterate("greenhousePlant.stages.growing", function (index, key)
+			local growingNode = plantXmlFile:getValue(key .. "#node", nil, i3dNode)
+
+			if growingNode ~= nil then
+				local childIndex = getChildIndex(growingNode)
+
+				table.insert(plant.stages.growing, childIndex)
+			end
+		end)
+
+		plant.stages.first = plant.stages.growing[1]
+		plant.stages.last = plant.stages.growing[#plant.stages.growing]
+		local witheredNode = plantXmlFile:getValue("greenhousePlant.stages.withered#node", nil, plant.i3dNode)
+
+		if witheredNode ~= nil then
+			plant.stages.withered = getChildIndex(witheredNode)
+		end
+	end
+
+	plantXmlFile:delete()
+	self:finishLoadingTask(loadingTask)
 end
 
 function PlaceableGreenhouse:onDelete()
@@ -217,8 +236,15 @@ function PlaceableGreenhouse:onDelete()
 end
 
 function PlaceableGreenhouse:onFinalizePlacement()
-	self:updatePlantDistribution()
+	self.plantDistributionDirty = true
+
 	self.spec_greenhouse.wateringTimer:start()
+end
+
+function PlaceableGreenhouse:onUpdate()
+	if self.plantDistributionDirty then
+		self:updatePlantDistribution()
+	end
 end
 
 function PlaceableGreenhouse:onOutputFillTypesChanged(outputs, state)
@@ -237,8 +263,10 @@ function PlaceableGreenhouse:onOutputFillTypesChanged(outputs, state)
 	end
 
 	if self:getIsSynchronized() then
-		self:updatePlantDistribution()
+		self.plantDistributionDirty = true
 	end
+
+	self:raiseActive()
 end
 
 function PlaceableGreenhouse:onProductionStatusChanged(production, status)
@@ -270,6 +298,8 @@ function PlaceableGreenhouse:updatePlantDistribution()
 
 		self:setPlantAtPlace(fillType, plantPlace)
 	end
+
+	self.plantDistributionDirty = false
 
 	self:updatePlantsStage()
 end
@@ -335,16 +365,14 @@ function PlaceableGreenhouse:updatePlantsStage()
 			end
 		end
 
-		self:setPlantPlaceStage(plantPlace, newStage)
+		if plantPlace.stage ~= newStage then
+			for n = 0, getNumOfChildren(plantPlace.node) - 1 do
+				local plantStage = getChildAt(plantPlace.node, n)
+
+				setVisibility(plantStage, n == newStage)
+			end
+
+			plantPlace.stage = newStage
+		end
 	end
-end
-
-function PlaceableGreenhouse:setPlantPlaceStage(plantPlace, stage)
-	for n = 0, getNumOfChildren(plantPlace.node) - 1 do
-		local plantStage = getChildAt(plantPlace.node, n)
-
-		setVisibility(plantStage, n == stage)
-	end
-
-	plantPlace.stage = stage
 end

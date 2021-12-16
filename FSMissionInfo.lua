@@ -18,7 +18,7 @@ function FSMissionInfo:loadDefaults()
 	self.stonesEnabled = true
 	self.weedsEnabled = true
 	self.limeRequired = true
-	self.fuelUsageLow = false
+	self.fuelUsage = 2
 	self.helperBuyFuel = false
 	self.helperBuySeeds = false
 	self.helperBuyFertilizer = false
@@ -37,6 +37,8 @@ function FSMissionInfo:loadDefaults()
 	self.sownHectares = 0
 	self.sprayedHectares = 0
 	self.threshedHectares = 0
+	self.harvestedGrapes = 0
+	self.harvestedOlives = 0
 	self.revenue = 0
 	self.expenses = 0
 	self.playTime = 0

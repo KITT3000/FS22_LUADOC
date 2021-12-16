@@ -8,6 +8,7 @@ SettingsModel.SETTING_CLASS = {
 }
 SettingsModel.SETTING = {
 	RESOLUTION = "resolution",
+	TERRAIN_LOD_DISTANCE = "terrainLODDistance",
 	TEXTURE_RESOLUTION = "textureResolution",
 	SHADOW_MAP_FILTERING = "shadowMapFiltering",
 	V_SYNC = "vSync",
@@ -28,7 +29,6 @@ SettingsModel.SETTING = {
 	MAX_TIRE_TRACKS = "maxTireTracks",
 	FIDELITYFX_SR = "fidelityFxSR",
 	LOD_DISTANCE = "lodDistance",
-	TERRAIN_LOD_DISTANCE = "terrainLODDistance",
 	FOLIAGE_DRAW_DISTANCE = "foliageDrawDistance",
 	POST_PROCESS_AA = "postProcessAntiAliasing",
 	TERRAIN_QUALITY = "terrainQuality",
@@ -68,6 +68,7 @@ SettingsModel.SETTING = {
 	SHOW_HELP_ICONS = GameSettings.SETTING.SHOW_HELP_ICONS,
 	USE_COLORBLIND_MODE = GameSettings.SETTING.USE_COLORBLIND_MODE,
 	SHOW_TRIGGER_MARKER = GameSettings.SETTING.SHOW_TRIGGER_MARKER,
+	SHOW_HELP_TRIGGER = GameSettings.SETTING.SHOW_HELP_TRIGGER,
 	SHOW_FIELD_INFO = GameSettings.SETTING.SHOW_FIELD_INFO,
 	USE_MILES = GameSettings.SETTING.USE_MILES,
 	USE_FAHRENHEIT = GameSettings.SETTING.USE_FAHRENHEIT,
@@ -272,6 +273,7 @@ function SettingsModel:addManagedSettings()
 	self:addDirectSetting(SettingsModel.SETTING.INVERT_Y_LOOK)
 	self:addDirectSetting(SettingsModel.SETTING.USE_MILES)
 	self:addDirectSetting(SettingsModel.SETTING.SHOW_TRIGGER_MARKER)
+	self:addDirectSetting(SettingsModel.SETTING.SHOW_HELP_TRIGGER)
 	self:addDirectSetting(SettingsModel.SETTING.SHOW_HELP_ICONS)
 	self:addDirectSetting(SettingsModel.SETTING.CAMERA_BOBBING, true)
 end

@@ -263,9 +263,9 @@ function RidgeMarker:processRidgeMarkerArea(workArea, dt)
 		local angle = FSDensityMapUtil.convertToDensityMapAngle(MathUtil.getYRotationFromDirection(dx, dz), mission.fieldGroundSystem:getGroundAngleMaxValue())
 
 		if densityType == FieldGroundType.PLOWED then
-			FSDensityMapUtil.updateCultivatorArea(x, z, x1, z1, x2, z2, false, true, angle, nil)
+			FSDensityMapUtil.updateCultivatorArea(x, z, x1, z1, x2, z2, false, true, angle, nil, nil, true)
 		else
-			FSDensityMapUtil.updatePlowArea(x, z, x1, z1, x2, z2, false, true, angle, false)
+			FSDensityMapUtil.updatePlowArea(x, z, x1, z1, x2, z2, false, true, angle, false, true)
 		end
 
 		FSDensityMapUtil.eraseTireTrack(x, z, x1, z1, x2, z2)

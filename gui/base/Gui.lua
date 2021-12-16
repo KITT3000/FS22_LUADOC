@@ -378,10 +378,6 @@ function Gui:getIsOverlayGuiVisible()
 	return false
 end
 
-function Gui:getActionEventIds(actionName)
-	return self.actionEventIds[actionName]
-end
-
 function Gui:showGui(guiName)
 	if guiName == nil then
 		guiName = ""
@@ -920,6 +916,20 @@ function Gui:showYesNoDialog(args)
 	end
 end
 
+function Gui:showLeaseYesNoDialog(args)
+	local dialog = self:showDialog("LeaseYesNoDialog")
+
+	if dialog ~= nil and args ~= nil then
+		dialog.target:setText(args.text)
+		dialog.target:setTitle(args.title)
+		dialog.target:setPrices(args.costsBase, args.initialCosts, args.costsPerOperatingHour, args.costsPerDay)
+		dialog.target:setDialogType(Utils.getNoNil(args.dialogType, DialogElement.TYPE_QUESTION))
+		dialog.target:setCallback(args.callback, args.target, args.args)
+		dialog.target:setButtonTexts(args.yesText, args.noText)
+		dialog.target:setButtonSounds(args.yesSound, args.noSound)
+	end
+end
+
 function Gui:showOptionDialog(args)
 	local dialog = self:showDialog("OptionDialog")
 
@@ -1089,6 +1099,14 @@ function Gui:showGameRateDialog(args)
 
 	if dialog ~= nil and args ~= nil then
 		dialog.target:setCallback(args.callback, args.target, args.args)
+	end
+end
+
+function Gui:showModHubScreenshotDialog(args)
+	local dialog = self:showDialog("ModHubScreenshotDialog")
+
+	if dialog ~= nil and args ~= nil then
+		dialog.target:setModInfo(args.modInfo)
 	end
 end
 

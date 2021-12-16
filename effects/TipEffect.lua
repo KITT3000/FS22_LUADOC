@@ -89,6 +89,22 @@ function TipEffect:setDistance(distance)
 	end
 end
 
+function TipEffect:getIsVisible()
+	if self.activeEffect ~= nil and self.activeEffect.getIsVisible ~= nil then
+		return self.activeEffect:getIsVisible()
+	end
+
+	return false
+end
+
+function TipEffect:getIsFullyVisible()
+	if self.activeEffect ~= nil and self.activeEffect.getIsFullyVisible ~= nil then
+		return self.activeEffect:getIsFullyVisible()
+	end
+
+	return false
+end
+
 function TipEffect.registerEffectXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".effectNode(?)#effectClass", "Effect class", "ShaderPlaneEffect")
 	Effect.registerEffectXMLPaths(schema, basePath .. ".effectNode(?)")

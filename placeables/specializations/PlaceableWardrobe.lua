@@ -34,7 +34,7 @@ function PlaceableWardrobe:onLoad(savegame)
 		addTrigger(spec.wardrobeTrigger, "wardrobeTriggerCallback", self)
 	end
 
-	spec.allowAllFarms = self.xmlFile:getValue("placeable.wardrobe#allowAllFarms", self:getOwnerFarmId() == AccessHandler.EVERYONE)
+	spec.allowAllFarms = self.xmlFile:getValue("placeable.wardrobe#allowAllFarms", false)
 end
 
 function PlaceableWardrobe:onDelete()

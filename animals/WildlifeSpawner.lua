@@ -474,7 +474,7 @@ function WildlifeSpawner:spawnAnimals(species, spawnPosX, spawnPosY, spawnPosZ)
 	local id = nil
 
 	if species.classType == "companionAnimal" then
-		id = createAnimalCompanionManager(species.name, xmlFilename, "wildlifeAnimal", spawnPosX, spawnPosY, spawnPosZ, g_currentMission.terrainRootNode, g_currentMission:getIsServer(), g_currentMission:getIsClient(), nbAnimals)
+		id = createAnimalCompanionManager(species.name, xmlFilename, "wildlifeAnimal", spawnPosX, spawnPosY, spawnPosZ, g_currentMission.terrainRootNode, g_currentMission:getIsServer(), g_currentMission:getIsClient(), nbAnimals, AudioGroup.ENVIRONMENT)
 
 		setCompanionAvoidPlayer(id, self.playerNode, self.avoidDistance)
 

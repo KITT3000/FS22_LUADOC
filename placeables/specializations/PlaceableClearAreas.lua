@@ -81,6 +81,7 @@ function PlaceableClearAreas:onPostFinalizePlacement()
 
 			FSDensityMapUtil.removeFieldArea(x, z, x1, z1, x2, z2, false)
 			FSDensityMapUtil.removeWeedArea(x, z, x1, z1, x2, z2)
+			FSDensityMapUtil.removeStoneArea(x, z, x1, z1, x2, z2)
 			FSDensityMapUtil.eraseTireTrack(x, z, x1, z1, x2, z2)
 			FSDensityMapUtil.clearDecoArea(x, z, x1, z1, x2, z2)
 			DensityMapHeightUtil.clearArea(x, z, x1, z1, x2, z2)

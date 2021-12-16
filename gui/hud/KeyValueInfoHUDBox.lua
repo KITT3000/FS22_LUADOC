@@ -34,6 +34,7 @@ function KeyValueInfoHUDBox:draw(posX, posY)
 	y = y + self.listMarginHeight
 	leftX = leftX + self.leftTextOffsetX + self.listMarginWidth
 	rightX = rightX - self.rightTextOffsetX - self.listMarginWidth
+	local textAreaX = self.boxWidth - self.leftTextOffsetX - self.listMarginWidth - self.rightTextOffsetX - self.listMarginWidth
 
 	for i = #self.activeLines, 1, -1 do
 		local line = self.activeLines[i]
@@ -41,14 +42,20 @@ function KeyValueInfoHUDBox:draw(posX, posY)
 		setTextBold(true)
 
 		if line.accentuate then
-			setTextColor(unpack(KeyValueInfoHUDBox.COLOR.TEXT_HIGHLIGHT))
+			setTextColor(unpack(line.accentuateColor or KeyValueInfoHUDBox.COLOR.TEXT_HIGHLIGHT))
 		end
 
 		setTextAlignment(RenderText.ALIGN_LEFT)
 		renderText(leftX, y + self.leftTextOffsetY, self.rowTextSize, line.key)
-		setTextBold(false)
 		setTextAlignment(RenderText.ALIGN_RIGHT)
-		renderText(rightX, y + self.rightTextOffsetY, self.rowTextSize, line.value)
+
+		local maxWidth = textAreaX - 0.025 * self.boxWidth - getTextWidth(self.rowTextSize, line.key)
+
+		setTextBold(false)
+
+		local text = Utils.limitTextToWidth(line.value, self.rowTextSize, maxWidth, false, "...")
+
+		renderText(rightX, y + self.rightTextOffsetY, self.rowTextSize, text)
 
 		if line.accentuate then
 			setTextColor(unpack(KeyValueInfoHUDBox.COLOR.TEXT_DEFAULT))
@@ -108,7 +115,7 @@ function KeyValueInfoHUDBox:textSizeToFit(baseSize, text, maxWidth, minSize)
 	return size
 end
 
-function KeyValueInfoHUDBox:addLine(key, value, accentuate)
+function KeyValueInfoHUDBox:addLine(key, value, accentuate, accentuateColor)
 	local line = nil
 	local cached = self.cachedLines
 	local numCached = #cached
@@ -123,6 +130,7 @@ function KeyValueInfoHUDBox:addLine(key, value, accentuate)
 	line.key = key
 	line.value = value or ""
 	line.accentuate = accentuate
+	line.accentuateColor = accentuateColor
 	self.activeLines[#self.activeLines + 1] = line
 end
 

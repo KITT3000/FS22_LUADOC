@@ -314,9 +314,9 @@ function AmbientSoundSystem:addMovingSound(node)
 			local startNode = getChildAt(modifierNode, 0)
 			local endNode = getChildAt(modifierNode, 1)
 			local sx, sy, sz = getWorldTranslation(startNode)
-			local _, _, _, startTime = getLocalClosestSplinePosition(spline, 0.5, 1, sx, sy, sz, eps)
+			local _, _, _, startTime = getClosestSplinePosition(spline, sx, sy, sz, eps)
 			local ex, ey, ez = getWorldTranslation(endNode)
-			local _, _, _, endTime = getLocalClosestSplinePosition(spline, 0.5, 1, ex, ey, ez, eps)
+			local _, _, _, endTime = getClosestSplinePosition(spline, ex, ey, ez, eps)
 
 			if endTime < startTime then
 				endTime = startTime
@@ -411,9 +411,9 @@ function AmbientSoundSystem:registerModifier(xmlAttributeName, loadFromXMLFunc)
 
 	for _, modifier in ipairs(self.modifiers) do
 		if modifier.xmlAttributeName == xmlAttributeName then
-			Logging.error("Given ambient sound modifier xml attribute name '%s' already used", xmlAttributeName)
+			Logging.warning("Given ambient sound modifier xml attribute name '%s' already used", xmlAttributeName)
 
-			return false
+			return modifier.updateFunc
 		end
 	end
 
@@ -470,7 +470,7 @@ function AmbientSoundSystem:update(dt)
 	local x, y, z = getWorldTranslation(getCamera())
 
 	for _, movingSound in ipairs(self.movingSounds) do
-		local sx, sy, sz, t = getLocalClosestSplinePosition(movingSound.spline, 0.5, 1, x, y, z, movingSound.eps)
+		local sx, sy, sz, t = getClosestSplinePosition(movingSound.spline, x, y, z, movingSound.eps)
 
 		setWorldTranslation(movingSound.node, sx, sy, sz)
 

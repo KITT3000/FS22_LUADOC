@@ -69,7 +69,7 @@ function Motorized.initSpecialization()
 	schema:register(XMLValueType.STRING, "vehicle.motorized#statsType", "Statistic type", "tractor")
 	schema:register(XMLValueType.BOOL, "vehicle.motorized#forceSpeedHudDisplay", "Force usage of vehicle speed display in hud independent of setting", false)
 	schema:register(XMLValueType.BOOL, "vehicle.motorized#forceRpmHudDisplay", "Force usage of motor speed display in hud independent of setting", false)
-	Dashboard.registerDashboardXMLPaths(schema, "vehicle.motorized.dashboards", "rpm | load | speed | speedDir | fuelUsage | motorTemperature | motorTemperatureWarning | clutchPedal | gear | gearGroup | movingDirection | ignitionState")
+	Dashboard.registerDashboardXMLPaths(schema, "vehicle.motorized.dashboards", "rpm | load | speed | speedDir | fuelUsage | motorTemperature | motorTemperatureWarning | clutchPedal | gear | gearGroup | movingDirection | movingDirectionLetter | ignitionState")
 	Dashboard.registerDashboardWarningXMLPaths(schema, "vehicle.motorized.dashboards")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.motorized.animationNodes")
 	schema:register(XMLValueType.BOOL, Dashboard.GROUP_XML_KEY .. "#isMotorStarting", "Is motor starting")
@@ -111,16 +111,19 @@ function Motorized.registerMotorXMLPaths(schema, baseKey)
 	schema:register(XMLValueType.BOOL, baseKey .. ".transmission.forwardGear(?)#defaultGear", "Gear ratio")
 	schema:register(XMLValueType.STRING, baseKey .. ".transmission.forwardGear(?)#name", "Gear name to display")
 	schema:register(XMLValueType.STRING, baseKey .. ".transmission.forwardGear(?)#reverseName", "Gear name to display (if reverse direction is active)")
+	schema:register(XMLValueType.STRING, baseKey .. ".transmission.forwardGear(?)#actionName", "Input Action to select this gear", "SHIFT_GEAR_SELECT_X")
 	schema:register(XMLValueType.FLOAT, baseKey .. ".transmission.backwardGear(?)#gearRatio", "Gear ratio")
 	schema:register(XMLValueType.FLOAT, baseKey .. ".transmission.backwardGear(?)#maxSpeed", "Gear ratio")
 	schema:register(XMLValueType.BOOL, baseKey .. ".transmission.backwardGear(?)#defaultGear", "Gear ratio")
 	schema:register(XMLValueType.STRING, baseKey .. ".transmission.backwardGear(?)#name", "Gear name to display")
 	schema:register(XMLValueType.STRING, baseKey .. ".transmission.backwardGear(?)#reverseName", "Gear name to display (if reverse direction is active)")
+	schema:register(XMLValueType.STRING, baseKey .. ".transmission.backwardGear(?)#actionName", "Input Action to select this gear", "SHIFT_GEAR_SELECT_X")
 	schema:register(XMLValueType.STRING, baseKey .. ".transmission.groups#type", "Type of groups (powershift/default)", "default")
 	schema:register(XMLValueType.TIME, baseKey .. ".transmission.groups#changeTime", "Change time if default type", 0.5)
 	schema:register(XMLValueType.FLOAT, baseKey .. ".transmission.groups.group(?)#ratio", "Ratio while stage active")
 	schema:register(XMLValueType.BOOL, baseKey .. ".transmission.groups.group(?)#isDefault", "Is default stage", false)
 	schema:register(XMLValueType.STRING, baseKey .. ".transmission.groups.group(?)#name", "Gear name to display")
+	schema:register(XMLValueType.STRING, baseKey .. ".transmission.groups.group(?)#actionName", "Input Action to select this group", "SHIFT_GROUP_SELECT_X")
 	schema:register(XMLValueType.BOOL, baseKey .. ".transmission.directionChange#useGroup", "Use group as reverse change", false)
 	schema:register(XMLValueType.INT, baseKey .. ".transmission.directionChange#reverseGroupIndex", "Group will be activated while direction is changed", 1)
 	schema:register(XMLValueType.BOOL, baseKey .. ".transmission.directionChange#useGear", "Use gear as reverse change", false)
@@ -129,6 +132,7 @@ function Motorized.registerMotorXMLPaths(schema, baseKey)
 	schema:register(XMLValueType.BOOL, baseKey .. ".transmission.manualShift#gears", "Defines if gears can be shifted manually", true)
 	schema:register(XMLValueType.BOOL, baseKey .. ".transmission.manualShift#groups", "Defines if groups can be shifted manually", true)
 	schema:register(XMLValueType.L10N_STRING, baseKey .. ".transmission#name", "Name of transmission to display in the shop")
+	schema:register(XMLValueType.STRING, baseKey .. ".transmission#param", "Parameter to insert in transmission name")
 	schema:register(XMLValueType.FLOAT, baseKey .. ".motorStartDuration", "Motor start duration", "Duration motor takes to start. After this time player can start to drive")
 end
 
@@ -262,6 +266,7 @@ function Motorized.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onGearChanged", Motorized)
 	SpecializationUtil.registerEventListener(vehicleType, "onGearGroupChanged", Motorized)
 	SpecializationUtil.registerEventListener(vehicleType, "onClutchCreaking", Motorized)
+	SpecializationUtil.registerEventListener(vehicleType, "onReverseDirectionChanged", Motorized)
 	SpecializationUtil.registerEventListener(vehicleType, "onVehicleSettingChanged", Motorized)
 	SpecializationUtil.registerEventListener(vehicleType, "onAIJobStarted", Motorized)
 	SpecializationUtil.registerEventListener(vehicleType, "onAIJobFinished", Motorized)
@@ -512,11 +517,25 @@ function Motorized:onLoad(savegame)
 			valueObject = spec.motor
 		})
 		self:loadDashboardsFromXML(self.xmlFile, "vehicle.motorized.dashboards", {
+			valueTypeToLoad = "movingDirectionLetter",
+			valueObject = spec.motor,
+			valueFunc = function (motor)
+				return motor:getDrivingDirection() == 1 and "F" or motor:getDrivingDirection() == -1 and "R" or "N"
+			end
+		})
+		self:loadDashboardsFromXML(self.xmlFile, "vehicle.motorized.dashboards", {
 			maxFunc = 2,
 			minFunc = 0,
 			valueTypeToLoad = "ignitionState",
 			valueObject = self,
 			valueFunc = Motorized.getMotorIgnitionState
+		})
+		self:loadDashboardsFromXML(self.xmlFile, "vehicle.motorized.dashboards", {
+			maxFunc = 15,
+			minFunc = 0,
+			valueTypeToLoad = "battery",
+			valueObject = self,
+			valueFunc = 12 + math.random() * 0.5 - 0.15
 		})
 	end
 
@@ -1286,8 +1305,20 @@ function Motorized:loadGears(xmlFile, gearName, key, motorMaxRpm, axleRatio, dir
 				ratio = gearRatio * axleRatio,
 				default = xmlFile:getValue(gearKey .. "#defaultGear", false),
 				name = xmlFile:getValue(gearKey .. "#name", tostring((gearI + 1) * direction)),
-				reverseName = xmlFile:getValue(gearKey .. "#reverseName", tostring((gearI + 1) * direction * -1))
+				reverseName = xmlFile:getValue(gearKey .. "#reverseName", tostring((gearI + 1) * direction * -1)),
+				actionName = xmlFile:getValue(gearKey .. "#actionName")
 			}
+
+			if (gearI < 8 or gearEntry.actionName ~= nil) and gearEntry.actionName ~= "-" then
+				gearEntry.actionName = gearEntry.actionName or string.format("SHIFT_GEAR_SELECT_%d", gearI + 1)
+				gearEntry.inputAction = InputAction[gearEntry.actionName]
+
+				if gearEntry.inputAction == nil then
+					Logging.xmlWarning(xmlFile, "Invalid actionName '%s' found for gear '%s'", gearEntry.actionName, gearKey)
+
+					gearEntry.inputAction = InputAction[string.format("SHIFT_GEAR_SELECT_%d", gearI + 1)]
+				end
+			end
 
 			table.insert(gears, gearEntry)
 		end
@@ -1317,8 +1348,20 @@ function Motorized:loadGearGroups(xmlFile, key, motorMaxRpm, axleRatio)
 			local groupEntry = {
 				ratio = 1 / ratio,
 				isDefault = xmlFile:getValue(groupKey .. "#isDefault", false),
-				name = xmlFile:getValue(groupKey .. "#name", tostring(i + 1))
+				name = xmlFile:getValue(groupKey .. "#name", tostring(i + 1)),
+				actionName = xmlFile:getValue(groupKey .. "#actionName")
 			}
+
+			if (i < 4 or groupEntry.actionName ~= nil) and groupEntry.actionName ~= "-" then
+				groupEntry.actionName = groupEntry.actionName or string.format("SHIFT_GROUP_SELECT_%d", i + 1)
+				groupEntry.inputAction = InputAction[groupEntry.actionName]
+
+				if groupEntry.inputAction == nil then
+					Logging.xmlWarning(xmlFile, "Invalid actionName '%s' found for gear group '%s'", groupEntry.actionName, groupKey)
+
+					groupEntry.inputAction = InputAction[string.format("SHIFT_GROUP_SELECT_%d", i + 1)]
+				end
+			end
 
 			table.insert(groups, groupEntry)
 		end
@@ -1719,10 +1762,12 @@ function Motorized:updateConsumers(dt, accInput)
 	local rpmFactor = idleFactor + rpmPercentage * (1 - idleFactor)
 	local loadFactor = math.max(spec.smoothedLoadPercentage * rpmPercentage, 0)
 	local motorFactor = 0.5 * (0.2 * rpmFactor + 1.8 * loadFactor)
-	local usageFactor = 1
+	local usageFactor = 1.5
 
-	if g_currentMission.missionInfo.fuelUsageLow then
-		usageFactor = 0.7
+	if g_currentMission.missionInfo.fuelUsage == 1 then
+		usageFactor = 1
+	elseif g_currentMission.missionInfo.fuelUsage == 3 then
+		usageFactor = 2.5
 	end
 
 	local damage = self:getVehicleDamage()
@@ -1901,6 +1946,12 @@ function Motorized:onClutchCreaking(isEvent, groupTransmission, gearIndex, group
 	end
 
 	spec.clutchCrackingTimeOut = g_time + (isEvent and 750 or 100)
+end
+
+function Motorized:onReverseDirectionChanged()
+	if self:getDirectionChangeMode() == VehicleMotor.DIRECTION_CHANGE_MODE_MANUAL then
+		MotorGearShiftEvent.sendEvent(self, MotorGearShiftEvent.TYPE_DIRECTION_CHANGE)
+	end
 end
 
 function Motorized:onVehicleSettingChanged(gameSettingId, state)
@@ -2180,35 +2231,35 @@ function Motorized:onRegisterActionEvents(isActiveForInput, isActiveForInputIgno
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_1, self, Motorized.actionEventSelectGear, true, true, true, true, 1)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_1, self, Motorized.actionEventSelectGear, true, true, false, true, 1)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_2, self, Motorized.actionEventSelectGear, true, true, true, true, 2)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_2, self, Motorized.actionEventSelectGear, true, true, false, true, 2)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_3, self, Motorized.actionEventSelectGear, true, true, true, true, 3)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_3, self, Motorized.actionEventSelectGear, true, true, false, true, 3)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_4, self, Motorized.actionEventSelectGear, true, true, true, true, 4)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_4, self, Motorized.actionEventSelectGear, true, true, false, true, 4)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_5, self, Motorized.actionEventSelectGear, true, true, true, true, 5)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_5, self, Motorized.actionEventSelectGear, true, true, false, true, 5)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_6, self, Motorized.actionEventSelectGear, true, true, true, true, 6)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_6, self, Motorized.actionEventSelectGear, true, true, false, true, 6)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_7, self, Motorized.actionEventSelectGear, true, true, true, true, 7)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_7, self, Motorized.actionEventSelectGear, true, true, false, true, 7)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_8, self, Motorized.actionEventSelectGear, true, true, true, true, 8)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GEAR_SELECT_8, self, Motorized.actionEventSelectGear, true, true, false, true, 8)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 				end
@@ -2222,19 +2273,19 @@ function Motorized:onRegisterActionEvents(isActiveForInput, isActiveForInputIgno
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_1, self, Motorized.actionEventSelectGroup, true, true, true, true, 1)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_1, self, Motorized.actionEventSelectGroup, true, true, false, true, 1)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_2, self, Motorized.actionEventSelectGroup, true, true, true, true, 2)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_2, self, Motorized.actionEventSelectGroup, true, true, false, true, 2)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_3, self, Motorized.actionEventSelectGroup, true, true, true, true, 3)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_3, self, Motorized.actionEventSelectGroup, true, true, false, true, 3)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
-					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_4, self, Motorized.actionEventSelectGroup, true, true, true, true, 4)
+					_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.SHIFT_GROUP_SELECT_4, self, Motorized.actionEventSelectGroup, true, true, false, true, 4)
 
 					g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 				end
@@ -2272,7 +2323,22 @@ function Motorized:actionEventShiftGear(actionName, inputValue, callbackState, i
 end
 
 function Motorized:actionEventSelectGear(actionName, inputValue, callbackState, isAnalog)
-	MotorGearShiftEvent.sendEvent(self, MotorGearShiftEvent.TYPE_SELECT_GEAR, inputValue == 1 and callbackState or 0)
+	local spec = self.spec_motorized
+	local gears = spec.motor.currentGears
+
+	if gears ~= nil then
+		for i = 1, #gears do
+			local gear = gears[i]
+
+			if gear.inputAction == InputAction[actionName] then
+				MotorGearShiftEvent.sendEvent(self, MotorGearShiftEvent.TYPE_SELECT_GEAR, inputValue == 1 and i or 0)
+
+				return
+			end
+		end
+	end
+
+	return MotorGearShiftEvent.sendEvent(self, MotorGearShiftEvent.TYPE_SELECT_GEAR, inputValue == 1 and callbackState or 0)
 end
 
 function Motorized:actionEventShiftGroup(actionName, inputValue, callbackState, isAnalog)
@@ -2284,7 +2350,22 @@ function Motorized:actionEventShiftGroup(actionName, inputValue, callbackState, 
 end
 
 function Motorized:actionEventSelectGroup(actionName, inputValue, callbackState, isAnalog)
-	MotorGearShiftEvent.sendEvent(self, MotorGearShiftEvent.TYPE_SELECT_GROUP, inputValue == 1 and callbackState or 0)
+	local spec = self.spec_motorized
+	local groups = spec.motor.gearGroups
+
+	if groups ~= nil then
+		for i = 1, #groups do
+			local group = groups[i]
+
+			if group.inputAction == InputAction[actionName] then
+				MotorGearShiftEvent.sendEvent(self, MotorGearShiftEvent.TYPE_SELECT_GROUP, inputValue == 1 and i or 0)
+
+				return
+			end
+		end
+	end
+
+	return MotorGearShiftEvent.sendEvent(self, MotorGearShiftEvent.TYPE_SELECT_GROUP, inputValue == 1 and callbackState or 0)
 end
 
 function Motorized:actionEventDirectionChange(actionName, inputValue, callbackState, isAnalog)
@@ -2651,7 +2732,7 @@ function Motorized.getStoreAdditionalConfigData(xmlFile, baseXMLName, baseDir, c
 	configItem.consumerConfigurationIndex = xmlFile:getValue(baseXMLName .. "#consumerConfigurationIndex")
 end
 
-function Motorized.loadSpecValueFuel(xmlFile, customEnvironment)
+function Motorized.loadSpecValueFuel(xmlFile, customEnvironment, baseDir)
 	local rootName = xmlFile:getRootName()
 	local fillUnits = {}
 	local i = 0
@@ -2837,7 +2918,7 @@ function Motorized.getSpecValueFuel(storeItem, realItem, configurations, fillTyp
 	return nil
 end
 
-function Motorized.loadSpecValueMaxSpeed(xmlFile, customEnvironment)
+function Motorized.loadSpecValueMaxSpeed(xmlFile, customEnvironment, baseDir)
 	local motorKey = nil
 
 	if xmlFile:hasProperty("vehicle.motorized.motorConfigurations.motorConfiguration(0)") then
@@ -2889,7 +2970,7 @@ function Motorized.getSpecValueMaxSpeed(storeItem, realItem)
 	return nil
 end
 
-function Motorized.loadSpecValuePower(xmlFile, customEnvironment)
+function Motorized.loadSpecValuePower(xmlFile, customEnvironment, baseDir)
 	return xmlFile:getValue("vehicle.storeData.specs.power")
 end
 
@@ -2931,7 +3012,7 @@ function Motorized.getSpecValuePower(storeItem, realItem, configurations, saleIt
 	return nil
 end
 
-function Motorized.loadSpecValuePowerConfig(xmlFile, customEnvironment)
+function Motorized.loadSpecValuePowerConfig(xmlFile, customEnvironment, baseDir)
 	local powerValues = {}
 	local isValid = false
 
@@ -3016,11 +3097,17 @@ function Motorized.getSpecValuePowerConfig(storeItem, realItem, configurations, 
 	return nil
 end
 
-function Motorized.loadSpecValueTransmission(xmlFile, customEnvironment)
+function Motorized.loadSpecValueTransmission(xmlFile, customEnvironment, baseDir)
 	local nameByConfigIndex = {}
 
 	xmlFile:iterate("vehicle.motorized.motorConfigurations.motorConfiguration", function (index, key)
 		nameByConfigIndex[index] = xmlFile:getValue(key .. ".transmission#name", nil, customEnvironment, false)
+		local param = xmlFile:getValue(key .. ".transmission#param")
+
+		if param ~= nil then
+			param = g_i18n:convertText(param, customEnvironment)
+			nameByConfigIndex[index] = string.format(nameByConfigIndex[index], param)
+		end
 	end)
 
 	return nameByConfigIndex

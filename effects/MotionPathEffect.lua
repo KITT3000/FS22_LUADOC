@@ -29,16 +29,22 @@ function MotionPathEffect.new(customMt)
 end
 
 function MotionPathEffect:delete()
-	if self.currentEffectNode ~= nil and self.currentEffectNode ~= 0 then
+	if self.currentEffectNode ~= nil then
 		delete(self.currentEffectNode)
 
 		self.currentEffectNode = nil
 	end
 
-	if self.texture ~= nil and self.texture ~= 0 then
+	if self.texture ~= nil then
 		delete(self.texture)
 
 		self.texture = nil
+	end
+
+	if self.densityMask ~= nil then
+		delete(self.densityMask)
+
+		self.densityMask = nil
 	end
 
 	MotionPathEffect:superClass().delete(self)
@@ -73,7 +79,9 @@ function MotionPathEffect:loadEffectAttributes(xmlFile, key, node, i3dNode, i3dM
 		self.textureFilename = Utils.getFilename(self.textureFilename, self.baseDirectory)
 		self.texture = createMaterialTextureFromFile(self.textureFilename, true, false)
 
-		if self.texture == nil then
+		if self.texture == 0 then
+			self.texture = nil
+
 			return false
 		end
 	end
@@ -101,6 +109,10 @@ function MotionPathEffect:loadEffectAttributes(xmlFile, key, node, i3dNode, i3dM
 	if self.densityMaskFilename ~= nil then
 		self.densityMaskFilename = Utils.getFilename(self.densityMaskFilename, self.baseDirectory)
 		self.densityMask = createMaterialTextureFromFile(self.densityMaskFilename, true, false)
+
+		if self.densityMask == 0 then
+			self.densityMask = nil
+		end
 	end
 
 	self.speedReferenceAnimation = xmlFile:getValue(key .. ".motionPathEffect#speedReferenceAnimation")

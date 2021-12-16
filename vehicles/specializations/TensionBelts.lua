@@ -638,9 +638,15 @@ function TensionBelts:freeTensionBeltObject(objectId, objectsToJointTable, isDyn
 				removeJoint(jointData.jointIndex)
 				delete(jointData.jointTransform)
 
-				if object ~= nil and object.setReducedComponentMass ~= nil then
-					object:setReducedComponentMass(false)
-					self:setMassDirty()
+				if object ~= nil then
+					if object.setReducedComponentMass ~= nil then
+						object:setReducedComponentMass(false)
+						self:setMassDirty()
+					end
+
+					if object.setCanBeSold ~= nil then
+						object:setCanBeSold(true)
+					end
 				end
 			end
 		else
@@ -703,9 +709,15 @@ function TensionBelts:lockTensionBeltObject(objectId, objectsToJointTable, isDyn
 
 				local jointIndex = constr:finalize()
 
-				if object ~= nil and object.setReducedComponentMass ~= nil then
-					object:setReducedComponentMass(true)
-					self:setMassDirty()
+				if object ~= nil then
+					if object.setReducedComponentMass ~= nil then
+						object:setReducedComponentMass(true)
+						self:setMassDirty()
+					end
+
+					if object.setCanBeSold ~= nil then
+						object:setCanBeSold(false)
+					end
 				end
 
 				objectsToJointTable[objectId] = {
@@ -1105,7 +1117,7 @@ function TensionBelts:objectOverlapCallback(transformId)
 		local spec = self.spec_tensionBelts
 		local object = g_currentMission:getNodeObject(transformId)
 
-		if object ~= nil and object ~= self then
+		if object ~= nil and object ~= self and object.rootVehicle ~= self.rootVehicle then
 			if object.getSupportsTensionBelts ~= nil and object:getSupportsTensionBelts() and object.getMeshNodes ~= nil and object.dynamicMountObject == nil then
 				local nodeId = object:getTensionBeltNodeId()
 

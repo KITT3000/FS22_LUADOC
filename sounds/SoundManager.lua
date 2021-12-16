@@ -145,7 +145,11 @@ function SoundManager:cloneSample(sample, linkNode, modifierTargetObject)
 
 		newSample.linkNode = linkNode
 
-		setTranslation(newSample.soundNode, 0, 0, 0)
+		if newSample.linkNodeOffset == nil then
+			setTranslation(newSample.soundNode, 0, 0, 0)
+		else
+			setTranslation(newSample.soundNode, newSample.linkNodeOffset[1], newSample.linkNodeOffset[2], newSample.linkNodeOffset[3])
+		end
 	end
 
 	setSampleGroup(newSample.soundSample, sample.audioGroup)
@@ -249,7 +253,7 @@ function SoundManager:validateSampleDefinition(xmlFile, baseKey, sampleName, bas
 		local xmlFileObject = g_xmlManager:getFileByHandle(xmlFile)
 
 		if xmlFileObject ~= nil then
-			XMLUtil.checkDeprecatedXMLElements(g_xmlManager:getFileByHandle(xmlFile), baseKey .. "#externalSoundFile", "vehicle.base.sounds#filename")
+			XMLUtil.checkDeprecatedXMLElements(xmlFileObject, baseKey .. "#externalSoundFile", "vehicle.base.sounds#filename")
 		end
 
 		if actualXMLFile ~= nil then
@@ -448,7 +452,12 @@ function SoundManager:onCreateAudioSource(sample, ignoreReverb)
 
 	setAudioSourceAutoPlay(sample.soundNode, false)
 	link(sample.linkNode, sample.soundNode)
-	setTranslation(sample.soundNode, 0, 0, 0)
+
+	if sample.linkNodeOffset == nil then
+		setTranslation(sample.soundNode, 0, 0, 0)
+	else
+		setTranslation(sample.soundNode, sample.linkNodeOffset[1], sample.linkNodeOffset[2], sample.linkNodeOffset[3])
+	end
 end
 
 function SoundManager:createAudio2d(sample, filename)
@@ -521,11 +530,13 @@ function SoundManager:loadSampleAttributesFromXML(sample, xmlFile, key, baseDir,
 		return false
 	end
 
+	sample.linkNodeOffset = Utils.getNoNil(getXMLString(xmlFile, key .. "#linkNodeOffset"), "0 0 0"):getVectorN(3)
 	sample.innerRadius = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. "#innerRadius"), sample.innerRadius), 5)
 	sample.outerRadius = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. "#outerRadius"), sample.outerRadius), 80)
 	sample.volumeScale = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. "#volumeScale"), sample.volumeScale), 1)
 	sample.pitchScale = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. "#pitchScale"), sample.pitchScale), 1)
 	sample.lowpassGainScale = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. "#lowpassGainScale"), sample.lowpassGainScale), 1)
+	sample.loopSynthesisRPMRatio = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. "#loopSynthesisRPMRatio"), sample.loopSynthesisRPMRatio), 1)
 	sample.indoorAttributes = Utils.getNoNil(sample.indoorAttributes, {})
 	sample.indoorAttributes.volume = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. ".volume#indoor"), sample.indoorAttributes.volume), 0.8)
 	sample.indoorAttributes.pitch = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. ".pitch#indoor"), sample.indoorAttributes.pitch), 1)
@@ -540,6 +551,7 @@ function SoundManager:loadSampleAttributesFromXML(sample, xmlFile, key, baseDir,
 	sample.outdoorAttributes.lowpassResonance = Utils.getNoNil(Utils.getNoNil(getXMLFloat(xmlFile, key .. ".lowpassResonance#outdoor"), sample.outdoorAttributes.lowpassResonance), 0)
 	sample.loops = Utils.getNoNil(Utils.getNoNil(getXMLInt(xmlFile, key .. "#loops"), sample.loops), Utils.getNoNil(defaultLoops, 1))
 	sample.supportsReverb = Utils.getNoNil(Utils.getNoNil(getXMLBool(xmlFile, key .. "#supportsReverb"), sample.supportsReverb), true)
+	sample.isLocalSound = Utils.getNoNil(Utils.getNoNil(getXMLBool(xmlFile, key .. "#isLocalSound"), sample.isLocalSound), false)
 	sample.debug = Utils.getNoNil(Utils.getNoNil(getXMLBool(xmlFile, key .. "#debug"), sample.debug), false)
 
 	if sample.debug or SoundManager.GLOBAL_DEBUG_ENABLED then
@@ -637,10 +649,18 @@ function SoundManager:loadRandomizationsFromXML(sample, xmlFile, key, baseDir)
 		}
 
 		if randomization.isInside then
+			if randomization.minVolume ~= nil and sample.indoorAttributes.volume + randomization.minVolume <= 0 then
+				Logging.xmlWarning(xmlFile, "Invalid sample '%s' randomization found in %s. randomization#minVolume can result in negative volume (indoor)", sample.templateName or sample.sampleName, baseKey)
+			end
+
 			table.insert(sample.randomizationsIn, randomization)
 		end
 
 		if randomization.isOutside then
+			if randomization.minVolume ~= nil and sample.outdoorAttributes.volume + randomization.minVolume <= 0 then
+				Logging.xmlWarning(xmlFile, "Invalid sample '%s' randomization found in %s. randomization#minVolume can result in negative volume (outdoor)", sample.templateName or sample.sampleName, baseKey)
+			end
+
 			table.insert(sample.randomizationsOut, randomization)
 		end
 
@@ -981,7 +1001,7 @@ function SoundManager:deleteSamples(samples, delay, afterSample)
 end
 
 function SoundManager:playSample(sample, delay, afterSample)
-	if sample ~= nil then
+	if sample ~= nil and (not sample.isLocalSound or sample.modifierTargetObject == nil or sample.isLocalSound and sample.modifierTargetObject.isActiveForLocalSound) then
 		self:updateSampleRandomizations(sample)
 		self:updateSampleModifiers(sample)
 		self:updateSampleAttributes(sample, true)
@@ -1059,6 +1079,10 @@ end
 function SoundManager:setSampleLoopSynthesisParameters(sample, rpm, loadFactor)
 	if sample ~= nil then
 		if rpm ~= nil then
+			if sample.loopSynthesisRPMRatio ~= 1 then
+				rpm = math.max(math.min(rpm / sample.loopSynthesisRPMRatio, 1), 0)
+			end
+
 			setSampleLoopSynthesisRPM(sample.soundSample, rpm, true)
 		end
 
@@ -1197,6 +1221,7 @@ function SoundManager.registerSampleXMLPaths(schema, basePath, name)
 	local soundPath = basePath .. "." .. name
 
 	schema:register(XMLValueType.NODE_INDEX, soundPath .. "#linkNode", "Link node for 3d sound")
+	schema:register(XMLValueType.VECTOR_TRANS, soundPath .. "#linkNodeOffset", "Sound source will be offset by this value to the link node")
 	schema:register(XMLValueType.STRING, soundPath .. "#template", "Sound template name")
 	schema:register(XMLValueType.STRING, soundPath .. "#parent", "Parent sample for heredity")
 	schema:register(XMLValueType.STRING, soundPath .. "#file", "Path to sound sample")
@@ -1204,6 +1229,7 @@ function SoundManager.registerSampleXMLPaths(schema, basePath, name)
 	schema:register(XMLValueType.FLOAT, soundPath .. "#innerRadius", "Inner radius", 80)
 	schema:register(XMLValueType.INT, soundPath .. "#loops", "Number of loops (0 = infinite)", 1)
 	schema:register(XMLValueType.BOOL, soundPath .. "#supportsReverb", "Flag to disable reverb", true)
+	schema:register(XMLValueType.BOOL, soundPath .. "#isLocalSound", "While set for vehicle sounds it will only play for the player currently using the vehicle", false)
 	schema:register(XMLValueType.BOOL, soundPath .. "#debug", "Flag to enable debug rendering", false)
 	schema:register(XMLValueType.FLOAT, soundPath .. "#fadeIn", "Fade in time in seconds", 0)
 	schema:register(XMLValueType.FLOAT, soundPath .. "#fadeOut", "Fade out time in seconds", 0)
@@ -1220,6 +1246,7 @@ function SoundManager.registerSampleXMLPaths(schema, basePath, name)
 	schema:register(XMLValueType.FLOAT, soundPath .. "#volumeScale", "Additional scale that is applied on the volume attributes", 1)
 	schema:register(XMLValueType.FLOAT, soundPath .. "#pitchScale", "Additional pitch that is applied on the volume attributes", 1)
 	schema:register(XMLValueType.FLOAT, soundPath .. "#lowpassGainScale", "Additional lowpass gain that is applied on the volume attributes", 1)
+	schema:register(XMLValueType.FLOAT, soundPath .. "#loopSynthesisRPMRatio", "Ratio between rpm in the gls file and actual rpm of the motor (e.g. 0.9: max. rpm in the gls file will be reached at 90% of motor rpm)", 1)
 	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".volume")
 	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".pitch")
 	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".lowpassGain")

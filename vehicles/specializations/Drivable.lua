@@ -804,9 +804,6 @@ function Drivable:getIsVehicleControlledByPlayer()
 	return true
 end
 
-function Drivable:onCameraChanged(camera, camIndex)
-end
-
 function Drivable:stopMotor(noEventSend)
 	self:setCruiseControlState(Drivable.CRUISECONTROL_STATE_OFF, true)
 end

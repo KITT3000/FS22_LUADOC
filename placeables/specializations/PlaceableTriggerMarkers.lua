@@ -6,11 +6,14 @@ PlaceableTriggerMarkers = {
 		SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceableTriggerMarkers)
 		SpecializationUtil.registerEventListener(placeableType, "onDelete", PlaceableTriggerMarkers)
 		SpecializationUtil.registerEventListener(placeableType, "onFinalizePlacement", PlaceableTriggerMarkers)
+		SpecializationUtil.registerEventListener(placeableType, "onOwnerChanged", PlaceableTriggerMarkers)
 	end
 }
 
 function PlaceableTriggerMarkers.registerFunctions(placeableType)
+	SpecializationUtil.registerFunction(placeableType, "onPlayerFarmChanged", PlaceableTriggerMarkers.onPlayerFarmChanged)
 	SpecializationUtil.registerFunction(placeableType, "onMarkerFileLoaded", PlaceableTriggerMarkers.onMarkerFileLoaded)
+	SpecializationUtil.registerFunction(placeableType, "setShowMarkers", PlaceableTriggerMarkers.setShowMarkers)
 end
 
 function PlaceableTriggerMarkers.registerXMLPaths(schema, basePath)
@@ -154,6 +157,9 @@ function PlaceableTriggerMarkers:onDelete()
 			g_currentMission:removeTriggerMarker(marker.node)
 		end
 	end
+
+	g_messageCenter:unsubscribe(MessageType.PLAYER_FARM_CHANGED, self)
+	g_messageCenter:unsubscribe(MessageType.PLAYER_CREATED, self)
 end
 
 function PlaceableTriggerMarkers:onFinalizePlacement()
@@ -166,7 +172,29 @@ function PlaceableTriggerMarkers:onFinalizePlacement()
 
 			setWorldTranslation(marker.node, x, y, z)
 		end
+	end
 
-		g_currentMission:addTriggerMarker(marker.node)
+	self:setShowMarkers(g_currentMission.accessHandler:canPlayerAccess(self))
+	g_messageCenter:subscribe(MessageType.PLAYER_FARM_CHANGED, self.onPlayerFarmChanged, self)
+	g_messageCenter:subscribe(MessageType.PLAYER_CREATED, self.onPlayerFarmChanged, self)
+end
+
+function PlaceableTriggerMarkers:onOwnerChanged()
+	self:setShowMarkers(g_currentMission.accessHandler:canPlayerAccess(self))
+end
+
+function PlaceableTriggerMarkers:onPlayerFarmChanged()
+	self:setShowMarkers(g_currentMission.accessHandler:canPlayerAccess(self))
+end
+
+function PlaceableTriggerMarkers:setShowMarkers(doShow)
+	local spec = self.spec_triggerMarkers
+
+	for _, marker in ipairs(spec.triggerMarkers) do
+		if doShow then
+			g_currentMission:addTriggerMarker(marker.node)
+		else
+			g_currentMission:removeTriggerMarker(marker.node)
+		end
 	end
 end

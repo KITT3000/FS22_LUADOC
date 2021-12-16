@@ -125,7 +125,7 @@ function TreePlantManager:loadTreeTypes(xmlFile, missionInfo, baseDirectory, isB
 end
 
 function TreePlantManager:registerTreeType(name, nameI18N, treeFilenames, growthTimeHours, isBaseType)
-	local name = string.upper(name)
+	name = string.upper(name)
 
 	if isBaseType and self.nameToTreeType[name] ~= nil then
 		print("Warning: TreeType '" .. tostring(name) .. "' already exists. Ignoring treeType!")
@@ -313,7 +313,7 @@ function TreePlantManager:updateTrees(dt, dtGame)
 		self:cleanupDeletedTrees()
 
 		local time = treesData.updateDtGame
-		local dtHours = time / 3600000
+		local dtHours = time / 3600000 * g_currentMission.environment.timeAdjustment
 		treesData.updateDtGame = 0
 		local numGrowingTrees = #treesData.growingTrees
 		local i = 1

@@ -69,7 +69,17 @@ function LicensePlateDialog:setLicensePlateData(licensePlateData)
 
 	self:updateColorButton()
 
-	self.currentPlacementIndex = licensePlateData.placementIndex or g_licensePlateManager:getDefaultPlacementIndex()
+	self.currentPlacementIndex = licensePlateData.placementIndex or licensePlateData.defaultPlacementIndex or g_licensePlateManager:getDefaultPlacementIndex()
+
+	if licensePlateData.hasFrontPlate ~= false then
+		self:updatePlacementOptions()
+	else
+		self:updatePlacementOptions(LicensePlateManager.PLACEMENT_OPTION.BOTH)
+
+		if self.currentPlacementIndex == LicensePlateManager.PLACEMENT_OPTION.BOTH then
+			self.currentPlacementIndex = LicensePlateManager.PLACEMENT_OPTION.BACK_ONLY
+		end
+	end
 
 	for i = 1, #self.textToPlacementIndex do
 		if self.textToPlacementIndex[i] == self.currentPlacementIndex then
@@ -324,17 +334,25 @@ function LicensePlateDialog:updateLicensePlateGraphics()
 end
 
 function LicensePlateDialog:onCreatePlacementOption(element)
+	self.placementOption = element
+
+	self:updatePlacementOptions()
+end
+
+function LicensePlateDialog:updatePlacementOptions(excluded)
 	self.textToPlacementIndex = {}
 	local texts = {}
 
-	for _, index in pairs(LicensePlateManager.PLACEMENT_OPTION) do
-		table.insert(texts, g_i18n:getText(LicensePlateManager.PLACEMENT_OPTION_TEXT[index]))
+	for index, text in pairs(LicensePlateManager.PLACEMENT_OPTION_TEXT) do
+		if index ~= excluded then
+			table.insert(texts, g_i18n:getText(text))
 
-		self.textToPlacementIndex[#texts] = index
+			self.textToPlacementIndex[#texts] = index
+		end
 	end
 
-	element:setTexts(texts)
-	element:setState(1)
+	self.placementOption:setTexts(texts)
+	self.placementOption:setState(1)
 end
 
 function LicensePlateDialog:onClickBack()

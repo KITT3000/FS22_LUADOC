@@ -81,10 +81,10 @@ function HookLiftTrailer:onLoad(savegame)
 	spec.unloadingAnimationSpeed = self.xmlFile:getValue("vehicle.hookLiftTrailer.unloadingAnimation#speed", 1)
 	spec.unloadingAnimationReverseSpeed = self.xmlFile:getValue("vehicle.hookLiftTrailer.unloadingAnimation#reverseSpeed", -1)
 	spec.texts = {
-		unloadContainer = self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#unloadContainer", "unload_container"),
-		loadContainer = self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#loadContainer", "load_container"),
-		unloadArm = self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#unloadArm", "unload_arm"),
-		loadArm = self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#loadArm", "load_arm")
+		unloadContainer = g_i18n:getText(self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#unloadContainer", "unload_container"), self.customEnvironment),
+		loadContainer = g_i18n:getText(self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#loadContainer", "load_container"), self.customEnvironment),
+		unloadArm = g_i18n:getText(self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#unloadArm", "unload_arm"), self.customEnvironment),
+		loadArm = g_i18n:getText(self.xmlFile:getValue("vehicle.hookLiftTrailer.texts#loadArm", "load_arm"), self.customEnvironment)
 	}
 end
 

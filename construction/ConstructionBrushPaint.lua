@@ -1,5 +1,13 @@
 ConstructionBrushPaint = {}
 local ConstructionBrushPaint_mt = Class(ConstructionBrushPaint, ConstructionBrush)
+ConstructionBrushPaint.CURSOR_SIZES = {
+	0.5,
+	1,
+	2,
+	4,
+	8,
+	16
+}
 
 function ConstructionBrushPaint.new(subclass_mt, cursor)
 	local self = ConstructionBrushPaint:superClass().new(subclass_mt or ConstructionBrushPaint_mt, cursor)
@@ -9,6 +17,7 @@ function ConstructionBrushPaint.new(subclass_mt, cursor)
 	self.supportsPrimaryAxis = true
 	self.primaryAxisIsContinuous = false
 	self.supportsTertiaryButton = true
+	self.maxBrushRadius = ConstructionBrushPaint.CURSOR_SIZES[#ConstructionBrushPaint.CURSOR_SIZES] / 2
 
 	return self
 end
@@ -60,8 +69,8 @@ function ConstructionBrushPaint:setParameters(groundTypeName)
 end
 
 function ConstructionBrushPaint:setBrushSize(index)
-	self.cursorSizeIndex = MathUtil.clamp(index, 1, #ConstructionBrush.CURSOR_SIZES)
-	local size = ConstructionBrush.CURSOR_SIZES[self.cursorSizeIndex]
+	self.cursorSizeIndex = MathUtil.clamp(index, 1, #ConstructionBrushPaint.CURSOR_SIZES)
+	local size = ConstructionBrushPaint.CURSOR_SIZES[self.cursorSizeIndex]
 	self.brushRadius = size / 2
 
 	self.cursor:setShapeSize(size)
@@ -102,6 +111,8 @@ function ConstructionBrushPaint:onSculptingFinished(isValidation, errorCode, dis
 end
 
 function ConstructionBrushPaint:onButtonPrimary(isDown, isDrag, isUp)
+	self:setActiveSound(ConstructionSound.ID.NONE)
+
 	if isUp then
 		self.lastX = nil
 
@@ -114,8 +125,14 @@ function ConstructionBrushPaint:onButtonPrimary(isDown, isDrag, isUp)
 		return
 	end
 
-	local currentRadius = self.brushRadius
 	local validateOnly = false
+	local err = self:verifyAccess(x, y, z)
+
+	if err ~= nil then
+		return
+	end
+
+	self:setActiveSound(ConstructionSound.ID.PAINT, 1 - self.brushRadius / self.maxBrushRadius)
 
 	if self.lastX ~= nil then
 		local dx = x - self.lastX
@@ -129,13 +146,7 @@ function ConstructionBrushPaint:onButtonPrimary(isDown, isDrag, isUp)
 
 	self.lastZ = z
 	self.lastX = x
-	local err = self:verifyAccess(x, y, z)
-
-	if err ~= nil then
-		return
-	end
-
-	local requestLandscaping = LandscapingSculptEvent.new(validateOnly, Landscaping.OPERATION.PAINT, x, y, z, nil, nil, nil, nil, nil, nil, currentRadius, 1, self.brushShape, Landscaping.TERRAIN_UNIT, self.terrainLayer)
+	local requestLandscaping = LandscapingSculptEvent.new(validateOnly, Landscaping.OPERATION.PAINT, x, y, z, nil, nil, nil, nil, nil, nil, self.brushRadius, 1, self.brushShape, Landscaping.TERRAIN_UNIT, self.terrainLayer)
 
 	g_client:getServerConnection():sendEvent(requestLandscaping)
 end

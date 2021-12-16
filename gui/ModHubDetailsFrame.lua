@@ -90,6 +90,13 @@ function ModHubDetailsFrame:initialize()
 			self:onButtonVote()
 		end
 	}
+	self.screenshotsButtonInfo = {
+		inputAction = InputAction.MENU_EXTRA_1,
+		text = self.l10n:getText(ModHubDetailsFrame.L10N_SYMBOL.BUTTON_SCREENSHOTS),
+		callback = function ()
+			self:onButtonScreenshots()
+		end
+	}
 end
 
 function ModHubDetailsFrame:onFrameOpen()
@@ -135,6 +142,10 @@ function ModHubDetailsFrame:getMenuButtonInfo()
 		table.insert(buttons, self.uninstallButtonInfo)
 	end
 
+	if not modInfo:getIsExternal() then
+		table.insert(buttons, self.screenshotsButtonInfo)
+	end
+
 	return buttons
 end
 
@@ -176,13 +187,13 @@ function ModHubDetailsFrame:setModInfo(modInfo)
 	self.title = modInfo:getName()
 
 	self.headerText:setText(self.title)
-	self:setImage(self.modPreviewImage[1], modInfo:getScreenshot1Filename())
-	self:setImage(self.modPreviewImage[2], modInfo:getScreenshot2Filename())
-	self:setImage(self.modPreviewImage[3], modInfo:getScreenshot3Filename())
+	self:setImage(self.modPreviewImage[1], modInfo:getScreenshot(1))
+	self:setImage(self.modPreviewImage[2], modInfo:getScreenshot(2))
+	self:setImage(self.modPreviewImage[3], modInfo:getScreenshot(3))
 end
 
 function ModHubDetailsFrame:setImage(element, image)
-	if image ~= nil and image ~= "" then
+	if image ~= nil then
 		element:setImageFilename(image)
 		element:setVisible(true)
 	else
@@ -390,11 +401,18 @@ function ModHubDetailsFrame:inputEvent(action, value, eventUsed)
 	return true
 end
 
+function ModHubDetailsFrame:onButtonScreenshots()
+	g_gui:showModHubScreenshotDialog({
+		modInfo = self.currentModInfo
+	})
+end
+
 ModHubDetailsFrame.L10N_SYMBOL = {
 	BUTTON_BUY = "button_modHubBuy",
 	BUTTON_UPDATE = "button_modHubUpdate",
 	BUTTON_UNINSTALL = "button_modHubUninstall",
 	BUTTON_INSTALL = "button_modHubInstall",
 	BUTTON_DOWNLOAD = "button_modHubDownload",
-	BUTTON_VOTE = "button_rate"
+	BUTTON_VOTE = "button_rate",
+	BUTTON_SCREENSHOTS = "button_screenshots"
 }

@@ -20,11 +20,62 @@ function SleepManager.new(customMt)
 	return self
 end
 
+function SleepManager:loadMapData(xmlFile, missionInfo, baseDirectory)
+	local width, height = getNormalizedScreenValues(128, 128)
+	self.animationNumFrames = 16
+	self.animationTimer = 0
+	self.animationSpeed = 50
+	self.animationOffset = 0
+	self.animationFrameSize = 128
+	self.animationRefSize = {
+		2048,
+		128
+	}
+	local xOffset, yOffset = getNormalizedScreenValues(-4, 0)
+	self.animationOverlay = Overlay.new("dataS/menu/hud/sleep_animation.png", 0.5 + xOffset, 0.5 + yOffset, width, height)
+
+	self.animationOverlay:setAlignment(Overlay.ALIGN_VERTICAL_MIDDLE, Overlay.ALIGN_HORIZONTAL_CENTER)
+	self.animationOverlay:setUVs(GuiUtils.getUVs({
+		0,
+		0,
+		self.animationFrameSize,
+		self.animationFrameSize
+	}, self.animationRefSize))
+	self.animationOverlay:setColor(0.0742, 0.4341, 0.6939, 1)
+
+	local width, height = getNormalizedScreenValues(200, 200)
+	self.animationBackgroundOverlay = Overlay.new("dataS/menu/hud/ui_elements.png", 0.5, 0.5, width, height)
+
+	self.animationBackgroundOverlay:setAlignment(Overlay.ALIGN_VERTICAL_MIDDLE, Overlay.ALIGN_HORIZONTAL_CENTER)
+	self.animationBackgroundOverlay:setUVs(GuiUtils.getUVs({
+		294,
+		390,
+		100,
+		100
+	}, {
+		1024,
+		1024
+	}))
+	self.animationBackgroundOverlay:setColor(0, 0, 0, 0.75)
+end
+
 function SleepManager:unloadMapData()
 	if self.fallbackCamera ~= nil then
 		delete(self.fallbackCamera)
 
 		self.fallbackCamera = nil
+	end
+
+	if self.animationOverlay ~= nil then
+		self.animationOverlay:delete()
+
+		self.animationOverlay = nil
+	end
+
+	if self.animationBackgroundOverlay ~= nil then
+		self.animationBackgroundOverlay:delete()
+
+		self.animationBackgroundOverlay = nil
 	end
 end
 
@@ -46,9 +97,43 @@ function SleepManager:update(dt)
 			self.requestedSleep = false
 		end
 	end
+
+	if self.isSleeping then
+		self.animationTimer = self.animationTimer - dt
+
+		if self.animationTimer < 0 then
+			self.animationTimer = self.animationSpeed
+			self.animationOffset = self.animationOffset + 1
+
+			if self.animationOffset > self.animationNumFrames - 1 then
+				self.animationOffset = 0
+			end
+
+			self.animationOverlay:setUVs(GuiUtils.getUVs({
+				self.animationOffset * self.animationFrameSize,
+				0,
+				self.animationFrameSize,
+				self.animationFrameSize
+			}, self.animationRefSize))
+		end
+	end
+end
+
+function SleepManager:draw()
+	if self.isSleeping then
+		if self.animationBackgroundOverlay ~= nil then
+			self.animationBackgroundOverlay:render()
+		end
+
+		if self.animationOverlay ~= nil then
+			self.animationOverlay:render()
+		end
+	end
 end
 
 function SleepManager:startSleep(targetTime, noEventSend)
+	g_currentMission.environment.weather.cloudUpdater:setSlowModeEnabled(true)
+
 	if g_currentMission:getIsServer() then
 		targetTime = targetTime * 1000 * 60 * 60
 		local currentHour = g_currentMission.environment.dayTime + 1
@@ -61,7 +146,6 @@ function SleepManager:startSleep(targetTime, noEventSend)
 
 	self.isSleeping = true
 
-	g_currentMission.environment.weather.cloudUpdater:setSlowModeEnabled(true)
 	g_currentMission.hud:setIsVisible(false)
 
 	g_currentMission.isPlayerFrozen = true
@@ -81,9 +165,12 @@ function SleepManager:startSleep(targetTime, noEventSend)
 	end
 
 	StartSleepStateEvent.sendEvent(targetTime, noEventSend)
+	g_messageCenter:publish(MessageType.SLEEPING, true)
 end
 
 function SleepManager:stopSleep(noEventSend)
+	g_currentMission.environment.weather.cloudUpdater:setSlowModeEnabled(false)
+
 	if g_currentMission:getIsServer() then
 		g_currentMission:setTimeScale(self.startTimeScale)
 	end
@@ -109,15 +196,15 @@ function SleepManager:stopSleep(noEventSend)
 	g_currentMission.isPlayerFrozen = false
 
 	g_currentMission.hud:setIsVisible(true)
-	g_currentMission.environment.weather.cloudUpdater:setSlowModeEnabled(false)
 
 	self.isSleeping = false
 
 	StopSleepStateEvent.sendEvent(noEventSend)
+	g_messageCenter:publish(MessageType.SLEEPING, false)
 end
 
 function SleepManager:getCanSleep()
-	return not self.isSleeping
+	return not self.isSleeping and not g_currentMission.guidedTour:getIsRunning()
 end
 
 function SleepManager:getIsSleeping()

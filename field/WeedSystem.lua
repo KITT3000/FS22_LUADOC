@@ -11,10 +11,13 @@ g_xmlManager:addInitSchemaFunction(function ()
 	schema:register(XMLValueType.STRING, "map.weed#title", "Weed title")
 	schema:register(XMLValueType.INT, "map.weed.general#firstChannel", "Weed first channel")
 	schema:register(XMLValueType.INT, "map.weed.general#numChannels", "Weed num channels")
-	schema:register(XMLValueType.VECTOR_4, "map.weed.mapColors#default", "Default map colors")
-	schema:register(XMLValueType.VECTOR_4, "map.weed.mapColors#colorBlind", "Color blind map colors")
+	schema:register(XMLValueType.VECTOR_N, "map.weed.mapColors.mapColor(?)#states", "Map color states")
+	schema:register(XMLValueType.VECTOR_4, "map.weed.mapColors.mapColor(?)#default", "Default map colors")
+	schema:register(XMLValueType.VECTOR_4, "map.weed.mapColors.mapColor(?)#colorBlind", "Color blind map colors")
 	schema:register(XMLValueType.INT, "map.weed.states.sparseStart#value", "Weed sparse state")
 	schema:register(XMLValueType.INT, "map.weed.states.denseStart#value", "Weed sparse state")
+	schema:register(XMLValueType.INT, "map.weed.fieldInfoStates.fieldInfoState(?)#state", "Field info weed state")
+	schema:register(XMLValueType.STRING, "map.weed.fieldInfoStates.fieldInfoState(?)#title", "Field info weed state title")
 	schema:register(XMLValueType.INT, "map.weed.growth.update(?)#sourceState", "Weed update source state")
 	schema:register(XMLValueType.INT, "map.weed.growth.update(?)#targetState", "Weed update target state")
 	schema:register(XMLValueType.INT, "map.weed.factors.factor(?)#state", "Weed factor state")
@@ -49,19 +52,10 @@ function WeedSystem.new(customMt)
 	self.mulcherReplacements = {}
 	self.growthMapping = {}
 	self.factors = {}
+	self.fieldInfoStates = {}
 	self.infoLayer = nil
-	self.mapColor = {
-		0,
-		0,
-		0,
-		0
-	}
-	self.mapColorBlind = {
-		0,
-		0,
-		0,
-		0
-	}
+	self.mapColor = {}
+	self.mapColorBlind = {}
 
 	return self
 end
@@ -92,9 +86,29 @@ function WeedSystem:loadWeed(filename)
 	self.numChannels = xmlFile:getValue("map.weed.general#numChannels") or self.numChannels or 3
 	self.minValue = 1
 	self.maxValue = 5
-	self.mapColor = xmlFile:getValue("map.weed.mapColors#default", self.mapColor, 4)
-	self.mapColorBlind = xmlFile:getValue("map.weed.mapColors#colorBlind", self.mapColorBlind, 4)
+	local color = {
+		0.6,
+		0.6,
+		0.6,
+		1
+	}
 
+	xmlFile:iterate("map.weed.mapColors.mapColor", function (_, key)
+		local states = xmlFile:getValue(key .. "#states", 1, true)
+		local defaultColor = xmlFile:getValue(key .. "#default", color, 4)
+		local colorBlind = xmlFile:getValue(key .. "#colorBlind", color, 4)
+		local data = {
+			states = states,
+			color = defaultColor
+		}
+		local dataBlind = {
+			states = states,
+			color = colorBlind
+		}
+
+		table.insert(self.mapColor, data)
+		table.insert(self.mapColorBlind, dataBlind)
+	end)
 	self:loadInfoLayer(xmlFile, "map.weed.infoLayer")
 
 	self.sparseStartState = xmlFile:getValue("map.weed.states.sparseStart#value") or 1
@@ -114,6 +128,14 @@ function WeedSystem:loadWeed(filename)
 
 		if state ~= nil and value ~= nil then
 			self.factors[state] = value
+		end
+	end)
+	xmlFile:iterate("map.weed.fieldInfoStates.fieldInfoState", function (_, key)
+		local state = xmlFile:getValue(key .. "#state")
+		local stateTitle = xmlFile:getValue(key .. "#title")
+
+		if state ~= nil and stateTitle ~= nil then
+			self.fieldInfoStates[state] = g_i18n:convertText(stateTitle)
 		end
 	end)
 	self:loadReplacements(xmlFile, "map.replacements.herbicide", self.herbicideReplacements)
@@ -245,6 +267,10 @@ end
 
 function WeedSystem:getFactors()
 	return self.factors
+end
+
+function WeedSystem:getFieldInfoStates()
+	return self.fieldInfoStates
 end
 
 function WeedSystem:initTerrain(mission, terrainNode, terrainDetailId)

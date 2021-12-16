@@ -15,7 +15,10 @@ SettingsGeneralFrame.CONTROLS = {
 	"settingsContainer",
 	"invertYLookElement",
 	"boxLayout",
-	"forceFeedbackElement"
+	"forceFeedbackElement",
+	"multiVolumeVoice",
+	"multiVolumeVoiceInput",
+	"multiVoiceMode"
 }
 
 function SettingsGeneralFrame.new(target, custom_mt, settingsModel, l10n)
@@ -52,6 +55,9 @@ function SettingsGeneralFrame:applyDefaultSettingsValues()
 	self.volumeRadioElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.VOLUME_RADIO))
 	self.volumeGUIElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.VOLUME_GUI))
 	self.invertYLookElement:setIsChecked(self.settingsModel:getValue(SettingsModel.SETTING.INVERT_Y_LOOK))
+	self.multiVolumeVoice:setState(self.settingsModel:getValue(SettingsModel.SETTING.VOLUME_VOICE))
+	self.multiVolumeVoiceInput:setState(self.settingsModel:getValue(SettingsModel.SETTING.VOLUME_VOICE_INPUT))
+	self.multiVoiceMode:setState(self.settingsModel:getValue(SettingsModel.SETTING.VOICE_MODE))
 end
 
 function SettingsGeneralFrame:initialize()
@@ -143,6 +149,18 @@ function SettingsGeneralFrame:onCreateForceFeedback(element)
 	element:setTexts(self.settingsModel:getForceFeedbackTexts())
 end
 
+function SettingsGeneralFrame:onCreateVoiceVolume(element)
+	element:setTexts(self.settingsModel:getAudioVolumeTexts())
+end
+
+function SettingsGeneralFrame:onCreateRecordingVolume(element)
+	element:setTexts(self.settingsModel:getRecordingVolumeTexts())
+end
+
+function SettingsGeneralFrame:onCreateVoiceMode(element)
+	element:setTexts(self.settingsModel:getVoiceModeTexts())
+end
+
 function SettingsGeneralFrame:onClickLanguage(state)
 	self.settingsModel:setValue(SettingsModel.SETTING.LANGUAGE, state)
 	self:setMenuButtonInfoDirty()
@@ -205,6 +223,21 @@ end
 
 function SettingsGeneralFrame:onClickInvertYLook(state)
 	self.settingsModel:setValue(SettingsModel.SETTING.INVERT_Y_LOOK, self.invertYLookElement:getIsChecked())
+	self:setMenuButtonInfoDirty()
+end
+
+function SettingsGeneralFrame:onClickVoiceVolume(state)
+	self.settingsModel:setValue(SettingsModel.SETTING.VOLUME_VOICE, state)
+	self:setMenuButtonInfoDirty()
+end
+
+function SettingsGeneralFrame:onClickRecordingVolume(state)
+	self.settingsModel:setValue(SettingsModel.SETTING.VOLUME_VOICE_INPUT, state)
+	self:setMenuButtonInfoDirty()
+end
+
+function SettingsGeneralFrame:onClickVoiceMode(state)
+	self.settingsModel:setValue(SettingsModel.SETTING.VOICE_MODE, state)
 	self:setMenuButtonInfoDirty()
 end
 

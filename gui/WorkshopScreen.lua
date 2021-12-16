@@ -192,7 +192,7 @@ function WorkshopScreen:setVehicle(vehicle)
 
 		self.conditionBar.parent.parent:setVisible(vehicle.getDamageAmount ~= nil)
 
-		local repairPrice = self.vehicle:getRepairPrice() * EconomyManager.DIRECT_SELL_MULTIPLIER
+		local repairPrice = self.vehicle:getRepairPrice()
 
 		if repairPrice >= 1 then
 			self.repairButton:setText(string.format("%s (%s)", g_i18n:getText("button_repair"), g_i18n:formatMoney(repairPrice, 0, true, true)))
@@ -202,7 +202,7 @@ function WorkshopScreen:setVehicle(vehicle)
 
 		self.repairButton:setDisabled(repairPrice < 1)
 
-		local repaintPrice = self.vehicle:getRepaintPrice() * EconomyManager.DIRECT_SELL_MULTIPLIER
+		local repaintPrice = self.vehicle:getRepaintPrice()
 
 		if repaintPrice >= 1 then
 			self.repaintButton:setText(string.format("%s (%s)", g_i18n:getText("button_repaint"), g_i18n:formatMoney(repaintPrice, 0, true, true)))
@@ -340,6 +340,10 @@ end
 function WorkshopScreen:onClickSell()
 	if self.vehicle ~= nil and not self.isOwnWorkshop and self.vehicle.propertyState ~= Vehicle.PROPERTY_STATE_MISSION and self.canBeSold then
 		local l10nString = "ui_youWantToSellVehicle"
+
+		if self.vehicle.propertyState == Vehicle.PROPERTY_STATE_LEASED then
+			l10nString = "ui_youWantToReturnVehicle"
+		end
 
 		g_gui:showYesNoDialog({
 			text = g_i18n:getText(l10nString),

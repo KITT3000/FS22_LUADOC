@@ -153,7 +153,7 @@ function SpeedSliderDisplay:hideSlider()
 	local startX, startY = self:getPosition()
 	local sequence = TweenSequence.new(self)
 
-	sequence:insertTween(MultiValueTween:new(self.setPosition, {
+	sequence:insertTween(MultiValueTween.new(self.setPosition, {
 		startX,
 		startY
 	}, {
@@ -173,7 +173,7 @@ function SpeedSliderDisplay:showSlider()
 	local startX, startY = self:getPosition()
 	local sequence = TweenSequence.new(self)
 
-	sequence:insertTween(MultiValueTween:new(self.setPosition, {
+	sequence:insertTween(MultiValueTween.new(self.setPosition, {
 		startX,
 		startY
 	}, {

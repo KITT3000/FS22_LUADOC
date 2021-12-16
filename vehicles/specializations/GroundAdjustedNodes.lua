@@ -23,7 +23,7 @@ function GroundAdjustedNodes.initSpecialization()
 	schema:register(XMLValueType.BOOL, basePath .. "#resetIfNotActive", "Reset node to start translation if not active", true)
 	schema:register(XMLValueType.FLOAT, basePath .. "#activationTime", "In this time after the activation of the node the #moveSpeedStateChange will be used", 0)
 	schema:register(XMLValueType.FLOAT, basePath .. "#moveSpeedStateChange", "Move speed while node is inactive or active an in range of #activationTime", "#moveSpeed")
-	schema:register(XMLValueType.FLOAT, basePath .. "#updateThreshold", "Position of node will be updated if change is greater than this value", 0.005)
+	schema:register(XMLValueType.FLOAT, basePath .. "#updateThreshold", "Position of node will be updated if change is greater than this value", 0.002)
 	schema:setXMLSpecializationType()
 end
 
@@ -160,7 +160,7 @@ function GroundAdjustedNodes:loadGroundAdjustedNodeFromXML(xmlFile, key, adjuste
 		adjustedNode.activationTime = self.xmlFile:getValue(key .. "#activationTime", 0) * 1000
 		adjustedNode.activationTimer = 0
 		adjustedNode.resetIfNotActive = self.xmlFile:getValue(key .. "#resetIfNotActive", true)
-		adjustedNode.updateThreshold = self.xmlFile:getValue(key .. "#updateThreshold", 0.005)
+		adjustedNode.updateThreshold = self.xmlFile:getValue(key .. "#updateThreshold", 0.002)
 		adjustedNode.targetY = y
 		adjustedNode.curY = y
 		adjustedNode.lastY = y
@@ -255,17 +255,16 @@ function GroundAdjustedNodes:updateGroundAdjustedNode(adjustedNode, dt)
 				local x1 = history1[1]
 				local y1 = history1[2]
 				local z1 = history1[3]
-				local d1 = history1[4]
 				local x2 = history2[1]
 				local y2 = history2[2]
 				local z2 = history2[3]
-				local d2 = history2[4]
 
 				if raycastNode.lastRaycastPos[1] ~= nil then
 					rx = raycastNode.lastRaycastPos[1] + (x1 - x2) / raycastNode.updateFrame
 					ry = raycastNode.lastRaycastPos[2] + (y1 - y2) / raycastNode.updateFrame
 					rz = raycastNode.lastRaycastPos[3] + (z1 - z2) / raycastNode.updateFrame
-					distance = raycastNode.lastRaycastPos[4] + (d1 - d2) / raycastNode.updateFrame
+					local x, y, z = localToWorld(raycastNode.node, 0, adjustedNode.yOffset, 0)
+					distance = MathUtil.vector3Length(x - rx, y - ry, z - rz)
 				else
 					distance = 0
 				end

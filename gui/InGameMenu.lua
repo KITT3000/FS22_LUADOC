@@ -368,6 +368,7 @@ function InGameMenu:onGuiSetupFinished()
 	self.messageCenter:subscribe(MessageType.GUI_INGAME_OPEN_FARMS_SCREEN, self.openFarmsScreen, self)
 	self.messageCenter:subscribe(MessageType.GUI_INGAME_OPEN_PRODUCTION_SCREEN, self.openProductionScreen, self)
 	self.messageCenter:subscribe(MessageType.GUI_INGAME_OPEN_AI_SCREEN, self.openAIScreen, self)
+	self.messageCenter:subscribe(MessageType.GUI_INGAME_OPEN_HELP_SCREEN, self.openHelpLine, self)
 	self.messageCenter:subscribe(MessageType.MONEY_CHANGED, self.onMoneyChanged, self)
 	self.messageCenter:subscribe(MessageType.MASTERUSER_ADDED, self.onMasterUserAdded, self)
 	self.messageCenter:subscribe(MessageType.UNLOADING_STATIONS_CHANGED, self.onUnloadingStationsChanged, self)
@@ -540,23 +541,22 @@ function InGameMenu:onButtonQuit()
 		return
 	end
 
+	local text = self.l10n:getText(InGameMenu.L10N_SYMBOL.END_GAME)
 	local isMultiplayerClient = self.missionDynamicInfo.isMultiplayer and self.missionDynamicInfo.isClient
 
-	if (not self.playerAlreadySaved or not self.missionInfo:isa(FSCareerMissionInfo)) and not isMultiplayerClient then
-		local text = self.l10n:getText(InGameMenu.L10N_SYMBOL.END_TUTORIAL)
-
-		if self.missionInfo:isa(FSCareerMissionInfo) then
+	if not isMultiplayerClient then
+		if not self.missionInfo:isa(FSCareerMissionInfo) then
+			text = self.l10n:getText(InGameMenu.L10N_SYMBOL.END_TUTORIAL)
+		elseif not self.playerAlreadySaved then
 			text = self.l10n:getText(InGameMenu.L10N_SYMBOL.END_WITHOUT_SAVING)
 		end
-
-		g_gui:showYesNoDialog({
-			text = text,
-			callback = self.onYesNoEnd,
-			target = self
-		})
-	else
-		self:leaveCurrentGame()
 	end
+
+	g_gui:showYesNoDialog({
+		text = text,
+		callback = self.onYesNoEnd,
+		target = self
+	})
 end
 
 function InGameMenu:onButtonBack()
@@ -666,6 +666,15 @@ function InGameMenu:openFarmsScreen()
 	self.pageSelector:setState(farmsPageIndex, true)
 end
 
+function InGameMenu:openHelpLine(categoryIndex, pageIndex)
+	self:changeScreen(InGameMenu)
+
+	local helpLineIndex = self.pagingElement:getPageMappingIndexByElement(self.pageHelpLine)
+
+	self.pageSelector:setState(helpLineIndex, true)
+	self.pageHelpLine:openPage(categoryIndex, pageIndex)
+end
+
 function InGameMenu:openProductionScreen(productionPoint)
 	self:changeScreen(InGameMenu)
 
@@ -704,6 +713,14 @@ end
 function InGameMenu:onMasterUserAdded(user)
 	if user:getId() == g_currentMission.playerUserId then
 		self.isMasterUser = true
+
+		self:updateHasMasterRights()
+	end
+end
+
+function InGameMenu:onMasterUserRemoved(user)
+	if user:getId() == g_currentMission.playerUserId then
+		self.isMasterUser = false
 
 		self:updateHasMasterRights()
 	end
@@ -864,6 +881,10 @@ function InGameMenu:notifySaveFailedNoSpace(dialogCallback, callbackTarget)
 		callback = dialogCallback,
 		target = callbackTarget
 	})
+end
+
+function InGameMenu:onSoilSettingChanged()
+	self.pageMapOverview:onSoilSettingChanged()
 end
 
 function InGameMenu:makeIsMapEnabledPredicate()
@@ -1091,13 +1112,14 @@ InGameMenu.TAB_UV = {
 }
 InGameMenu.L10N_SYMBOL = {
 	END_WITHOUT_SAVING = "ui_endWithoutSaving",
+	BUTTON_SAVE_GAME = "button_saveGame",
 	BUTTON_RESTART = "button_restart",
-	SELECT_DEVICE = "dialog_savegameSelectDevice",
 	SAVE_OVERWRITE = "dialog_savegameOverwrite",
 	TUTORIAL_NOT_SAVED = "ui_tutorialIsNotSaved",
-	BUTTON_SAVE_GAME = "button_saveGame",
+	END_GAME = "ui_youWantToQuitGame",
 	SAVING_CONTENT = "ui_savingContent",
 	SAVE_NO_SPACE = "ui_savegameSaveNoSpace",
+	SELECT_DEVICE = "dialog_savegameSelectDevice",
 	MASTER_SERVER_CONNECTION_LOST = "ui_masterServerConnectionLost",
 	BUTTON_CANCEL_GAME = "button_cancelGame",
 	END_TUTORIAL = "ui_endTutorial",

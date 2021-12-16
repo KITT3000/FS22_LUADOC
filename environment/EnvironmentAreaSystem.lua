@@ -127,12 +127,15 @@ function EnvironmentAreaSystem.new(mission, customMt)
 	}
 	self.isDebugViewActive = false
 	self.areaTypeWeights = {}
+	self.lastAreaTypeWeights = {}
 
 	for _, areaTypeIndex in pairs(AreaType.getAll()) do
 		self.areaTypeWeights[areaTypeIndex] = 0
+		self.lastAreaTypeWeights[areaTypeIndex] = 0
 	end
 
 	self.areaTypeWeights[AreaType.OPEN_FIELD] = 1
+	self.lastAreaTypeWeights[AreaType.OPEN_FIELD] = 1
 	self.lastPosition = {
 		z = 0,
 		x = 0,
@@ -169,19 +172,6 @@ function EnvironmentAreaSystem:getAreaWeights()
 end
 
 function EnvironmentAreaSystem:update(dt)
-	local numCallbacks = #self.waterYRequests
-
-	for i = 1, numCallbacks do
-		local asyncData = table.remove(self.waterYRequests, 1)
-		local y, _ = nil
-
-		if g_currentMission ~= nil and g_currentMission.environment.water ~= nil then
-			_, y, _ = getWorldTranslation(g_currentMission.environment.water)
-		end
-
-		asyncData.asyncCallbackFunc(asyncData.asyncCallbackTarget, y, asyncData.asyncCallbackArgs)
-	end
-
 	if self.currentCell ~= nil then
 		self:updateCellType(self.currentCell)
 		self:updateWeights()
@@ -205,6 +195,8 @@ function EnvironmentAreaSystem:update(dt)
 
 	if cell.raycastIndexXZ >= #self.raycastsXZ then
 		cell.raycastIndexXZ = 0
+		cell.isDone = true
+		self.lastDoneCell = cell
 	end
 
 	local raycastXZ1 = self.raycastsXZ[cell.raycastIndexXZ + 1]
@@ -237,6 +229,7 @@ end
 
 function EnvironmentAreaSystem:setupCell(cell)
 	cell.isValid = true
+	cell.isDone = false
 	cell.raycastIndexXZ = 0
 	cell.hitDataXZ = {}
 	cell.areaTypeWeights = {}
@@ -250,19 +243,23 @@ end
 function EnvironmentAreaSystem:updateWeights()
 	local sum = 0
 
-	for k, _ in pairs(self.areaTypeWeights) do
+	for k, weight in pairs(self.areaTypeWeights) do
 		self.areaTypeWeights[k] = 0
 	end
 
-	local currentCell, _, _ = self.dataGrid:getCellData(0, 0)
+	local fallbackCell, _, _ = self.dataGrid:getCellData(0, 0)
+
+	if not fallbackCell.isDone and self.lastDoneCell ~= nil and self.lastDoneCell.areaTypeWeights ~= nil then
+		fallbackCell = self.lastDoneCell
+	end
 
 	for i = 1, 3 do
 		for j = 1, 3 do
 			local cell, wx, wz = self.dataGrid:getCellData(i - 2, j - 2)
 			local weights = cell.areaTypeWeights
 
-			if weights == nil then
-				weights = currentCell.areaTypeWeights
+			if weights == nil or not cell.isDone then
+				weights = fallbackCell.areaTypeWeights
 			end
 
 			local distance = MathUtil.vector2Length(wx - self.lastPosition.x, wz - self.lastPosition.z)
@@ -353,14 +350,18 @@ function EnvironmentAreaSystem:handleRaycast(indexOffset, hitObjectId, x, y, z, 
 	local cell = self.currentCell
 	local raycastIndexXZ = cell.raycastIndexXZ + indexOffset
 
-	if hitObjectId ~= 0 and (cell.hitDataXZ[raycastIndexXZ] == nil or distance < cell.hitDataXZ[raycastIndexXZ].distance) then
-		cell.hitDataXZ[raycastIndexXZ] = {
-			name = getName(hitObjectId),
-			x = x,
-			y = y,
-			z = z,
-			distance = distance
-		}
+	if hitObjectId ~= 0 then
+		local collisionMask = getCollisionMask(hitObjectId)
+
+		if not Utils.isBitSet(collisionMask, CollisionFlag.AI_DRIVABLE) and (cell.hitDataXZ[raycastIndexXZ] == nil or distance < cell.hitDataXZ[raycastIndexXZ].distance) then
+			cell.hitDataXZ[raycastIndexXZ] = {
+				name = getName(hitObjectId),
+				x = x,
+				y = y,
+				z = z,
+				distance = distance
+			}
+		end
 	end
 end
 
@@ -405,6 +406,8 @@ function EnvironmentAreaSystem:draw()
 
 		if not cell.isValid then
 			return 1, 0, 0, alpha
+		elseif not cell.isDone then
+			return 0, 0, 1, alpha
 		end
 
 		return 0, 1, 0, alpha
@@ -475,6 +478,19 @@ function EnvironmentAreaSystem:getWaterYAtWorldPositionAsync(x, y, z, asyncCallb
 		asyncCallbackTarget = asyncCallbackTarget,
 		asyncCallbackArgs = asyncCallbackArgs
 	})
+	raycastClosest(x, y + 100, z, 0, -1, 0, "onWaterRaycastCallbackAsync", 200, self, CollisionFlag.WATER, false, true)
+end
+
+function EnvironmentAreaSystem:onWaterRaycastCallbackAsync(hitObjectId, x, y, z, distance, nx, ny, nz, subShapeIndex, shapeId, isLast)
+	local waterY = nil
+
+	if hitObjectId ~= 0 then
+		waterY = y
+	end
+
+	local asyncData = table.remove(self.waterYRequests, 1)
+
+	asyncData.asyncCallbackFunc(asyncData.asyncCallbackTarget, waterY, asyncData.asyncCallbackArgs)
 end
 
 function EnvironmentAreaSystem:consoleCommandToggleDebugView()

@@ -35,11 +35,13 @@ function ConstructionScreen.new(target, customMt, l10n, messageCenter, inputMana
 	self.isMouseMode = true
 	self.camera = GuiTopDownCamera.new(nil, messageCenter, inputManager)
 	self.cursor = GuiTopDownCursor.new(nil, messageCenter, inputManager)
+	self.sound = ConstructionSound.new()
 	self.brush = nil
 	self.items = {}
 	self.clonedElements = {}
 	self.menuEvents = {}
 	self.brushEvents = {}
+	self.marqueeBoxes = {}
 
 	return self
 end
@@ -47,6 +49,7 @@ end
 function ConstructionScreen:delete()
 	self.camera:delete()
 	self.cursor:delete()
+	self.sound:delete()
 
 	if self.selectorBrush ~= nil then
 		self.selectorBrush:delete()
@@ -63,6 +66,9 @@ end
 
 function ConstructionScreen:onOpen()
 	ConstructionScreen:superClass().onOpen(self)
+
+	g_currentMission.lastConstructionScreenOpenTime = g_time
+
 	self.inputManager:setContext(ConstructionScreen.INPUT_CONTEXT)
 	self.camera:setTerrainRootNode(g_currentMission.terrainRootNode)
 	self.camera:setControlledPlayer(g_currentMission.player)
@@ -95,6 +101,9 @@ end
 
 function ConstructionScreen:onClose(element)
 	self.messageCenter:unsubscribeAll(self)
+
+	g_currentMission.lastConstructionScreenOpenTime = -1
+
 	self:setBrush(nil)
 	self.cursor:deactivate()
 	self.camera:deactivate()
@@ -133,6 +142,11 @@ function ConstructionScreen:update(dt)
 		self.brush.inputTextDirty = false
 	end
 
+	if self.sound:setActiveSound(self.brush.activeSoundId, self.brush.activeSoundPitchModifier) then
+		self.brush.activeSoundId = ConstructionSound.ID.NONE
+	end
+
+	self:updateMarqueeAnimation(dt)
 	g_currentMission:showMoneyChange(MoneyType.SHOP_PROPERTY_BUY)
 	g_currentMission:showMoneyChange(MoneyType.SHOP_PROPERTY_SELL)
 end
@@ -262,6 +276,9 @@ function ConstructionScreen:registerMenuActionEvents(hasMenuButtons)
 		table.insert(self.menuEvents, eventId)
 	end
 
+	_, eventId = self.inputManager:registerActionEvent(InputAction.CONSTRUCTION_DESTRUCT_TOGGLE, self, self.onClickDestruct, false, true, false, true)
+
+	self.inputManager:setActionEventTextVisibility(eventId, false)
 	self:updateMenuActionTexts()
 end
 
@@ -605,17 +622,17 @@ function ConstructionScreen:assignItemFillTypesData(baseIconProfile, iconFilenam
 	local parentBox = self.attrIconsLayout[attributeIndex]
 
 	if attributeIndex > #self.attrValue or #iconFilenames == 0 then
-		parentBox:setVisible(false)
+		parentBox.parent:setVisible(false)
 
 		return attributeIndex
 	end
 
-	local totalWidth = 0.02
-	local maxWidth = self.detailsAttributesLayout.absSize[1]
+	local totalWidth = 0
+	local maxWidth = self.detailsAttributesLayout.absSize[1] * 0.75
 
 	self.attrIcon[attributeIndex]:applyProfile(baseIconProfile)
 	self.attrIcon[attributeIndex]:setVisible(true)
-	parentBox:setVisible(true)
+	parentBox.parent:setVisible(true)
 	self.attrValue[attributeIndex]:setVisible(false)
 
 	for i = 1, #iconFilenames do
@@ -626,19 +643,22 @@ function ConstructionScreen:assignItemFillTypesData(baseIconProfile, iconFilenam
 
 		totalWidth = totalWidth + icon.absSize[1] + icon.margin[1] + icon.margin[3]
 
-		if maxWidth <= totalWidth then
-			icon:applyProfile("constructionListAttributeIconPlus")
-			icon:setImageFilename(g_baseUIFilename)
-
-			break
-		else
-			icon:applyProfile("constructionListAttributeFruitIcon")
-			icon:setImageFilename(iconFilenames[i])
-		end
+		icon:applyProfile("constructionListAttributeFruitIcon")
+		icon:setImageFilename(iconFilenames[i])
 	end
 
+	local parentSize = math.min(maxWidth, totalWidth)
+
+	parentBox.parent:setSize(parentSize, nil)
+	parentBox:setPosition(0)
 	parentBox:setSize(totalWidth, nil)
 	parentBox:invalidateLayout()
+
+	if parentSize < totalWidth then
+		self.marqueeBoxes[parentBox] = 0
+	else
+		self.marqueeBoxes[parentBox] = nil
+	end
 
 	return attributeIndex + 1
 end
@@ -669,7 +689,7 @@ function ConstructionScreen:assignItemTextData(storeItem, displayItem)
 
 		self.attrValue[i]:setVisible(attributeVisible)
 		self.attrIcon[i]:setVisible(attributeVisible)
-		self.attrIconsLayout[i]:setVisible(false)
+		self.attrIconsLayout[i].parent:setVisible(false)
 
 		if attributeVisible then
 			numAttributesUsed = numAttributesUsed + 1
@@ -686,6 +706,10 @@ function ConstructionScreen:setDetailAttributes(storeItem, displayItem)
 		self.clonedElements[k] = nil
 	end
 
+	for k, _ in pairs(self.marqueeBoxes) do
+		self.marqueeBoxes[k] = nil
+	end
+
 	local numAttributesUsed = self:assignItemTextData(storeItem, displayItem)
 
 	if displayItem ~= nil then
@@ -698,6 +722,28 @@ function ConstructionScreen:setDetailAttributes(storeItem, displayItem)
 	end
 
 	self.detailsAttributesLayout:invalidateLayout()
+end
+
+function ConstructionScreen:updateMarqueeAnimation(dt)
+	for box, time in pairs(self.marqueeBoxes) do
+		local contentWidth = box.absSize[1]
+		local visibleWidth = box.parent.absSize[1]
+		local scrollAmount = contentWidth - visibleWidth
+		local scrollLengthFactor = scrollAmount / visibleWidth
+		local scrollDuration = 9000 * scrollLengthFactor
+		time = time + dt
+
+		if scrollDuration <= time then
+			time = -scrollDuration
+		end
+
+		local alpha = MathUtil.smoothstep(0.2, 0.8, math.abs(time) / scrollDuration)
+		local offset = scrollAmount * alpha
+
+		box:setPosition(-offset)
+
+		self.marqueeBoxes[box] = time
+	end
 end
 
 function ConstructionScreen:rebuildData()

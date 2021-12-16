@@ -54,7 +54,9 @@ function WardrobeScreen:onOpen()
 		playerStyle = g_currentMission.playerInfoStorage:getPlayerStyle(g_currentMission.player.userId)
 	end
 
-	if playerStyle ~= nil then
+	if self.isNewCharacter and g_gameSettings.lastPlayerStyle ~= nil and g_gameSettings.lastPlayerStyle:isValid() then
+		self.currentPlayerStyle:copyFrom(g_gameSettings.lastPlayerStyle)
+	elseif playerStyle ~= nil and playerStyle:isValid() then
 		self.currentPlayerStyle:copyFrom(playerStyle)
 	else
 		local newStyle = PlayerStyle.new()
@@ -103,6 +105,8 @@ function WardrobeScreen:onClose()
 
 		self.didControlPlayer = false
 	end
+
+	self.isNewCharacter = false
 
 	WardrobeScreen:superClass().onClose(self)
 end
@@ -301,8 +305,14 @@ function WardrobeScreen:updateTabIcons()
 	end
 end
 
+function WardrobeScreen:setNextOpenIsNewCharacter()
+	self.isNewCharacter = true
+end
+
 function WardrobeScreen:onButtonBack()
 	g_currentMission.player:setStyleAsync(self.currentPlayerStyle, function ()
+		g_gameSettings:setLastPlayerStyle(self.currentPlayerStyle)
+		g_gameSettings:saveToXMLFile(g_savegameXML)
 		self:exitMenu()
 	end)
 end

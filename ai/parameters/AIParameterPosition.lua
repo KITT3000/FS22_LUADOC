@@ -56,5 +56,9 @@ function AIParameterPosition:validate()
 		return false, g_i18n:getText("ai_validationErrorNoPosition")
 	end
 
+	if not g_currentMission.aiSystem:getIsPositionReachable(self.x, 0, self.z) then
+		return false, g_i18n:getText("ai_validationErrorBlockedPosition")
+	end
+
 	return true, nil
 end

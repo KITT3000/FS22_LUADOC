@@ -30,6 +30,7 @@ function WaterTrailer.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onReadStream", WaterTrailer)
 	SpecializationUtil.registerEventListener(vehicleType, "onWriteStream", WaterTrailer)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", WaterTrailer)
+	SpecializationUtil.registerEventListener(vehicleType, "onPreDetach", WaterTrailer)
 end
 
 function WaterTrailer:onLoad(savegame)
@@ -135,10 +136,7 @@ WaterTrailerActivatable = {}
 local WaterTrailerActivatable_mt = Class(WaterTrailerActivatable)
 
 function WaterTrailerActivatable.new(trailer)
-	local self = {}
-
-	setmetatable(self, WaterTrailerActivatable_mt)
-
+	local self = setmetatable({}, WaterTrailerActivatable_mt)
 	self.trailer = trailer
 	self.activateText = "unknown"
 

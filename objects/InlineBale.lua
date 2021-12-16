@@ -340,9 +340,13 @@ function InlineBale:updateTick(dt)
 				for _, bale in ipairs(self.balesToLoad) do
 					local baleObject = g_currentMission.itemSystem:getItemBySaveId(bale.saveId)
 
-					self:addBale(baleObject)
-					self:connectPendingBale(self.connectorFilename)
-					self:updateBaleJoints(9999)
+					if baleObject:isa(InlineBaleSingle) then
+						self:addBale(baleObject)
+						self:connectPendingBale(self.connectorFilename)
+						self:updateBaleJoints(9999)
+					else
+						Logging.error("Invalid inline bale found")
+					end
 				end
 
 				self.balesToLoad = {}
@@ -452,6 +456,7 @@ function InlineBale:addBale(bale, baleType)
 				bale:setConnectedInlineBale(self)
 			end
 
+			bale:addDeleteListener(self, "onBaleDeleted")
 			self:raiseActive()
 
 			success = true
@@ -669,8 +674,8 @@ function InlineBale:getCanInteract()
 	local x1, y1, z1 = self:getInteractionPosition()
 
 	if x1 ~= nil then
-		local fristBale = self.bales[1]
-		local x2, y2, z2 = getWorldTranslation(fristBale.nodeId)
+		local firstBale = self.bales[1]
+		local x2, y2, z2 = getWorldTranslation(firstBale.nodeId)
 		local distance = MathUtil.vector3Length(x1 - x2, y1 - y2, z1 - z2)
 
 		if distance < self.maxOpenDistance then

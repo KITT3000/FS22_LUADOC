@@ -24,8 +24,10 @@ function ConstructionBrushFence.new(subclass_mt, cursor)
 	local self = ConstructionBrushFence:superClass().new(subclass_mt or ConstructionBrushFence_mt, cursor)
 	self.supportsPrimaryButton = true
 	self.supportsSecondaryButton = true
+	self.supportsTertiaryButton = true
 	self.needsOverlayReset = {}
 	self.requiredPermission = Farm.PERMISSION.BUY_PLACEABLE
+	self.parallelSnappingEnabled = false
 	self.doFindPlaceable = false
 
 	return self
@@ -51,6 +53,7 @@ function ConstructionBrushFence:deactivate()
 	self.fence = nil
 	self.doFindPlaceable = false
 
+	self.cursor:setColorMode(GuiTopDownCursor.SHAPES_COLORS.SELECT, nil)
 	g_messageCenter:unsubscribeAll(self)
 	ConstructionBrushFence:superClass().deactivate(self)
 end
@@ -100,9 +103,13 @@ function ConstructionBrushFence:acquirePlaceable()
 
 	self.fence = self:findPlaceable()
 
+	self:setInputTextDirty()
+
 	if self.fence == nil then
 		g_messageCenter:subscribe(BuyPlaceableEvent, self.onPlaceableCreated, self)
 		g_client:getServerConnection():sendEvent(BuyPlaceableEvent.new(self.xmlFilename, 100, PlacementUtil.NETHER_HEIGHT - 1, 0, 0, 0, 0, 0, g_currentMission:getFarmId(), false, 0, true))
+	elseif self.fence:getHasParallelSnapping() then
+		self.parallelSnappingEnabled = true
 	end
 end
 
@@ -142,6 +149,8 @@ function ConstructionBrushFence:releasePlaceable()
 		end
 
 		self.fence = nil
+
+		self:setInputTextDirty()
 	end
 end
 
@@ -185,10 +194,61 @@ function ConstructionBrushFence:getSnappedCursorPosition()
 		return px, py, pz, true, segment
 	end
 
-	local snapDistance = math.max(self.fence:getPanelLength() * ConstructionBrushFence.SNAP_DISTANCE, self.fence:getBoundingCheckWidth() / 1.5)
+	if self.parallelSnappingEnabled then
+		local snapCheckDistance = self.fence:getSnapCheckDistance()
+		local px, py, pz, _, segment = self.fence:getPoleNear(x, y, z, snapCheckDistance)
+		local previewSegment = self.fence:getPreviewSegment()
+
+		self.cursor:setColorMode(GuiTopDownCursor.SHAPES_COLORS.SELECT, nil)
+
+		if px ~= nil and previewSegment == nil then
+			if self.previewPoleCursor then
+				self.cursor:setColorMode(GuiTopDownCursor.SHAPES_COLORS.SUCCESS, nil)
+			end
+
+			local dx, dz = MathUtil.vector2Normalize(segment.x2 - segment.x1, segment.z2 - segment.z1)
+			local dist = self.fence:getSnapDistance()
+			local x1 = -dz * dist + px
+			local z1 = dx * dist + pz
+			local x2 = dz * dist + px
+			local z2 = -dx * dist + pz
+			local distance1 = MathUtil.vector2Length(x1 - x, z1 - z)
+			local distance2 = MathUtil.vector2Length(x2 - x, z2 - z)
+			local distancePole = MathUtil.vector2Length(px - x, pz - z)
+			local snapX, snapZ = nil
+
+			if distance1 < distance2 then
+				snapZ = z1
+				snapX = x1
+			else
+				snapZ = z2
+				snapX = x2
+			end
+
+			self.parallelSnappingSegment = segment
+			local snapY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, snapX, 0, snapZ)
+
+			if self.fence:getMaxCornerAngle() == 0 and distancePole < dist * 0.4 then
+				return px, py, pz, true, segment
+			end
+
+			return snapX, snapY, snapZ, true
+		elseif self.parallelSnappingSegment ~= nil and previewSegment ~= nil then
+			local alignSegment = self.parallelSnappingSegment
+			local dx, dz = MathUtil.vector2Normalize(alignSegment.x2 - alignSegment.x1, alignSegment.z2 - alignSegment.z1)
+			local targetX, targetZ = MathUtil.projectOnLine(x, z, previewSegment.x1, previewSegment.z1, dx, dz)
+			local targetY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, targetX, 0, targetZ)
+
+			return targetX, targetY, targetZ, true
+		end
+
+		self.parallelSnappingSegment = nil
+	end
+
+	local snapDistance = math.max(self.fence:getPanelLength() * ConstructionBrushFence.SNAP_DISTANCE, self.fence:getSnapCheckDistance())
 	local px, py, pz, node, segment = self.fence:getPoleNear(x, y, z, snapDistance)
 
-	if px ~= nil then
+	if px ~= nil and self.fence:getMaxCornerAngle() > 0 then
 		if self.fence:getAllowExtendingOnly() then
 			if isNodeSegmentEndpoint(node) then
 				return px, py, pz, true, segment
@@ -336,7 +396,7 @@ function ConstructionBrushFence:verifyPreview()
 
 	local angle = self:getPreviewAngle()
 
-	if angle ~= nil and self.fence:getMaxCornerAngle() < angle then
+	if self.parallelSnappingSegment == nil and angle ~= nil and self.fence:getMaxCornerAngle() < angle then
 		return ConstructionBrushFence.ERROR.MINIMUM_ANGLE
 	end
 
@@ -346,9 +406,9 @@ function ConstructionBrushFence:verifyPreview()
 	local rx = 0
 	local ry = math.atan2(pSegment.x2 - pSegment.x1, pSegment.z2 - pSegment.z1) + 0.5 * math.pi
 	local rz = 0
-	local ex = length / 2 + self.fence:getBoundingCheckWidth() / 2
-	local ey = math.abs(minY - maxY) / 2 + 2
-	local ez = self.fence:getBoundingCheckWidth() / 2
+	local ex = length * 0.5 + self.fence:getBoundingCheckWidth() * 0.5
+	local ey = math.abs(minY - maxY) * 0.5 + 2
+	local ez = self.fence:getBoundingCheckWidth() * 0.5
 	local collisionMask = bitAND(CollisionMask.ALL, bitNOT(bitOR(bitOR(CollisionFlag.TERRAIN, CollisionMask.TRIGGERS), CollisionFlag.GROUND_TIP_BLOCKING)))
 	local dynamics = true
 	local statics = true
@@ -416,7 +476,13 @@ function ConstructionBrushFence:update(dt)
 	if self.doFindPlaceable then
 		self.fence = self:findPlaceable()
 
+		self:setInputTextDirty()
+
 		if self.fence ~= nil then
+			if self.fence:getHasParallelSnapping() then
+				self.parallelSnappingEnabled = true
+			end
+
 			self.doFindPlaceable = false
 		end
 	end
@@ -516,9 +582,9 @@ function ConstructionBrushFence:onButtonPrimary()
 		local err = self:verifyAccess(x, y, z)
 
 		if err == nil then
-			local previewSegment = self.fence:createSegment(x, z, x, z, not snapped, self.gateIndex)
+			local previewSegment = self.fence:createSegment(x, z, x, z, not snapped or segment == nil, self.gateIndex)
 
-			if snapped then
+			if snapped and segment ~= nil then
 				self.attachmentPointSegment = segment
 
 				if segment ~= nil then
@@ -534,16 +600,31 @@ function ConstructionBrushFence:onButtonPrimary()
 		if err == nil then
 			local pSegment = self.fence:getPreviewSegment()
 			local price = self:getPrice()
-			local event = PlaceableFenceAddSegmentEvent.new(self.fence, pSegment.x1, pSegment.z1, x, z, pSegment.renderFirst, not snapped, pSegment.gateIndex, price)
+			local event = PlaceableFenceAddSegmentEvent.new(self.fence, pSegment.x1, pSegment.z1, x, z, pSegment.renderFirst, not snapped or segment == nil, pSegment.gateIndex, price)
 
 			g_client:getServerConnection():sendEvent(event)
 
-			pSegment.x1 = x
-			pSegment.z1 = z
-			pSegment.renderFirst = false
-			pSegment.renderLast = true
+			if self.fence.playPlaceSound ~= nil then
+				self.fence:playPlaceSound()
+			end
 
-			self.fence:setPreviewSegment(pSegment)
+			if self.parallelSnappingEnabled then
+				self.fence:setPreviewSegment(nil)
+
+				self.attachmentPointSegment = nil
+				self.attachmentPointSegmentReversed = nil
+
+				self:resetErrorOverlays()
+			else
+				pSegment.x1 = x
+				pSegment.z1 = z
+				pSegment.renderFirst = false
+				pSegment.renderLast = true
+
+				self.fence:setPreviewSegment(pSegment)
+
+				self.parallelSnappingSegment = nil
+			end
 		end
 	end
 end
@@ -570,6 +651,14 @@ function ConstructionBrushFence:onButtonSecondary()
 	end
 end
 
+function ConstructionBrushFence:onButtonTertiary()
+	if self.fence:getSupportsParallelSnapping() and self.fence:getMaxCornerAngle() > 0 then
+		self.parallelSnappingEnabled = not self.parallelSnappingEnabled
+
+		self:setInputTextDirty()
+	end
+end
+
 function ConstructionBrushFence:cancel()
 	self:onButtonSecondary()
 end
@@ -580,4 +669,12 @@ end
 
 function ConstructionBrushFence:getButtonSecondaryText()
 	return "$l10n_input_CONSTRUCTION_FINISH"
+end
+
+function ConstructionBrushFence:getButtonTertiaryText()
+	if self.fence ~= nil and self.fence:getSupportsParallelSnapping() and self.fence:getMaxCornerAngle() > 0 then
+		return string.format(g_i18n:getText("input_CONSTRUCTION_SNAP"), g_i18n:getText(self.parallelSnappingEnabled and "ui_on" or "ui_off"))
+	else
+		return nil
+	end
 end

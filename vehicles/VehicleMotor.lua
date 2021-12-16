@@ -96,6 +96,7 @@ function VehicleMotor.new(vehicle, minRpm, maxRpm, maxForwardSpeed, maxBackwardS
 	self.lastGearChangeTime = 0
 	self.gearChangeTimeAutoReductionTime = 500
 	self.gearChangeTimeAutoReductionTimer = 0
+	self.lastManualShifterActive = false
 	self.clutchSlippingTime = 1000
 	self.clutchSlippingTimer = 0
 	self.clutchSlippingGearRatio = 0
@@ -717,13 +718,14 @@ function VehicleMotor:update(dt)
 		end
 
 		if not self:getUseAutomaticGearShifting() then
+			local accelerationPedal = self.lastAcceleratorPedal * self.currentDirection
 			local clutchValue = 0
 
 			if self.minGearRatio == 0 and self.maxGearRatio == 0 or self.manualClutchValue > 0.1 then
 				clutchValue = 1
 			end
 
-			local direction = clutchValue * self.lastAcceleratorPedal
+			local direction = clutchValue * accelerationPedal
 
 			if direction == 0 then
 				direction = -1
@@ -732,7 +734,7 @@ function VehicleMotor:update(dt)
 			local accelerationSpeed = direction > 0 and self.motorRotationAccelerationLimit * 0.02 or self.dampingRateZeroThrottleClutchEngaged * 30 * math.pi
 			local minRotSpeed = self.minRpm * math.pi / 30
 			local maxRotSpeed = self.maxRpm * math.pi / 30
-			self.motorRotSpeedClutchEngaged = math.min(math.max(self.motorRotSpeedClutchEngaged + direction * accelerationSpeed * dt, minRotSpeed), minRotSpeed + (maxRotSpeed - minRotSpeed) * self.lastAcceleratorPedal)
+			self.motorRotSpeedClutchEngaged = math.min(math.max(self.motorRotSpeedClutchEngaged + direction * accelerationSpeed * dt, minRotSpeed), minRotSpeed + (maxRotSpeed - minRotSpeed) * accelerationPedal)
 			self.motorRotSpeed = math.max(self.motorRotSpeed, self.motorRotSpeedClutchEngaged)
 		end
 
@@ -1548,7 +1550,7 @@ function VehicleMotor:updateGear(acceleratorPedal, brakePedal, dt)
 		local ratio = 0
 
 		if tarRatio ~= nil then
-			ratio = MathUtil.lerp(math.abs(tarRatio), math.abs(curRatio), self.manualClutchValue) * MathUtil.sign(tarRatio)
+			ratio = MathUtil.lerp(math.abs(tarRatio), math.abs(curRatio), math.min(self.manualClutchValue, 0.9) / 0.9 * 0.5) * MathUtil.sign(tarRatio)
 		end
 
 		self.maxGearRatio = ratio
@@ -1614,6 +1616,8 @@ function VehicleMotor:shiftGear(up)
 				end
 
 				self:setGear(newGear)
+
+				self.lastManualShifterActive = false
 			end
 		else
 			SpecializationUtil.raiseEvent(self.vehicle, "onClutchCreaking", true, false)
@@ -1627,6 +1631,8 @@ function VehicleMotor:selectGear(gearIndex, activation)
 			if self:getIsGearChangeAllowed() then
 				if self.currentGears[gearIndex] ~= nil then
 					self:setGear(gearIndex, true)
+
+					self.lastManualShifterActive = true
 				end
 			else
 				SpecializationUtil.raiseEvent(self.vehicle, "onClutchCreaking", false, false, gearIndex)
@@ -1634,6 +1640,8 @@ function VehicleMotor:selectGear(gearIndex, activation)
 		end
 	else
 		self:setGear(0, false)
+
+		self.lastManualShifterActive = true
 	end
 end
 
@@ -1642,8 +1650,6 @@ function VehicleMotor:setGear(gearIndex, isLocked)
 		if self.gearChangeTime == 0 and gearIndex < self.targetGear then
 			self.loadPercentageChangeCharge = 1
 		end
-
-		self.gearChangedIsLocked = isLocked
 
 		if self.gearShiftMode ~= VehicleMotor.SHIFT_MODE_MANUAL_CLUTCH then
 			self.targetGear = gearIndex
@@ -1762,17 +1768,23 @@ function VehicleMotor:changeDirection(direction, force)
 		if self.currentDirection < 0 then
 			if self.directionChangeUseGear then
 				self.directionLastGear = self.targetGear
-				self.targetGear = self.directionChangeGearIndex
+
+				if not self:getUseAutomaticGearShifting() or not self.lastManualShifterActive then
+					self.targetGear = self.directionChangeGearIndex
+				end
+
 				self.currentGears = self.backwardGears or self.forwardGears
 			elseif self.directionChangeUseGroup then
 				self.directionLastGroup = self.activeGearGroupIndex
 				self.activeGearGroupIndex = self.directionChangeGroupIndex
 			end
 		elseif self.directionChangeUseGear then
-			if self.directionLastGear > 0 then
-				self.targetGear = not self:getUseAutomaticGearShifting() and self.directionLastGear or self.defaultForwardGear
-			else
-				self.targetGear = self.defaultForwardGear
+			if not self:getUseAutomaticGearShifting() or not self.lastManualShifterActive then
+				if self.directionLastGear > 0 then
+					self.targetGear = not self:getUseAutomaticGearShifting() and self.directionLastGear or self.defaultForwardGear
+				else
+					self.targetGear = self.defaultForwardGear
+				end
 			end
 
 			self.currentGears = self.forwardGears
@@ -1846,11 +1858,13 @@ function VehicleMotor:getMinMaxGearRatio()
 	local minRatio = self.minGearRatio
 	local maxRatio = self.maxGearRatio
 
-	if self.clutchSlippingTimer == self.clutchSlippingTime then
-		maxRatio = math.max(350, self.maxGearRatio) * MathUtil.sign(self.maxGearRatio)
-	elseif self.clutchSlippingTimer > 0 then
-		minRatio = MathUtil.lerp(minRatio, self.clutchSlippingGearRatio, self.clutchSlippingTimer / self.clutchSlippingTime)
-		maxRatio = MathUtil.lerp(maxRatio, self.clutchSlippingGearRatio, self.clutchSlippingTimer / self.clutchSlippingTime)
+	if self.minGearRatio ~= 0 or self.maxGearRatio ~= 0 then
+		if self.clutchSlippingTimer == self.clutchSlippingTime then
+			maxRatio = math.max(350, self.maxGearRatio) * MathUtil.sign(self.maxGearRatio)
+		elseif self.clutchSlippingTimer > 0 then
+			minRatio = MathUtil.lerp(minRatio, self.clutchSlippingGearRatio, self.clutchSlippingTimer / self.clutchSlippingTime)
+			maxRatio = MathUtil.lerp(maxRatio, self.clutchSlippingGearRatio, self.clutchSlippingTimer / self.clutchSlippingTime)
+		end
 	end
 
 	return minRatio, maxRatio

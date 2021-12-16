@@ -9,6 +9,7 @@ BunkerSilo.STATE_FERMENTED = 2
 BunkerSilo.STATE_DRAIN = 3
 BunkerSilo.NUM_STATES = 4
 BunkerSilo.COMPACTING_BASE_MASS = 5
+BunkerSilo.MILLISECONDS_PER_DAY = 86400000
 
 function BunkerSilo:onCreate(id)
 	Logging.error("BunkerSilo.onCreate is deprecated!")
@@ -28,8 +29,6 @@ function BunkerSilo.new(isServer, isClient, customMt)
 	self.isOpenedAtFront = false
 	self.isOpenedAtBack = false
 	self.distanceToCompactedFillLevel = 100
-	self.fermentingTime = 0
-	self.fermentingDuration = 86400000
 	self.fermentingPercent = 0
 	self.fillLevel = 0
 	self.compactedFillLevel = 0
@@ -44,6 +43,8 @@ function BunkerSilo.new(isServer, isClient, customMt)
 	self.activatable = BunkerSiloActivatable.new(self)
 	self.state = BunkerSilo.STATE_FILL
 	self.bunkerSiloDirtyFlag = self:getNextDirtyFlag()
+
+	g_messageCenter:subscribe(MessageType.HOUR_CHANGED, self.onHourChanged, self)
 
 	return self
 end
@@ -63,6 +64,14 @@ function BunkerSilo:load(components, xmlFile, key, i3dMappings)
 	self.bunkerSiloArea.dwy = self.bunkerSiloArea.wy - self.bunkerSiloArea.sy
 	self.bunkerSiloArea.dwz = self.bunkerSiloArea.wz - self.bunkerSiloArea.sz
 	self.bunkerSiloArea.dwx_norm, self.bunkerSiloArea.dwy_norm, self.bunkerSiloArea.dwz_norm = MathUtil.vector3Normalize(self.bunkerSiloArea.dwx, self.bunkerSiloArea.dwy, self.bunkerSiloArea.dwz)
+	self.bunkerSiloArea.inner = {
+		start = xmlFile:getValue(key .. ".innerArea#startNode", self.bunkerSiloArea.start, components, i3dMappings),
+		width = xmlFile:getValue(key .. ".innerArea#widthNode", self.bunkerSiloArea.width, components, i3dMappings),
+		height = xmlFile:getValue(key .. ".innerArea#heightNode", self.bunkerSiloArea.height, components, i3dMappings)
+	}
+	self.bunkerSiloArea.inner.sx, self.bunkerSiloArea.inner.sy, self.bunkerSiloArea.inner.sz = getWorldTranslation(self.bunkerSiloArea.inner.start)
+	self.bunkerSiloArea.inner.wx, self.bunkerSiloArea.inner.wy, self.bunkerSiloArea.inner.wz = getWorldTranslation(self.bunkerSiloArea.inner.width)
+	self.bunkerSiloArea.inner.hx, self.bunkerSiloArea.inner.hy, self.bunkerSiloArea.inner.hz = getWorldTranslation(self.bunkerSiloArea.inner.height)
 	self.interactionTriggerNode = xmlFile:getValue(key .. ".interactionTrigger#node", nil, components, i3dMappings)
 
 	if self.interactionTriggerNode ~= nil then
@@ -126,7 +135,6 @@ function BunkerSilo:load(components, xmlFile, key, i3dMappings)
 
 	self.fillLevel = 0
 	local difficultyMultiplier = g_currentMission.missionInfo.economicDifficulty
-	self.fermentingDuration = self.fermentingDuration * difficultyMultiplier
 	self.distanceToCompactedFillLevel = self.distanceToCompactedFillLevel / difficultyMultiplier
 
 	self:setState(BunkerSilo.STATE_FILL)
@@ -239,8 +247,7 @@ function BunkerSilo:loadFromXMLFile(xmlFile, key)
 	local fermentingTime = xmlFile:getValue(key .. "#fermentingTime")
 
 	if fermentingTime ~= nil then
-		self.fermentingTime = MathUtil.clamp(fermentingTime, 0, self.fermentingDuration)
-		self.fermentingPercent = MathUtil.getFlooredPercent(self.fermentingTime, self.fermentingDuration)
+		self.fermentingPercent = fermentingTime / (BunkerSilo.MILLISECONDS_PER_DAY * g_currentMission.environment.daysPerPeriod)
 	end
 
 	self.isOpenedAtFront = xmlFile:getValue(key .. "#openedAtFront", false)
@@ -284,6 +291,12 @@ function BunkerSilo:loadFromXMLFile(xmlFile, key)
 				self:setState(BunkerSilo.STATE_FILL, false)
 			end
 		end
+
+		DensityMapHeightUtil.changeFillTypeAtArea(area.sx, area.sz, area.wx, area.wz, area.hx, area.hz, self.inputFillType, self.outputFillType)
+	elseif self.fillLevel > 0 and (self.state == BunkerSilo.STATE_CLOSED or self.state == BunkerSilo.STATE_FERMENTED) then
+		local area = self.bunkerSiloArea
+
+		DensityMapHeightUtil.changeFillTypeAtArea(area.sx, area.sz, area.wx, area.wz, area.hx, area.hz, self.inputFillType, self.fermentingFillType)
 	elseif self.state == BunkerSilo.STATE_FILL then
 		local area = self.bunkerSiloArea
 		local fermentingFillLevel, fermentingPixels, totalFermentingPixels = DensityMapHeightUtil.getFillLevelAtArea(self.fermentingFillType, area.sx, area.sz, area.wx, area.wz, area.hx, area.hz)
@@ -304,7 +317,7 @@ function BunkerSilo:saveToXMLFile(xmlFile, key, usedModNames)
 	xmlFile:setValue(key .. "#state", self.state)
 	xmlFile:setValue(key .. "#fillLevel", self.fillLevel)
 	xmlFile:setValue(key .. "#compactedFillLevel", self.compactedFillLevel)
-	xmlFile:setValue(key .. "#fermentingTime", self.fermentingTime)
+	xmlFile:setValue(key .. "#fermentingTime", self.fermentingPercent * BunkerSilo.MILLISECONDS_PER_DAY * g_currentMission.environment.daysPerPeriod)
 	xmlFile:setValue(key .. "#openedAtFront", self.isOpenedAtFront)
 	xmlFile:setValue(key .. "#openedAtBack", self.isOpenedAtBack)
 end
@@ -328,24 +341,9 @@ function BunkerSilo:update(dt)
 			g_currentMission:addExtraPrintText(g_i18n:getText("info_fillLevel") .. string.format(" %s: %d", fillTypeName, self.fillLevel))
 			g_currentMission:addExtraPrintText(g_i18n:getText("info_compacting") .. string.format(" %d%%", self.compactedPercent))
 		elseif self.state == BunkerSilo.STATE_CLOSED or self.state == BunkerSilo.STATE_FERMENTED then
-			g_currentMission:addExtraPrintText(g_i18n:getText("info_fermenting") .. string.format(" %s: %d%%", fillTypeName, self.fermentingPercent))
+			g_currentMission:addExtraPrintText(g_i18n:getText("info_fermenting") .. string.format(" %s: %d%%", fillTypeName, math.ceil(self.fermentingPercent * 100)))
 		elseif self.state == BunkerSilo.STATE_DRAIN then
 			g_currentMission:addExtraPrintText(g_i18n:getText("info_fillLevel") .. string.format(" %s: %d", fillTypeName, self.fillLevel))
-		end
-	end
-
-	if self.state == BunkerSilo.STATE_CLOSED and self.isServer then
-		self.fermentingTime = math.min(self.fermentingDuration, self.fermentingTime + dt * g_currentMission:getEffectiveTimeScale())
-		local fermentingPercent = MathUtil.getFlooredPercent(self.fermentingTime, self.fermentingDuration)
-
-		if fermentingPercent ~= self.fermentingPercent then
-			self.fermentingPercent = fermentingPercent
-
-			self:raiseDirtyFlags(self.bunkerSiloDirtyFlag)
-		end
-
-		if self.fermentingDuration <= self.fermentingTime then
-			self:setState(BunkerSilo.STATE_FERMENTED, true)
 		end
 	end
 
@@ -435,7 +433,7 @@ function BunkerSilo:updateTick(dt)
 end
 
 function BunkerSilo:updateFillLevel()
-	local area = self.bunkerSiloArea
+	local area = self.bunkerSiloArea.inner
 	local fillLevel = self.fillLevel
 	local fillType = self.inputFillType
 
@@ -467,7 +465,6 @@ end
 function BunkerSilo:setState(state, showNotification)
 	if state ~= self.state then
 		if state == BunkerSilo.STATE_FILL then
-			self.fermentingTime = 0
 			self.fermentingPercent = 0
 			self.compactedFillLevel = 0
 			self.compactedPercent = 0
@@ -721,6 +718,18 @@ function BunkerSilo:setWallVisibility(isLeftVisible, isRightVisible)
 	end
 end
 
+function BunkerSilo:onHourChanged()
+	if self.state == BunkerSilo.STATE_CLOSED and self.isServer then
+		self.fermentingPercent = math.min(self.fermentingPercent + 0.041666666666666664 / g_currentMission.environment.daysPerPeriod, 1)
+
+		self:raiseDirtyFlags(self.bunkerSiloDirtyFlag)
+
+		if self.fermentingPercent >= 0.999 then
+			self:setState(BunkerSilo.STATE_FERMENTED, true)
+		end
+	end
+end
+
 function BunkerSilo:getInteractionPosition()
 	if g_currentMission.controlPlayer and self.playerInRange then
 		return getWorldTranslation(g_currentMission.player.rootNode)
@@ -819,9 +828,12 @@ function BunkerSilo:onChangedFillLevelCallback(vehicle, fillDelta, fillType, x, 
 end
 
 function BunkerSilo.registerXMLPaths(schema, basePath)
-	schema:register(XMLValueType.NODE_INDEX, basePath .. ".area#startNode", "Area start node")
-	schema:register(XMLValueType.NODE_INDEX, basePath .. ".area#widthNode", "Area width node")
-	schema:register(XMLValueType.NODE_INDEX, basePath .. ".area#heightNode", "Area height node")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".area#startNode", "Area start node (placed in the middle of the walls)")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".area#widthNode", "Area width node (placed in the middle of the walls)")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".area#heightNode", "Area height node (placed in the middle of the walls)")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".innerArea#startNode", "Inner area start node (Used to detect fill level - placed 25cm from inner walls)")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".innerArea#widthNode", "Inner area width node (Used to detect fill level - placed 25cm from inner walls)")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".innerArea#heightNode", "Inner area height node (Used to detect fill level - placed 25cm from inner walls)")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".wallLeft#node", "Left wall node")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".wallLeft#collision", "Left wall collision")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".wallRight#node", "Right wall node")

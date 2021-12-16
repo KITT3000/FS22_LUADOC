@@ -33,6 +33,8 @@ function FieldManager:initDataStructures()
 	self.fieldStatusParametersToSet = nil
 	self.currentFieldPartitionIndex = nil
 	self.lastHandledFieldIndex = 0
+	self.fieldUpdateTimer = 0
+	self.lastFieldCheckedIndex = 0
 end
 
 function FieldManager:loadMapData(xmlFile)
@@ -152,6 +154,10 @@ function FieldManager:loadMapData(xmlFile)
 							else
 								weedValue = math.random(1, 7)
 							end
+						end
+
+						if growthState == fruitDesc.cutState then
+							fieldState = FieldManager.FIELDSTATE_HARVESTED
 						end
 					else
 						fieldState = math.random() < 0.5 and FieldManager.FIELDSTATE_CULTIVATED or FieldManager.FIELDSTATE_PLOWED
@@ -314,16 +320,33 @@ function FieldManager:update(dt)
 
 			self:setFieldPartitionStatus(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11])
 		end
-	else
-		local timePerField = (FieldManager.NPC_END_TIME - FieldManager.NPC_START_TIME) / (#self.fields + 1) * g_currentMission.environment.daysPerPeriod
+	elseif #self.fields > 0 then
+		local workTimePerDay = FieldManager.NPC_END_TIME - FieldManager.NPC_START_TIME
+		local timePerField = workTimePerDay / (#self.fields + 1) * g_currentMission.environment.daysPerPeriod
+		self.fieldUpdateTimer = self.fieldUpdateTimer + dt
 
-		while self.lastHandledFieldIndex < #self.fields and g_currentMission.environment.dayTime > FieldManager.NPC_START_TIME + (self.lastHandledFieldIndex + 1) * timePerField do
-			self.lastHandledFieldIndex = self.lastHandledFieldIndex + 1
-			local fieldId = self.lastHandledFieldIndex
+		if self.fieldUpdateTimer > 100 then
+			self.fieldUpdateTimer = 0
+			self.lastFieldCheckedIndex = self.lastFieldCheckedIndex + 1
+
+			if self.lastFieldCheckedIndex > #self.fields then
+				self.lastFieldCheckedIndex = 1
+			end
+
+			local allowUpdates = false
+			local time = FieldManager.NPC_START_TIME + (self.lastFieldCheckedIndex + 1) * timePerField % workTimePerDay
+			local day = math.floor((self.lastFieldCheckedIndex + 1) * timePerField / workTimePerDay) + 1
+
+			if self.lastFieldCheckedIndex == self.lastHandledFieldIndex + 1 and self.lastFieldCheckedIndex <= #self.fields and time < g_currentMission.environment.dayTime and day <= g_currentMission.environment.currentDayInPeriod then
+				self.lastHandledFieldIndex = self.lastFieldCheckedIndex
+				allowUpdates = true
+			end
+
+			local fieldId = self.lastFieldCheckedIndex
 			local field = self.fields[fieldId]
 
 			if field:getIsAIActive() and field.fieldMissionAllowed and field.currentMission == nil and field.fruitType ~= FruitType.GRASS then
-				self:updateNPCField(field)
+				self:updateNPCField(field, allowUpdates)
 			end
 		end
 	end
@@ -458,7 +481,7 @@ function FieldManager:updateFieldOwnership()
 	end
 end
 
-function FieldManager:updateNPCField(field)
+function FieldManager:updateNPCField(field, allowUpdates)
 	local x, z = FieldUtil.getMeasurementPositionOfField(field)
 
 	if field.fruitType ~= nil then
@@ -486,7 +509,7 @@ function FieldManager:updateNPCField(field)
 		end
 
 		if fertilizerFruit then
-			if maxGrowthState == 2 then
+			if maxGrowthState == 2 and allowUpdates then
 				self.fieldStatusParametersToSet = {
 					field,
 					field.setFieldStatusPartitions,
@@ -512,34 +535,36 @@ function FieldManager:updateNPCField(field)
 			if area > 0.5 * totalArea then
 				g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_WITHERED)
 
-				local plowState = FieldUtil.getPlowFactor(field, true)
+				if allowUpdates then
+					local plowState = FieldUtil.getPlowFactor(field, true)
 
-				if plowState == 0 then
-					self.fieldStatusParametersToSet = {
-						field,
-						field.setFieldStatusPartitions,
-						1,
-						nil,
-						FieldManager.FIELDSTATE_PLOWED,
-						0,
-						nil,
-						false
-					}
+					if plowState == 0 then
+						self.fieldStatusParametersToSet = {
+							field,
+							field.setFieldStatusPartitions,
+							1,
+							nil,
+							FieldManager.FIELDSTATE_PLOWED,
+							0,
+							nil,
+							false
+						}
 
-					g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_PLOWED)
-				else
-					self.fieldStatusParametersToSet = {
-						field,
-						field.setFieldStatusPartitions,
-						1,
-						nil,
-						FieldManager.FIELDSTATE_CULTIVATED,
-						0,
-						nil,
-						false
-					}
+						g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_PLOWED)
+					else
+						self.fieldStatusParametersToSet = {
+							field,
+							field.setFieldStatusPartitions,
+							1,
+							nil,
+							FieldManager.FIELDSTATE_CULTIVATED,
+							0,
+							nil,
+							false
+						}
 
-					g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_CULTIVATED)
+						g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_CULTIVATED)
+					end
 				end
 
 				return
@@ -555,7 +580,7 @@ function FieldManager:updateNPCField(field)
 		local maxHarvestState = FieldUtil.getMaxHarvestState(field, field.fruitType)
 
 		if maxHarvestState == harvestReadyState then
-			if math.random() < 0.95 then
+			if allowUpdates and math.random() < 0.95 then
 				local plowState = fruitDesc.increasesSoilDensity and 0 or FieldUtil.getPlowFactor(field, true) * self.plowLevelMaxValue
 				local limeState = fruitDesc.consumesLime and 0 or FieldUtil.getLimeFactor(field) * self.limeLevelMaxValue
 				self.fieldStatusParametersToSet = {
@@ -575,6 +600,10 @@ function FieldManager:updateNPCField(field)
 				g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_HARVESTED)
 			end
 
+			return
+		end
+
+		if not allowUpdates then
 			return
 		end
 
@@ -692,7 +721,7 @@ function FieldManager:updateNPCField(field)
 
 			return
 		end
-	else
+	elseif allowUpdates then
 		local limeFactor = FieldUtil.getLimeFactor(field)
 
 		if limeFactor == 0 and math.random() < 0.75 then
@@ -874,11 +903,16 @@ function FieldManager:setFieldPartitionStatus(field, fieldPartitions, fieldParti
 			end
 		elseif fieldState == FieldManager.FIELDSTATE_HARVESTED then
 			state = fruitType.cutState
+			local groundTypeValue = self.groundTypeSown
+
+			if fruitType.groundTypeChangeGrowthState >= 0 and fruitType.groundTypeChangeGrowthState <= state then
+				groundTypeValue = mission.fieldGroundSystem:getFieldGroundValue(fruitType.groundTypeChangeType)
+			end
 
 			self.angleModifier:setParallelogramWorldCoords(x, z, widthX, widthZ, heightX, heightZ, DensityCoordType.POINT_VECTOR_VECTOR)
 			self.angleModifier:executeSet(field.fieldAngle)
 			self.groundTypeModifier:setParallelogramWorldCoords(x, z, widthX, widthZ, heightX, heightZ, DensityCoordType.POINT_VECTOR_VECTOR)
-			self.groundTypeModifier:executeSet(self.groundTypeSown)
+			self.groundTypeModifier:executeSet(groundTypeValue)
 
 			local fruitModifier, fruitModifierPreparing = self:getFruitModifier(fruitType)
 

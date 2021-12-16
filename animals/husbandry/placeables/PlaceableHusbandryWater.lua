@@ -118,11 +118,19 @@ function PlaceableHusbandryWater:updateFeeding(superFunc)
 	local factor = superFunc(self)
 	local spec = self.spec_husbandryWater
 
-	if self.isServer and not spec.automaticWaterSupply and spec.litersPerHour > 0 then
+	if self.isServer and spec.litersPerHour > 0 then
 		local delta = spec.litersPerHour * g_currentMission.environment.timeAdjustment
-		local remainingLiters = self:removeHusbandryFillLevel(nil, delta, spec.fillType)
-		local usedDelta = delta - remainingLiters
-		factor = factor * MathUtil.clamp(usedDelta / delta, 0, 1)
+
+		if spec.automaticWaterSupply then
+			local fillType = g_fillTypeManager:getFillTypeByIndex(spec.fillType)
+			local price = delta * fillType.pricePerLiter
+
+			g_currentMission:addMoney(-price, self:getOwnerFarmId(), MoneyType.PURCHASE_WATER, false, false)
+		else
+			local remainingLiters = self:removeHusbandryFillLevel(nil, delta, spec.fillType)
+			local usedDelta = delta - remainingLiters
+			factor = factor * MathUtil.clamp(usedDelta / delta, 0, 1)
+		end
 	end
 
 	return factor

@@ -41,7 +41,7 @@ end
 function PlaceableIncomePerHour:onHourChanged()
 	if self.isServer then
 		local spec = self.spec_incomePerHour
-		local incomePerHour = spec.incomePerHour * self:getIncomePerHourFactor()
+		local incomePerHour = spec.incomePerHour * self:getIncomePerHourFactor() * g_currentMission.environment.timeAdjustment
 
 		if incomePerHour ~= 0 then
 			g_currentMission:addMoney(incomePerHour, self:getOwnerFarmId(), MoneyType.PROPERTY_INCOME, true)
@@ -53,7 +53,7 @@ function PlaceableIncomePerHour:getIncomePerHourFactor()
 	return 1
 end
 
-function PlaceableIncomePerHour.loadSpecValueIncomePerHour(xmlFile, customEnvironment)
+function PlaceableIncomePerHour.loadSpecValueIncomePerHour(xmlFile, customEnvironment, baseDir)
 	if not xmlFile:hasProperty("placeable.incomePerHour") then
 		return nil
 	end
@@ -68,5 +68,7 @@ function PlaceableIncomePerHour.getSpecValueIncomePerHour(storeItem, realItem)
 		return nil
 	end
 
-	return string.format(g_i18n:getText("shop_incomeValue"), g_i18n:formatMoney(storeItem.specs.incomePerHour))
+	local perMonth = storeItem.specs.incomePerHour * 24
+
+	return string.format("%s / %s", g_i18n:formatMoney(perMonth), g_i18n:getText("ui_month"))
 end

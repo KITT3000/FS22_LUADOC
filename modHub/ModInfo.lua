@@ -50,16 +50,28 @@ function ModInfo:getIconFilename()
 	return getModMetaAttributeString(self.modId, "iconImage")
 end
 
-function ModInfo:getScreenshot1Filename()
-	return getModMetaAttributeString(self.modId, "screenshot0")
+function ModInfo:getScreenshot(index)
+	local url = getModMetaAttributeString(self.modId, "screenshot" .. index - 1)
+
+	if url == "" then
+		return nil
+	end
+
+	return url
 end
 
-function ModInfo:getScreenshot2Filename()
-	return getModMetaAttributeString(self.modId, "screenshot1")
-end
+function ModInfo:getScreenshots()
+	if self.screenshots == nil then
+		local screenshots = {}
 
-function ModInfo:getScreenshot3Filename()
-	return getModMetaAttributeString(self.modId, "screenshot2")
+		for i = 1, 6 do
+			table.insert(screenshots, self:getScreenshot(i))
+		end
+
+		self.screenshots = screenshots
+	end
+
+	return self.screenshots
 end
 
 function ModInfo:getFilesize()
