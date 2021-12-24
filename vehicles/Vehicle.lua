@@ -1237,8 +1237,11 @@ end
 
 function Vehicle:tryFinishLoading()
 	if self.subLoadingTasksFinished then
-		self:setVisibility(true)
-		self:addToPhysics()
+		if self.isServer then
+			self:setVisibility(true)
+			self:addToPhysics()
+		end
+
 		self:setLoadingStep(Vehicle.LOAD_STEP_FINISHED)
 		SpecializationUtil.raiseEvent(self, "onLoadFinished", self.savegame)
 
@@ -1555,6 +1558,7 @@ function Vehicle:postReadStream(streamId, connection)
 	end
 
 	self.networkTimeInterpolator:reset()
+	self:setVisibility(true)
 	self:addToPhysics()
 
 	self.serverMass = streamReadFloat32(streamId)

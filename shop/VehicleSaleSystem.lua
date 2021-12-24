@@ -123,12 +123,16 @@ function VehicleSaleSystem:saveToXMLFile(xmlFilename)
 
 		for name, ids in pairs(item.boughtConfigurations) do
 			for id, _ in pairs(ids) do
-				local cKey = string.format("%s.boughtConfiguration(%d)", key, i)
+				if storeItem.configurations[name] ~= nil and storeItem.configurations[name][id] ~= nil then
+					local cKey = string.format("%s.boughtConfiguration(%d)", key, i)
 
-				xmlFile:setString(cKey .. "#name", name)
-				xmlFile:setString(cKey .. "#id", tostring(storeItem.configurations[name][id].saveId))
+					xmlFile:setString(cKey .. "#name", name)
+					xmlFile:setString(cKey .. "#id", tostring(storeItem.configurations[name][id].saveId))
 
-				i = i + 1
+					i = i + 1
+				else
+					Logging.warning("Configuration '%s' on %s has invalid id %s (is bought but does not exist)", name, storeItem.xmlFilename, id)
+				end
 			end
 		end
 	end)

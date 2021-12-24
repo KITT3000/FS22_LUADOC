@@ -219,7 +219,7 @@ function SettingsDeviceFrame:updateView()
 		self.sensitivityMouseElement:setState(self.settingsModel:getMouseSensitivityValue())
 	end
 
-	local hasHeadTracking = true
+	local hasHeadTracking = g_gameSettings:getValue("isHeadTrackingEnabled") and isHeadTrackingAvailable()
 	local isKeyboardAvailable = getIsKeyboardAvailable()
 	local isHeadTrackingVisible = hasHeadTracking and (isMouse or not isKeyboardAvailable)
 
