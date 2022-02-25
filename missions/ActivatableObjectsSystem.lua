@@ -45,9 +45,10 @@ end
 function ActivatableObjectsSystem:updateObjects()
 	local nearestObject = nil
 	local nearestDistance = math.huge
+	local farmId = g_currentMission:getFarmId()
 
 	for _, object in pairs(self.objects) do
-		if object.getIsActivatable == nil or object:getIsActivatable() then
+		if (object.getIsActivatable == nil or object:getIsActivatable()) and (object.getHasAccess == nil or object:getHasAccess(farmId)) then
 			local distance = math.huge
 
 			if object.getDistance ~= nil and self.posX ~= nil then

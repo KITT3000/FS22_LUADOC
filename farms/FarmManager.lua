@@ -404,7 +404,11 @@ function FarmManager:destroyFarm(farmId)
 			local placeable = g_currentMission.placeableSystem.placeables[i]
 
 			if placeable:getOwnerFarmId() == farmId then
-				placeable:delete()
+				if placeable:getSellAction() == Placeable.SELL_AND_SPECTATOR_FARM then
+					placeable:setOwnerFarmId(FarmManager.SPECTATOR_FARM_ID)
+				else
+					placeable:delete()
+				end
 			end
 		end
 

@@ -42,11 +42,12 @@ function DynamicallyLoadedParts:onLoad(savegame)
 			local dynamicallyLoadedPart = {
 				filename = Utils.getFilename(filename, self.baseDirectory)
 			}
-			local sharedLoadRequestId = self:loadSubSharedI3DFile(dynamicallyLoadedPart.filename, false, false, self.onDynamicallyPartI3DLoaded, self, {
-				self.xmlFile,
-				partKey,
-				dynamicallyLoadedPart
-			})
+			local arguments = {
+				xmlFile = self.xmlFile,
+				partKey = partKey,
+				dynamicallyLoadedPart = dynamicallyLoadedPart
+			}
+			local sharedLoadRequestId = self:loadSubSharedI3DFile(dynamicallyLoadedPart.filename, false, false, self.onDynamicallyPartI3DLoaded, self, arguments)
 
 			table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 		else
@@ -69,7 +70,9 @@ end
 
 function DynamicallyLoadedParts:onDynamicallyPartI3DLoaded(i3dNode, failedReason, args)
 	local spec = self.spec_dynamicallyLoadedParts
-	local xmlFile, partKey, dynamicallyLoadedPart = unpack(args)
+	local xmlFile = args.xmlFile
+	local partKey = args.partKey
+	local dynamicallyLoadedPart = args.dynamicallyLoadedPart
 
 	if i3dNode ~= 0 then
 		local node = xmlFile:getValue(partKey .. "#node", "0|0", i3dNode)

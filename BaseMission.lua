@@ -30,6 +30,7 @@ function BaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.hud = nil
 	self.placeableSystem = PlaceableSystem.new(self)
 	self.itemSystem = ItemSystem.new(self)
+	self.onCreateObjectSystem = OnCreateObjectSystem.new(self)
 	self.beehiveSystem = BeehiveSystem.new(self)
 	self.cancelLoading = false
 	self.vertexBufferMemoryUsage = 0
@@ -78,8 +79,6 @@ function BaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.vehiclesToSpawnDirty = false
 	self.vehiclesToSpawnLoading = false
 	self.nodeToObject = {}
-	self.onCreateLoadedObjectsToSave = {}
-	self.numOnCreateLoadedObjectsToSave = 0
 	self.maps = {}
 	self.surfaceSounds = {}
 	self.cuttingSounds = {}
@@ -105,7 +104,6 @@ function BaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.isLoadingMap = false
 	self.numLoadingMaps = 0
 	self.loadingMapBaseDirectory = ""
-	self.onCreateLoadedObjects = {}
 	self.objectsToClassName = {}
 	self.vehiclesToAttach = {}
 	self.lastInteractionTime = -1
@@ -213,6 +211,7 @@ function BaseMission:delete()
 
 	self.placeableSystem:delete()
 	self.itemSystem:delete()
+	self.onCreateObjectSystem:delete()
 	self.beehiveSystem:delete()
 
 	for _, object in pairs(self.dynamicallyLoadedObjects) do
@@ -259,6 +258,7 @@ function BaseMission:delete()
 	removeConsoleCommand("gsRender360Screenshot")
 	removeConsoleCommand("gsVehicleRemoveAll")
 	removeConsoleCommand("gsItemRemoveAll")
+	removeConsoleCommand("gsShaderParamsSet")
 	self.inputManager:clearAllContexts()
 	g_gui:setCurrentMission(nil)
 	g_gui:setClient(nil)
@@ -276,6 +276,7 @@ function BaseMission:load()
 		addConsoleCommand("gsRender360Screenshot", "Renders 360 screenshots from current camera position", "consoleCommandRender360Screenshot", self)
 		addConsoleCommand("gsVehicleRemoveAll", "Removes all vehicles from current mission", "consoleCommandVehicleRemoveAll", self)
 		addConsoleCommand("gsItemRemoveAll", "Removes all items from current mission", "consoleCommandItemRemoveAll", self)
+		addConsoleCommand("gsShaderParamsSet", "Sets shader parameters for given nodeName and shader parameter name", "consoleCommandSetShaderParameter", self)
 	end
 
 	self:finishLoadingTask()
@@ -427,12 +428,14 @@ function BaseMission:loadMap(filename, addPhysics, asyncCallbackFunction, asyncC
 	self.numLoadingMaps = self.numLoadingMaps + 1
 
 	if asyncCallbackFunction ~= nil then
-		g_i3DManager:loadI3DFileAsync(filename, true, addPhysics, self.loadMapFinished, self, {
-			filename,
-			asyncCallbackFunction,
-			asyncCallbackObject,
-			asyncCallbackArguments
-		})
+		local args = {
+			filename = filename,
+			asyncCallbackFunction = asyncCallbackFunction,
+			asyncCallbackObject = asyncCallbackObject,
+			asyncCallbackArguments = asyncCallbackArguments
+		}
+
+		g_i3DManager:loadI3DFileAsync(filename, true, addPhysics, self.loadMapFinished, self, args)
 	else
 		Logging.error("Loading the map in sync is not allowed anymore! Please call loadMap with a async callback.")
 		printCallstack()
@@ -442,7 +445,10 @@ end
 function BaseMission:loadMapFinished(node, failedReason, arguments, callAsyncCallback)
 	g_mpLoadingScreen:hitLoadingTarget(MPLoadingScreen.LOAD_TARGETS.MAP)
 
-	local filename, asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments = unpack(arguments)
+	local filename = arguments.filename
+	local asyncCallbackFunction = arguments.asyncCallbackFunction
+	local asyncCallbackObject = arguments.asyncCallbackObject
+	local asyncCallbackArguments = arguments.asyncCallbackArguments
 
 	if node ~= 0 then
 		self:findDynamicObjects(node)
@@ -491,7 +497,7 @@ function BaseMission:findDynamicObjects(node)
 				if mpCreatePhysicsObject then
 					local object = PhysicsObject.new(self:getIsServer(), self:getIsClient())
 
-					g_currentMission:addOnCreateLoadedObject(object)
+					g_currentMission.onCreateObjectSystem:add(object)
 					object:loadOnCreate(c)
 					object:register(true)
 				elseif mpRemoveRigidBody then
@@ -804,27 +810,6 @@ function BaseMission:removeNonUpdateable(nonUpdateable)
 	self.nonUpdateables[nonUpdateable] = nil
 end
 
-function BaseMission:addOnCreateLoadedObject(object)
-	if not self.isLoadingMap then
-		print("Error: BaseMission:addOnCreateLoadedObject(): only allowed to add objects while loading maps")
-		printCallstack()
-
-		return
-	end
-
-	table.insert(self.onCreateLoadedObjects, object)
-
-	return #self.onCreateLoadedObjects
-end
-
-function BaseMission:getOnCreateLoadedObject(index)
-	return self.onCreateLoadedObjects[index]
-end
-
-function BaseMission:getNumOnCreateLoadedObjects()
-	return #self.onCreateLoadedObjects
-end
-
 function BaseMission:addNodeObject(node, object)
 	if self.nodeToObject[node] ~= nil then
 		Logging.error("Node '%s' already has a node-object mapping '%s'", getName(node), tostring(object))
@@ -842,52 +827,6 @@ end
 
 function BaseMission:getNodeObject(node)
 	return self.nodeToObject[node]
-end
-
-function BaseMission:addOnCreateLoadedObjectToSave(object)
-	if not self.isLoadingMap then
-		print("Error: Only allowed to add onCreate loaded objects to save while loading maps")
-
-		return
-	end
-
-	if object.saveToXMLFile == nil then
-		print("Error: Adding onCreate loaded object so save which does not have a saveToXMLFile function")
-
-		return
-	end
-
-	if object.saveId == nil then
-		print("Error: Adding onCreate loaded object with invalid saveId")
-
-		return
-	end
-
-	local prevObject = self.onCreateLoadedObjectsToSave[object.saveId]
-
-	if prevObject == object then
-		return
-	end
-
-	if prevObject ~= nil then
-		print("Error: Adding onCreate loaded object with duplicate saveId " .. tostring(object.saveId))
-
-		return
-	end
-
-	self.onCreateLoadedObjectsToSave[object.saveId] = object
-	self.numOnCreateLoadedObjectsToSave = self.numOnCreateLoadedObjectsToSave + 1
-	object.saveOrderIndex = self.numOnCreateLoadedObjectsToSave
-end
-
-function BaseMission:removeOnCreateLoadedObjectToSave(object)
-	if object.saveId ~= nil then
-		local prevObject = self.onCreateLoadedObjectsToSave[object.saveId]
-
-		if prevObject == object then
-			self.onCreateLoadedObjectsToSave[object.saveId] = nil
-		end
-	end
 end
 
 function BaseMission:pauseGame()
@@ -1207,13 +1146,11 @@ function BaseMission:update(dt)
 
 	if self.vehiclesToSpawnDirty then
 		local function asyncCallbackFunction(_, vehicle, vehicleLoadState, arguments)
-			local xmlFilename, key, xmlFile = unpack(arguments)
-
 			if vehicleLoadState ~= VehicleLoadingUtil.VEHICLE_LOAD_OK then
-				printf("Warning: corrupt vehicles xml '%s', vehicle '%s' could not be loaded", xmlFilename, key)
+				printf("Warning: corrupt vehicles xml '%s', vehicle '%s' could not be loaded", arguments.xmlFilename, arguments.key)
 			end
 
-			xmlFile:delete()
+			arguments.xmlFile:delete()
 			table.remove(self.vehiclesToSpawn, 1)
 
 			self.vehiclesToSpawnLoading = false
@@ -1226,12 +1163,13 @@ function BaseMission:update(dt)
 			local xmlFile = XMLFile.load("VehiclesXML", xmlFilename, Vehicle.xmlSchemaSavegame)
 			local key = vehicleToSpawn.xmlKey
 			self.vehiclesToSpawnLoading = true
+			local args = {
+				xmlFilename = xmlFilename,
+				key = key,
+				xmlFile = xmlFile
+			}
 
-			VehicleLoadingUtil.loadVehicleFromSavegameXML(xmlFile, key, true, false, nil, nil, asyncCallbackFunction, nil, {
-				xmlFilename,
-				key,
-				xmlFile
-			})
+			VehicleLoadingUtil.loadVehicleFromSavegameXML(xmlFile, key, true, false, nil, nil, asyncCallbackFunction, nil, args)
 		end
 
 		self.vehiclesToSpawnDirty = false
@@ -1281,6 +1219,7 @@ function BaseMission:update(dt)
 
 	g_sleepManager:update(dt)
 	g_baleManager:update(dt)
+	self.beehiveSystem:update(dt)
 
 	self.finishedFirstUpdate = true
 
@@ -1864,6 +1803,48 @@ function BaseMission:consoleCommandItemRemoveAll()
 	end
 
 	return string.format("Deleted %i item(s)!", numDeleted)
+end
+
+function BaseMission:consoleCommandSetShaderParameter(nodeName, shaderParameterName, x, y, z, w, shared)
+	local usage = "Usage: gsShaderParamsSet nodeName shaderParameterName [x] [y] [z] [w] [shared]\nNodeName is case insensitive"
+
+	if nodeName == nil then
+		return "Error: no nodeName given\n" .. usage
+	end
+
+	if shaderParameterName == nil then
+		return "Error: no shaderParameterName given\n" .. usage
+	end
+
+	x = tonumber(x)
+	y = tonumber(y)
+	z = tonumber(z)
+	w = tonumber(w)
+	shared = Utils.stringToBoolean(shared)
+	local nodeNameUpper = nodeName:upper()
+	local numTarversedNodes = 0
+	local numAffectedNodes = 0
+
+	local function checkNode(node)
+		numTarversedNodes = numTarversedNodes + 1
+
+		if getName(node):upper() == nodeNameUpper and getHasClassId(node, ClassIds.SHAPE) then
+			if not getHasShaderParameter(node, shaderParameterName) then
+				return true
+			end
+
+			local oldX, oldY, oldZ, oldW = getShaderParameter(node, shaderParameterName)
+
+			setShaderParameter(node, shaderParameterName, x or oldX, y or oldY, z or oldZ, w or oldW, shared)
+			Logging.info("set shader parameter '%s' for node '%s' to x=%.3f y=%.3f z=%.3f w=%.3f shared=%s", shaderParameterName, I3DUtil.getNodePath(node), x or oldX, y or oldY, z or oldZ, w or oldW, shared)
+
+			numAffectedNodes = numAffectedNodes + 1
+		end
+	end
+
+	I3DUtil.interateRecursively(getRootNode(), checkNode)
+
+	return string.format("Finished traversal of %d nodes, %d nodes affected", numTarversedNodes, numAffectedNodes)
 end
 
 function BaseMission:setLastInteractionTime(timeDelta)

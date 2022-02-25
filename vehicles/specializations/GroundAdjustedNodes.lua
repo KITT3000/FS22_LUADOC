@@ -24,6 +24,7 @@ function GroundAdjustedNodes.initSpecialization()
 	schema:register(XMLValueType.FLOAT, basePath .. "#activationTime", "In this time after the activation of the node the #moveSpeedStateChange will be used", 0)
 	schema:register(XMLValueType.FLOAT, basePath .. "#moveSpeedStateChange", "Move speed while node is inactive or active an in range of #activationTime", "#moveSpeed")
 	schema:register(XMLValueType.FLOAT, basePath .. "#updateThreshold", "Position of node will be updated if change is greater than this value", 0.002)
+	schema:register(XMLValueType.BOOL, basePath .. "#averageInActivePosY", "While nodes are turned off the average Y position will be used as target for all nodes", false)
 	schema:setXMLSpecializationType()
 end
 
@@ -71,7 +72,7 @@ function GroundAdjustedNodes:onLoad(savegame)
 				raycastNode.updateFrame = #spec.groundAdjustedNodes
 			end
 
-			raycastNode.frameCount = j % raycastNode.updateFrame
+			raycastNode.frameCount = j % raycastNode.updateFrame + 1
 		end
 	end
 
@@ -161,6 +162,8 @@ function GroundAdjustedNodes:loadGroundAdjustedNodeFromXML(xmlFile, key, adjuste
 		adjustedNode.activationTimer = 0
 		adjustedNode.resetIfNotActive = self.xmlFile:getValue(key .. "#resetIfNotActive", true)
 		adjustedNode.updateThreshold = self.xmlFile:getValue(key .. "#updateThreshold", 0.002)
+		adjustedNode.inActiveY = y
+		adjustedNode.averageInActivePosY = self.xmlFile:getValue(key .. "#averageInActivePosY", false)
 		adjustedNode.targetY = y
 		adjustedNode.curY = y
 		adjustedNode.lastY = y
@@ -219,6 +222,7 @@ function GroundAdjustedNodes:loadGroundAdjustedRaycastNodeFromXML(xmlFile, key, 
 end
 
 function GroundAdjustedNodes:updateGroundAdjustedNode(adjustedNode, dt)
+	local wasActive = adjustedNode.isActive
 	adjustedNode.isActive = self:getIsGroundAdjustedNodeActive(adjustedNode)
 
 	if adjustedNode.isActive then
@@ -296,8 +300,31 @@ function GroundAdjustedNodes:updateGroundAdjustedNode(adjustedNode, dt)
 			_, adjustedNode.curY, _ = getTranslation(adjustedNode.node)
 		end
 	else
+		if adjustedNode.averageInActivePosY and wasActive then
+			local groundAdjustedNodes = self.spec_groundAdjustedNodes.groundAdjustedNodes
+			local inActiveY = 0
+			local numNodes = 0
+
+			for _, _adjustedNode in pairs(groundAdjustedNodes) do
+				if _adjustedNode.averageInActivePosY then
+					inActiveY = inActiveY + _adjustedNode.curY
+					numNodes = numNodes + 1
+				end
+			end
+
+			if numNodes > 0 then
+				adjustedNode.inActiveY = inActiveY / numNodes
+
+				for _, _adjustedNode in pairs(groundAdjustedNodes) do
+					if _adjustedNode.averageInActivePosY then
+						_adjustedNode.inActiveY = inActiveY / numNodes
+					end
+				end
+			end
+		end
+
 		if adjustedNode.resetIfNotActive then
-			adjustedNode.targetY = adjustedNode.y
+			adjustedNode.targetY = adjustedNode.inActiveY
 		end
 
 		adjustedNode.activationTimer = adjustedNode.activationTime

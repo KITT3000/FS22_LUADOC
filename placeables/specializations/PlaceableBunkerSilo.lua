@@ -82,9 +82,11 @@ end
 
 function PlaceableBunkerSilo:onFinalizePlacement()
 	local spec = self.spec_bunkerSilo
+	local ownerFarmId = self:getOwnerFarmId()
 
 	self:updateBunkerSiloWalls(false)
 	spec.bunkerSilo:register(true)
+	spec.bunkerSilo:setOwnerFarmId(ownerFarmId, true)
 	g_currentMission.placeableSystem:addBunkerSilo(self)
 end
 

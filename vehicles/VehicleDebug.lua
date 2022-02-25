@@ -67,7 +67,6 @@ VehicleDebug.DEBUG_ATTACHER_JOINTS = 6
 VehicleDebug.DEBUG_AI = 7
 VehicleDebug.DEBUG_SOUNDS = 8
 VehicleDebug.DEBUG_ANIMATIONS = 9
-VehicleDebug.DEBUG_REVERB = 10
 VehicleDebug.STATE_NAMES = {
 	[VehicleDebug.NONE] = "None",
 	[VehicleDebug.DEBUG] = "Values",
@@ -110,10 +109,6 @@ function VehicleDebug.consoleCommandVehicleDebug(unusedSelf, stateStr)
 	return string.format("VehicleDebug set to '%s'", VehicleDebug.STATE_NAMES[VehicleDebug.state])
 end
 
-function VehicleDebug.consoleCommandVehicleDebugReverb(unusedSelf)
-	return "VehicleDebug - Reverb: " .. tostring(VehicleDebug.setState(VehicleDebug.DEBUG_REVERB))
-end
-
 function VehicleDebug.setState(state)
 	if VehicleDebug.state == 0 then
 		VehicleDebug.debugActionEvents = {}
@@ -149,20 +144,6 @@ function VehicleDebug.setState(state)
 
 		VehicleDebug.attacherJointUpperEventId = nil
 		VehicleDebug.attacherJointLowerEventId = nil
-	end
-
-	if state == VehicleDebug.DEBUG_REVERB then
-		if VehicleDebug.reverbToggleEventId == nil then
-			local _, reverbToggleEventId = g_inputBinding:registerActionEvent(InputAction.TOGGLE_PIPE, VehicleDebug, VehicleDebug.toggleReverb, false, true, false, true)
-
-			g_inputBinding:setActionEventTextVisibility(reverbToggleEventId, false)
-
-			VehicleDebug.reverbToggleEventId = reverbToggleEventId
-		end
-	else
-		g_inputBinding:removeActionEvent(VehicleDebug.reverbToggleEventId)
-
-		VehicleDebug.reverbToggleEventId = nil
 	end
 
 	local ret = false
@@ -271,8 +252,6 @@ function VehicleDebug.updateDebug(vehicle, dt)
 		VehicleDebug.drawDebugAttacherJoints(vehicle)
 	elseif VehicleDebug.state == VehicleDebug.DEBUG_AI then
 		VehicleDebug.drawDebugAIRendering(vehicle)
-	elseif VehicleDebug.state == VehicleDebug.DEBUG_REVERB then
-		VehicleDebug.updateReverbDebugRendering(vehicle, dt)
 	elseif VehicleDebug.state == VehicleDebug.DEBUG_TUNING then
 		VehicleDebug.updateTuningDebugRendering(vehicle, dt)
 	end
@@ -300,8 +279,6 @@ function VehicleDebug.drawDebug(vehicle)
 			VehicleDebug.drawTransmissionDebug(v)
 		elseif VehicleDebug.state == VehicleDebug.DEBUG_TUNING then
 			VehicleDebug.drawTuningDebug(v)
-		elseif VehicleDebug.state == VehicleDebug.DEBUG_REVERB then
-			VehicleDebug.drawReverbDebugRendering(v)
 		end
 
 		if VehicleDebug.state > 0 then
@@ -2069,315 +2046,6 @@ function VehicleDebug.drawAnimationDebug(vehicle)
 	end
 end
 
-function VehicleDebug.drawReverbDebugRendering(vehicle)
-	local firstRun = false
-
-	if VehicleDebug.reverbSettings == nil then
-		local settings = {
-			{
-				value = 0,
-				name = "GAIN (dB)",
-				valueBackup = 0.5,
-				range = {
-					-60,
-					12
-				}
-			},
-			{
-				value = 1,
-				name = "GAIN_HF (dB)",
-				range = {
-					-60,
-					12
-				}
-			},
-			{
-				value = 1,
-				name = "GAIN_LF (dB)",
-				range = {
-					-60,
-					12
-				}
-			},
-			{
-				value = 1,
-				name = "DECAY_TIME",
-				range = {
-					0,
-					5
-				}
-			},
-			{
-				value = 1,
-				name = "DECAY_HF_RATIO",
-				range = {
-					0,
-					5
-				}
-			},
-			{
-				value = 0.1,
-				name = "REFLECTIONS_GAIN (dB)",
-				range = {
-					-60,
-					12
-				}
-			},
-			{
-				value = 0.005,
-				name = "REFLECTIONS_DELAY",
-				range = {
-					0,
-					0.5
-				}
-			},
-			{
-				value = 1,
-				name = "LATE_REVERB_GAIN (dB)",
-				range = {
-					-60,
-					12
-				}
-			},
-			{
-				value = 0.01,
-				name = "LATE_REVERB_DELAY",
-				range = {
-					0,
-					0.5
-				}
-			},
-			{
-				value = 5000,
-				name = "HF_REFERENCE",
-				range = {
-					0,
-					10000
-				}
-			},
-			{
-				value = 250,
-				name = "LF_REFERENCE",
-				range = {
-					0,
-					1000
-				}
-			}
-		}
-		VehicleDebug.reverbSettings = settings
-		firstRun = true
-		local xmlFile = loadXMLFile("reverbSettings", getUserProfileAppPath() .. "reverbSettings.xml")
-
-		if xmlFile ~= 0 then
-			local i = 0
-
-			while true do
-				local key = string.format("settings.setting(%d)", i)
-
-				if not hasXMLProperty(xmlFile, key) then
-					break
-				end
-
-				local id = getXMLInt(xmlFile, key .. "#id")
-				local value = getXMLFloat(xmlFile, key .. "#value")
-
-				if settings[id].valueBackup ~= nil then
-					settings[id].valueBackup = value
-				else
-					settings[id].value = value
-				end
-
-				i = i + 1
-			end
-
-			delete(xmlFile)
-		else
-			xmlFile = createXMLFile("reverbSettings", getUserProfileAppPath() .. "reverbSettings.xml", "settings")
-
-			if xmlFile ~= 0 then
-				for i, setting in ipairs(settings) do
-					local settingKey = string.format("settings.setting(%d)", i - 1)
-
-					setXMLInt(xmlFile, settingKey .. "#id", i)
-
-					if setting.valueBackup ~= nil then
-						setXMLFloat(xmlFile, settingKey .. "#value", setting.valueBackup)
-					else
-						setXMLFloat(xmlFile, settingKey .. "#value", setting.value)
-					end
-				end
-
-				saveXMLFile(xmlFile)
-				delete(xmlFile)
-			end
-		end
-	end
-
-	for i = 1, #VehicleDebug.reverbSettings do
-		local setting = VehicleDebug.reverbSettings[i]
-		local x = 0.12
-		local lineHeight = 0.022
-		local y = 0.58 - (i - 1) * lineHeight
-
-		setTextAlignment(RenderText.ALIGN_RIGHT)
-		renderText(x, y, lineHeight * 0.8, setting.name .. ":")
-		setTextAlignment(RenderText.ALIGN_LEFT)
-		renderText(x + 0.01, y, lineHeight * 0.8, string.format("%.4f", setting.valueBackup or setting.value))
-		setTextAlignment(RenderText.ALIGN_CENTER)
-
-		local width = 0.02
-
-		drawFilledRect(x + 0.1, y, width, lineHeight * 0.8, 0.1, 0.1, 0.1, 1)
-		renderText(x + 0.1 + width * 0.5, y + 0.0025, lineHeight * 0.8, "--")
-		drawFilledRect(x + 0.125, y, width, lineHeight * 0.8, 0.1, 0.1, 0.1, 1)
-		renderText(x + 0.125 + width * 0.5, y + 0.0025, lineHeight * 0.8, "-")
-		drawFilledRect(x + 0.16, y, width, lineHeight * 0.8, 0.1, 0.1, 0.1, 1)
-		renderText(x + 0.16 + width * 0.5, y + 0.0025, lineHeight * 0.8, "+")
-		drawFilledRect(x + 0.185, y, width, lineHeight * 0.8, 0.1, 0.1, 0.1, 1)
-		renderText(x + 0.185 + width * 0.5, y + 0.0025, lineHeight * 0.8, "++")
-
-		if firstRun then
-			setting.buttons = {}
-
-			table.insert(setting.buttons, {
-				-1.8,
-				x + 0.1,
-				y,
-				0.03,
-				lineHeight * 0.8
-			})
-			table.insert(setting.buttons, {
-				-0.25,
-				x + 0.125,
-				y,
-				0.03,
-				lineHeight * 0.8
-			})
-			table.insert(setting.buttons, {
-				0.25,
-				x + 0.16,
-				y,
-				0.03,
-				lineHeight * 0.8
-			})
-			table.insert(setting.buttons, {
-				1.8,
-				x + 0.185,
-				y,
-				0.03,
-				lineHeight * 0.8
-			})
-		end
-	end
-
-	setTextAlignment(RenderText.ALIGN_CENTER)
-
-	local width = 0.08
-	local turnedOn = VehicleDebug.reverbSettings[1].valueBackup == nil
-
-	drawFilledRect(0.1, 0.6, width, 0.022, turnedOn and 0 or 0.3, turnedOn and 0.3 or 0, 0, 1)
-	renderText(0.1 + width * 0.5, 0.6024999999999999, 0.018, "TurnOff/On")
-
-	if firstRun then
-		VehicleDebug.reverbTurnOnButton = {
-			0.1,
-			0.6,
-			width,
-			0.022
-		}
-	end
-end
-
-function VehicleDebug.updateReverbDebugRendering(vehicle, dt)
-	local button, buttonState = g_inputBinding:getMouseButtonState()
-
-	if buttonState and button == Input.MOUSE_BUTTON_LEFT then
-		local hasChanged = false
-
-		for i = 1, #VehicleDebug.reverbSettings do
-			local setting = VehicleDebug.reverbSettings[i]
-
-			if setting.buttons ~= nil then
-				for j = 1, #setting.buttons do
-					local b = setting.buttons[j]
-
-					if b[2] < g_lastMousePosX and g_lastMousePosX < b[2] + b[4] and b[3] < g_lastMousePosY and g_lastMousePosY < b[3] + b[5] then
-						local change = dt * (setting.range[2] - setting.range[1]) * 0.0001 * b[1]
-
-						if setting.valueBackup ~= nil then
-							setting.valueBackup = MathUtil.clamp(setting.valueBackup + change, setting.range[1], setting.range[2])
-						else
-							setting.value = MathUtil.clamp(setting.value + change, setting.range[1], setting.range[2])
-						end
-
-						VehicleDebug.saveReverbSettingsTime = g_time + 1000
-						hasChanged = true
-					end
-				end
-			end
-		end
-
-		if VehicleDebug.reverbTurnOnButton ~= nil then
-			local b = VehicleDebug.reverbTurnOnButton
-
-			if b[1] < g_lastMousePosX and g_lastMousePosX < b[1] + b[3] and b[2] < g_lastMousePosY and g_lastMousePosY < b[2] + b[4] and not VehicleDebug.reverbSettings[1].turnHasEvent then
-				VehicleDebug.reverbSettings[1].turnHasEvent = true
-
-				if VehicleDebug.reverbSettings[1].value > -60 then
-					VehicleDebug.reverbSettings[1].valueBackup = VehicleDebug.reverbSettings[1].value
-					VehicleDebug.reverbSettings[1].value = -60
-				else
-					VehicleDebug.reverbSettings[1].value = VehicleDebug.reverbSettings[1].valueBackup
-					VehicleDebug.reverbSettings[1].valueBackup = nil
-				end
-
-				hasChanged = true
-			end
-		end
-
-		if hasChanged then
-			local gainValue = math.pow(10, VehicleDebug.reverbSettings[1].value / 20)
-			local gainLFValue = math.pow(10, VehicleDebug.reverbSettings[2].value / 20)
-			local gainHFValue = math.pow(10, VehicleDebug.reverbSettings[3].value / 20)
-			local reflectionsGainValue = math.pow(10, VehicleDebug.reverbSettings[6].value / 20)
-			local lateReverbGainValue = math.pow(10, VehicleDebug.reverbSettings[8].value / 20)
-
-			setReverbEffectCustom(0, gainValue, gainLFValue, gainHFValue, VehicleDebug.reverbSettings[4].value, VehicleDebug.reverbSettings[5].value, reflectionsGainValue, VehicleDebug.reverbSettings[7].value, lateReverbGainValue, VehicleDebug.reverbSettings[9].value, VehicleDebug.reverbSettings[10].value, VehicleDebug.reverbSettings[11].value)
-		end
-	elseif VehicleDebug.reverbSettings ~= nil then
-		VehicleDebug.reverbSettings[1].turnHasEvent = false
-	end
-
-	if VehicleDebug.saveReverbSettingsTime ~= nil and VehicleDebug.saveReverbSettingsTime < g_time then
-		local xmlFile = createXMLFile("reverbSettings", getUserProfileAppPath() .. "reverbSettings.xml", "settings")
-
-		if xmlFile ~= 0 then
-			for i, setting in ipairs(VehicleDebug.reverbSettings) do
-				local settingKey = string.format("settings.setting(%d)", i - 1)
-
-				setXMLInt(xmlFile, settingKey .. "#id", i)
-
-				if setting.valueBackup ~= nil then
-					setXMLFloat(xmlFile, settingKey .. "#value", setting.valueBackup)
-				else
-					setXMLFloat(xmlFile, settingKey .. "#value", setting.value)
-				end
-			end
-
-			saveXMLFile(xmlFile)
-			delete(xmlFile)
-		end
-
-		VehicleDebug.saveReverbSettingsTime = nil
-	end
-
-	if not g_gui:getIsGuiVisible() then
-		local show = Utils.getNoNil(Input.isKeyPressed(Input.KEY_lctrl), false)
-
-		g_inputBinding:setShowMouseCursor(show, false)
-	end
-end
-
 function VehicleDebug.updateTuningDebugRendering(vehicle, dt)
 	if vehicle.getWheels ~= nil and g_gui.currentGuiName == "ShopConfigScreen" then
 		local wheels = vehicle:getWheels()
@@ -2402,18 +2070,6 @@ function VehicleDebug.updateTuningDebugRendering(vehicle, dt)
 			Utils.renderTextAtWorldPosition(x, y - wheel.radius, z, string.format("%.3f", (math.abs(wx) + math.abs(xOffset)) * 2), getCorrectTextSize(0.012), 0)
 		end
 	end
-end
-
-function VehicleDebug:toggleReverb(actionName, inputValue, callbackState, isAnalog)
-	if VehicleDebug.reverbSettings[1].value > 0 then
-		VehicleDebug.reverbSettings[1].valueBackup = VehicleDebug.reverbSettings[1].value
-		VehicleDebug.reverbSettings[1].value = 0
-	else
-		VehicleDebug.reverbSettings[1].value = VehicleDebug.reverbSettings[1].valueBackup
-		VehicleDebug.reverbSettings[1].valueBackup = nil
-	end
-
-	setReverbEffectCustom(0, VehicleDebug.reverbSettings[1].value, VehicleDebug.reverbSettings[2].value, VehicleDebug.reverbSettings[3].value, VehicleDebug.reverbSettings[4].value, VehicleDebug.reverbSettings[5].value, VehicleDebug.reverbSettings[6].value, VehicleDebug.reverbSettings[7].value, VehicleDebug.reverbSettings[8].value, VehicleDebug.reverbSettings[9].value, VehicleDebug.reverbSettings[10].value, VehicleDebug.reverbSettings[11].value)
 end
 
 function VehicleDebug.consoleCommandAnalyze(unusedSelf)
@@ -2666,7 +2322,6 @@ end
 
 addConsoleCommand("gsVehicleAnalyze", "Analyze vehicle", "VehicleDebug.consoleCommandAnalyze", nil)
 addConsoleCommand("gsVehicleDebug", "Toggles the vehicle debug values rendering", "VehicleDebug.consoleCommandVehicleDebug", nil)
-addConsoleCommand("gsVehicleDebugReverb", "Toggles the reverb debug rendering", "VehicleDebug.consoleCommandVehicleDebugReverb", nil)
 
 if StartParams.getIsSet("vehicleDebugMode") then
 	VehicleDebug.consoleCommandVehicleDebug(nil, StartParams.getValue("vehicleDebugMode"))

@@ -43,6 +43,7 @@ function PlaceableInfoDialog:setPlaceable(placeable)
 
 	if imageFilename ~= nil then
 		self.icon:setImageFilename(imageFilename)
+		self.icon:setVisible(true)
 	else
 		self.icon:setVisible(false)
 	end

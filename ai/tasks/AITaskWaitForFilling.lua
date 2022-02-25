@@ -77,8 +77,8 @@ function AITaskWaitForFilling:start()
 	end
 end
 
-function AITaskWaitForFilling:stop()
-	AITaskWaitForFilling:superClass().stop(self)
+function AITaskWaitForFilling:stop(wasJobStopped)
+	AITaskWaitForFilling:superClass().stop(self, wasJobStopped)
 
 	if self.isServer then
 		for _, fillUnitInfo in ipairs(self.fillUnitInfo) do

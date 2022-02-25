@@ -365,6 +365,32 @@ function AIJobLoadAndDeliver:getStartTaskIndex()
 	return self.driveToLoadingTask.taskIndex
 end
 
+function AIJobLoadAndDeliver:canStartWork()
+	local hasOneEmptyFillUnit = false
+	local hasSupportedFillTypeLoaded = false
+	local plannedFillTypeIndex = self.fillTypeParameter:getFillTypeIndex()
+
+	for _, loadingNodeInfo in ipairs(self.loadingNodeInfos) do
+		local vehicle = loadingNodeInfo.vehicle
+		local fillUnitIndex = loadingNodeInfo.fillUnitIndex
+		local fillTypeIndex = vehicle:getFillUnitFillType(fillUnitIndex)
+
+		if vehicle:getFillUnitFillLevel(fillUnitIndex) == 0 then
+			hasOneEmptyFillUnit = true
+
+			break
+		elseif fillTypeIndex == plannedFillTypeIndex then
+			hasSupportedFillTypeLoaded = true
+		end
+	end
+
+	if not hasOneEmptyFillUnit and not hasSupportedFillTypeLoaded then
+		return false, AIMessageErrorNoValidFillTypeLoaded.new()
+	end
+
+	return true, nil
+end
+
 function AIJobLoadAndDeliver:canContinueWork()
 	local vehicle = self.vehicleParameter:getVehicle()
 

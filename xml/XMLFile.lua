@@ -235,7 +235,7 @@ function XMLFile:getValueType(path)
 		return
 	end
 
-	local normalizedPath = path:gsub("%(%d*%)", "%(?%)")
+	local normalizedPath = path:gsub("%(%d*%)", "(?)")
 	local pathData = schema.paths[normalizedPath]
 
 	if pathData == nil then

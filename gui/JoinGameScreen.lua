@@ -144,6 +144,9 @@ end
 
 function JoinGameScreen:onClose()
 	JoinGameScreen:superClass().onClose(self)
+
+	self.settingsLoaded = false
+
 	self.messageCenter:unsubscribeAll(self)
 end
 
@@ -281,6 +284,12 @@ end
 
 function JoinGameScreen:buildSortFunc()
 	return function (a, b)
+		if a.isLanServer ~= b.isLanServer then
+			return not b.isLanServer and a.isLanServer
+		elseif a.isFriendServer ~= b.isFriendServer then
+			return not b.isFriendServer and a.isFriendServer
+		end
+
 		if self.sortOrder == TableHeaderElement.SORTING_ASC then
 			return a[self.sortKey] < b[self.sortKey]
 		else

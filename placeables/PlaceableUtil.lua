@@ -94,17 +94,21 @@ function PlaceableUtil.loadPlaceable(filename, position, rotation, ownerFarmId, 
 		}
 	end
 
-	placeable:load(data, PlaceableUtil.loadPlaceableFinished, nil, {
-		asyncCallbackFunction,
-		asyncCallbackObject,
-		asyncCallbackArguments
-	})
+	local arguments = {
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackObject = asyncCallbackObject,
+		asyncCallbackArguments = asyncCallbackArguments
+	}
+
+	placeable:load(data, PlaceableUtil.loadPlaceableFinished, nil, arguments)
 
 	return placeable
 end
 
 function PlaceableUtil.loadPlaceableFinished(_, placeable, loadingState, arguments)
-	local asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments = unpack(arguments)
+	local asyncCallbackFunction = arguments.asyncCallbackFunction
+	local asyncCallbackObject = arguments.asyncCallbackObject
+	local asyncCallbackArguments = arguments.asyncCallbackArguments
 
 	asyncCallbackFunction(asyncCallbackObject, placeable, loadingState, asyncCallbackArguments)
 end

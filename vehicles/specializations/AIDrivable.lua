@@ -647,16 +647,21 @@ function AIDrivable:updateAIAgentAttachmentOffsetData()
 					isStaticChain = false
 				end
 			elseif isStaticChain then
-				isDynamicChain = false
-				local aiRootNode = self:getAIRootNode()
-				local _, _, z1 = localToLocal(agentAttachment.rootNode, aiRootNode, 0, 0, agentAttachment.length * 0.5)
-				local _, _, z2 = localToLocal(agentAttachment.rootNode, aiRootNode, 0, 0, -agentAttachment.length * 0.5)
-				local minZ = -spec.agentInfo.length * 0.5 + spec.agentInfo.lengthOffset
-				local maxZ = spec.agentInfo.length * 0.5 + spec.agentInfo.lengthOffset
-				local zDiffNeg = math.min(0, z1 - minZ, z2 - minZ)
-				local zDiffPos = math.max(0, z1 - maxZ, z2 - maxZ)
-				spec.attachmentsMaxLengthOffsetPos = math.max(spec.attachmentsMaxLengthOffsetPos, zDiffPos)
-				spec.attachmentsMaxLengthOffsetNeg = math.min(spec.attachmentsMaxLengthOffsetNeg, zDiffNeg)
+				if numTrailers > 0 then
+					isDynamicChain = false
+				end
+
+				if agentAttachment.rotCenterNode == nil then
+					local aiRootNode = self:getAIRootNode()
+					local _, _, z1 = localToLocal(agentAttachment.rootNode, aiRootNode, 0, 0, agentAttachment.length * 0.5)
+					local _, _, z2 = localToLocal(agentAttachment.rootNode, aiRootNode, 0, 0, -agentAttachment.length * 0.5)
+					local minZ = -spec.agentInfo.length * 0.5 + spec.agentInfo.lengthOffset
+					local maxZ = spec.agentInfo.length * 0.5 + spec.agentInfo.lengthOffset
+					local zDiffNeg = math.min(0, z1 - minZ, z2 - minZ)
+					local zDiffPos = math.max(0, z1 - maxZ, z2 - maxZ)
+					spec.attachmentsMaxLengthOffsetPos = math.max(spec.attachmentsMaxLengthOffsetPos, zDiffPos)
+					spec.attachmentsMaxLengthOffsetNeg = math.min(spec.attachmentsMaxLengthOffsetNeg, zDiffNeg)
+				end
 			end
 		end
 	end
@@ -684,7 +689,7 @@ function AIDrivable:updateAIAgentPoseData()
 					numTrailers = numTrailers + 1
 					currentIndex = currentIndex + 6
 				end
-			else
+			elseif numTrailers > 0 then
 				isDynamicChain = false
 			end
 		end

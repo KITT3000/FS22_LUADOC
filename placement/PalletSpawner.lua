@@ -7,8 +7,9 @@ PalletSpawner = {
 }
 local PalletSpawner_mt = Class(PalletSpawner)
 
-function PalletSpawner.new(customMt)
+function PalletSpawner.new(baseDirectory, customMt)
 	local self = setmetatable({}, customMt or PalletSpawner_mt)
+	self.baseDirectory = baseDirectory
 	self.spawnQueue = {}
 	self.currentObjectToSpawn = nil
 
@@ -166,7 +167,8 @@ function PalletSpawner:onSpawnSearchFinished(location)
 	local objectToSpawn = self.currentObjectToSpawn
 
 	if location ~= nil then
-		location.y = location.y + 0.25
+		local terrainHeight = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, location.x, 0, location.z)
+		location.y = math.max(terrainHeight, location.y) + 0.2
 
 		VehicleLoadingUtil.loadVehicle(objectToSpawn.pallet.filename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, objectToSpawn.farmId, nil, nil, self.onFinishLoadingPallet, self)
 	else
@@ -192,7 +194,7 @@ end
 function PalletSpawner:onFindExistingPallet(node)
 	local object = g_currentMission.nodeToObject[node]
 
-	if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.typeName == "pallet" and object:getFillUnitFreeCapacity(1, self.getOrSpawnPalletFilltype) > 0 then
+	if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.typeName == "pallet" and object:getFillUnitSupportsFillType(1, self.getOrSpawnPalletFilltype) and object:getFillUnitFreeCapacity(1, self.getOrSpawnPalletFilltype) > 0 then
 		self.foundExistingPallet = object
 
 		return false

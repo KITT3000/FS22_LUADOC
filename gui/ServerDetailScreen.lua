@@ -159,7 +159,7 @@ function ServerDetailScreen:onClickDownload()
 
 	if freeSpaceKb < totalSize then
 		g_gui:showInfoDialog({
-			text = string.format(g_l10n:getText("modHub_installNoFreeSpace"), totalSize, freeSpaceKb)
+			text = string.format(g_i18n:getText("modHub_installNoFreeSpace"), totalSize, freeSpaceKb)
 		})
 
 		return
@@ -212,7 +212,7 @@ function ServerDetailScreen:installMods(modIds)
 		numToGo = numToGo - 1
 
 		g_gui:showInfoDialog({
-			text = g_l10n:getText("modHub_installFailed")
+			text = g_i18n:getText("modHub_installFailed")
 		})
 
 		if numToGo == 0 then
@@ -233,7 +233,11 @@ function ServerDetailScreen:installMods(modIds)
 	g_modHubController:setAddedToDownloadCallback(added, self)
 
 	for _, modId in ipairs(modIds) do
-		g_modHubController:install(modId)
+		if getModMetaAttributeBool(modId, "isUpdate") then
+			g_modHubController:update(modId)
+		else
+			g_modHubController:install(modId)
+		end
 	end
 end
 

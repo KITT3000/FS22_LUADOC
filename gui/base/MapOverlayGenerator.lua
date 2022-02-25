@@ -87,7 +87,7 @@ function MapOverlayGenerator:adjustedOverlayResolution(default, limitToTwo)
 
 	if profileClass == GS_PROFILE_LOW then
 		return default
-	elseif GS_PROFILE_VERY_HIGH <= profileClass and not limitToTwo and (not g_currentMission.missionDynamicInfo.isMultiplayer or not g_currentMission:getIsServer()) then
+	elseif GS_PROFILE_VERY_HIGH <= profileClass and not limitToTwo and not GS_IS_CONSOLE_VERSION and not GS_IS_MOBILE_VERSION and (not g_currentMission.missionDynamicInfo.isMultiplayer or not g_currentMission:getIsServer()) then
 		return {
 			default[1] * 4,
 			default[2] * 4
@@ -246,8 +246,8 @@ function MapOverlayGenerator:buildSoilStateMapOverlay(soilStateFilter)
 	local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
 	local fieldMask = bitShiftLeft(bitShiftLeft(1, groundTypeNumChannels) - 1, groundTypeFirstChannel)
 
-	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.WEEDS] and g_currentMission.missionInfo.weedsEnabled then
-		local weedSystem = g_currentMission.weedSystem
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.WEEDS] and mission.missionInfo.weedsEnabled then
+		local weedSystem = mission.weedSystem
 
 		if weedSystem ~= nil and weedSystem:getMapHasWeed() then
 			local weedMapId, _, _ = weedSystem:getDensityMapData()
@@ -264,8 +264,8 @@ function MapOverlayGenerator:buildSoilStateMapOverlay(soilStateFilter)
 		end
 	end
 
-	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.STONES] and g_currentMission.missionInfo.stonesEnabled then
-		local stoneSystem = g_currentMission.stoneSystem
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.STONES] and mission.missionInfo.stonesEnabled then
+		local stoneSystem = mission.stoneSystem
 
 		if stoneSystem ~= nil and stoneSystem:getMapHasStones() then
 			local stoneMapId, _, _ = stoneSystem:getDensityMapData()
@@ -282,7 +282,7 @@ function MapOverlayGenerator:buildSoilStateMapOverlay(soilStateFilter)
 		end
 	end
 
-	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING] and g_currentMission.missionInfo.plowingRequiredEnabled then
+	if soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING] and mission.missionInfo.plowingRequiredEnabled then
 		local color = self.displaySoilStates[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING].colors[self.isColorBlindMode][1]
 		local mapId, plowLevelFirstChannel, plowLevelNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.PLOW_LEVEL)
 
@@ -303,7 +303,7 @@ function MapOverlayGenerator:buildSoilStateMapOverlay(soilStateFilter)
 		setDensityMapVisualizationOverlayStateColor(self.foliageStateOverlay, mapId, 0, fieldMask, mulchFirstChannel, mulchNumChannels, 1, color[1], color[2], color[3])
 	end
 
-	if not GS_IS_MOBILE_VERSION and soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_LIME] and g_currentMission.missionInfo.limeRequired then
+	if not GS_IS_MOBILE_VERSION and soilStateFilter[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_LIME] and mission.missionInfo.limeRequired then
 		local color = self.displaySoilStates[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_LIME].colors[self.isColorBlindMode][1]
 		local mapId, limeLevelFirstChannel, limeLevelNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
 
@@ -326,14 +326,17 @@ end
 function MapOverlayGenerator:buildFieldMapOverlay(overlay)
 	local mission = g_currentMission
 	local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
-	local color = self.fieldColor
-	local grassColor = self.grassFieldColor
 
-	for i = 1, bitShiftLeft(1, groundTypeNumChannels) - 1 do
-		if i == FieldGroundType.GRASS or i == FieldGroundType.GRASS_CUT then
-			setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, 0, groundTypeFirstChannel, groundTypeNumChannels, i, grassColor[1], grassColor[2], grassColor[3])
-		else
-			setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, 0, groundTypeFirstChannel, groundTypeNumChannels, i, color[1], color[2], color[3])
+	if groundTypeMapId ~= nil then
+		local color = self.fieldColor
+		local grassColor = self.grassFieldColor
+
+		for i = 1, bitShiftLeft(1, groundTypeNumChannels) - 1 do
+			if i == FieldGroundType.GRASS or i == FieldGroundType.GRASS_CUT then
+				setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, 0, groundTypeFirstChannel, groundTypeNumChannels, i, grassColor[1], grassColor[2], grassColor[3])
+			else
+				setDensityMapVisualizationOverlayStateColor(overlay, groundTypeMapId, 0, 0, groundTypeFirstChannel, groundTypeNumChannels, i, color[1], color[2], color[3])
+			end
 		end
 	end
 end
@@ -567,7 +570,8 @@ function MapOverlayGenerator:getDisplaySoilStates()
 		[true] = {},
 		[false] = {}
 	}
-	local maxFertilizerStates = g_currentMission.fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
+	local mission = g_currentMission
+	local maxFertilizerStates = mission.fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
 
 	for colorBlind, colors in pairs(MapOverlayGenerator.FRUIT_COLORS_FERTILIZED) do
 		for i = #colors, 1, -1 do
@@ -600,7 +604,7 @@ function MapOverlayGenerator:getDisplaySoilStates()
 				}
 			},
 			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_NEED_LIME),
-			isActive = g_currentMission.missionInfo.limeRequired
+			isActive = mission.missionInfo.limeRequired
 		}
 		res[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_PLOWING] = {
 			colors = {
@@ -612,7 +616,7 @@ function MapOverlayGenerator:getDisplaySoilStates()
 				}
 			},
 			description = self.l10n:getText(MapOverlayGenerator.L10N_SYMBOL.SOIL_MAP_NEED_PLOWING),
-			isActive = g_currentMission.missionInfo.plowingRequiredEnabled
+			isActive = mission.missionInfo.plowingRequiredEnabled
 		}
 		res[MapOverlayGenerator.SOIL_STATE_INDEX.NEEDS_ROLLING] = {
 			isActive = true,
@@ -640,7 +644,7 @@ function MapOverlayGenerator:getDisplaySoilStates()
 		}
 	end
 
-	local weedSystem = g_currentMission.weedSystem
+	local weedSystem = mission.weedSystem
 
 	if weedSystem ~= nil and weedSystem:getMapHasWeed() then
 		local mapColor, mapColorBlind = weedSystem:getColors()
@@ -658,11 +662,11 @@ function MapOverlayGenerator:getDisplaySoilStates()
 		res[MapOverlayGenerator.SOIL_STATE_INDEX.WEEDS] = {
 			colors = colors,
 			description = description,
-			isActive = g_currentMission.missionInfo.weedsEnabled
+			isActive = mission.missionInfo.weedsEnabled
 		}
 	end
 
-	local stoneSystem = g_currentMission.stoneSystem
+	local stoneSystem = mission.stoneSystem
 
 	if stoneSystem ~= nil and stoneSystem:getMapHasStones() then
 		local mapColor, mapColorBlind = stoneSystem:getColors()
@@ -680,7 +684,7 @@ function MapOverlayGenerator:getDisplaySoilStates()
 		res[MapOverlayGenerator.SOIL_STATE_INDEX.STONES] = {
 			colors = colors,
 			description = description,
-			isActive = g_currentMission.missionInfo.stonesEnabled
+			isActive = mission.missionInfo.stonesEnabled
 		}
 	end
 

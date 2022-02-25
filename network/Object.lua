@@ -29,8 +29,7 @@ function Object.new(isServer, isClient, customMt)
 	self.isClient = isClient
 	self.owner = nil
 	self.ownerFarmId = AccessHandler.EVERYONE
-	self.recieveUpdates = true
-	self.synchronizedConnections = {}
+	self.recieveUpdates = isServer
 	self.nextDirtyFlag = 1
 	self.dirtyMask = 0
 	self.deleteListeners = {}
@@ -80,18 +79,20 @@ end
 
 function Object:readStream(streamId, connection, objectId)
 	self:setOwnerFarmId(streamReadUIntN(streamId, FarmManager.FARM_ID_SEND_NUM_BITS), true)
-	self:setConnectionSynchronized(connection, true)
 end
 
 function Object:writeStream(streamId, connection)
 	streamWriteUIntN(streamId, self.ownerFarmId, FarmManager.FARM_ID_SEND_NUM_BITS)
-	self:setConnectionSynchronized(connection, true)
 end
 
 function Object:readUpdateStream(streamId, timestamp, connection)
 end
 
 function Object:writeUpdateStream(streamId, connection, dirtyMask)
+end
+
+function Object:getIsDelayedLoaded()
+	return self.postWriteStream ~= nil and self.postReadStream ~= nil
 end
 
 function Object:mouseEvent(posX, posY, isDown, isUp, button)
@@ -117,15 +118,7 @@ function Object:setOwner(owner)
 	end
 end
 
-function Object:setConnectionSynchronized(connection, state)
-	self.synchronizedConnections[connection] = state
-
-	if not self.isServer and connection == g_client:getServerConnection() then
-		self.recieveUpdates = state
-	end
-end
-
-function Object:testScope(x, y, z, coeff)
+function Object:testScope(x, y, z, coeff, isGuiVisible)
 	return true
 end
 
@@ -135,7 +128,7 @@ end
 function Object:onGhostAdd()
 end
 
-function Object:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+function Object:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	return skipCount * 0.5
 end
 

@@ -302,9 +302,12 @@ function InGameMenuAnimalsFrame:updateFoodDisplay(husbandry)
 end
 
 function InGameMenuAnimalsFrame:displayCluster(cluster, husbandry)
+	if not g_currentMission.isRunning then
+		return
+	end
+
 	local subTypeIndex = cluster:getSubTypeIndex()
 	local age = cluster:getAge()
-	local subType = g_currentMission.animalSystem:getSubTypeByIndex(subTypeIndex)
 	local visual = g_currentMission.animalSystem:getVisualByAge(subTypeIndex, age)
 
 	if visual ~= nil then

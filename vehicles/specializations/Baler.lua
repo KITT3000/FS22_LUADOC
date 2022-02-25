@@ -168,6 +168,7 @@ function Baler.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onWriteUpdateStream", Baler)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", Baler)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", Baler)
+	SpecializationUtil.registerEventListener(vehicleType, "onDraw", Baler)
 	SpecializationUtil.registerEventListener(vehicleType, "onRegisterActionEvents", Baler)
 	SpecializationUtil.registerEventListener(vehicleType, "onStartWorkAreaProcessing", Baler)
 	SpecializationUtil.registerEventListener(vehicleType, "onEndWorkAreaProcessing", Baler)
@@ -489,6 +490,7 @@ function Baler:onLoad(savegame)
 		unloadBaler = g_i18n:getText("action_unloadBaler"),
 		closeBack = g_i18n:getText("action_closeBack")
 	}
+	spec.showBaleLimitWarning = false
 	spec.dirtyFlag = self:getNextDirtyFlag()
 
 	if savegame ~= nil and not savegame.resetVehicles then
@@ -698,6 +700,16 @@ function Baler:onReadStream(streamId, connection)
 
 	spec.currentBaleTypeIndex = streamReadUIntN(streamId, BalerBaleTypeEvent.BALE_TYPE_SEND_NUM_BITS)
 	spec.preSelectedBaleTypeIndex = streamReadUIntN(streamId, BalerBaleTypeEvent.BALE_TYPE_SEND_NUM_BITS)
+	local capacity = streamReadFloat32(streamId)
+
+	self:setFillUnitCapacity(spec.fillUnitIndex, capacity)
+
+	local fillLevel = streamReadFloat32(streamId)
+	local fillUnit = self:getFillUnitByIndex(spec.fillUnitIndex)
+
+	if fillUnit ~= nil then
+		fillUnit.fillLevel = fillLevel
+	end
 end
 
 function Baler:onWriteStream(streamId, connection)
@@ -738,6 +750,8 @@ function Baler:onWriteStream(streamId, connection)
 
 	streamWriteUIntN(streamId, spec.currentBaleTypeIndex, BalerBaleTypeEvent.BALE_TYPE_SEND_NUM_BITS)
 	streamWriteUIntN(streamId, spec.preSelectedBaleTypeIndex, BalerBaleTypeEvent.BALE_TYPE_SEND_NUM_BITS)
+	streamWriteFloat32(streamId, self:getFillUnitCapacity(spec.fillUnitIndex))
+	streamWriteFloat32(streamId, self:getFillUnitFillLevel(spec.fillUnitIndex))
 end
 
 function Baler:onReadUpdateStream(streamId, timestamp, connection)
@@ -746,6 +760,7 @@ function Baler:onReadUpdateStream(streamId, timestamp, connection)
 	if connection:getIsServer() and streamReadBool(streamId) then
 		spec.lastAreaBiggerZero = streamReadBool(streamId)
 		spec.fillEffectType = streamReadUIntN(streamId, FillTypeManager.SEND_NUM_BITS)
+		spec.showBaleLimitWarning = streamReadBool(streamId)
 	end
 end
 
@@ -755,6 +770,7 @@ function Baler:onWriteUpdateStream(streamId, connection, dirtyMask)
 	if not connection:getIsServer() and streamWriteBool(streamId, bitAND(dirtyMask, spec.dirtyFlag) ~= 0) then
 		streamWriteBool(streamId, spec.lastAreaBiggerZero)
 		streamWriteUIntN(streamId, spec.fillEffectTypeSent, FillTypeManager.SEND_NUM_BITS)
+		streamWriteBool(streamId, spec.showBaleLimitWarning)
 	end
 end
 
@@ -865,8 +881,13 @@ end
 
 function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	local spec = self.spec_baler
+	local showBaleLimitWarning = false
 
 	if self:getIsTurnedOn() then
+		if not g_currentMission.slotSystem:getCanAddLimitedObjects(SlotSystem.LIMITED_OBJECT_BALE, 1) then
+			showBaleLimitWarning = true
+		end
+
 		if self.isClient then
 			if spec.lastAreaBiggerZero and spec.fillEffectType ~= FillType.UNKNOWN then
 				spec.lastAreaBiggerZeroTime = 500
@@ -1070,6 +1091,12 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 		end
 	end
 
+	if self.isServer and spec.showBaleLimitWarning ~= showBaleLimitWarning then
+		spec.showBaleLimitWarning = showBaleLimitWarning
+
+		self:raiseDirtyFlags(spec.dirtyFlag)
+	end
+
 	if spec.hasPlatform then
 		if spec.platformDelayedDropping and not spec.platformDropInProgress then
 			Baler.actionEventUnloading(self)
@@ -1080,6 +1107,14 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 		if spec.platformDropInProgress and not self:getIsAnimationPlaying(spec.platformAnimation) then
 			spec.platformDropInProgress = false
 		end
+	end
+end
+
+function Baler:onDraw()
+	local spec = self.spec_baler
+
+	if spec.showBaleLimitWarning then
+		g_currentMission:showBlinkingWarning(spec.texts.warningTooManyBales, 100)
 	end
 end
 
@@ -1677,7 +1712,7 @@ function Baler:updateDummyBale(dummyBaleData, fillTypeIndex, fillLevel, capacity
 	if dummyBaleData.currentBale ~= nil then
 		local scaleNode = dummyBaleData.linkNode or baleTypeDef.scaleNode
 
-		if scaleNode ~= nil then
+		if scaleNode ~= nil and capacity > 0 then
 			local percentage = fillLevel / capacity
 			local x = 1
 			local y = baleTypeDef.isRoundBale and percentage or 1
@@ -1802,9 +1837,7 @@ end
 function Baler:getIsWorkAreaActive(superFunc, workArea)
 	local spec = self.spec_baler
 
-	if not g_currentMission:getCanAddLimitedObject(FSBaseMission.LIMITED_OBJECT_TYPE_BALE) and self:getIsTurnedOn() then
-		g_currentMission:showBlinkingWarning(spec.texts.warningTooManyBales, 500)
-
+	if not g_currentMission.slotSystem:getCanAddLimitedObjects(SlotSystem.LIMITED_OBJECT_BALE, 1) and self:getIsTurnedOn() then
 		return false
 	end
 

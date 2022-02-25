@@ -70,6 +70,7 @@ function TurnOnVehicle.registerFunctions(vehicleType)
 end
 
 function TurnOnVehicle.registerOverwrittenFunctions(vehicleType)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getUseTurnedOnSchema", TurnOnVehicle.getUseTurnedOnSchema)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadInputAttacherJoint", TurnOnVehicle.loadInputAttacherJoint)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadWorkAreaFromXML", TurnOnVehicle.loadWorkAreaFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsWorkAreaActive", TurnOnVehicle.getIsWorkAreaActive)
@@ -87,6 +88,7 @@ function TurnOnVehicle.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsDischargeNodeActive", TurnOnVehicle.getIsDischargeNodeActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadBunkerSiloCompactorFromXML", TurnOnVehicle.loadBunkerSiloCompactorFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getBunkerSiloCompacterScale", TurnOnVehicle.getBunkerSiloCompacterScale)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsWorkModeChangeAllowed", TurnOnVehicle.getIsWorkModeChangeAllowed)
 end
 
 function TurnOnVehicle.registerEventListeners(vehicleType)
@@ -462,6 +464,10 @@ function TurnOnVehicle:getIsTurnedOnAnimationActive(turnedOnAnimation)
 	return true
 end
 
+function TurnOnVehicle:getUseTurnedOnSchema(superFunc)
+	return superFunc(self) or self:getIsTurnedOn()
+end
+
 function TurnOnVehicle:loadInputAttacherJoint(superFunc, xmlFile, key, inputAttacherJoint, i)
 	if not superFunc(self, xmlFile, key, inputAttacherJoint, i) then
 		return false
@@ -611,6 +617,16 @@ function TurnOnVehicle:getBunkerSiloCompacterScale(superFunc)
 
 	if spec.turnedOnCompactingScale ~= nil and self:getIsTurnedOn() then
 		return spec.turnedOnCompactingScale
+	end
+
+	return superFunc(self)
+end
+
+function TurnOnVehicle:getIsWorkModeChangeAllowed(superFunc)
+	local spec = self.spec_workMode
+
+	if spec.allowChangeWhileTurnedOn ~= nil and self:getIsTurnedOn() then
+		return false
 	end
 
 	return superFunc(self)

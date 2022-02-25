@@ -61,6 +61,8 @@ function AIImplement.registerEvents(vehicleType)
 	SpecializationUtil.registerEvent(vehicleType, "onAIImplementBlock")
 	SpecializationUtil.registerEvent(vehicleType, "onAIImplementContinue")
 	SpecializationUtil.registerEvent(vehicleType, "onAIImplementPrepare")
+	SpecializationUtil.registerEvent(vehicleType, "onAIImplementJobVehicleBlock")
+	SpecializationUtil.registerEvent(vehicleType, "onAIImplementJobVehicleContinue")
 end
 
 function AIImplement.registerFunctions(vehicleType)

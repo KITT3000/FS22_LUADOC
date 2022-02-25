@@ -732,30 +732,20 @@ function MPLoadingScreen:initializeLoading()
 		if self.missionInfo:isa(FSCareerMissionInfo) then
 			InitClientOnce()
 
-			if #self.missionDynamicInfo.mods > 0 then
-				if not GS_IS_CONSOLE_VERSION and not GS_PLATFORM_GGP then
-					masterServerConnectFront = nil
-					masterServerConnectBack = nil
-					masterServerAddServer = nil
-					masterServerAddServerModStart = nil
-					masterServerAddServerMod = nil
-					masterServerAddServerModEnd = nil
-					masterServerRequestConnectionToServer = nil
-					netConnect = nil
-				end
+			masterServerConnectFront = nil
+			masterServerConnectBack = nil
+			masterServerAddServer = nil
+			masterServerAddServerModStart = nil
+			masterServerAddServerMod = nil
+			masterServerAddServerModEnd = nil
+			masterServerRequestConnectionToServer = nil
+			netConnect = nil
 
-				if not g_isPresentationVersion or g_isPresentationVersionDlcEnabled then
-					table.sort(self.missionDynamicInfo.mods, MPLoadingScreen.modSortFunc)
+			if #self.missionDynamicInfo.mods > 0 and (not g_isPresentationVersion or g_isPresentationVersionDlcEnabled) then
+				table.sort(self.missionDynamicInfo.mods, MPLoadingScreen.modSortFunc)
 
-					self.missionDynamicInfo.hasScriptsLoaded = false
-
-					for _, modItem in ipairs(self.missionDynamicInfo.mods) do
-						loadMod(modItem.modName, modItem.modDir, modItem.modFile, modItem.title)
-
-						if modItem.hasScripts then
-							self.missionDynamicInfo.hasScriptsLoaded = true
-						end
-					end
+				for _, modItem in ipairs(self.missionDynamicInfo.mods) do
+					loadMod(modItem.modName, modItem.modDir, modItem.modFile, modItem.title)
 				end
 			end
 		end

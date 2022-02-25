@@ -30,7 +30,7 @@ end
 function ValueBuffer:get(duration)
 	local value = 0
 
-	for _, sValue in pairs(self.values) do
+	for _, sValue in ipairs(self.values) do
 		value = value + sValue
 	end
 
@@ -42,7 +42,7 @@ end
 function ValueBuffer:getAverage()
 	local value = 0
 
-	for _, sValue in pairs(self.values) do
+	for _, sValue in ipairs(self.values) do
 		value = value + sValue
 	end
 

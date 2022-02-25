@@ -243,6 +243,7 @@ function Motorized.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsDashboardGroupActive", Motorized.getIsDashboardGroupActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsActiveForInteriorLights", Motorized.getIsActiveForInteriorLights)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsActiveForWipers", Motorized.getIsActiveForWipers)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getUsageCausesDamage", Motorized.getUsageCausesDamage)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getName", Motorized.getName)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeSelected", Motorized.getCanBeSelected)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsPowered", Motorized.getIsPowered)
@@ -1427,12 +1428,13 @@ function Motorized:loadExhaustEffects(xmlFile)
 
 		if filename ~= nil and linkNode ~= nil then
 			filename = Utils.getFilename(filename, self.baseDirectory)
-			local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.onExhaustEffectI3DLoaded, self, {
-				xmlFile,
-				key,
-				linkNode,
-				filename
-			})
+			local arguments = {
+				xmlFile = xmlFile,
+				key = key,
+				linkNode = linkNode,
+				filename = filename
+			}
+			local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.onExhaustEffectI3DLoaded, self, arguments)
 
 			table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 		end
@@ -1443,16 +1445,17 @@ end
 
 function Motorized:onExhaustEffectI3DLoaded(i3dNode, failedReason, args)
 	local spec = self.spec_motorized
-	local xmlFile, key, linkNode, filename = unpack(args)
 
 	if i3dNode ~= 0 then
 		local node = getChildAt(i3dNode, 0)
 
 		if getHasShaderParameter(node, "param") then
+			local xmlFile = args.xmlFile
+			local key = args.key
 			local effect = {
 				effectNode = node,
-				node = linkNode,
-				filename = filename
+				node = args.linkNode,
+				filename = args.filename
 			}
 
 			link(effect.node, effect.effectNode)
@@ -2111,6 +2114,14 @@ function Motorized:getIsActiveForInteriorLights(superFunc)
 end
 
 function Motorized:getIsActiveForWipers(superFunc)
+	if not self.spec_motorized.isMotorStarted then
+		return false
+	end
+
+	return superFunc(self)
+end
+
+function Motorized:getUsageCausesDamage(superFunc)
 	if not self.spec_motorized.isMotorStarted then
 		return false
 	end

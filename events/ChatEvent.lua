@@ -46,7 +46,7 @@ function ChatEvent:run(connection)
 
 		for _, toUser in ipairs(g_currentMission.userManager:getUsers()) do
 			if connection ~= toUser:getConnection() and not toUser:getIsBlockedBy(fromUser) and not toUser:getConnection():getIsLocal() then
-				toUser:getConnection():sendEvent(self, false, force)
+				toUser:getConnection():sendEvent(self, false)
 			end
 		end
 	end

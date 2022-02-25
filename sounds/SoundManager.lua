@@ -45,7 +45,7 @@ function SoundManager:initDataStructures()
 	self.modifierTypeIndexToDesc = {}
 	SoundModifierType = self.modifierTypeNameToIndex
 
-	setReverbEffect(0, Reverb.GENERIC, Reverb.GENERIC, 1)
+	setReverbEffect(0, Reverb.GS_OPEN_FIELD, Reverb.GS_OPEN_FIELD, 1)
 
 	self.indoorStateChangedListeners = {}
 end

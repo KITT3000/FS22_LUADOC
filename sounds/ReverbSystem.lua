@@ -35,19 +35,97 @@ function ReverbSystem.new(mission, customMt)
 		}
 	}
 
-	addConsoleCommand("gsReverbSystemToggleDebugView", "Toggles the reverb debug view", "consoleCommandToggleDebugView", self)
-
 	return self
+end
+
+function ReverbSystem:loadMapData(mapXmlFile, missionInfo, baseDirectory)
+	local xmlFilename = "data/sounds/reverbSettings.xml"
+	local customXmlFilename = getXMLString(mapXmlFile, "map.sounds#reverbFilename")
+
+	if customXmlFilename ~= nil then
+		customXmlFilename = Utils.getFilename(customXmlFilename, baseDirectory)
+
+		if fileExists(customXmlFilename) then
+			xmlFilename = customXmlFilename
+		else
+			Logging.warning("ReverbSystem custom config file not found!")
+		end
+	end
+
+	self.xmlFilename = xmlFilename
+
+	addConsoleCommand("gsReverbSystemToggleDebugView", "Toggles the reverb debug view", "consoleCommandToggleDebugView", self)
+	addConsoleCommand("gsReverbSystemSettingsReload", "Reloads the reverb settings", "consoleCommandReloadSettings", self)
+
+	return self:loadSettings()
+end
+
+function ReverbSystem:loadSettings()
+	local xmlFile = XMLFile.load("ReverbSettings", self.xmlFilename, nil)
+
+	if xmlFile == nil then
+		Logging.xmlWarning(xmlFile, "ReverbSystem could not load configuration xml file!")
+
+		return false
+	end
+
+	xmlFile:iterate("reverbSettings.reverbSetting", function (_, settingKey)
+		local id = xmlFile:getString(settingKey .. "#id")
+
+		if id == nil then
+			Logging.warning("ReverbSystem: missing id for reverb setting '%s'!", settingKey)
+
+			return true
+		end
+
+		id = string.upper(id)
+
+		if Reverb[id] == nil then
+			Logging.warning("ReverbSystem: Invalid id '%s' for reverb setting '%s'!", id, settingKey)
+
+			return true
+		end
+
+		local presetId = Reverb[id]
+		local lateReverbGain, lateReverbDelay = getLateReverbGainPreset(presetId)
+		lateReverbGain = xmlFile:getFloat(settingKey .. ".lateReverb#gain", lateReverbGain)
+		lateReverbDelay = xmlFile:getFloat(settingKey .. ".lateReverb#delay", lateReverbDelay)
+		local gain, gainHF, gainLF = getReverbGainPreset(presetId)
+		gain = xmlFile:getFloat(settingKey .. ".gain#gain", gain)
+		gainHF = xmlFile:getFloat(settingKey .. ".gain#gainHF", gainHF)
+		gainLF = xmlFile:getFloat(settingKey .. ".gain#gainLF", gainLF)
+		local decayTime, decayHFRatio = getReverbDecayPreset(presetId)
+		decayTime = xmlFile:getFloat(settingKey .. ".decay#time", decayTime)
+		decayHFRatio = xmlFile:getFloat(settingKey .. ".decay#ratioHF", decayHFRatio)
+		local reflectionsGain, reflectionsDelay = getReverbReflectionPreset(presetId)
+		reflectionsGain = xmlFile:getFloat(settingKey .. ".reflections#gain", reflectionsGain)
+		reflectionsDelay = xmlFile:getFloat(settingKey .. ".reflections#delay", reflectionsDelay)
+		local referenceHF, referenceLF = getReverbReferenceFrequenciesPreset(presetId)
+		referenceHF = xmlFile:getFloat(settingKey .. ".reference#referenceHF", referenceHF)
+		referenceLF = xmlFile:getFloat(settingKey .. ".reference#referenceLF", referenceLF)
+
+		setReverbPreset(presetId, gain, gainHF, gainLF, decayTime, decayHFRatio, reflectionsGain, reflectionsDelay, lateReverbGain, lateReverbDelay, referenceHF, referenceLF)
+
+		return true
+	end)
+	xmlFile:delete()
+
+	return true
 end
 
 function ReverbSystem:delete()
 	self.mission:removeDrawable(self)
 	removeConsoleCommand("gsReverbSystemToggleDebugView")
+	removeConsoleCommand("gsReverbSystemSettingsReload")
 
 	self.mission = nil
 end
 
 function ReverbSystem:update(dt)
+	if self.mission == nil then
+		return
+	end
+
 	local areaWeights = self.mission.environmentAreaSystem:getAreaWeights()
 	local reverbType1, reverbType2 = nil
 	local reverbType1Weight = 0
@@ -154,4 +232,10 @@ function ReverbSystem:consoleCommandToggleDebugView()
 	else
 		self.mission:removeDrawable(self)
 	end
+end
+
+function ReverbSystem:consoleCommandReloadSettings()
+	self:loadSettings()
+
+	return "Reloaded settings"
 end

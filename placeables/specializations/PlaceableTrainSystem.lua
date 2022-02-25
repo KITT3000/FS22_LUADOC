@@ -300,7 +300,12 @@ function PlaceableTrainSystem:onFinalizePlacement()
 	end
 
 	g_currentMission:addTrainSystem(self)
-	self:createVehicles()
+
+	if g_currentMission.isMissionStarted then
+		self:createVehicles()
+	else
+		g_messageCenter:subscribeOneshot(MessageType.LOADED_ALL_SAVEGAME_VEHICLES, self.createVehicles, self, {})
+	end
 end
 
 function PlaceableTrainSystem:onReadStream(streamId, connection)
@@ -614,23 +619,25 @@ function PlaceableTrainSystem:createVehicles()
 		for k, filename in ipairs(spec.vehiclesToLoad) do
 			filename = Utils.getFilename(filename, spec.baseDirectory)
 			spec.numVehiclesToLoad = spec.numVehiclesToLoad + 1
+			local arguments = {
+				filename = filename,
+				vehicleIndex = k
+			}
 
 			VehicleLoadingUtil.loadVehicle(filename, {
 				z = 0,
 				x = 0,
 				yOffset = 0
-			}, true, 0, Vehicle.PROPERTY_STATE_NONE, AccessHandler.EVERYONE, nil, nil, spec.railroadVehicleLoaded, self, {
-				filename,
-				k
-			})
+			}, true, 0, Vehicle.PROPERTY_STATE_NONE, AccessHandler.EVERYONE, nil, nil, spec.railroadVehicleLoaded, self, arguments)
 		end
-
-		spec.vehiclesToLoad = {}
 	end
+
+	spec.vehiclesToLoad = {}
 end
 
 function PlaceableTrainSystem:railroadVehicleLoaded(vehicle, vehicleLoadState, args)
-	local filename, vehicleIndex = unpack(args)
+	local filename = args.filename
+	local vehicleIndex = args.vehicleIndex
 	local spec = self.spec_trainSystem
 
 	if vehicle ~= nil and vehicleLoadState == VehicleLoadingUtil.VEHICLE_LOAD_OK then

@@ -189,7 +189,7 @@ function ModSelectionScreen:onClickOk()
 				if listText == nil then
 					listText = string.format(g_i18n:getText("ui_mod_required"), title, deps)
 				else
-					listText = lisText .. " " .. string.format(g_i18n:getText("ui_mod_required"), title, deps)
+					listText = listText .. " " .. string.format(g_i18n:getText("ui_mod_required"), title, deps)
 				end
 			end
 
@@ -219,7 +219,7 @@ function ModSelectionScreen:onClickOk()
 								numToGo = numToGo - 1
 
 								g_gui:showInfoDialog({
-									text = g_l10n:getText("modHub_installFailed")
+									text = g_i18n:getText("modHub_installFailed")
 								})
 
 								if numToGo == 0 then

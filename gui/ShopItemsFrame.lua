@@ -188,8 +188,8 @@ function ShopItemsFrame:getStoreItemDisplayPrice(storeItem, item, isSellingOrRet
 	local isHandTool = StoreItemUtil.getIsHandTool(storeItem)
 
 	if saleItem ~= nil then
-		local defaultPrice = StoreItemUtil.getDefaultPrice(storeItem, saleItem.boughtConfigurations)
-		priceStr = string.format("%s (-%d%%)", g_i18n:formatMoney(saleItem.price, 0, true, true), (1 - saleItem.price / defaultPrice) * 100)
+		local defaultPrice = StoreItemUtil.getPriceWithBoughtConfigurations(storeItem, saleItem.boughtConfigurations, "price")
+		priceStr = string.format("%s (%d%%)", g_i18n:formatMoney(saleItem.price, 0, true, true), -(1 - saleItem.price / defaultPrice) * 100)
 	elseif isSellingOrReturning then
 		if item ~= nil and item.propertyState ~= Vehicle.PROPERTY_STATE_LEASED or isHandTool then
 			local price, _ = g_currentMission.economyManager:getSellPrice(item or storeItem)

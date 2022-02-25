@@ -82,7 +82,11 @@ function ScrollingLayoutElement:updateScrollClippers(initial)
 end
 
 function ScrollingLayoutElement:onSliderValueChanged(slider, newValue)
-	local newStartY = (self.contentSize - self.absSize[2]) / (slider.maxValue - slider.minValue) * (newValue - slider.minValue)
+	local newStartY = 0
+
+	if slider.minValue ~= slider.maxValue then
+		newStartY = (self.contentSize - self.absSize[2]) / (slider.maxValue - slider.minValue) * (newValue - slider.minValue)
+	end
 
 	self:scrollTo(newStartY, false)
 end
@@ -198,6 +202,13 @@ end
 function ScrollingLayoutElement:scrollToMakeElementVisible(element)
 	local min = self.absPosition[2]
 	local max = self.absPosition[2] + self.absSize[2] - element.absSize[2]
+
+	if element.forceFocusScrollToTop then
+		self:smoothScrollTo(0, true)
+
+		return
+	end
+
 	local alreadyInView = min <= element.absPosition[2] and element.absPosition[2] <= max
 
 	if not alreadyInView then

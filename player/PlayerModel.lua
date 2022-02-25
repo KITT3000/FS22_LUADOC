@@ -209,8 +209,14 @@ function PlayerModel:load(xmlFilename, isRealPlayer, isOwner, isAnimated, asyncC
 end
 
 function PlayerModel:loadFileFinished(rootNode, failedReason, arguments)
-	if rootNode == nil then
-		Logging.error("Unable to load player model %s", self.filename)
+	if failedReason == LoadI3DFailedReason.FILE_NOT_FOUND then
+		Logging.error("Player model file '%s' does not exist!", self.filename)
+
+		return self.asyncLoadCallbackFunction(self.asyncLoadCallbackObject, false, self.asyncLoadCallbackArguments)
+	end
+
+	if failedReason == LoadI3DFailedReason.UNKNOWN or rootNode == nil or rootNode == 0 then
+		Logging.error("Failed to load player model %s", self.filename, failedReason)
 
 		return self.asyncLoadCallbackFunction(self.asyncLoadCallbackObject, false, self.asyncLoadCallbackArguments)
 	end

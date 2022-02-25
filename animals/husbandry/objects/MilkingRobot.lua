@@ -17,13 +17,14 @@ function MilkingRobot:load(linkNode, filename, asyncCallbackFunction, asyncCallb
 	end
 
 	local i3dFilename = Utils.getFilename(xmlFile:getString("milkingRobot.filename"), self.baseDirectory)
-	self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(i3dFilename, true, false, self.onI3DFileLoaded, self, {
-		xmlFile,
-		linkNode,
-		asyncCallbackFunction,
-		asyncCallbackObject,
-		asyncCallbackArgs
-	})
+	local arguments = {
+		xmlFile = xmlFile,
+		linkNode = linkNode,
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackObject = asyncCallbackObject,
+		asyncCallbackArgs = asyncCallbackArgs
+	}
+	self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(i3dFilename, true, false, self.onI3DFileLoaded, self, arguments)
 end
 
 function MilkingRobot:delete()
@@ -41,16 +42,14 @@ function MilkingRobot:delete()
 end
 
 function MilkingRobot:onI3DFileLoaded(node, failedReason, args)
-	local xmlFile, linkNode, asyncCallbackFunction, asyncCallbackObject, asyncCallbackArgs = unpack(args)
-
 	if node ~= 0 then
-		link(linkNode, node)
+		link(args.linkNode, node)
 
 		self.node = node
 	end
 
-	xmlFile:delete()
-	asyncCallbackFunction(asyncCallbackObject, self, asyncCallbackArgs)
+	args.xmlFile:delete()
+	args.asyncCallbackFunction(args.asyncCallbackObject, self, args.asyncCallbackArgs)
 end
 
 function MilkingRobot:finalizePlacement()

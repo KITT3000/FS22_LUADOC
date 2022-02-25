@@ -14,7 +14,7 @@ function AITaskDriveTo.new(isServer, job, customMt)
 	self.dirZ = nil
 	self.vehicle = nil
 	self.state = AITaskDriveTo.STATE_DRIVE_TO_OFFSET_POS
-	self.maxSpeed = 5
+	self.maxSpeed = 10
 	self.offset = 0
 	self.prepareTimeout = 0
 
@@ -26,7 +26,7 @@ function AITaskDriveTo:reset()
 	self.x, self.z = nil
 	self.dirX, self.dirZ = nil
 	self.state = AITaskDriveTo.STATE_DRIVE_TO_OFFSET_POS
-	self.maxSpeed = 5
+	self.maxSpeed = 10
 	self.offset = 0
 
 	AITaskDriveTo:superClass().reset(self)
@@ -86,8 +86,8 @@ function AITaskDriveTo:start()
 	AITaskDriveTo:superClass().start(self)
 end
 
-function AITaskDriveTo:stop()
-	AITaskDriveTo:superClass().stop(self)
+function AITaskDriveTo:stop(wasJobStopped)
+	AITaskDriveTo:superClass().stop(self, wasJobStopped)
 
 	if self.isServer then
 		self.vehicle:unsetAITarget()

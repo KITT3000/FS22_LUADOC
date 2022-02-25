@@ -70,13 +70,14 @@ function VehicleCharacter:loadCharacter(playerStyle, asyncCallbackObject, asyncC
 	end
 
 	self.playerModel = PlayerModel.new()
+	local arguments = {
+		asyncCallbackObject = asyncCallbackObject,
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackArguments = asyncCallbackArguments,
+		playerStyle = playerStyle
+	}
 
-	self.playerModel:load(playerStyle.xmlFilename, false, false, self.useAnimation, self.characterLoaded, self, {
-		asyncCallbackObject,
-		asyncCallbackFunction,
-		asyncCallbackArguments,
-		playerStyle
-	})
+	self.playerModel:load(playerStyle.xmlFilename, false, false, self.useAnimation, self.characterLoaded, self, arguments)
 end
 
 function VehicleCharacter:characterLoaded(success, arguments)
@@ -85,7 +86,7 @@ function VehicleCharacter:characterLoaded(success, arguments)
 			return
 		end
 
-		local playerStyle = arguments[4]
+		local playerStyle = arguments.playerStyle
 
 		self.playerModel:setStyle(playerStyle, false, nil)
 
@@ -159,7 +160,9 @@ function VehicleCharacter:characterLoaded(success, arguments)
 		Logging.error("Failed to load vehicleCharacter")
 	end
 
-	local asyncCallbackObject, asyncCallbackFunction, asyncCallbackArguments = unpack(arguments)
+	local asyncCallbackObject = arguments.asyncCallbackObject
+	local asyncCallbackFunction = arguments.asyncCallbackFunction
+	local asyncCallbackArguments = arguments.asyncCallbackArguments
 
 	if asyncCallbackFunction ~= nil then
 		asyncCallbackFunction(asyncCallbackObject, success, asyncCallbackArguments)

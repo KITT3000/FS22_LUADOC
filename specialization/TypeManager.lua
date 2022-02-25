@@ -197,7 +197,7 @@ function TypeManager:addSpecialization(typeName, specName)
 
 			typeEntry.specializationsByName[specName] = spec
 		else
-			Logging.error("Specialization '%s' already exists for %s type '%s'!", specName, typeName, self.typeName)
+			Logging.error("Specialization '%s' already exists for %s type '%s'!", specName, self.typeName, typeName)
 		end
 	else
 		Logging.error("%s type '%s' is not defined!", self.typeName, typeName)

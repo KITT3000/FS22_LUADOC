@@ -1,40 +1,13 @@
 SettingsDeviceFrame = {}
 local SettingsDeviceFrame_mt = Class(SettingsDeviceFrame, TabbedMenuFrameElement)
 SettingsDeviceFrame.CONTROLS = {
-	ELEMENT_DEADZONE_2 = "deadzoneElement2",
-	ELEMENT_DEADZONE_1 = "deadzoneElement1",
-	ELEMENT_DEADZONE_4 = "deadzoneElement4",
-	ELEMENT_DEADZONE_10 = "deadzoneElement10",
-	ELEMENT_SENSITIVITY_6 = "sensitivityElement6",
-	ELEMENT_SENSITIVITY_11 = "sensitivityElement11",
-	ELEMENT_SENSITIVITY_7 = "sensitivityElement7",
-	ELEMENT_SENSITIVITY_14 = "sensitivityElement14",
-	ELEMENT_SENSITIVITY_EYE_TRACKING = "sensitivityHeadTrackingElement",
-	ELEMENT_DEADZONE_14 = "deadzoneElement14",
-	ELEMENT_SENSITIVITY_9 = "sensitivityElement9",
-	ELEMENT_SENSITIVITY_12 = "sensitivityElement12",
-	DISCLAIMER = "disclaimerLabel",
-	MAIN_CONTAINER = "settingsContainer",
-	ELEMENT_DEADZONE_13 = "deadzoneElement13",
-	ELEMENT_DEADZONE_9 = "deadzoneElement9",
-	ELEMENT_SENSITIVITY_8 = "sensitivityElement8",
-	ELEMENT_DEADZONE_11 = "deadzoneElement11",
-	ELEMENT_SENSITIVITY_3 = "sensitivityElement3",
-	ELEMENT_SENSITIVITY_10 = "sensitivityElement10",
-	ELEMENT_SENSITIVITY_5 = "sensitivityElement5",
-	MAIN_BOX = "boxLayout",
-	ELEMENT_DEADZONE_7 = "deadzoneElement7",
-	ELEMENT_SENSITIVITY_2 = "sensitivityElement2",
-	ELEMENT_DEADZONE_5 = "deadzoneElement5",
-	ELEMENT_SENSITIVITY_4 = "sensitivityElement4",
-	ELEMENT_SENSITIVITY_MOUSE = "sensitivityMouseElement",
-	ELEMENT_TITLE = "titleElement",
-	ELEMENT_SENSITIVITY_13 = "sensitivityElement13",
-	ELEMENT_DEADZONE_12 = "deadzoneElement12",
-	ELEMENT_DEADZONE_8 = "deadzoneElement8",
-	ELEMENT_DEADZONE_6 = "deadzoneElement6",
-	ELEMENT_SENSITIVITY_1 = "sensitivityElement1",
-	ELEMENT_DEADZONE_3 = "deadzoneElement3"
+	"titleElement",
+	"settingsContainer",
+	"layout",
+	"sectionTemplate",
+	"deadzoneTemplate",
+	"sensitivityTemplate",
+	"disclaimerLabel"
 }
 
 function SettingsDeviceFrame.new(target, custom_mt, settingsModel, l10n)
@@ -45,8 +18,7 @@ function SettingsDeviceFrame.new(target, custom_mt, settingsModel, l10n)
 	self.settingsModel = settingsModel
 	self.l10n = l10n
 	self.hasCustomMenuButtons = true
-	self.deadzoneElementMapping = {}
-	self.sensitivityElementMapping = {}
+	self.stateBars = {}
 
 	return self
 end
@@ -60,27 +32,12 @@ function SettingsDeviceFrame:copyAttributes(src)
 end
 
 function SettingsDeviceFrame:initialize()
-	self.deadzoneElementMapping = {}
-	self.sensitivityElementMapping = {}
-
-	for i = 1, Input.MAX_NUM_AXES do
-		local deadzoneElement = self[string.format("deadzoneElement%d", i)]
-		self.deadzoneElementMapping[deadzoneElement] = i - 1
-
-		deadzoneElement:setLabel(string.format(self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.GAMEPAD_AXIS), i) .. " " .. self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.GAMEPAD_DEADZONE))
-		deadzoneElement:setTexts(self.settingsModel:getDeadzoneTexts())
-
-		local sensitivityElement = self[string.format("sensitivityElement%d", i)]
-		self.sensitivityElementMapping[sensitivityElement] = i - 1
-
-		sensitivityElement:setLabel(string.format(self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.GAMEPAD_AXIS), i) .. " " .. self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.GAMEPAD_SENSITIVITY))
-		sensitivityElement:setTexts(self.settingsModel:getSensitivityTexts())
-	end
-
-	self.sensitivityMouseElement:setLabel(string.format("%s %s", self.l10n:getText("ui_mouse"), self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.GAMEPAD_SENSITIVITY)))
-	self.sensitivityMouseElement:setTexts(self.settingsModel:getSensitivityTexts())
-	self.sensitivityHeadTrackingElement:setLabel(string.format("%s %s", self.l10n:getText("setting_headTracking"), self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.GAMEPAD_SENSITIVITY)))
-	self.sensitivityHeadTrackingElement:setTexts(self.settingsModel:getHeadTrackingSensitivityTexts())
+	self.sectionTemplate:unlinkElement()
+	FocusManager:removeElement(self.sectionTemplate)
+	self.deadzoneTemplate:unlinkElement()
+	FocusManager:removeElement(self.deadzoneTemplate)
+	self.sensitivityTemplate:unlinkElement()
+	FocusManager:removeElement(self.sensitivityTemplate)
 
 	self.backButtonInfo = {
 		inputAction = InputAction.MENU_BACK
@@ -103,17 +60,11 @@ function SettingsDeviceFrame:initialize()
 	self:updateController()
 end
 
-function SettingsDeviceFrame:onApplySettings()
-	self.settingsModel:saveChanges(SettingsModel.SETTING_CLASS.SAVE_ALL)
-	g_gui:showInfoDialog({
-		text = self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.SAVING_FINISHED),
-		dialogType = DialogElement.TYPE_INFO
-	})
-end
-
-function SettingsDeviceFrame:onSwitchDevice()
-	self.settingsModel:nextDevice()
-	self:updateView()
+function SettingsDeviceFrame:delete()
+	self.sectionTemplate:delete()
+	self.deadzoneTemplate:delete()
+	self.sensitivityTemplate:delete()
+	SettingsDeviceFrame:superClass().delete(self)
 end
 
 function SettingsDeviceFrame:onFrameOpen()
@@ -139,12 +90,17 @@ function SettingsDeviceFrame:getMenuButtonInfo()
 	return buttons
 end
 
-function SettingsDeviceFrame:getMainElementSize()
-	return self.settingsContainer.size
+function SettingsDeviceFrame:onApplySettings()
+	self.settingsModel:saveChanges(SettingsModel.SETTING_CLASS.SAVE_ALL)
+	g_gui:showInfoDialog({
+		text = self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.SAVING_FINISHED),
+		dialogType = DialogElement.TYPE_INFO
+	})
 end
 
-function SettingsDeviceFrame:getMainElementPosition()
-	return self.settingsContainer.absPosition
+function SettingsDeviceFrame:onSwitchDevice()
+	self.settingsModel:nextDevice()
+	self:updateView()
 end
 
 function SettingsDeviceFrame:update(dt)
@@ -154,6 +110,33 @@ function SettingsDeviceFrame:update(dt)
 
 	if numOfGamepads ~= self.numOfGamepads then
 		self:updateController()
+	end
+
+	self:updateGamepadInputStates()
+end
+
+function SettingsDeviceFrame:updateGamepadInputStates()
+	for _, barInfo in pairs(self.stateBars) do
+		local device = self.settingsModel.deviceSettings[self.settingsModel.currentDevice].device
+		local gamepadIndex = device.internalId
+		local deadzone = self.settingsModel:getCurrentDeviceDeadzoneValue(barInfo.axisIndex)
+		local sensitivity = self.settingsModel:getCurrentDeviceSensitivityValue(barInfo.axisIndex)
+		local neutralInput = 0
+		local value = g_inputBinding:getGamepadAxisValue(gamepadIndex, barInfo.axisIndex, "", neutralInput, deadzone)
+		value = value * sensitivity
+		value = MathUtil.clamp(value, -1, 1)
+		local bar = barInfo.element.elements[1]
+		local boxSize = barInfo.element.absSize[1]
+
+		bar:setSize(math.max(math.abs(value) * boxSize * 0.5, 2 / g_screenWidth))
+
+		if value < 0 then
+			bar:setPosition((1 - math.abs(value)) * boxSize * 0.5)
+		else
+			bar:setPosition(boxSize * 0.5)
+		end
+
+		barInfo.element:updateAbsolutePosition()
 	end
 end
 
@@ -166,124 +149,153 @@ function SettingsDeviceFrame:updateController()
 end
 
 function SettingsDeviceFrame:updateView()
-	self.boxLayout:scrollTo(0)
-
 	local name = self.settingsModel:getCurrentDeviceName()
 
 	if name == InputDevice.DEFAULT_DEVICE_NAMES.KB_MOUSE_DEFAULT then
-		name = self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.DEVICE_MOUSE)
+		name = self.l10n:getText("ui_mouse")
 	elseif self.l10n:hasText(name) then
 		name = self.l10n:getText(name)
 	end
 
-	self.titleElement:setText(string.format("%s: %s", self.l10n:getText(SettingsDeviceFrame.L10N_SYMBOL.DEVICE_CONFIGURATION), name))
+	self.titleElement:setText(string.format("%s: %s", self.l10n:getText("ui_deviceConfiguration"), name))
 
-	local firstVisible = nil
+	local firstOptionElement = nil
+
+	function addSectionHeader(title, axis)
+		local cell = self.sectionTemplate:clone(self.layout)
+
+		cell:reloadFocusHandling(true)
+		cell:getDescendantByName("title"):setText(title)
+
+		local box = cell:getDescendantByName("box")
+
+		box:setVisible(axis ~= nil)
+
+		if axis ~= nil then
+			table.insert(self.stateBars, {
+				element = box,
+				axisIndex = axis
+			})
+		end
+	end
+
+	for i = 1, #self.layout.elements do
+		self.layout.elements[1]:delete()
+	end
+
+	self.stateBars = {}
 	local isMouse = self.settingsModel:getIsDeviceMouse()
 
-	for deadzoneElement, axisIndex in pairs(self.deadzoneElementMapping) do
-		local hasDeadzone = self.settingsModel:getDeviceHasAxisDeadzone(axisIndex) and not isMouse
-
-		deadzoneElement:setVisible(hasDeadzone)
-
-		if hasDeadzone then
-			if firstVisible == nil then
-				firstVisible = deadzoneElement
-			end
-
-			deadzoneElement:setState(self.settingsModel:getDeviceAxisDeadzoneValue(axisIndex))
-		end
-	end
-
-	for sensitivityElement, axisIndex in pairs(self.sensitivityElementMapping) do
-		local hasSensitiviy = self.settingsModel:getDeviceHasAxisSensitivity(axisIndex) and not isMouse
-
-		sensitivityElement:setVisible(hasSensitiviy)
-
-		if hasSensitiviy then
-			if firstVisible == nil then
-				firstVisible = sensitivityElement
-			end
-
-			sensitivityElement:setState(self.settingsModel:getDeviceAxisSensitivityValue(axisIndex))
-		end
-	end
-
-	self.sensitivityMouseElement:setVisible(isMouse)
-
 	if isMouse then
-		if firstVisible == nil then
-			firstVisible = self.sensitivityMouseElement
+		addSectionHeader(self.l10n:getText("ui_mouse"))
+
+		local optionElement = self.sensitivityTemplate:clone(self.layout)
+
+		optionElement:reloadFocusHandling(true)
+		optionElement:setTexts(self.settingsModel:getSensitivityTexts())
+		optionElement:setState(self.settingsModel:getMouseSensitivityValue())
+
+		function optionElement.onClickCallback(_, state)
+			self.settingsModel:setMouseSensitivity(state)
+			self:setMenuButtonInfoDirty()
 		end
 
-		self.sensitivityMouseElement:setState(self.settingsModel:getMouseSensitivityValue())
+		if firstOptionElement == nil then
+			firstOptionElement = optionElement
+		end
 	end
 
 	local hasHeadTracking = g_gameSettings:getValue("isHeadTrackingEnabled") and isHeadTrackingAvailable()
 	local isKeyboardAvailable = getIsKeyboardAvailable()
 	local isHeadTrackingVisible = hasHeadTracking and (isMouse or not isKeyboardAvailable)
 
-	self.sensitivityHeadTrackingElement:setVisible(isHeadTrackingVisible)
-
 	if isHeadTrackingVisible then
-		if firstVisible == nil then
-			firstVisible = self.sensitivityHeadTrackingElement
+		addSectionHeader(self.l10n:getText("setting_headTracking"))
+
+		local optionElement = self.sensitivityTemplate:clone(self.layout)
+
+		optionElement:reloadFocusHandling(true)
+		optionElement:setTexts(self.settingsModel:getHeadTrackingSensitivityTexts())
+		optionElement:setState(self.settingsModel:getHeadTrackingSensitivityValue())
+
+		function optionElement.onClickCallback(_, state)
+			self.settingsModel:setHeadTrackingSensitivity(state)
+			self:setMenuButtonInfoDirty()
 		end
 
-		self.sensitivityHeadTrackingElement:setState(self.settingsModel:getHeadTrackingSensitivityValue())
+		if firstOptionElement == nil then
+			firstOptionElement = optionElement
+		end
 	end
 
-	self.boxLayout:invalidateLayout()
-	self.boxLayout:scrollTo(0)
+	if not isMouse then
+		local device = self.settingsModel.deviceSettings[self.settingsModel.currentDevice].device
+		local gamepadIndex = device.internalId
 
-	if firstVisible then
-		FocusManager:setFocus(firstVisible)
+		for axis = 0, Input.MAX_NUM_AXES - 1 do
+			local hasDeadzone = self.settingsModel:getDeviceHasAxisDeadzone(axis)
+			local hasSensitiviy = self.settingsModel:getDeviceHasAxisSensitivity(axis)
+
+			if hasDeadzone or hasSensitiviy then
+				local label = getGamepadAxisLabel(axis, gamepadIndex)
+				local title = string.format(self.l10n:getText("setting_gamepadAxis"), axis + 1)
+
+				if label ~= "" then
+					title = title .. " (" .. label .. ")"
+				end
+
+				addSectionHeader(title, axis)
+
+				if hasDeadzone then
+					local optionElement = self.sensitivityTemplate:clone(self.layout)
+
+					optionElement:reloadFocusHandling(true)
+					optionElement:setTexts(self.settingsModel:getDeadzoneTexts())
+					optionElement:setState(self.settingsModel:getDeviceAxisDeadzoneValue(axis))
+
+					function optionElement.onClickCallback(_, state)
+						self.settingsModel:setDeviceDeadzoneValue(axis, state)
+						self:setMenuButtonInfoDirty()
+					end
+
+					if firstOptionElement == nil then
+						firstOptionElement = optionElement
+					end
+				end
+
+				if hasSensitiviy then
+					local optionElement = self.sensitivityTemplate:clone(self.layout)
+
+					optionElement:reloadFocusHandling(true)
+					optionElement:setTexts(self.settingsModel:getSensitivityTexts())
+					optionElement:setState(self.settingsModel:getDeviceAxisSensitivityValue(axis))
+
+					function optionElement.onClickCallback(_, state)
+						self.settingsModel:setDeviceSensitivityValue(axis, state)
+						self:setMenuButtonInfoDirty()
+					end
+
+					if firstOptionElement == nil then
+						firstOptionElement = optionElement
+					end
+				end
+			end
+		end
 	end
-end
 
-function SettingsDeviceFrame:onCreateDeadzone(element)
-	element:setTexts(self.settingsModel:getDeadzoneTexts())
-end
+	self.layout:scrollTo(0, true)
+	self.layout:invalidateLayout()
 
-function SettingsDeviceFrame:onCreateSensitivity(element)
-	element:setTexts(self.settingsModel:getSensitivityTexts())
-end
+	if firstOptionElement ~= nil then
+		self.layout:scrollToMakeElementVisible(firstOptionElement)
+		FocusManager:setFocus(firstOptionElement)
 
-function SettingsDeviceFrame:onCreateHeadTrackingSensitivity(element)
-	element:setTexts(self.settingsModel:getHeadTrackingSensitivityTexts())
-end
-
-function SettingsDeviceFrame:onClickDeadzone(state, element)
-	local gamepadIndex = self.deadzoneElementMapping[element]
-
-	self.settingsModel:setDeviceDeadzoneValue(gamepadIndex, state)
-	self:setMenuButtonInfoDirty()
-end
-
-function SettingsDeviceFrame:onClickSensitivity(state, element)
-	local gamepadIndex = self.sensitivityElementMapping[element]
-
-	self.settingsModel:setDeviceSensitivityValue(gamepadIndex, state)
-	self:setMenuButtonInfoDirty()
-end
-
-function SettingsDeviceFrame:onClickMouseSensitivity(state, element)
-	self.settingsModel:setMouseSensitivity(state)
-	self:setMenuButtonInfoDirty()
-end
-
-function SettingsDeviceFrame:onClickHeadTrackingSensitivity(state, element)
-	self.settingsModel:setHeadTrackingSensitivity(state)
-	self:setMenuButtonInfoDirty()
+		firstOptionElement.forceFocusScrollToTop = true
+	end
 end
 
 SettingsDeviceFrame.L10N_SYMBOL = {
 	BUTTON_APPLY = "button_apply",
-	GAMEPAD_AXIS = "setting_gamepadAxis",
-	SWITCH_DEVICE = "ui_switchDevice",
-	GAMEPAD_SENSITIVITY = "setting_gamepadSensitivity",
-	GAMEPAD_DEADZONE = "setting_gamepadDeadzone",
-	DEVICE_MOUSE = "ui_mouse",
 	SAVING_FINISHED = "ui_savingFinished",
-	DEVICE_CONFIGURATION = "ui_deviceConfiguration"
+	SWITCH_DEVICE = "ui_switchDevice"
 }

@@ -64,11 +64,13 @@ function AIVehicleObstacle:createAIVehicleObstacle()
 end
 
 function AIVehicleObstacle:removeAIVehicleObstacle()
-	for _, component in ipairs(self.components) do
-		if component.obstacleId ~= nil then
-			g_currentMission.aiSystem:removeObstacle(component.node)
+	if self.components ~= nil then
+		for _, component in ipairs(self.components) do
+			if component.obstacleId ~= nil then
+				g_currentMission.aiSystem:removeObstacle(component.node)
 
-			component.obstacleId = nil
+				component.obstacleId = nil
+			end
 		end
 	end
 end

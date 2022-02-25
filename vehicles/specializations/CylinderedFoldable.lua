@@ -33,11 +33,9 @@ CylinderedFoldable = {
 		end
 	end,
 	onReadStream = function (self, streamId, connection)
-		local spec = self.spec_cylinderedFoldable
-
 		AnimatedVehicle.updateAnimations(self, 9999999)
 
-		if self:getFoldAnimTime() == spec.loadMovingToolStatesFoldTime then
+		if streamReadBool(streamId) then
 			Cylindered.onReadStream(self, streamId, connection)
 		end
 
@@ -54,7 +52,7 @@ CylinderedFoldable = {
 	onWriteStream = function (self, streamId, connection)
 		local spec = self.spec_cylinderedFoldable
 
-		if self:getFoldAnimTime() == spec.loadMovingToolStatesFoldTime then
+		if streamWriteBool(streamId, spec.loadMovingToolStatesFoldTime == nil or self:getFoldAnimTime() == spec.loadMovingToolStatesFoldTime) then
 			Cylindered.onWriteStream(self, streamId, connection)
 		end
 	end

@@ -95,9 +95,12 @@ function WardrobeScreen:onClose()
 	self:showContent(false)
 	g_currentMission.environment:setCustomLighting(nil)
 	setCamera(self.previousCamera)
-	self.playerModel:delete()
 
-	self.playerModel = nil
+	if self.playerModel ~= nil then
+		self.playerModel:delete()
+
+		self.playerModel = nil
+	end
 
 	if self.didControlPlayer then
 		g_currentMission.player:onEnter(true)

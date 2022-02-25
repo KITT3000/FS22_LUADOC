@@ -22,13 +22,14 @@ function Effect:load(xmlFile, baseName, rootNodes, parent, i3dMapping)
 
 	if filename ~= nil then
 		filename = Utils.getFilename(filename, self.baseDirectory)
+		local arguments = {
+			xmlFile = xmlFile,
+			baseName = baseName,
+			i3dMapping = i3dMapping,
+			filename = filename
+		}
 
-		g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.effectI3DFileLoaded, self, {
-			xmlFile,
-			baseName,
-			i3dMapping,
-			filename
-		})
+		g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.effectI3DFileLoaded, self, arguments)
 	else
 		if not self:loadEffectAttributes(xmlFile, baseName, nil, rootNodes, i3dMapping) then
 			Logging.xmlWarning(xmlFile, "Failed to load effect '%s' from node", baseName)
@@ -50,10 +51,11 @@ function Effect:loadFromNode(node, parent)
 
 	if filename ~= nil then
 		filename = Utils.getFilename(filename, self.baseDirectory)
-		self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.effectI3DFileLoaded, self, {
-			[4] = filename,
-			[5] = node
-		})
+		local arguments = {
+			filename = filename,
+			node = node
+		}
+		self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.effectI3DFileLoaded, self, arguments)
 	else
 		if not self:loadEffectAttributes(nil, nil, node) then
 			Logging.xmlWarning(parent.xmlFile, "Failed to load effect from node '%s'", getName(node))
@@ -68,10 +70,12 @@ function Effect:loadFromNode(node, parent)
 end
 
 function Effect:effectI3DFileLoaded(i3dNode, failedReason, args)
-	local xmlFile, baseName, i3dMapping, filename, node = unpack(args)
-
 	if i3dNode ~= 0 then
-		self.filename = filename
+		local xmlFile = args.xmlFile
+		local baseName = args.baseName
+		local i3dMapping = args.i3dMapping
+		local node = args.node
+		self.filename = args.filename
 
 		if not self:loadEffectAttributes(xmlFile, baseName, node, i3dNode, i3dMapping) then
 			Logging.xmlWarning(xmlFile, "Failed to load effect from file '%s'", baseName)

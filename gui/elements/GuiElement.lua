@@ -1242,7 +1242,7 @@ function GuiElement:setOverlayState(overlayState)
 	self.overlayState = overlayState
 
 	if self.updateChildrenOverlayState then
-		for _, child in pairs(self.elements) do
+		for _, child in ipairs(self.elements) do
 			child:setOverlayState(overlayState)
 		end
 	end
@@ -1268,9 +1268,6 @@ function GuiElement:setCallback(funcName, callbackName)
 	if self.target ~= nil then
 		self[funcName] = self.target[callbackName]
 	else
-		log(funcName, callbackName)
-		printCallstack()
-
 		self[funcName] = ClassUtil.getFunction(callbackName)
 	end
 end

@@ -171,10 +171,11 @@ function PlaceablePlacement:loadTestArea(xmlFile, key, area)
 
 	area.startNode = startNode
 	area.endNode = endNode
-	local offsetX, offsetY, offsetZ = localToLocal(endNode, startNode, 0, 0, 0)
+	local ySafetyOffset = 0.05
+	local offsetX, offsetY, offsetZ = localToLocal(endNode, startNode, 0, -ySafetyOffset, 0)
 	local centerX, centerY, centerZ = localToLocal(startNode, self.rootNode, offsetX * 0.5, offsetY * 0.5, offsetZ * 0.5)
 	local sizeX = math.abs(offsetX)
-	local sizeY = math.abs(offsetY)
+	local sizeY = math.abs(offsetY + ySafetyOffset)
 	local sizeZ = math.abs(offsetZ)
 
 	if offsetY < 0.01 then

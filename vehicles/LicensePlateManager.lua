@@ -104,12 +104,13 @@ function LicensePlateManager:loadLicensePlatesFromXML(xmlFile, baseDirectory)
 		if filename ~= nil then
 			self.xmlReferences = self.xmlReferences + 1
 			filename = Utils.getFilename(filename, baseDirectory)
-			local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.licensePlateI3DFileLoaded, self, {
-				filename,
-				xmlFile,
-				plateKey,
-				customEnvironment
-			})
+			local arguments = {
+				filename = filename,
+				xmlFile = xmlFile,
+				plateKey = plateKey,
+				customEnvironment = customEnvironment
+			}
+			local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.licensePlateI3DFileLoaded, self, arguments)
 
 			table.insert(self.sharedLoadRequestIds, sharedLoadRequestId)
 		else
@@ -195,7 +196,10 @@ function LicensePlateManager:loadLicensePlatesFromXML(xmlFile, baseDirectory)
 end
 
 function LicensePlateManager:licensePlateI3DFileLoaded(i3dNode, failedReason, args)
-	local filename, xmlFile, plateKey, customEnvironment = unpack(args)
+	local filename = args.filename
+	local xmlFile = args.xmlFile
+	local plateKey = args.plateKey
+	local customEnvironment = args.customEnvironment
 
 	if i3dNode ~= nil and i3dNode ~= 0 then
 		local node = xmlFile:getValue(plateKey .. "#node", nil, i3dNode)

@@ -232,6 +232,7 @@ end
 
 function InGameMenuMapFrame:onFrameOpen()
 	InGameMenuMapFrame:superClass().onFrameOpen(self)
+	self:loadFilters()
 	self:setColorBlindMode(Utils.getNoNil(g_gameSettings:getValue(GameSettings.SETTING.USE_COLORBLIND_MODE), false))
 	self:toggleMapInput(true)
 	self.ingameMap:onOpen()
@@ -281,6 +282,66 @@ function InGameMenuMapFrame:onFrameClose()
 	self.ingameMap:onClose()
 	self:toggleMapInput(false)
 	self:toggleFarmlandsHotspotFilterSettings(false)
+end
+
+function InGameMenuMapFrame:saveFilters()
+	local fruitValue = ""
+
+	for fruitId, state in pairs(self.fruitTypeFilter) do
+		if not state then
+			local name = g_fruitTypeManager:getFillTypeByFruitTypeIndex(fruitId).name
+
+			if fruitValue ~= "" then
+				fruitValue = fruitValue .. ";" .. name
+			else
+				fruitValue = name
+			end
+		end
+	end
+
+	local growthValue = 0
+
+	for i, state in ipairs(self.growthStateFilter) do
+		if state then
+			growthValue = Utils.setBit(growthValue, i)
+		end
+	end
+
+	local soilValue = 0
+
+	for i, state in ipairs(self.soilStateFilter) do
+		if state then
+			soilValue = Utils.setBit(soilValue, i)
+		end
+	end
+
+	g_gameSettings:setValue(GameSettings.SETTING.INGAME_MAP_FRUIT_FILTER, fruitValue, false)
+	g_gameSettings:setValue(GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER, growthValue, false)
+	g_gameSettings:setValue(GameSettings.SETTING.INGAME_MAP_SOIL_FILTER, soilValue, true)
+end
+
+function InGameMenuMapFrame:loadFilters()
+	local fruitValue = g_gameSettings:getValue(GameSettings.SETTING.INGAME_MAP_FRUIT_FILTER)
+
+	for _, fruitName in ipairs(fruitValue:split(";")) do
+		local fruitDesc = g_fruitTypeManager:getFruitTypeByName(fruitName)
+
+		if fruitDesc ~= nil then
+			self.fruitTypeFilter[fruitDesc.index] = false
+		end
+	end
+
+	local growthValue = g_gameSettings:getValue(GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER)
+
+	for i = 1, #self.displayGrowthStates do
+		self.growthStateFilter[i] = Utils.isBitSet(growthValue, i)
+	end
+
+	local soilValue = g_gameSettings:getValue(GameSettings.SETTING.INGAME_MAP_SOIL_FILTER)
+
+	for i = 1, #self.displaySoilStates do
+		self.soilStateFilter[i] = Utils.isBitSet(soilValue, i)
+	end
 end
 
 function InGameMenuMapFrame:onLoadMapFinished()
@@ -404,6 +465,10 @@ function InGameMenuMapFrame:setInGameMap(ingameMap)
 	self.ingameMapBase = ingameMap
 
 	self.ingameMap:setIngameMap(ingameMap)
+
+	if self.ingameMapBase ~= nil then
+		self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_PLAYER, true)
+	end
 end
 
 function InGameMenuMapFrame:setTerrainSize(terrainSize)
@@ -1148,6 +1213,7 @@ function InGameMenuMapFrame:toggleFilter(filterButton, filterMap, filterKey)
 
 	self:setFilterButtonDisplayEnabled(filterButton, not prevValue)
 	self:generateOverviewOverlay()
+	self:saveFilters()
 end
 
 function InGameMenuMapFrame:onClickCropFilter(element, fruitTypeIndex)

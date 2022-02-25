@@ -2,26 +2,28 @@ MoneyType = {}
 local moneyTypeId = 0
 local moneyTypeIdToType = {}
 
-function MoneyType.register(statistic, title)
+function MoneyType.register(statistic, title, customEnv)
 	moneyTypeId = moneyTypeId + 1
 	local value = {
 		id = moneyTypeId,
 		statistic = statistic,
-		title = title
+		title = title,
+		customEnv = customEnv
 	}
 	moneyTypeIdToType[moneyTypeId] = value
 
 	return value
 end
 
-function MoneyType.registerWithId(id, statistic, title)
+function MoneyType.registerWithId(id, statistic, title, customEnv)
 	local moneyType = moneyTypeIdToType[id]
 
 	if moneyType == nil then
 		moneyType = {
 			id = id,
 			statistic = statistic,
-			title = title
+			title = title,
+			customEnv = customEnv
 		}
 		moneyTypeIdToType[id] = moneyType
 	end
@@ -52,7 +54,6 @@ end
 MoneyType.OTHER = MoneyType.register("other", "finance_other")
 MoneyType.SHOP_VEHICLE_BUY = MoneyType.register("newVehiclesCost", "finance_newVehiclesCost")
 MoneyType.SHOP_VEHICLE_SELL = MoneyType.register("soldVehicles", "finance_soldVehicles")
-MoneyType.SHOP_VEHICLE_LEASE = MoneyType.register("newVehiclesCost", "finance_vehicleLeasingCost")
 MoneyType.SHOP_PROPERTY_BUY = MoneyType.register("constructionCost", "finance_constructionCost")
 MoneyType.SHOP_PROPERTY_SELL = MoneyType.register("soldBuildings", "finance_soldBuildings")
 MoneyType.SOLD_MILK = MoneyType.register("soldMilk", "finance_soldMilk")

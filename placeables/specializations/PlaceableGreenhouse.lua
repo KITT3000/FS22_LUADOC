@@ -152,19 +152,20 @@ function PlaceableGreenhouse:loadPlantFromXml(xmlFilename)
 			growing = {}
 		}
 	}
-	local plantXml = XMLFile.load("plantXml", xmlFilename, PlaceableGreenhouse.plantXmlSchema)
+	local plantXmlFile = XMLFile.load("plantXml", xmlFilename, PlaceableGreenhouse.plantXmlSchema)
 
-	if plantXml ~= nil then
-		local i3dFilename = plantXml:getValue("greenhousePlant.i3dFilename")
+	if plantXmlFile ~= nil then
+		local i3dFilename = plantXmlFile:getValue("greenhousePlant.i3dFilename")
 
 		if i3dFilename ~= nil then
 			plant.i3dFilename = Utils.getFilename(i3dFilename, self.baseDirectory)
 			local loadingTask = self:createLoadingTask()
-			plant.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(plant.i3dFilename, false, false, self.plantI3DLoadedCallback, self, {
-				plant,
-				plantXml,
-				loadingTask
-			})
+			local arguments = {
+				plant = plant,
+				plantXmlFile = plantXmlFile,
+				loadingTask = loadingTask
+			}
+			plant.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(plant.i3dFilename, false, false, self.plantI3DLoadedCallback, self, arguments)
 		end
 	end
 
@@ -172,7 +173,9 @@ function PlaceableGreenhouse:loadPlantFromXml(xmlFilename)
 end
 
 function PlaceableGreenhouse:plantI3DLoadedCallback(i3dNode, failedReason, args)
-	local plant, plantXmlFile, loadingTask = unpack(args)
+	local plant = args.plant
+	local plantXmlFile = args.plantXmlFile
+	local loadingTask = args.loadingTask
 
 	if i3dNode ~= 0 then
 		local components = {}

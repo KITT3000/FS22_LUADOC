@@ -230,6 +230,9 @@ function BaleLoader.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAreControlledActionsAllowed", BaleLoader.getAreControlledActionsAllowed)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsAIReadyToDrive", BaleLoader.getIsAIReadyToDrive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsAIPreparingToDrive", BaleLoader.getIsAIPreparingToDrive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getDoConsumePtoPower", BaleLoader.getDoConsumePtoPower)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getConsumingLoad", BaleLoader.getConsumingLoad)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsPowerTakeOffActive", BaleLoader.getIsPowerTakeOffActive)
 end
 
 function BaleLoader.registerEventListeners(vehicleType)
@@ -861,6 +864,12 @@ function BaleLoader:onReadStream(streamId, connection)
 	spec.frontBalePusherDirection = streamReadIntN(streamId, 3)
 	spec.rotatePlatformDirection = streamReadIntN(streamId, 3)
 
+	if streamReadBool(streamId) then
+		local currentBaleTypeIndex = streamReadIntN(streamId, 6)
+
+		self:setBaleLoaderBaleType(currentBaleTypeIndex)
+	end
+
 	if spec.isInWorkPosition then
 		BaleLoader.moveToWorkPosition(self)
 	end
@@ -919,10 +928,16 @@ function BaleLoader:onReadStream(streamId, connection)
 
 			for _ = 1, numBales do
 				local baleServerId = NetworkUtil.readNodeObjectId(streamId)
-				local maxValue = 2^spec.synchronizationNumBitsPosition - 1
-				local x = streamReadUIntN(streamId, spec.synchronizationNumBitsPosition) / maxValue * spec.synchronizationMaxPosition * 2 - spec.synchronizationMaxPosition
-				local y = streamReadUIntN(streamId, spec.synchronizationNumBitsPosition) / maxValue * spec.synchronizationMaxPosition * 2 - spec.synchronizationMaxPosition
-				local z = streamReadUIntN(streamId, spec.synchronizationNumBitsPosition) / maxValue * spec.synchronizationMaxPosition * 2 - spec.synchronizationMaxPosition
+				local x = 0
+				local y = 0
+				local z = 0
+
+				if not spec.dynamicMount.enabled then
+					local maxValue = 2^spec.synchronizationNumBitsPosition - 1
+					x = streamReadUIntN(streamId, spec.synchronizationNumBitsPosition) / maxValue * spec.synchronizationMaxPosition * 2 - spec.synchronizationMaxPosition
+					y = streamReadUIntN(streamId, spec.synchronizationNumBitsPosition) / maxValue * spec.synchronizationMaxPosition * 2 - spec.synchronizationMaxPosition
+					z = streamReadUIntN(streamId, spec.synchronizationNumBitsPosition) / maxValue * spec.synchronizationMaxPosition * 2 - spec.synchronizationMaxPosition
+				end
 
 				table.insert(balePlace.bales, baleServerId)
 
@@ -1013,6 +1028,11 @@ function BaleLoader:onWriteStream(streamId, connection)
 	streamWriteBool(streamId, spec.isInWorkPosition)
 	streamWriteIntN(streamId, spec.frontBalePusherDirection, 3)
 	streamWriteIntN(streamId, spec.rotatePlatformDirection, 3)
+
+	if streamWriteBool(streamId, spec.currentBaleType ~= nil) then
+		streamWriteIntN(streamId, spec.currentBaleType.index or 1, 6)
+	end
+
 	streamWriteUIntN(streamId, spec.emptyState, 4)
 	streamWriteInt8(streamId, spec.startBalePlace.current)
 
@@ -1047,15 +1067,17 @@ function BaleLoader:onWriteStream(streamId, connection)
 
 				NetworkUtil.writeNodeObjectId(streamId, baleServerId)
 
-				if spec.synchronizationMaxPosition < math.abs(x) or spec.synchronizationMaxPosition < math.abs(y) or spec.synchronizationMaxPosition < math.abs(z) then
-					Logging.xmlWarning(self.xmlFile, "Position of bale '%d' could not be synchronized correctly. Position out of range (%.2f, %.2f, %.2f) > %.2f. Increase 'vehicle.baleLoader.synchronization#maxPosition'", baleI, x, y, z, spec.synchronizationMaxPosition)
+				if not spec.dynamicMount.enabled then
+					if spec.synchronizationMaxPosition < math.abs(x) or spec.synchronizationMaxPosition < math.abs(y) or spec.synchronizationMaxPosition < math.abs(z) then
+						Logging.xmlWarning(self.xmlFile, "Position of bale '%d' could not be synchronized correctly. Position out of range (%.2f, %.2f, %.2f) > %.2f. Increase 'vehicle.baleLoader.synchronization#maxPosition'", baleI, x, y, z, spec.synchronizationMaxPosition)
+					end
+
+					local maxValue = 2^spec.synchronizationNumBitsPosition - 1
+
+					streamWriteUIntN(streamId, (spec.synchronizationMaxPosition + x) / (spec.synchronizationMaxPosition * 2) * maxValue, spec.synchronizationNumBitsPosition)
+					streamWriteUIntN(streamId, (spec.synchronizationMaxPosition + y) / (spec.synchronizationMaxPosition * 2) * maxValue, spec.synchronizationNumBitsPosition)
+					streamWriteUIntN(streamId, (spec.synchronizationMaxPosition + z) / (spec.synchronizationMaxPosition * 2) * maxValue, spec.synchronizationNumBitsPosition)
 				end
-
-				local maxValue = 2^spec.synchronizationNumBitsPosition - 1
-
-				streamWriteUIntN(streamId, (spec.synchronizationMaxPosition + x) / (spec.synchronizationMaxPosition * 2) * maxValue, spec.synchronizationNumBitsPosition)
-				streamWriteUIntN(streamId, (spec.synchronizationMaxPosition + y) / (spec.synchronizationMaxPosition * 2) * maxValue, spec.synchronizationNumBitsPosition)
-				streamWriteUIntN(streamId, (spec.synchronizationMaxPosition + z) / (spec.synchronizationMaxPosition * 2) * maxValue, spec.synchronizationNumBitsPosition)
 			end
 		end
 	end
@@ -1453,7 +1475,7 @@ function BaleLoader:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSel
 
 							if bale ~= nil then
 								if bale.dynamicMountJointIndex ~= nil then
-									setJointFrame(bale.dynamicMountJointIndex, 0, bale.dynamicMountJointNode)
+									setJointFrame(bale.dynamicMountJointIndex, 0, bale.baleLoaderDynamicJointNode)
 								end
 
 								if bale.backupMass == nil then
@@ -1478,7 +1500,7 @@ function BaleLoader:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSel
 
 						if bale ~= nil then
 							if bale.dynamicMountJointIndex ~= nil then
-								setJointFrame(bale.dynamicMountJointIndex, 0, bale.dynamicMountJointNode)
+								setJointFrame(bale.dynamicMountJointIndex, 0, bale.baleLoaderDynamicJointNode)
 							end
 
 							if bale.backupMass == nil then
@@ -1500,7 +1522,7 @@ function BaleLoader:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSel
 					local bale = NetworkUtil.getObject(spec.baleGrabber.currentBale)
 
 					if bale ~= nil and bale.dynamicMountJointIndex ~= nil then
-						setJointFrame(bale.dynamicMountJointIndex, 0, bale.dynamicMountJointNode)
+						setJointFrame(bale.dynamicMountJointIndex, 0, bale.baleLoaderDynamicJointNode)
 					end
 				end
 			end
@@ -2687,25 +2709,27 @@ function BaleLoader:mountDynamicBale(bale, node)
 	local spec = self.spec_baleLoader
 
 	if self.isServer then
-		if bale.dynamicMountJointIndex ~= nil then
-			local x, y, z = getWorldTranslation(bale.dynamicMountJointNode)
-			local rx, ry, rz = getWorldRotation(bale.dynamicMountJointNode)
+		if bale.dynamicMountJointIndex ~= nil and bale.baleLoaderDynamicJointNode ~= nil then
+			local x, y, z = getWorldTranslation(bale.baleLoaderDynamicJointNode)
+			local rx, ry, rz = getWorldRotation(bale.baleLoaderDynamicJointNode)
 
-			link(node, bale.dynamicMountJointNode)
-			setWorldTranslation(bale.dynamicMountJointNode, x, y, z)
-			setWorldRotation(bale.dynamicMountJointNode, rx, ry, rz)
-			setJointFrame(bale.dynamicMountJointIndex, 0, bale.dynamicMountJointNode)
+			link(node, bale.baleLoaderDynamicJointNode)
+			setWorldTranslation(bale.baleLoaderDynamicJointNode, x, y, z)
+			setWorldRotation(bale.baleLoaderDynamicJointNode, rx, ry, rz)
+			setJointFrame(bale.dynamicMountJointIndex, 0, bale.baleLoaderDynamicJointNode)
 
 			if spec.dynamicMount.jointInterpolation then
 				table.insert(spec.dynamicMount.baleJointsToUpdate, {
 					time = 0,
-					node = bale.dynamicMountJointNode
+					node = bale.baleLoaderDynamicJointNode
 				})
 			end
 		else
 			local jointNode = createTransformGroup("baleJoint")
 
 			link(node, jointNode)
+
+			bale.baleLoaderDynamicJointNode = jointNode
 
 			if spec.dynamicMount.jointInterpolation then
 				setWorldTranslation(jointNode, getWorldTranslation(bale.nodeId))
@@ -2737,11 +2761,10 @@ function BaleLoader:mountDynamicBale(bale, node)
 			if spec.dynamicMount.jointInterpolation then
 				table.insert(spec.dynamicMount.baleJointsToUpdate, {
 					time = 0,
-					node = jointNode
+					node = bale.baleLoaderDynamicJointNode
 				})
 			end
 
-			spec.dynamicMount.jointNode = jointNode
 			spec.dynamicMount.baleMassDirty = true
 
 			g_currentMission.itemSystem:removeItemToSave(bale)
@@ -2755,10 +2778,10 @@ function BaleLoader:unmountDynamicBale(bale)
 
 		bale:unmountDynamic()
 
-		if spec.dynamicMount.jointNode ~= nil then
-			delete(spec.dynamicMount.jointNode)
+		if bale.baleLoaderDynamicJointNode ~= nil then
+			delete(bale.baleLoaderDynamicJointNode)
 
-			spec.dynamicMount.jointNode = nil
+			bale.baleLoaderDynamicJointNode = nil
 		end
 
 		spec.dynamicMount.baleJointsToUpdate = {}
@@ -2986,6 +3009,38 @@ function BaleLoader:getIsAIPreparingToDrive(superFunc)
 	local spec = self.spec_baleLoader
 
 	if spec.grabberIsMoving then
+		return true
+	end
+
+	return superFunc(self)
+end
+
+function BaleLoader:getDoConsumePtoPower(superFunc)
+	local spec = self.spec_baleLoader
+
+	if spec.isInWorkPosition or spec.grabberIsMoving then
+		return true
+	end
+
+	return superFunc(self)
+end
+
+function BaleLoader:getConsumingLoad(superFunc)
+	local value, count = superFunc(self)
+	local spec = self.spec_baleLoader
+	local loadPercentage = 0
+
+	if spec.isInWorkPosition or spec.grabberIsMoving then
+		loadPercentage = 1
+	end
+
+	return value + loadPercentage, count + 1
+end
+
+function BaleLoader:getIsPowerTakeOffActive(superFunc)
+	local spec = self.spec_baleLoader
+
+	if spec.isInWorkPosition or spec.grabberIsMoving then
 		return true
 	end
 

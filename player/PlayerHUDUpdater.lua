@@ -104,7 +104,7 @@ function PlayerHUDUpdater:updateRaycastObject()
 end
 
 function PlayerHUDUpdater:convertFarmToName(farm)
-	if not g_currentMission.missionInfo.isMultiplayer then
+	if not g_currentMission.missionDynamicInfo.isMultiplayer then
 		return g_i18n:getText("fieldInfo_ownerYou")
 	else
 		return farm.name
@@ -198,7 +198,11 @@ function PlayerHUDUpdater:showSplitShapeInfo(splitShape)
 	end
 
 	box:addLine(g_i18n:getText("infohud_length"), g_i18n:formatNumber(length, 1) .. " m")
-	box:addLine(g_i18n:getText("infohud_mass"), g_i18n:formatMass(mass))
+
+	if g_currentMission:getIsServer() then
+		box:addLine(g_i18n:getText("infohud_mass"), g_i18n:formatMass(mass))
+	end
+
 	box:showNextFrame()
 end
 

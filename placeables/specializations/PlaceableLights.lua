@@ -160,15 +160,16 @@ function PlaceableLights:onLoad(savegame)
 					local filename = lightXMLFile:getValue("light.filename")
 
 					if filename ~= nil then
-						local task = self:createLoadingTask(spec)
+						local loadingTask = self:createLoadingTask(spec)
 						filename = Utils.getFilename(filename, self.baseDirectory)
-						sharedLight.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.sharedLightLoaded, self, {
-							sharedLight,
-							lightXMLFile,
-							task,
-							group,
-							filename
-						})
+						local arguments = {
+							sharedLight = sharedLight,
+							lightXMLFile = lightXMLFile,
+							loadingTask = loadingTask,
+							group = group,
+							filename = filename
+						}
+						sharedLight.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.sharedLightLoaded, self, arguments)
 
 						table.insert(spec.sharedLights, sharedLight)
 					else
@@ -265,7 +266,11 @@ end
 
 function PlaceableLights:sharedLightLoaded(i3dNode, failedReason, args)
 	local spec = self.spec_lights
-	local sharedLight, lightXMLFile, loadingTask, lightGroup, i3dFilename = unpack(args)
+	local sharedLight = args.sharedLight
+	local lightXMLFile = args.lightXMLFile
+	local loadingTask = args.loadingTask
+	local lightGroup = args.group
+	local i3dFilename = args.filename
 
 	if i3dNode ~= nil and i3dNode ~= 0 then
 		if self.loadingState == Placeable.LOADING_STATE_OK then

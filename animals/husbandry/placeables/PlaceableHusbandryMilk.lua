@@ -76,16 +76,14 @@ function PlaceableHusbandryMilk:onLoad(savegame)
 		local robot = class.new(self, self.baseDirectory)
 
 		robot:load(linkNode, filename, self.onMilkingRobotLoaded, self, {
-			loadingTask
+			loadingTask = loadingTask
 		})
 		table.insert(spec.milkingRobots, robot)
 	end)
 end
 
 function PlaceableHusbandryMilk:onMilkingRobotLoaded(robot, args)
-	local task = unpack(args)
-
-	self:finishLoadingTask(task)
+	self:finishLoadingTask(args.loadingTask)
 end
 
 function PlaceableHusbandryMilk:onDelete()

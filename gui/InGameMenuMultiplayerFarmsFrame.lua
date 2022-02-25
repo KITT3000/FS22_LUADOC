@@ -113,7 +113,7 @@ function InGameMenuMultiplayerFarmsFrame:onFrameOpen()
 
 	self.selectedFarmId = nil
 
-	self.farmList:reloadData()
+	self:reloadFarms()
 
 	local listIndex = 1
 
@@ -326,6 +326,11 @@ function InGameMenuMultiplayerFarmsFrame:createFarm()
 	g_gui:showEditFarmDialog({})
 end
 
+function InGameMenuMultiplayerFarmsFrame:reloadFarms()
+	self.farmList:reloadData()
+	self.noFarmsBox:setVisible(#self.farmManager:getFarms() == 1 and not self.currentUser:getIsMasterUser())
+end
+
 function InGameMenuMultiplayerFarmsFrame:onPlayerSetFarmAnswer(answerState, farmId, password)
 	if answerState == PlayerSetFarmAnswerEvent.STATE.OK then
 		local joinedFarm = self.farmManager:getFarmById(farmId)
@@ -369,7 +374,7 @@ function InGameMenuMultiplayerFarmsFrame:onPermissionChanged(userId)
 end
 
 function InGameMenuMultiplayerFarmsFrame:onFarmCreated(newFarmId)
-	self.farmList:reloadData()
+	self:reloadFarms()
 
 	if self.currentUser:getIsMasterUser() then
 		local newIndex = self:getListFarmIndex(newFarmId)
@@ -379,11 +384,11 @@ function InGameMenuMultiplayerFarmsFrame:onFarmCreated(newFarmId)
 end
 
 function InGameMenuMultiplayerFarmsFrame:onFarmsChanged(farmId)
-	self.farmList:reloadData()
+	self:reloadFarms()
 end
 
 function InGameMenuMultiplayerFarmsFrame:onPlayerFarmChanged(player)
-	self.farmList:reloadData()
+	self:reloadFarms()
 	self:updateMenuButtons()
 end
 
@@ -394,16 +399,8 @@ function InGameMenuMultiplayerFarmsFrame:onFarmMoneyChanged(farmId, balance)
 end
 
 function InGameMenuMultiplayerFarmsFrame:onMasterUserAdded(user)
-	self.farmList:reloadData()
+	self:reloadFarms()
 	self:updateMenuButtons()
-end
-
-function InGameMenuMultiplayerFarmsFrame:onClickLeft()
-	self.farmList:scrollTo(self.farmList.firstVisibleItem - 1)
-end
-
-function InGameMenuMultiplayerFarmsFrame:onClickRight()
-	self.farmList:scrollTo(self.farmList.firstVisibleItem + 1)
 end
 
 function InGameMenuMultiplayerFarmsFrame:onDoubleClickFarm(list, section, index)

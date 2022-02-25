@@ -123,6 +123,8 @@ function ShopConfigScreen.new(shopController, messageCenter, l10n, i3dManager, b
 	self.loadedCount = 0
 	self.loadingDelayFrames = 0
 	self.loadingDelayTime = 0
+	self.configItemCache = {}
+	self.configItemCacheLarge = {}
 	self.inputHorizontal = 0
 	self.inputVertical = 0
 	self.inputZoom = 0
@@ -285,6 +287,18 @@ function ShopConfigScreen:delete()
 	if self.loadRequestIdLicensePlateBox ~= nil then
 		self.i3dManager:cancelStreamI3DFile(self.loadRequestIdLicensePlateBox)
 	end
+
+	for _, element in ipairs(self.configItemCache) do
+		element:delete()
+	end
+
+	self.configItemCache = {}
+
+	for _, element in ipairs(self.configItemCacheLarge) do
+		element:delete()
+	end
+
+	self.configItemCacheLarge = {}
 
 	removeConsoleCommand("gsShopUIToggle")
 	ShopConfigScreen:superClass().delete(self)
@@ -535,17 +549,18 @@ function ShopConfigScreen:processAttributeData(storeItem, vehicle, saleItem)
 		end
 	end
 
-	for _, item in ipairs(storeItems) do
+	for itemIndex, item in ipairs(storeItems) do
 		StoreItemUtil.loadSpecsFromXML(item)
 
-		dailyUpkeep = dailyUpkeep + self:processStoreItemUpkeep(item, vehicle, saleItem)
-		powerOutput = powerOutput + self:processStoreItemPowerOutput(item, vehicle, saleItem)
-		transmissionName = transmissionName or Motorized.getSpecValueTransmission(storeItem, vehicle, nil, saleItem)
-		fuelCapacity = fuelCapacity + self:processStoreItemFuelCapacity(item, vehicle, saleItem, FillType.DIESEL)
-		electricCapacity = electricCapacity + self:processStoreItemFuelCapacity(item, vehicle, saleItem, FillType.ELECTRICCHARGE)
-		methaneCapacity = methaneCapacity + self:processStoreItemFuelCapacity(item, vehicle, saleItem, FillType.METHANE)
-		defCapacity = defCapacity + self:processStoreItemFuelCapacity(item, vehicle, saleItem, FillType.DEF)
-		local itemCapacity, itemCapacityUnit = self:processStoreItemCapacity(item, vehicle, saleItem)
+		local realItem = self.previewVehicles[itemIndex] or vehicle
+		dailyUpkeep = dailyUpkeep + self:processStoreItemUpkeep(item, realItem, saleItem)
+		powerOutput = powerOutput + self:processStoreItemPowerOutput(item, realItem, saleItem)
+		transmissionName = transmissionName or Motorized.getSpecValueTransmission(storeItem, realItem, nil, saleItem)
+		fuelCapacity = fuelCapacity + self:processStoreItemFuelCapacity(item, realItem, saleItem, FillType.DIESEL)
+		electricCapacity = electricCapacity + self:processStoreItemFuelCapacity(item, realItem, saleItem, FillType.ELECTRICCHARGE)
+		methaneCapacity = methaneCapacity + self:processStoreItemFuelCapacity(item, realItem, saleItem, FillType.METHANE)
+		defCapacity = defCapacity + self:processStoreItemFuelCapacity(item, realItem, saleItem, FillType.DEF)
+		local itemCapacity, itemCapacityUnit = self:processStoreItemCapacity(item, realItem, saleItem)
 
 		if capacityUnit ~= nil and itemCapacityUnit ~= nil and itemCapacityUnit ~= capacityUnit then
 			print("Warning: Bundled store items have different fill capacity units. Check " .. tostring(storeItem.xmlFilename))
@@ -553,13 +568,13 @@ function ShopConfigScreen:processAttributeData(storeItem, vehicle, saleItem)
 
 		capacityUnit = capacityUnit or itemCapacityUnit
 		capacity = capacity + itemCapacity
-		local itemWeight, itemAdditionalWeight = self:processStoreItemWeight(item, vehicle, saleItem)
+		local itemWeight, itemAdditionalWeight = self:processStoreItemWeight(item, realItem, saleItem)
 		additionalWeight = additionalWeight + (itemAdditionalWeight or 0)
 		weight = weight + (itemWeight or 0)
-		workingWidth = math.max(workingWidth, self:processStoreItemWorkingWidth(item, vehicle, saleItem))
-		workingSpeed = math.max(workingSpeed, self:processStoreItemWorkingSpeed(item, vehicle, saleItem))
-		maxSpeed = math.max(maxSpeed, self:processStoreItemMaxSpeed(item, vehicle, saleItem))
-		powerNeeded = powerNeeded + self:processStoreItemPowerNeeded(item, vehicle, saleItem)
+		workingWidth = math.max(workingWidth, self:processStoreItemWorkingWidth(item, realItem, saleItem))
+		workingSpeed = math.max(workingSpeed, self:processStoreItemWorkingSpeed(item, realItem, saleItem))
+		maxSpeed = math.max(maxSpeed, self:processStoreItemMaxSpeed(item, realItem, saleItem))
+		powerNeeded = powerNeeded + self:processStoreItemPowerNeeded(item, realItem, saleItem)
 		local itemBaleSize, itemBaleSizeProfile = self:processStoreItemBalerBaleSize(item)
 
 		if baleSize == "" then
@@ -1009,8 +1024,6 @@ function ShopConfigScreen:onVehicleLoaded(vehicle, loadingState, asyncArguments)
 			return
 		end
 
-		self:processAttributeData(self.storeItem, vehicle)
-
 		if self.isLoadingInitial or self.isOpen then
 			local previousVehicle = self.previewVehicles[asyncArguments.vehicleIndex]
 
@@ -1026,7 +1039,11 @@ function ShopConfigScreen:onVehicleLoaded(vehicle, loadingState, asyncArguments)
 			vehicle:delete()
 
 			self.previewVehicles[asyncArguments.vehicleIndex] = nil
+
+			return
 		end
+
+		self:processAttributeData(self.storeItem, vehicle)
 
 		if vehicle.setLicensePlatesData ~= nil and vehicle.getHasLicensePlates ~= nil and vehicle:getHasLicensePlates() then
 			local defaultPlacementIndex, hasFrontPlate = vehicle:getLicensePlateDialogSettings()
@@ -1089,10 +1106,6 @@ function ShopConfigScreen:onVehicleLoaded(vehicle, loadingState, asyncArguments)
 
 		self.loadingDelayTime = loadingDelayTime
 		self.loadingDelayFrames = 3
-	end
-
-	if self.isOpen then
-		self:disableAlternateBindings()
 	end
 end
 
@@ -1615,7 +1628,10 @@ function ShopConfigScreen:processStoreItemConfigurations(storeItem, vehicle, sal
 			local price = 0
 
 			for name, index in pairs(configSet.configurations) do
-				if self.vehicle == nil or not ConfigurationUtil.hasBoughtConfiguration(self.vehicle, name, index) then
+				local alreadyInOwnedVehicle = self.vehicle ~= nil and ConfigurationUtil.hasBoughtConfiguration(self.vehicle, name, index)
+				local alreadyInSaleVehicle = self.saleItem ~= nil and ConfigurationUtil.hasBoughtConfiguration(self.saleItem, name, index)
+
+				if not alreadyInOwnedVehicle and not alreadyInSaleVehicle then
 					price = price + storeItem.configurations[name][index].price
 				end
 			end
@@ -1669,12 +1685,81 @@ function ShopConfigScreen:processStoreItemConfigurations(storeItem, vehicle, sal
 	end
 end
 
+function ShopConfigScreen:getOrCreateConfigItem(type)
+	local item = nil
+
+	if #self.configItemCache == 0 then
+		item = self.configurationItemTemplate:clone(self.configurationLayout)
+	else
+		item = self.configItemCache[#self.configItemCache]
+		self.configItemCache[#self.configItemCache] = nil
+
+		self.configurationLayout:addElement(item)
+	end
+
+	item.focusId = nil
+
+	FocusManager:loadElementFromCustomValues(item)
+
+	local option = false
+	local color = false
+	local button = false
+	local price = true
+	local focusableElement = nil
+
+	if type == "plate" then
+		button = true
+		price = false
+		focusableElement = item:getDescendantByName("button")
+	elseif type == "option" then
+		option = true
+		focusableElement = item:getDescendantByName("option")
+	elseif type == "color" then
+		color = true
+		focusableElement = item:getDescendantByName("color")
+	end
+
+	item:getDescendantByName("option"):setVisible(option)
+	item:getDescendantByName("color"):setVisible(color)
+	item:getDescendantByName("button"):setVisible(button)
+	item:getDescendantByName("price"):setVisible(price)
+
+	if focusableElement ~= nil then
+		focusableElement.forceFocusScrollToTop = self.focusableElementForScroll == nil
+		self.focusableElementForScroll = focusableElement
+	end
+
+	return item
+end
+
+function ShopConfigScreen:getOrCreateLargeConfigItem(type)
+	local item = nil
+
+	if #self.configItemCacheLarge == 0 then
+		item = self.configurationItemTemplateLarge:clone(self.configurationLayout)
+	else
+		item = self.configItemCacheLarge[#self.configItemCacheLarge]
+		self.configItemCacheLarge[#self.configItemCacheLarge] = nil
+
+		self.configurationLayout:addElement(item)
+	end
+
+	item.focusId = nil
+
+	FocusManager:loadElementFromCustomValues(item)
+
+	local focusableElement = item:getDescendantByName("option")
+	focusableElement.forceFocusScrollToTop = self.focusableElementForScroll == nil
+	self.focusableElementForScroll = focusableElement
+
+	return item
+end
+
 function ShopConfigScreen:updateConfigSetOptionElement(configElementIndex, storeItem, vehicle, saleItem)
-	local listElement = self.configurationItemTemplate:clone(self.configurationLayout)
+	local listElement = self:getOrCreateConfigItem("option")
 	local optionElement = listElement:getDescendantByName("option")
 
 	optionElement:setDisabled(false)
-	optionElement:setVisible(true)
 	optionElement:setTexts(self.configSelection.texts)
 	optionElement:setState(self.currentConfigSet)
 	optionElement:reloadFocusHandling(true)
@@ -1707,9 +1792,9 @@ function ShopConfigScreen:updateConfigOptionElement(configElementIndex, option, 
 	local listElement = nil
 
 	if hasIcons then
-		listElement = self.configurationItemTemplateLarge:clone(self.configurationLayout)
+		listElement = self:getOrCreateLargeConfigItem("option")
 	else
-		listElement = self.configurationItemTemplate:clone(self.configurationLayout)
+		listElement = self:getOrCreateConfigItem("option")
 	end
 
 	local optionElement = listElement:getDescendantByName("option")
@@ -1765,9 +1850,9 @@ function ShopConfigScreen:updateSubConfigOptionElement(configElementIndex, optio
 	local listElement = nil
 
 	if hasIcons then
-		listElement = self.configurationItemTemplateLarge:clone(self.configurationLayout)
+		listElement = self:getOrCreateLargeConfigItem("option")
 	else
-		listElement = self.configurationItemTemplate:clone(self.configurationLayout)
+		listElement = self:getOrCreateConfigItem("option")
 	end
 
 	local optionElement = listElement:getDescendantByName("option")
@@ -1811,9 +1896,20 @@ function ShopConfigScreen:updateConfigOptionsData(storeItem, vehicle, saleItem)
 	local displayableOptionCount = 0
 	local count = 0
 
-	for _ = 1, #self.configurationLayout.elements do
-		self.configurationLayout.elements[1]:delete()
+	for i = #self.configurationLayout.elements, 1, -1 do
+		local item = self.configurationLayout.elements[i]
+
+		item:unlinkElement()
+		FocusManager:removeElement(item)
+
+		if item.profile == "shopConfigConfigurationItem" then
+			table.insert(self.configItemCache, item)
+		else
+			table.insert(self.configItemCacheLarge, item)
+		end
 	end
+
+	self.focusableElementForScroll = nil
 
 	if #self.configSelection.options > 1 then
 		displayableOptionCount = displayableOptionCount + 1
@@ -1878,10 +1974,9 @@ function ShopConfigScreen:updateConfigOptionsData(storeItem, vehicle, saleItem)
 			visibility = visibility and itemsToDisplay > 1
 
 			if visibility then
-				local listElement = self.configurationItemTemplate:clone(self.configurationLayout)
+				local listElement = self:getOrCreateConfigItem("color")
 				local colorElement = listElement:getDescendantByName("color")
 
-				colorElement:setVisible(true)
 				colorElement:reloadFocusHandling(true)
 
 				self.colorElements[i] = colorElement
@@ -1918,7 +2013,7 @@ function ShopConfigScreen:updateConfigOptionsData(storeItem, vehicle, saleItem)
 	end
 
 	if storeItem.hasLicensePlates and g_licensePlateManager:getAreLicensePlatesAvailable() then
-		local listElement = self.configurationItemTemplate:clone(self.configurationLayout)
+		local listElement = self:getOrCreateConfigItem("plate")
 		local buttonElement = listElement:getDescendantByName("button")
 
 		buttonElement:setVisible(true)
@@ -1929,7 +2024,12 @@ function ShopConfigScreen:updateConfigOptionsData(storeItem, vehicle, saleItem)
 		end
 
 		listElement:getDescendantByName("title"):setText(self.l10n:getText("ui_licensePlate"))
-		listElement:getDescendantByName("price"):setVisible(false)
+
+		if self.licensePlate ~= nil then
+			self.licensePlate:delete()
+
+			self.licensePlate = nil
+		end
 
 		self.licensePlateRender = listElement:getDescendantByName("plate")
 
@@ -1937,6 +2037,12 @@ function ShopConfigScreen:updateConfigOptionsData(storeItem, vehicle, saleItem)
 
 		count = count + 1
 	else
+		if self.licensePlateRender ~= nil then
+			self.licensePlateRender:destroyScene()
+
+			self.licensePlate = nil
+		end
+
 		self.licensePlateRender = nil
 	end
 
@@ -1969,7 +2075,7 @@ function ShopConfigScreen:update(dt)
 	ShopConfigScreen:superClass().update(self, dt)
 
 	if self.vehicle ~= nil and self.vehicle.isDeleted then
-		g_gui:showGui("")
+		self:onClickBack()
 
 		self.vehicle = nil
 
@@ -2145,6 +2251,13 @@ function ShopConfigScreen:onClose()
 	g_currentMission:resetGameState()
 	self.fadeInAnimation:reset()
 	g_depthOfFieldManager:reset()
+
+	if self.licensePlateRender ~= nil then
+		self.licensePlateRender:destroyScene()
+
+		self.licensePlate = nil
+	end
+
 	self:toggleCustomInputContext(false)
 end
 
@@ -2388,13 +2501,6 @@ function ShopConfigScreen:registerInputActions()
 
 	_, self.eventIdUpDownMouse = self.inputManager:registerActionEvent(InputAction.AXIS_LOOK_UPDOWN_DRAG, self, self.onCameraUpDown, false, false, true, not isController)
 	_, self.eventIdLeftRightMouse = self.inputManager:registerActionEvent(InputAction.AXIS_LOOK_LEFTRIGHT_DRAG, self, self.onCameraLeftRight, false, false, true, not isController)
-
-	self:disableAlternateBindings()
-end
-
-function ShopConfigScreen:disableAlternateBindings()
-	self.inputManager:disableAlternateBindingsForAction(InputAction.MENU_AXIS_UP_DOWN)
-	self.inputManager:disableAlternateBindingsForAction(InputAction.MENU_AXIS_LEFT_RIGHT)
 end
 
 function ShopConfigScreen:onCameraLeftRight(actionName, inputValue, callbackState, isAnalog)
@@ -2540,7 +2646,6 @@ function ShopConfigScreen:updateInputContext()
 		self.isDragging = false
 
 		self.inputManager:setShowMouseCursor(true)
-		self:disableAlternateBindings()
 	end
 end
 

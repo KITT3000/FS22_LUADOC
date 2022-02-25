@@ -381,9 +381,9 @@ end
 function IngameMap:setHotspotFilter(category, isActive)
 	if category ~= nil then
 		if isActive then
-			g_gameSettings:setValue("ingameMapFilter", Utils.clearBit(g_gameSettings:getValue("ingameMapFilter"), category))
+			g_gameSettings:setValue("ingameMapFilter", Utils.clearBit(g_gameSettings:getValue("ingameMapFilter"), category), true)
 		else
-			g_gameSettings:setValue("ingameMapFilter", Utils.setBit(g_gameSettings:getValue("ingameMapFilter"), category))
+			g_gameSettings:setValue("ingameMapFilter", Utils.setBit(g_gameSettings:getValue("ingameMapFilter"), category), true)
 		end
 
 		self.filter[category] = isActive

@@ -38,6 +38,8 @@ function WorkshopScreen:onOpen()
 	g_messageCenter:subscribe(SellVehicleEvent, self.onVehicleSellEvent, self)
 	g_messageCenter:subscribe(MessageType.VEHICLE_REPAIRED, self.onVehicleRepairEvent, self)
 	g_messageCenter:subscribe(MessageType.VEHICLE_REPAINTED, self.onVehicleRepaintEvent, self)
+
+	self.refreshTimer = 0
 end
 
 function WorkshopScreen:onClose()
@@ -86,7 +88,7 @@ function WorkshopScreen:setConfigurations(vehicle, buyItem, storeItem, configs, 
 		self:onClickBack()
 
 		if self.owner ~= nil then
-			self.owner:run()
+			self.owner:openMenu()
 		end
 	end
 end
@@ -107,12 +109,12 @@ function WorkshopScreen:update(dt)
 				self:setVehicle(nil)
 			end
 		elseif g_server == nil then
-			if self.vehicle.getWearTotalAmount ~= nil then
-				self:setStatusBarValue(self.paintConditionBar, 1 - self.vehicle:getWearTotalAmount())
-			end
+			self.refreshTimer = self.refreshTimer + dt
 
-			if self.vehicle.getDamageAmount ~= nil then
-				self:setStatusBarValue(self.conditionBar, 1 - self.vehicle:getDamageAmount())
+			if self.refreshTimer > 250 then
+				self.refreshTimer = 0
+
+				self:setVehicle(self.vehicle)
 			end
 		end
 	end
@@ -125,6 +127,12 @@ function WorkshopScreen:setVehicles(vehicles)
 
 	if #vehicles == 0 then
 		self:setVehicle(nil)
+	end
+end
+
+function WorkshopScreen:updateVehicles(sellingPoint, vehicles)
+	if sellingPoint == self.owner then
+		self:setVehicles(vehicles)
 	end
 end
 
@@ -385,13 +393,25 @@ end
 
 function WorkshopScreen:onYesNoRepaintDialog(yes)
 	if yes then
-		g_client:getServerConnection():sendEvent(WearableRepaintEvent.new(self.vehicle, true))
+		if g_currentMission:getMoney() < self.vehicle:getRepaintPrice() then
+			g_gui:showInfoDialog({
+				text = g_i18n:getText("shop_messageNotEnoughMoneyToBuy")
+			})
+		else
+			g_client:getServerConnection():sendEvent(WearableRepaintEvent.new(self.vehicle, true))
+		end
 	end
 end
 
 function WorkshopScreen:onYesNoRepairDialog(yes)
 	if yes then
-		g_client:getServerConnection():sendEvent(WearableRepairEvent.new(self.vehicle, true))
+		if g_currentMission:getMoney() < self.vehicle:getRepairPrice() then
+			g_gui:showInfoDialog({
+				text = g_i18n:getText("shop_messageNotEnoughMoneyToBuy")
+			})
+		else
+			g_client:getServerConnection():sendEvent(WearableRepairEvent.new(self.vehicle, true))
+		end
 	end
 end
 
@@ -443,6 +463,10 @@ function WorkshopScreen:onVehicleSellFailed(isOwned, errorCode)
 end
 
 function WorkshopScreen:onVehicleChanged(success)
+	if self.owner ~= nil then
+		self.owner:openMenu()
+	end
+
 	if success then
 		g_gui:showInfoDialog({
 			text = g_i18n:getText("shop_messageConfigurationChanged"),

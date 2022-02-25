@@ -67,6 +67,7 @@ function FillTypeManager:initDataStructures()
 	self.indexToFillType = {}
 	self.nameToIndex = {}
 	self.indexToName = {}
+	self.indexToTitle = {}
 	self.fillTypeConverters = {}
 	self.converterNameToIndex = {}
 	self.nameToConverter = {}
@@ -293,6 +294,7 @@ function FillTypeManager:addFillType(name, title, showOnPriceTable, pricePerLite
 		self.nameToFillType[name] = fillType
 		self.nameToIndex[name] = fillType.index
 		self.indexToName[fillType.index] = name
+		self.indexToTitle[fillType.index] = fillType.title
 		self.indexToFillType[fillType.index] = fillType
 
 		table.insert(self.fillTypes, fillType)
@@ -558,6 +560,10 @@ end
 
 function FillTypeManager:getFillTypeNameByIndex(index)
 	return self.indexToName[index]
+end
+
+function FillTypeManager:getFillTypeTitleByIndex(index)
+	return self.indexToTitle[index]
 end
 
 function FillTypeManager:getFillTypeNamesByIndices(indices)

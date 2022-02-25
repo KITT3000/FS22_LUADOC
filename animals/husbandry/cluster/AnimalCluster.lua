@@ -269,8 +269,8 @@ function AnimalCluster:getRidableFilename()
 	return subType.rideableFilename
 end
 
-function AnimalCluster:getTranportationFee()
-	return g_currentMission.animalSystem:getAnimalTransportFee(self.subTypeIndex, self.age)
+function AnimalCluster:getTranportationFee(numItems)
+	return g_currentMission.animalSystem:getAnimalTransportFee(self.subTypeIndex, self.age) * numItems
 end
 
 function AnimalCluster:getSupportsMerging()

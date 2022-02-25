@@ -465,20 +465,22 @@ function Storage:removeFillLevelChangedListeners(func)
 	table.removeElement(self.fillLevelChangedListeners, func)
 end
 
-function Storage:renderDebugInformation()
+function Storage:draw()
 	local debugTable = DebugInfoTable.new()
 	local content = {}
 
 	for fillType, accepted in pairs(self.fillTypes) do
-		table.insert(content, {
-			name = g_fillTypeManager:getFillTypeNameByIndex(fillType),
-			value = string.format("%.3f / %.3f\n", self.fillLevels[fillType], self.capacities[fillType])
-		})
+		if accepted then
+			table.insert(content, {
+				name = g_fillTypeManager:getFillTypeNameByIndex(fillType),
+				value = string.format("%.3f / %.3f\n", self.fillLevels[fillType] or 0, self.capacities[fillType] or self.capacity or -1)
+			})
+		end
 	end
 
 	debugTable:createWithNodeToCamera(self.rootNode, 1, {
 		{
-			title = "Storage",
+			title = "Storage (without extensions)",
 			content = content
 		}
 	}, 0.05)

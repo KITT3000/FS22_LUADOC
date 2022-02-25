@@ -1075,7 +1075,7 @@ function MissionManager:consoleLoadAllFieldMissionVehicles()
 
 	printf("%d vehicles to load", #vehiclesToLoad)
 	self:loadNextVehicle(nil, nil, {
-		vehiclesToLoad
+		vehiclesToLoad = vehiclesToLoad
 	})
 end
 
@@ -1088,7 +1088,7 @@ function MissionManager:loadNextVehicle(previousVehicle, vehicleLoadState, argum
 		g_currentMission:removeVehicle(previousVehicle)
 	end
 
-	local vehiclesToLoad = unpack(arguments)
+	local vehiclesToLoad = arguments.vehiclesToLoad
 
 	if #vehiclesToLoad == 0 then
 		log("finishied loading all mission vehicles")
@@ -1117,9 +1117,7 @@ function MissionManager:loadNextVehicle(previousVehicle, vehicleLoadState, argum
 		yRot = yRot
 	}
 
-	VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_MISSION, self.farmId, info.configurations, nil, self.loadNextVehicle, self, {
-		vehiclesToLoad
-	})
+	VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_MISSION, self.farmId, info.configurations, nil, self.loadNextVehicle, self, arguments)
 	PlacementUtil.markPlaceUsed(usedPlaces, place, width)
 	printf("loading vehicle %s, %d left", filename, #vehiclesToLoad)
 end

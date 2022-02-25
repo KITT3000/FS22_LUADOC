@@ -633,7 +633,7 @@ function TensionBelts:freeTensionBeltObject(objectId, objectsToJointTable, isDyn
 	if entityExists(objectId) then
 		local jointData = objectsToJointTable[objectId]
 
-		if isDynamic then
+		if jointData.jointIndex ~= nil then
 			if self.isServer and jointData ~= nil then
 				removeJoint(jointData.jointIndex)
 				delete(jointData.jointTransform)
@@ -683,62 +683,93 @@ end
 
 function TensionBelts:lockTensionBeltObject(objectId, objectsToJointTable, isDynamic, jointNode, object)
 	if objectsToJointTable[objectId] == nil then
+		local useDynamicMount = false
+		local useKinematicMount = false
+		local useSplitShapeMount = false
+
 		if isDynamic then
 			if self.isServer then
-				local constr = JointConstructor.new()
+				useDynamicMount = true
+			end
+		elseif object ~= nil and object.mountKinematic ~= nil then
+			local allowKinematicMounting = true
 
-				constr:setActors(jointNode, objectId)
+			if object.getSupportsMountKinematic ~= nil and not object:getSupportsMountKinematic() then
+				allowKinematicMounting = false
+			end
 
-				local jointTransform = createTransformGroup("tensionBeltJoint")
+			if object.rootVehicle ~= nil then
+				local vehicles = object.rootVehicle.childVehicles
 
-				link(self.spec_tensionBelts.linkNode, jointTransform)
+				if #vehicles > 1 then
+					allowKinematicMounting = false
+				end
+			end
 
-				local x, y, z = localToWorld(objectId, getCenterOfMass(objectId))
+			if allowKinematicMounting then
+				useKinematicMount = true
+			else
+				useDynamicMount = true
+			end
+		elseif self.isServer then
+			useSplitShapeMount = true
+		end
 
-				setWorldTranslation(jointTransform, x, y, z)
-				constr:setJointTransforms(jointTransform, jointTransform)
-				constr:setRotationLimit(0, 0, 0)
-				constr:setRotationLimit(1, 0, 0)
-				constr:setRotationLimit(2, 0, 0)
+		if useDynamicMount then
+			local constr = JointConstructor.new()
 
-				local springForce = 1000
-				local springDamping = 10
+			constr:setActors(jointNode, objectId)
 
-				constr:setRotationLimitSpring(springForce, springDamping, springForce, springDamping, springForce, springDamping)
-				constr:setTranslationLimitSpring(springForce, springDamping, springForce, springDamping, springForce, springDamping)
+			local jointTransform = createTransformGroup("tensionBeltJoint")
 
-				local jointIndex = constr:finalize()
+			link(self.spec_tensionBelts.linkNode, jointTransform)
 
-				if object ~= nil then
-					if object.setReducedComponentMass ~= nil then
-						object:setReducedComponentMass(true)
-						self:setMassDirty()
-					end
+			local x, y, z = localToWorld(objectId, getCenterOfMass(objectId))
 
-					if object.setCanBeSold ~= nil then
-						object:setCanBeSold(false)
-					end
+			setWorldTranslation(jointTransform, x, y, z)
+			constr:setJointTransforms(jointTransform, jointTransform)
+			constr:setRotationLimit(0, 0, 0)
+			constr:setRotationLimit(1, 0, 0)
+			constr:setRotationLimit(2, 0, 0)
+
+			local springForce = 1000
+			local springDamping = 10
+
+			constr:setRotationLimitSpring(springForce, springDamping, springForce, springDamping, springForce, springDamping)
+			constr:setTranslationLimitSpring(springForce, springDamping, springForce, springDamping, springForce, springDamping)
+
+			local jointIndex = constr:finalize()
+
+			if object ~= nil then
+				if object.setReducedComponentMass ~= nil then
+					object:setReducedComponentMass(true)
+					self:setMassDirty()
 				end
 
-				objectsToJointTable[objectId] = {
-					jointIndex = jointIndex,
-					jointTransform = jointTransform,
-					object = object
-				}
+				if object.setCanBeSold ~= nil then
+					object:setCanBeSold(false)
+				end
 			end
-		else
+
+			objectsToJointTable[objectId] = {
+				jointIndex = jointIndex,
+				jointTransform = jointTransform,
+				object = object
+			}
+		elseif useKinematicMount then
+			local x, y, z = localToLocal(objectId, jointNode, 0, 0, 0)
+			local rx, ry, rz = localRotationToLocal(objectId, jointNode, 0, 0, 0)
+
+			object:mountKinematic(self, jointNode, x, y, z, rx, ry, rz)
+		elseif useSplitShapeMount then
 			local parentNode = getParent(objectId)
 			local x, y, z = localToLocal(objectId, jointNode, 0, 0, 0)
 			local rx, ry, rz = localRotationToLocal(objectId, jointNode, 0, 0, 0)
 
-			if object ~= nil and object.mountKinematic ~= nil then
-				object:mountKinematic(self, jointNode, x, y, z, rx, ry, rz)
-			elseif self.isServer then
-				setRigidBodyType(objectId, RigidBodyType.KINEMATIC)
-				link(jointNode, objectId)
-				setTranslation(objectId, x, y, z)
-				setRotation(objectId, rx, ry, rz)
-			end
+			setRigidBodyType(objectId, RigidBodyType.KINEMATIC)
+			link(jointNode, objectId)
+			setTranslation(objectId, x, y, z)
+			setRotation(objectId, rx, ry, rz)
 
 			objectsToJointTable[objectId] = {
 				parent = parentNode,

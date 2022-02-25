@@ -6,9 +6,7 @@ function ShopTrigger:onCreate(id)
 end
 
 function ShopTrigger.new(node)
-	local self = {}
-
-	setmetatable(self, ShopTrigger_mt)
+	local self = setmetatable({}, ShopTrigger_mt)
 
 	if g_currentMission:getIsClient() then
 		self.triggerId = node
@@ -25,6 +23,7 @@ function ShopTrigger.new(node)
 	self.isEnabled = true
 
 	g_messageCenter:subscribe(MessageType.PLAYER_FARM_CHANGED, self.playerFarmChanged, self)
+	g_messageCenter:subscribe(MessageType.SETTING_CHANGED[GameSettings.SETTING.SHOW_TRIGGER_MARKER], self.onTriggerVisbilityChanged, self)
 	self:updateIconVisibility()
 
 	self.activatable = ShopTriggerActivatable.new(self)
@@ -70,8 +69,9 @@ function ShopTrigger:updateIconVisibility()
 		local hideMission = g_isPresentationVersion and not g_isPresentationVersionShopEnabled or not g_currentMission.missionInfo:isa(FSCareerMissionInfo)
 		local farmId = g_currentMission:getFarmId()
 		local visibleForFarm = farmId ~= FarmManager.SPECTATOR_FARM_ID
+		local settingVisible = g_gameSettings:getValue(GameSettings.SETTING.SHOW_TRIGGER_MARKER)
 
-		setVisibility(self.shopSymbol, not hideMission and visibleForFarm)
+		setVisibility(self.shopSymbol, not hideMission and visibleForFarm and settingVisible)
 	end
 end
 
@@ -79,6 +79,10 @@ function ShopTrigger:playerFarmChanged(player)
 	if player == g_currentMission.player then
 		self:updateIconVisibility()
 	end
+end
+
+function ShopTrigger:onTriggerVisbilityChanged()
+	self:updateIconVisibility()
 end
 
 ShopTriggerActivatable = {}

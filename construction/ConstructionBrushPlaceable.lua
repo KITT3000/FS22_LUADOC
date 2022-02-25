@@ -59,12 +59,16 @@ function ConstructionBrushPlaceable:activate()
 	self.cursor:setShape(GuiTopDownCursor.SHAPES.NONE)
 
 	self.offsetY = 0
+	self.coolDownTimer = 0
 
 	self:loadPlaceable()
 end
 
 function ConstructionBrushPlaceable:deactivate()
 	self:unloadPlaceable()
+
+	self.coolDownTimer = 0
+
 	ConstructionBrushPlaceable:superClass().deactivate(self)
 end
 
@@ -89,6 +93,10 @@ function ConstructionBrushPlaceable:update(dt)
 
 	if self.errorText ~= nil and self.errorEndTime < g_time then
 		self.errorText = nil
+	end
+
+	if self.coolDownTimer > 0 then
+		self.coolDownTimer = self.coolDownTimer - dt
 	end
 
 	self:updatePlaceablePosition()
@@ -342,6 +350,10 @@ function ConstructionBrushPlaceable:unloadPlaceable()
 end
 
 function ConstructionBrushPlaceable:onButtonPrimary()
+	if self.coolDownTimer > 0 then
+		return
+	end
+
 	if self.placeable == nil then
 		return
 	end
@@ -389,6 +401,10 @@ function ConstructionBrushPlaceable:onButtonTertiary()
 end
 
 function ConstructionBrushPlaceable:onAxisPrimary(inputValue)
+	if self.placeable == nil then
+		return
+	end
+
 	if self.placeable.getAvailableColors == nil then
 		return
 	end
@@ -416,7 +432,9 @@ function ConstructionBrushPlaceable:onPlaceableCreated(errorCode, price)
 	self.isPlacing = false
 	local errorText = nil
 
-	if errorCode == BuyPlaceableEvent.STATE_FAILED_TO_LOAD then
+	if errorCode == BuyPlaceableEvent.STATE_SUCCESS then
+		self.coolDownTimer = 500
+	elseif errorCode == BuyPlaceableEvent.STATE_FAILED_TO_LOAD then
 		errorText = g_i18n:getText("ui_construction_couldNotLoadItem")
 	elseif errorCode == BuyPlaceableEvent.STATE_NO_SPACE then
 		errorText = g_i18n:getText("ui_construction_spaceAlreadyOccupied")

@@ -348,8 +348,8 @@ function InGameMenuProductionFrame:populateCellForItemInSection(list, section, i
 		end
 
 		if fillType ~= FillType.UNKNOWN then
-			local fillLevel = self.selectedProductionPoint.storage:getFillLevel(fillType)
-			local capacity = self.selectedProductionPoint.storage:getCapacity(fillType)
+			local fillLevel = self.selectedProductionPoint:getFillLevel(fillType)
+			local capacity = self.selectedProductionPoint:getCapacity(fillType)
 			local fillTypeDesc = g_fillTypeManager:getFillTypeByIndex(fillType)
 
 			cell:getAttribute("icon"):setImageFilename(fillTypeDesc.hudOverlayFilename)

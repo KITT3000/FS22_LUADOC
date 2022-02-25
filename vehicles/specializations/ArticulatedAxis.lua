@@ -13,6 +13,7 @@ ArticulatedAxis = {
 		schema:register(XMLValueType.INT, "vehicle.articulatedAxis#anchorActor", "Anchor actor index", 0)
 		schema:register(XMLValueType.NODE_INDEX, "vehicle.articulatedAxis#rotNode", "Rotation node")
 		schema:register(XMLValueType.NODE_INDEX, "vehicle.articulatedAxis#aiRevereserNode", "AI reverser node")
+		schema:register(XMLValueType.FLOAT, "vehicle.articulatedAxis#maxTurningRadius", "Fixed turning radius to overwrite automatic calculations")
 		schema:register(XMLValueType.VECTOR_N, "vehicle.articulatedAxis#customWheelIndices1", "Component 1 wheel indices. Needed if wheels are linked to component 1 directly. E.g. dolly axis")
 		schema:register(XMLValueType.VECTOR_N, "vehicle.articulatedAxis#customWheelIndices2", "Component 2 wheel indices. Needed if wheels are linked to component 2 directly. E.g. dolly axis")
 		schema:register(XMLValueType.NODE_INDEX, "vehicle.articulatedAxis.rotatingPart(?)#node", "Rotation part node")
@@ -193,6 +194,8 @@ function ArticulatedAxis:onLoad(savegame)
 				if maxTurningRadius ~= 0 then
 					self.maxTurningRadius = maxTurningRadius
 				end
+
+				self.maxTurningRadius = xmlFile:getValue("vehicle.articulatedAxis#maxTurningRadius", self.maxTurningRadius)
 			end
 		end
 	end

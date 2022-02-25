@@ -23,6 +23,8 @@ CrabSteering = {
 		schema:register(XMLValueType.STRING, "vehicle.crabSteering.steeringMode(?).animation(?)#name", "Change animation name")
 		schema:register(XMLValueType.FLOAT, "vehicle.crabSteering.steeringMode(?).animation(?)#speed", "Animation speed", 1)
 		schema:register(XMLValueType.FLOAT, "vehicle.crabSteering.steeringMode(?).animation(?)#stopTime", "Animation stop time")
+		Dashboard.registerDashboardXMLPaths(schema, "vehicle.crabSteering.dashboards", "state")
+		schema:register(XMLValueType.VECTOR_N, "vehicle.crabSteering.dashboards.dashboard(?)#states", "Crab steering states which activate the dashboard")
 		schema:setXMLSpecializationType()
 
 		local schemaSavegame = Vehicle.xmlSchemaSavegame
@@ -171,6 +173,16 @@ function CrabSteering:onLoad(savegame)
 
 	if spec.hasSteeringModes then
 		self:setCrabSteering(1, true)
+
+		if self.loadDashboardsFromXML ~= nil then
+			self:loadDashboardsFromXML(self.xmlFile, "vehicle.crabSteering.dashboards", {
+				valueFunc = "state",
+				valueTypeToLoad = "state",
+				valueObject = self.spec_crabSteering,
+				additionalAttributesFunc = CrabSteering.dashboardCrabSteeringAttributes,
+				stateFunc = CrabSteering.dashboardCrabSteeringState
+			})
+		end
 	else
 		SpecializationUtil.removeEventListener(self, "onReadStream", CrabSteering)
 		SpecializationUtil.removeEventListener(self, "onWriteStream", CrabSteering)
@@ -559,4 +571,24 @@ function CrabSteering:actionEventSetCrabSteeringMode(actionName, inputValue, cal
 	elseif warning ~= nil then
 		g_currentMission:showBlinkingWarning(warning, 2000)
 	end
+end
+
+function CrabSteering:dashboardCrabSteeringAttributes(xmlFile, key, dashboard, isActive)
+	dashboard.crabSteeringStates = xmlFile:getValue(key .. "#states", nil, true)
+
+	return true
+end
+
+function CrabSteering:dashboardCrabSteeringState(dashboard, newValue, minValue, maxValue, isActive)
+	local isStateActive = false
+
+	if dashboard.crabSteeringStates ~= nil then
+		for _, state in pairs(dashboard.crabSteeringStates) do
+			if self.spec_crabSteering.state == state then
+				isStateActive = true
+			end
+		end
+	end
+
+	Dashboard.defaultDashboardStateFunc(self, dashboard, isStateActive, minValue, maxValue, isActive)
 end

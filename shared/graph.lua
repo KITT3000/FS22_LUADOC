@@ -3,7 +3,7 @@ local Graph_mt = Class(Graph)
 Graph.STYLE_BARS = 0
 Graph.STYLE_LINES = 1
 
-function Graph.new(numValues, left, bottom, width, height, minValue, maxValue, showLabels, textExtra, graphStyle, verticalStep, verticalLabel)
+function Graph.new(numValues, left, bottom, width, height, minValue, maxValue, showLabels, textExtra, graphStyle, verticalStep, verticalLabel, textSize)
 	local self = {}
 
 	setmetatable(self, Graph_mt)
@@ -22,7 +22,7 @@ function Graph.new(numValues, left, bottom, width, height, minValue, maxValue, s
 	self.textExtra = textExtra
 	self.showLabels = showLabels
 	self.graphStyle = graphStyle
-	self.textSize = getCorrectTextSize(0.011)
+	self.textSize = textSize or getCorrectTextSize(0.011)
 
 	if self.graphStyle == nil then
 		self.graphStyle = Graph.STYLE_BARS

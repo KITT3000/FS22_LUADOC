@@ -15,11 +15,11 @@ SettingsModel.SETTING = {
 	FOLIAGE_SHADOW = "foliageShadow",
 	LANGUAGE = "language",
 	SHADOW_DISTANCE_QUALITY = "shadowDistanceQuality",
-	CONSOLE_RESOLUTION = "consoleResolution",
-	RESOLUTION_SCALE_3D = "resolutionScale3d",
 	HDR_PEAK_BRIGHTNESS = "hdrPeakBrightness",
+	CONSOLE_RESOLUTION = "consoleResolution",
 	RESOLUTION_SCALE = "resolutionScale",
 	SHADOW_QUALITY = "shadowQuality",
+	RESOLUTION_SCALE_3D = "resolutionScale3d",
 	DLSS = "dlss",
 	TEXTURE_FILTERING = "textureFiltering",
 	MSAA = "msaa",
@@ -81,11 +81,13 @@ SettingsModel.SETTING = {
 	IS_TRAIN_TABBABLE = GameSettings.SETTING.IS_TRAIN_TABBABLE,
 	CAMERA_SENSITIVITY = GameSettings.SETTING.CAMERA_SENSITIVITY,
 	VEHICLE_ARM_SENSITIVITY = GameSettings.SETTING.VEHICLE_ARM_SENSITIVITY,
+	REAL_BEACON_LIGHT_BRIGHTNESS = GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS,
 	STEERING_BACK_SPEED = GameSettings.SETTING.STEERING_BACK_SPEED,
 	STEERING_SENSITIVITY = GameSettings.SETTING.STEERING_SENSITIVITY,
 	DIRECTION_CHANGE_MODE = GameSettings.SETTING.DIRECTION_CHANGE_MODE,
 	GEAR_SHIFT_MODE = GameSettings.SETTING.GEAR_SHIFT_MODE,
 	HUD_SPEED_GAUGE = GameSettings.SETTING.HUD_SPEED_GAUGE,
+	SHOW_MULTIPLAYER_NAMES = GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES,
 	GYROSCOPE_STEERING = GameSettings.SETTING.GYROSCOPE_STEERING,
 	CAMERA_TILTING = GameSettings.SETTING.CAMERA_TILTING,
 	HINTS = GameSettings.SETTING.HINTS
@@ -119,6 +121,9 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.vehicleArmSensitivityValues = {}
 	self.vehicleArmSensitivityStrings = {}
 	self.vehicleArmSensitivityStep = 0.25
+	self.realBeaconLightBrightnessValues = {}
+	self.realBeaconLightBrightnessStrings = {}
+	self.realBeaconLightBrightnessStep = 0.1
 	self.steeringBackSpeedValues = {}
 	self.steeringBackSpeedStrings = {}
 	self.steeringBackSpeedStep = 1
@@ -230,6 +235,7 @@ function SettingsModel:addManagedSettings()
 	self:addSteeringSensitivitySetting()
 	self:addCameraSensitivitySetting()
 	self:addVehicleArmSensitivitySetting()
+	self:addRealBeaconLightBrightnessSetting()
 	self:addActiveCameraSuspensionSetting()
 	self:addCamerCheckCollisionSetting()
 	self:addDirectionChangeModeSetting()
@@ -273,6 +279,7 @@ function SettingsModel:addManagedSettings()
 	self:addDirectSetting(SettingsModel.SETTING.INVERT_Y_LOOK)
 	self:addDirectSetting(SettingsModel.SETTING.USE_MILES)
 	self:addDirectSetting(SettingsModel.SETTING.SHOW_TRIGGER_MARKER)
+	self:addDirectSetting(SettingsModel.SETTING.SHOW_MULTIPLAYER_NAMES)
 	self:addDirectSetting(SettingsModel.SETTING.SHOW_HELP_TRIGGER)
 	self:addDirectSetting(SettingsModel.SETTING.SHOW_HELP_ICONS)
 	self:addDirectSetting(SettingsModel.SETTING.CAMERA_BOBBING, true)
@@ -510,6 +517,16 @@ function SettingsModel:createControlDisplayValues()
 	for i = 0.5, 3, self.vehicleArmSensitivityStep do
 		table.insert(self.vehicleArmSensitivityStrings, string.format("%d%%", i * 100))
 		table.insert(self.vehicleArmSensitivityValues, i)
+	end
+
+	for i = 0, 1, self.realBeaconLightBrightnessStep do
+		if i > 0 then
+			table.insert(self.realBeaconLightBrightnessStrings, string.format("%d%%", i * 100 + 0.5))
+		else
+			table.insert(self.realBeaconLightBrightnessStrings, self.l10n:getText("setting_off"))
+		end
+
+		table.insert(self.realBeaconLightBrightnessValues, i)
 	end
 
 	for i = 0, 10, self.steeringBackSpeedStep do
@@ -983,11 +1000,27 @@ function SettingsModel:setDeviceDeadzoneValue(axisIndex, value)
 	end
 end
 
+function SettingsModel:getCurrentDeviceDeadzoneValue(axisIndex)
+	local settings = self.deviceSettings[self.currentDevice]
+
+	if settings ~= nil then
+		return self.deadzoneValues[settings.deadzones[axisIndex].current]
+	end
+end
+
 function SettingsModel:setDeviceSensitivityValue(axisIndex, value)
 	local settings = self.deviceSettings[self.currentDevice]
 
 	if settings ~= nil then
 		settings.sensitivities[axisIndex].current = value
+	end
+end
+
+function SettingsModel:getCurrentDeviceSensitivityValue(axisIndex)
+	local settings = self.deviceSettings[self.currentDevice]
+
+	if settings ~= nil then
+		return self.sensitivityValues[settings.sensitivities[axisIndex].current]
 	end
 end
 
@@ -1269,6 +1302,10 @@ end
 
 function SettingsModel:getVehicleArmSensitivityTexts()
 	return self.vehicleArmSensitivityStrings
+end
+
+function SettingsModel:getRealBeaconLightBrightnessTexts()
+	return self.realBeaconLightBrightnessStrings
 end
 
 function SettingsModel:getSteeringBackSpeedTexts()
@@ -1853,6 +1890,18 @@ function SettingsModel:addVehicleArmSensitivitySetting()
 	end
 
 	self:addSetting(SettingsModel.SETTING.VEHICLE_ARM_SENSITIVITY, readSensitivity, writeSensitivity, true)
+end
+
+function SettingsModel:addRealBeaconLightBrightnessSetting()
+	local function readBrightness()
+		return Utils.getStateFromValues(self.realBeaconLightBrightnessValues, self.realBeaconLightBrightnessStep, self.gameSettings:getValue(SettingsModel.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS))
+	end
+
+	local function writeBrightness(value)
+		self.gameSettings:setValue(SettingsModel.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS, self.realBeaconLightBrightnessValues[value])
+	end
+
+	self:addSetting(SettingsModel.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS, readBrightness, writeBrightness, true)
 end
 
 function SettingsModel:addActiveCameraSuspensionSetting()

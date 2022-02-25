@@ -213,7 +213,7 @@ function BaleMission:completeField()
 	local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(self.field.fruitType)
 
 	for i = 1, table.getn(self.field.maxFieldStatusPartitions) do
-		g_fieldManager:setFieldPartitionStatus(self.field, self.field.maxFieldStatusPartitions, i, self.field.fruitType, FieldManager.FIELDSTATE_GROWING, fruitDesc.cutState + 1, 0, false, self.fieldPlowFactor)
+		g_fieldManager:setFieldPartitionStatus(self.field, self.field.maxFieldStatusPartitions, i, self.field.fruitType, FieldManager.FIELDSTATE_GROWING, fruitDesc.cutState, 0, false, self.fieldPlowFactor)
 	end
 end
 

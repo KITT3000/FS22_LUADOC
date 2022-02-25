@@ -204,7 +204,7 @@ end
 function ModHubItemsFrame:updateDownloadStates()
 	if #self.itemsList.elements > 0 then
 		for i = self.itemsList.elements[1].indexInSection, self.itemsList.elements[#self.itemsList.elements].indexInSection do
-			local cell = self.itemsList:getElementAtSectionIndex(1, index)
+			local cell = self.itemsList:getElementAtSectionIndex(1, i)
 
 			if cell ~= nil then
 				self:updateModDownloadState(cell, i)

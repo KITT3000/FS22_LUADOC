@@ -65,7 +65,7 @@ function PackedBale:unpack(noEventSend)
 
 				if baleObject:loadFromConfigXML(self.singleBaleFilename, x, y, z, rx, ry, rz) then
 					baleObject:setFillType(self.fillType)
-					baleObject:setFillLevel(self.fillLevel)
+					baleObject:setFillLevel(math.min(self.fillLevel, baleObject:getCapacity()))
 					baleObject:setOwnerFarmId(self.ownerFarmId, true)
 					baleObject:register()
 
@@ -97,6 +97,10 @@ end
 
 function PackedBale:getInteractionPosition()
 	if not g_currentMission.controlPlayer then
+		return
+	end
+
+	if not g_currentMission.accessHandler:canPlayerAccess(self) then
 		return
 	end
 

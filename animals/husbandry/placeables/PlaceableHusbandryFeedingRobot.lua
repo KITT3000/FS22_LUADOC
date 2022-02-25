@@ -96,7 +96,7 @@ function PlaceableHusbandryFeedingRobot:onLoad(savegame)
 	spec.feedingRobot = class.new(self.isServer, self.isClient, self, self.baseDirectory)
 
 	spec.feedingRobot:load(linkNode, filename, self.onFeedingRobotLoaded, self, {
-		loadingTask
+		loadingTask = loadingTask
 	})
 	spec.feedingRobot:register(true)
 	self.xmlFile:iterate("placeable.husbandry.feedingRobot.splines.spline", function (_, splineKey)
@@ -162,9 +162,7 @@ function PlaceableHusbandryFeedingRobot:onPostLoad(savegame)
 end
 
 function PlaceableHusbandryFeedingRobot:onFeedingRobotLoaded(robot, args)
-	local task = unpack(args)
-
-	self:finishLoadingTask(task)
+	self:finishLoadingTask(args.loadingTask)
 end
 
 function PlaceableHusbandryFeedingRobot:onDelete()

@@ -95,6 +95,12 @@ function HUDRoundedBarElement:setBarColor(r, g, b)
 	self.barOverlayBack:setColor(r, g, b, 1)
 end
 
+function HUDRoundedBarElement:setBarAlpha(alpha)
+	self.barOverlayFront:setColor(nil, nil, nil, alpha)
+	self.barOverlayMiddle:setColor(nil, nil, nil, alpha)
+	self.barOverlayBack:setColor(nil, nil, nil, alpha)
+end
+
 function HUDRoundedBarElement:setPosition(x, y)
 	HUDRoundedBarElement:superClass().setPosition(self, x, y)
 	self:updateComponents()

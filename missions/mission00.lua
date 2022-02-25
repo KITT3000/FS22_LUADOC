@@ -217,6 +217,7 @@ function Mission00:load()
 
 	self:loadMapSounds(soundFilename, self.baseDirectory)
 	self.ambientSoundSystem:loadMapData(self.xmlFile, self.missionInfo, self.baseDirectory)
+	self.reverbSystem:loadMapData(self.xmlFile, self.missionInfo, self.baseDirectory)
 
 	self.mapPerformanceTestUtil = MapPerformanceTestUtil.new()
 
@@ -283,7 +284,7 @@ function Mission00:loadAdditionalFilesFinished()
 		end
 	end)
 	g_asyncTaskManager:addTask(function ()
-		self:loadVehicles(self.missionInfo.vehiclesXMLLoad, self.missionInfo.resetVehicles)
+		self:loadPlaceables(self.missionInfo.placeablesXMLLoad, self.missionInfo.defaultPlaceablesXMLFilename)
 	end)
 	g_asyncTaskManager:addTask(function ()
 		g_missionManager:loadMapData(self.xmlFile)
@@ -590,7 +591,6 @@ end
 function Mission00:loadVehicles(xmlFilename, resetVehicles)
 	if xmlFilename ~= nil then
 		if self:getIsServer() then
-			self:startLoadingTask()
 			VehicleLoadingUtil.loadVehiclesFromSavegame(xmlFilename, resetVehicles, self.missionInfo, self.missionDynamicInfo, self.loadVehiclesFinish, self, {
 				xmlFilename,
 				resetVehicles
@@ -617,13 +617,16 @@ end
 function Mission00:loadVehiclesFinished()
 	g_asyncTaskManager:addSubtask(function ()
 		g_messageCenter:publish(MessageType.LOADED_ALL_SAVEGAME_VEHICLES)
-		self:loadPlaceables(self.missionInfo.placeablesXMLLoad, self.missionInfo.defaultPlaceablesXMLFilename)
+		self:loadItems(self.missionInfo.itemsXMLLoad)
 	end)
 end
 
 function Mission00:loadPlaceables(xmlFilename, defaultXMLFilename)
 	if xmlFilename ~= nil then
-		self.placeableSystem:load(xmlFilename, defaultXMLFilename, self.missionInfo, self.missionDynamicInfo, self.loadPlaceablesFinished, self, nil)
+		if self:getIsServer() then
+			self:startLoadingTask()
+			self.placeableSystem:load(xmlFilename, defaultXMLFilename, self.missionInfo, self.missionDynamicInfo, self.loadPlaceablesFinished, self, nil)
+		end
 	else
 		self:loadPlaceablesFinished()
 	end
@@ -632,7 +635,7 @@ end
 function Mission00:loadPlaceablesFinished()
 	g_asyncTaskManager:addSubtask(function ()
 		g_messageCenter:publish(MessageType.LOADED_ALL_SAVEGAME_PLACEABLES)
-		self:loadItems(self.missionInfo.itemsXMLLoad)
+		self:loadVehicles(self.missionInfo.vehiclesXMLLoad, self.missionInfo.resetVehicles)
 	end)
 end
 
@@ -656,7 +659,7 @@ function Mission00:loadItemsFinished()
 		end)
 		g_asyncTaskManager:addSubtask(function ()
 			if self.missionInfo.onCreateObjectsXMLLoad ~= nil then
-				self:loadOnCreateLoadedObjects(self.missionInfo.onCreateObjectsXMLLoad)
+				self.onCreateObjectSystem:load(self.missionInfo.onCreateObjectsXMLLoad)
 			end
 		end)
 		g_asyncTaskManager:addSubtask(function ()
@@ -669,71 +672,6 @@ function Mission00:loadItemsFinished()
 		g_asyncTaskManager:addSubtask(function ()
 			self:finishLoadingTask()
 		end)
-	end
-end
-
-function Mission00:loadOnCreateLoadedObjects(xmlFilename)
-	if self:getIsServer() then
-		local xmlFile = loadXMLFile("onCreateLoadedObjectsXML", xmlFilename)
-		local i = 0
-
-		while true do
-			local key = string.format("onCreateLoadedObjects.onCreateLoadedObject(%d)", i)
-			local saveId = getXMLString(xmlFile, key .. "#saveId")
-
-			if saveId ~= nil then
-				local object = self.onCreateLoadedObjectsToSave[saveId]
-
-				if object ~= nil then
-					if object.loadFromXMLFile == nil or not object:loadFromXMLFile(xmlFile, key) then
-						print("Warning: corrupt savegame, onCreateLoadedObject " .. i .. " with saveId " .. saveId .. " could not be loaded")
-					end
-				else
-					print("Error: Corrupt savegame, onCreateLoadedObject " .. i .. " has invalid saveId '" .. saveId .. "'")
-				end
-			else
-				local id = getXMLInt(xmlFile, key .. "#id")
-
-				if id == nil then
-					break
-				end
-
-				local object = nil
-
-				for _, objectI in pairs(self.onCreateLoadedObjectsToSave) do
-					if objectI.saveOrderIndex == id then
-						object = objectI
-
-						break
-					end
-				end
-
-				if object ~= nil then
-					if object.loadFromXMLFile == nil or not object:loadFromXMLFile(xmlFile, key) then
-						print("Warning: corrupt savegame, onCreateLoadedObject " .. i .. " with id " .. id .. " could not be loaded")
-					end
-				else
-					print("Error: Corrupt savegame, onCreateLoadedObject " .. i .. " has invalid id '" .. id .. "'")
-				end
-			end
-
-			i = i + 1
-		end
-
-		delete(xmlFile)
-	end
-end
-
-function Mission00:saveOnCreateObjects(xmlFile, key, usedModNames)
-	local index = 0
-
-	for id, object in pairs(self.onCreateLoadedObjectsToSave) do
-		local objectKey = string.format("%s.onCreateLoadedObject(%d)", key, index)
-
-		setXMLString(xmlFile, objectKey .. "#saveId", id)
-		object:saveToXMLFile(xmlFile, objectKey, usedModNames)
-
-		index = index + 1
 	end
 end
 

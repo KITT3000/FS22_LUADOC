@@ -59,6 +59,7 @@ end
 
 function Locomotive:onLoad(savegame)
 	local spec = self.spec_locomotive
+	self.serverMass = 1
 	spec.powerArm = self.xmlFile:getValue("vehicle.locomotive.powerArm#node", nil, self.components, self.i3dMappings)
 	spec.electricitySpline = nil
 	spec.lastVirtualRpm = self:getMotor():getMinRpm()
@@ -485,6 +486,10 @@ function Locomotive:alignToSplineTime(superFunc, spline, yOffset, tFront)
 				self:setMovingToolDirty(spec.powerArm)
 			end
 		end
+	end
+
+	if not self.isServer then
+		self:updateMapHotspot()
 	end
 
 	return retValue

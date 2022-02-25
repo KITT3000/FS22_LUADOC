@@ -381,10 +381,11 @@ function LivestockTrailer:updateAnimals()
 				local visual = g_currentMission.animalSystem:getVisualByAge(cluster:getSubTypeIndex(), cluster:getAge())
 				local filename = visual.visualAnimal.filenamePosed
 				slot.filename = filename
-				local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.onAnimalLoaded, self, {
-					slot,
-					visual
-				})
+				local arguments = {
+					slot = slot,
+					visual = visual
+				}
+				local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.onAnimalLoaded, self, arguments)
 				slot.sharedLoadRequestId = sharedLoadRequestId
 				slotIndex = slotIndex + 1
 				place.usedSlots = place.usedSlots + 1
@@ -416,9 +417,10 @@ function LivestockTrailer:clearAnimals()
 end
 
 function LivestockTrailer:onAnimalLoaded(i3dNode, failedReason, args)
-	local slot, visual = unpack(args)
-
 	if i3dNode ~= 0 then
+		local slot = args.slot
+		local visual = args.visual
+
 		link(slot.linkNode, i3dNode)
 
 		slot.loadedMesh = i3dNode

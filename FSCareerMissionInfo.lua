@@ -78,8 +78,13 @@ function FSCareerMissionInfo:loadDefaults()
 	self.mods = {}
 	self.guidedTourActive = true
 	self.guidedTourStep = 0
+	self.guidedTourState = ""
 	self.slotUsage = 0
 	self.plannedDaysPerPeriod = 1
+	self.timeScale = Platform.gameplay.defaultTimeScale
+	self.dirtInterval = 3
+	self.trafficEnabled = true
+	self.scenarioId = nil
 end
 
 function FSCareerMissionInfo:loadFromXML(xmlFile)
@@ -110,8 +115,12 @@ function FSCareerMissionInfo:loadFromXML(xmlFile)
 		self.isInvalidUser = false
 		self.savegameName = Utils.getNoNil(getXMLString(xmlFile, key .. ".settings.savegameName"), self.savegameName)
 		self.creationDate = Utils.getNoNil(getXMLString(xmlFile, key .. ".settings.creationDate"), self.creationDate)
+
+		self:setScenarioId(getXMLString(xmlFile, key .. ".scenario#id"))
+
 		self.guidedTourActive = Utils.getNoNil(getXMLBool(xmlFile, key .. ".guidedTour#active"), self.guidedTourActive)
 		self.guidedTourStep = Utils.getNoNil(getXMLInt(xmlFile, key .. ".guidedTour#currentStepIndex"), self.guidedTourStep)
+		self.guidedTourState = Utils.getNoNil(getXMLString(xmlFile, key .. ".guidedTour#state"), self.guidedTourState)
 		self.densityMapRevision = Utils.getNoNil(getXMLInt(xmlFile, key .. ".settings.densityMapRevision"), -1)
 		self.terrainTextureRevision = Utils.getNoNil(getXMLInt(xmlFile, key .. ".settings.terrainTextureRevision"), -1)
 		self.terrainLodTextureRevision = Utils.getNoNil(getXMLInt(xmlFile, key .. ".settings.terrainLodTextureRevision"), -1)
@@ -236,8 +245,14 @@ function FSCareerMissionInfo:saveToXMLFile()
 		setXMLString(xmlFile, key .. ".settings.mapTitle", self.map.title)
 		setXMLString(xmlFile, key .. ".settings.saveDateFormatted", self.saveDateFormatted)
 		setXMLString(xmlFile, key .. ".settings.saveDate", self.saveDate)
+
+		if self.scenarioId ~= nil then
+			setXMLString(xmlFile, key .. ".scenario#id", self.scenarioId)
+		end
+
 		setXMLBool(xmlFile, key .. ".guidedTour#active", self.guidedTourActive)
 		setXMLInt(xmlFile, key .. ".guidedTour#currentStepIndex", self.guidedTourStep)
+		setXMLString(xmlFile, key .. ".guidedTour#state", self.guidedTourState)
 		setXMLBool(xmlFile, key .. ".settings.resetVehicles", self.resetVehicles)
 		setXMLBool(xmlFile, key .. ".settings.trafficEnabled", self.trafficEnabled)
 		setXMLBool(xmlFile, key .. ".settings.stopAndGoBraking", self.stopAndGoBraking)
@@ -326,17 +341,7 @@ function FSCareerMissionInfo:saveToXMLFile()
 			g_currentMission.placeableSystem:save(self.placeablesXML, usedModNames)
 			g_currentMission.itemSystem:save(self.itemsXML, usedModNames)
 			g_currentMission.aiSystem:save(self.aiSystemXML, usedModNames)
-		end
-
-		local onCreateObjectsXMLFile = createXMLFile("onCreateObjectsXMLFile", self.onCreateObjectsXML, "onCreateLoadedObjects")
-
-		if onCreateObjectsXMLFile ~= nil then
-			if g_currentMission ~= nil then
-				g_currentMission:saveOnCreateObjects(onCreateObjectsXMLFile, "onCreateLoadedObjects", usedModNames)
-			end
-
-			saveXMLFile(onCreateObjectsXMLFile)
-			delete(onCreateObjectsXMLFile)
+			g_currentMission.onCreateObjectSystem:save(self.onCreateObjectsXML, usedModNames)
 		end
 
 		local economyFile = createXMLFile("economyXML", self.economyXML, "economy")
@@ -497,6 +502,24 @@ function FSCareerMissionInfo:setMapId(mapId)
 	self.baseDirectory = map.baseDirectory
 
 	return true
+end
+
+function FSCareerMissionInfo:setScenarioId(scenarioId)
+	if scenarioId ~= nil then
+		self.scenarioId = scenarioId
+		local scenario = g_scenarioManager:getScenarioById(scenarioId)
+
+		if scenario == nil then
+			self.scenarioId = nil
+
+			return false
+		end
+
+		self.scenario = scenario
+		self.defaultVehiclesXMLFilename = scenario.vehiclesXMLFilename
+		self.defaultItemsXMLFilename = scenario.itemsXMLFilename
+		self.defaultPlaceablesXMLFilename = scenario.placeablesXMLFilename
+	end
 end
 
 function FSCareerMissionInfo:updateDifficultyProperties()

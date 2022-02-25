@@ -393,6 +393,10 @@ function CollectiblesSystem:onTriggerCollectible(collectible)
 		prefixText = group.dialogIntroText .. "\n"
 	end
 
+	if info.moneyReward == nil then
+		g_currentMission.guiSoundPlayer:playSample(GuiSoundPlayer.SOUND_SAMPLES.COLLECTIBLE)
+	end
+
 	if numLeftInGroup == 0 then
 		g_currentMission.hud:showInGameMessage(group.dialogTitle or g_i18n:getText("ui_collectibleMessageTitle"), prefixText .. group.dialogText, -1)
 	elseif info.dialogText ~= nil then

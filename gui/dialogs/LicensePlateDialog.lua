@@ -150,17 +150,19 @@ function LicensePlateDialog:createKeyboards()
 end
 
 function LicensePlateDialog:updateFocusLinking(alphabetical, numerical, special)
-	local firstAvailableButton, above = nil
-	local below = self.typeOption
+	local firstAvailableButton, lastAvailableButton = nil
 
 	FocusManager:linkElements(self.buttonCursorLeft, FocusManager.RIGHT, self.buttonCursorRight)
 	FocusManager:linkElements(self.buttonCursorLeft, FocusManager.LEFT, self.buttonCursorLeft)
 	FocusManager:linkElements(self.buttonCursorRight, FocusManager.RIGHT, self.buttonCursorRight)
 	FocusManager:linkElements(self.buttonCursorRight, FocusManager.LEFT, self.buttonCursorLeft)
 
+	local numCols = 10
+
 	if alphabetical then
 		firstAvailableButton = firstAvailableButton or self.keyboardAlpha.elements[1]
-		local numCols = 10
+		lastAvailableButton = self.keyboardAlpha.elements[math.floor((#self.keyboardAlpha.elements - 1) / numCols) * numCols + 1]
+		local above = nil
 
 		for i = 1, #self.keyboardAlpha.elements do
 			local button = self.keyboardAlpha.elements[i]
@@ -169,17 +171,8 @@ function LicensePlateDialog:updateFocusLinking(alphabetical, numerical, special)
 			local topButton = self.keyboardAlpha.elements[i - numCols]
 			local bottomButton = self.keyboardAlpha.elements[i + numCols]
 
-			if leftButton ~= nil then
-				FocusManager:linkElements(button, FocusManager.LEFT, leftButton)
-			else
-				FocusManager:linkElements(button, FocusManager.LEFT, button)
-			end
-
-			if rightButton ~= nil then
-				FocusManager:linkElements(button, FocusManager.RIGHT, rightButton)
-			else
-				FocusManager:linkElements(button, FocusManager.RIGHT, button)
-			end
+			FocusManager:linkElements(button, FocusManager.LEFT, leftButton or button)
+			FocusManager:linkElements(button, FocusManager.RIGHT, rightButton or button)
 
 			if topButton ~= nil then
 				FocusManager:linkElements(button, FocusManager.TOP, topButton)
@@ -194,6 +187,14 @@ function LicensePlateDialog:updateFocusLinking(alphabetical, numerical, special)
 			if bottomButton ~= nil then
 				FocusManager:linkElements(button, FocusManager.BOTTOM, bottomButton)
 			else
+				local below = self.typeOption
+
+				if numerical then
+					below = self.keyboardNumeric.elements[(i - 1) % numCols + 1]
+				elseif special then
+					below = self.keyboardSpecial.elements[(i - 1) % numCols + 1]
+				end
+
 				FocusManager:linkElements(button, FocusManager.BOTTOM, below)
 			end
 		end
@@ -201,14 +202,78 @@ function LicensePlateDialog:updateFocusLinking(alphabetical, numerical, special)
 
 	if numerical then
 		firstAvailableButton = firstAvailableButton or self.keyboardNumeric.elements[1]
+		lastAvailableButton = self.keyboardNumeric.elements[1]
+
+		for i = 1, #self.keyboardNumeric.elements do
+			local button = self.keyboardNumeric.elements[i]
+			local leftButton = self.keyboardNumeric.elements[i - 1]
+			local rightButton = self.keyboardNumeric.elements[i + 1]
+			local topButton = nil
+
+			if alphabetical then
+				local index = math.floor((#self.keyboardAlpha.elements - 1) / numCols) * numCols + i
+				index = math.min(index, #self.keyboardAlpha.elements)
+				topButton = self.keyboardAlpha.elements[index]
+			end
+
+			local bottomButton = self.typeOption
+
+			if special then
+				bottomButton = self.keyboardSpecial.elements[i]
+			end
+
+			FocusManager:linkElements(button, FocusManager.LEFT, leftButton or button)
+			FocusManager:linkElements(button, FocusManager.RIGHT, rightButton or button)
+
+			if topButton ~= nil then
+				FocusManager:linkElements(button, FocusManager.TOP, topButton)
+			elseif i <= 5 then
+				FocusManager:linkElements(button, FocusManager.TOP, self.buttonCursorLeft)
+			else
+				FocusManager:linkElements(button, FocusManager.TOP, self.buttonCursorRight)
+			end
+
+			if bottomButton ~= nil then
+				FocusManager:linkElements(button, FocusManager.BOTTOM, bottomButton)
+			end
+		end
 	end
 
 	if special then
 		firstAvailableButton = firstAvailableButton or self.keyboardSpecial.elements[1]
+		lastAvailableButton = self.keyboardSpecial.elements[1]
+
+		for i = 1, #self.keyboardSpecial.elements do
+			local button = self.keyboardSpecial.elements[i]
+			local leftButton = self.keyboardSpecial.elements[i - 1]
+			local rightButton = self.keyboardSpecial.elements[i + 1]
+			local topButton = nil
+
+			if numerical then
+				topButton = self.keyboardNumeric.elements[i]
+			elseif alphabetical then
+				local index = math.floor((#self.keyboardAlpha.elements - 1) / numCols) * numCols + i
+				index = math.min(index, #self.keyboardAlpha.elements)
+				topButton = self.keyboardAlpha.elements[index]
+			end
+
+			FocusManager:linkElements(button, FocusManager.LEFT, leftButton or button)
+			FocusManager:linkElements(button, FocusManager.RIGHT, rightButton or button)
+
+			if topButton ~= nil then
+				FocusManager:linkElements(button, FocusManager.TOP, topButton)
+			elseif i <= 5 then
+				FocusManager:linkElements(button, FocusManager.TOP, self.buttonCursorLeft)
+			else
+				FocusManager:linkElements(button, FocusManager.TOP, self.buttonCursorRight)
+			end
+
+			FocusManager:linkElements(button, FocusManager.BOTTOM, self.typeOption)
+		end
 	end
 
 	if firstAvailableButton ~= nil then
-		FocusManager:linkElements(self.typeOption, FocusManager.TOP, firstAvailableButton)
+		FocusManager:linkElements(self.typeOption, FocusManager.TOP, lastAvailableButton)
 		FocusManager:linkElements(self.buttonCursorLeft, FocusManager.BOTTOM, firstAvailableButton)
 		FocusManager:linkElements(self.buttonCursorRight, FocusManager.BOTTOM, firstAvailableButton)
 

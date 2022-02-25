@@ -90,6 +90,8 @@ function VehicleSellingPoint:sellAreaTriggerCallback(triggerId, otherId, onEnter
 		elseif onLeave then
 			self.vehicleShapesInRange[otherShapeId] = nil
 		end
+
+		g_workshopScreen:updateVehicles(self, self:determineCurrentVehicles())
 	end
 end
 

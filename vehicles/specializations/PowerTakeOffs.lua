@@ -694,10 +694,11 @@ function PowerTakeOffs:loadPowerTakeOffFromConfigFile(powerTakeOff, xmlFilename)
 		if i3dFilename ~= nil then
 			i3dFilename = Utils.getFilename(i3dFilename, self.baseDirectory)
 			powerTakeOff.xmlFile = xmlFile
-			powerTakeOff.sharedLoadRequestId = self:loadSubSharedI3DFile(i3dFilename, false, false, self.onPowerTakeOffI3DLoaded, self, {
-				xmlFile,
-				powerTakeOff
-			})
+			local arguments = {
+				xmlFile = xmlFile,
+				powerTakeOff = powerTakeOff
+			}
+			powerTakeOff.sharedLoadRequestId = self:loadSubSharedI3DFile(i3dFilename, false, false, self.onPowerTakeOffI3DLoaded, self, arguments)
 		else
 			Logging.xmlWarning(self.xmlFile, "Failed to open powerTakeOff i3d file '%s' in '%s'", i3dFilename, xmlFilename)
 			xmlFile:delete()
@@ -708,7 +709,8 @@ function PowerTakeOffs:loadPowerTakeOffFromConfigFile(powerTakeOff, xmlFilename)
 end
 
 function PowerTakeOffs:onPowerTakeOffI3DLoaded(i3dNode, failedReason, args)
-	local xmlFile, powerTakeOff = unpack(args)
+	local xmlFile = args.xmlFile
+	local powerTakeOff = args.powerTakeOff
 
 	if i3dNode ~= 0 then
 		powerTakeOff.startNode = xmlFile:getValue("powerTakeOff.startNode#node", nil, i3dNode)

@@ -59,8 +59,8 @@ function DebugBitVectorMap:drawAroundCenter(x, z, func)
 	local colorPos = self.colorPos
 	local colorNeg = self.colorNeg
 	local steps = math.ceil(self.radius / resolution) * 2
-	z = math.floor(z)
-	x = math.floor(x)
+	z = math.floor(z / self.resolution) * self.resolution
+	x = math.floor(x / self.resolution) * self.resolution
 
 	for xStep = 0, steps do
 		for zStep = 0, steps do

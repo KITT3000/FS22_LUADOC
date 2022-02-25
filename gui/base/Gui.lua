@@ -957,14 +957,13 @@ end
 function Gui:showMessageDialog(args)
 	if args ~= nil then
 		if args.visible then
-			local dialog = self:showDialog("MessageDialog")
+			local dialog = self.guis.MessageDialog
 
-			if dialog ~= nil then
-				dialog.target:setDialogType(Utils.getNoNil(args.dialogType, DialogElement.TYPE_LOADING))
-				dialog.target:setIsCloseAllowed(Utils.getNoNil(args.isCloseAllowed, true))
-				dialog.target:setText(args.text)
-				dialog.target:setUpdateCallback(args.updateCallback, args.updateTarget, args.updateArgs)
-			end
+			dialog.target:setDialogType(Utils.getNoNil(args.dialogType, DialogElement.TYPE_LOADING))
+			dialog.target:setIsCloseAllowed(Utils.getNoNil(args.isCloseAllowed, true))
+			dialog.target:setText(args.text)
+			dialog.target:setUpdateCallback(args.updateCallback, args.updateTarget, args.updateArgs)
+			self:showDialog("MessageDialog")
 		else
 			self:closeDialogByName("MessageDialog")
 		end

@@ -62,10 +62,6 @@ function AITaskDischarge:start()
 	AITaskDischarge:superClass().start(self)
 end
 
-function AITaskDischarge:stop()
-	AITaskDischarge:superClass().stop(self)
-end
-
 function AITaskDischarge:onTargetReached()
 	self.vehicle:unsetAITarget()
 

@@ -26,8 +26,8 @@ function AITaskConveyor:start()
 	AITaskConveyor:superClass().start(self)
 end
 
-function AITaskConveyor:stop()
-	AITaskConveyor:superClass().stop(self)
+function AITaskConveyor:stop(wasJobStopped)
+	AITaskConveyor:superClass().stop(self, wasJobStopped)
 
 	if self.isServer then
 		self.vehicle:stopFieldWorker()

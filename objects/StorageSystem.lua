@@ -16,6 +16,23 @@ function StorageSystem.new(accessHandler, customMt)
 	return self
 end
 
+function StorageSystem:delete()
+end
+
+function StorageSystem:consoleCommandToggleDebug()
+	self.debugEnabled = not self.debugEnabled
+
+	for storage in pairs(self.storages) do
+		if self.debugEnabled then
+			g_currentMission:addDrawable(storage)
+		else
+			g_currentMission:removeDrawable(storage)
+		end
+	end
+
+	return "StorageSystem.debugEnabled=" .. tostring(self.debugEnabled)
+end
+
 function StorageSystem:addStorage(storage)
 	if storage ~= nil then
 		self.storages[storage] = storage
@@ -69,6 +86,8 @@ function StorageSystem:addLoadingStation(station, placeable)
 	if station ~= nil then
 		self.loadingStations[station] = station
 
+		g_messageCenter:publish(MessageType.LOADING_STATIONS_CHANGED)
+
 		if placeable ~= nil then
 			if self.placeableLoadingStations[placeable] == nil then
 				self.placeableLoadingStations[placeable] = {}
@@ -103,6 +122,8 @@ function StorageSystem:removeLoadingStation(station, placeable)
 				self.placeableLoadingStations[placeable] = nil
 			end
 		end
+
+		g_messageCenter:publish(MessageType.LOADING_STATIONS_CHANGED)
 
 		return true
 	end
@@ -331,12 +352,13 @@ function StorageSystem:getIsStationCompatible(station, storage, farmId, posX, po
 		end
 
 		local isInRange = distance < station.storageRadius
+		local hasMatchingFillType = false
 
 		if not isInRange then
 			return false
 		end
 
-		local hasMatchingFillType = false
+		hasMatchingFillType = false
 
 		for fillType, _ in pairs(storage.fillTypes) do
 			if station.supportedFillTypes[fillType] ~= nil then

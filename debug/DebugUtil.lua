@@ -432,3 +432,72 @@ function DebugUtil.tableToColor(tbl, alpha)
 
 	return color
 end
+
+function DebugUtil.getSplineDebugElements(spline)
+	local debugElements = {}
+	local userAttributes = {
+		"speedLimit",
+		"maxWidth",
+		"maxTurningRadius",
+		"isTeleport"
+	}
+	local splineLength = getSplineLength(spline)
+	local splineName = string.format("%s (%d)", getName(spline), spline)
+	local splineText = string.format([[
+%s
+isClosed=%s
+length=%.1f
+numCVs=%d]], splineName, getIsSplineClosed(spline), splineLength, getSplineNumOfCV(spline))
+
+	for _, userAttribute in ipairs(userAttributes) do
+		local value = getUserAttribute(spline, userAttribute)
+
+		if value ~= nil then
+			splineText = splineText .. string.format("\nUserAttr %s=%s", userAttribute, value)
+		end
+	end
+
+	local function getDebugTextNode(x, y, z, text)
+		local debugText = DebugText.new():createWithWorldPosAndRot(x, y, z, 0, 0, 0, text, 0.13):setClipDistance(150)
+		debugText.alignToCamera = true
+
+		return debugText
+	end
+
+	local x, y, z = getSplinePosition(spline, 0.5)
+	debugElements.splineAttributes = getDebugTextNode(x, y + 0.3, z, splineText)
+	debugElements.startPoint = DebugPoint.new():createWithWorldPos(getSplinePosition(spline, 0.02 / splineLength)):setColor(0, 0.5, 0, 0.8):setClipDistance(150)
+	x, y, z = getSplinePosition(spline, 0.5 / splineLength)
+	debugElements.startText = getDebugTextNode(x, y + 0.2 + math.random(0, 25) / 100, z, "[Start] " .. splineName):setColor(0, 0.5, 0)
+	debugElements.endPoint = DebugPoint.new():createWithWorldPos(getSplinePosition(spline, 1 - 0.02 / splineLength)):setColor(0.5, 0, 0, 0.8):setClipDistance(150)
+	x, y, z = getSplinePosition(spline, 1 - 0.5 / splineLength)
+	debugElements.endText = getDebugTextNode(x, y + 0.2 + math.random(0, 25) / 100, z, "[End] " .. splineName):setColor(0.5, 0, 0)
+
+	return debugElements
+end
+
+function DebugUtil.isNodeInCameraRange(node, distance)
+	return calcDistanceFrom(node, getCamera()) < (distance or math.huge)
+end
+
+function DebugUtil.isPositionInCameraRange(x, y, z, distance)
+	if distance ~= nil then
+		local camX, camY, camZ = getWorldTranslation(getCamera())
+
+		return MathUtil.vector3Length(x - camX, y - camY, z - camZ) < distance
+	end
+
+	return true
+end
+
+function DebugUtil.setNodeEffectivelyVisible(node)
+	setVisibility(node, true)
+
+	local parent = getParent(node)
+
+	while parent ~= 0 do
+		setVisibility(parent, true)
+
+		parent = getParent(parent)
+	end
+end

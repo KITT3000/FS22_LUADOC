@@ -4,6 +4,7 @@ RestartManager = {
 	START_SCREEN_MULTIPLAYER = 3,
 	START_SCREEN_SETTINGS = 5,
 	START_SCREEN_SETTINGS_ADVANCED = 6,
+	START_SCREEN_GAMEPAD_SIGNIN = 7,
 	init = function (self, args)
 		self.restarting = string.find(args, "-restart") ~= nil
 	end
@@ -25,6 +26,8 @@ function RestartManager:handleRestart()
 	elseif startScreen == RestartManager.START_SCREEN_SETTINGS_ADVANCED then
 		g_gui:showGui("SettingsScreen")
 		g_settingsScreen:showDisplaySettings()
+	elseif startScreen == RestartManager.START_SCREEN_GAMEPAD_SIGNIN then
+		g_gui:showGui("GamepadSigninScreen")
 	end
 
 	if promptUserConfirmScreenMode() then

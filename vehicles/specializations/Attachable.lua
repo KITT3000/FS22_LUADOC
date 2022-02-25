@@ -3,6 +3,7 @@ Attachable = {
 	INPUT_ATTACHERJOINT_CONFIG_XML_KEY = "vehicle.attachable.inputAttacherJointConfigurations.inputAttacherJointConfiguration(?).inputAttacherJoint(?)",
 	SUPPORT_XML_KEY = "vehicle.attachable.support(?)",
 	STEERING_AXLE_XML_KEY = "vehicle.attachable.steeringAxleAngleScale",
+	STEERING_ANGLE_NODE_XML_KEY = "vehicle.attachable.steeringAngleNodes.steeringAngleNode(?)",
 	prerequisitesPresent = function (specializations)
 		return true
 	end,
@@ -148,9 +149,11 @@ function Attachable.initSpecialization()
 	schema:register(XMLValueType.BOOL, "vehicle.attachable.steeringAxleAngleScale#speedDependent", "Steering axle angle is scaled based on speed with #startSpeed and #endSpeed", true)
 	schema:register(XMLValueType.FLOAT, "vehicle.attachable.steeringAxleAngleScale#distanceDelay", "The steering angle is updated delayed after vehicle has been moved this distance", 0)
 	schema:register(XMLValueType.INT, "vehicle.attachable.steeringAxleAngleScale#referenceComponentIndex", "If defined the given component is used for steering angle reference. Y between root component and this component will result in steering angle.")
-	schema:register(XMLValueType.NODE_INDEX, "vehicle.attachable.steeringAngleNodes.steeringAngleNode(?)#node", "Steering angle node")
-	schema:register(XMLValueType.ANGLE, "vehicle.attachable.steeringAngleNodes.steeringAngleNode(?)#speed", "Change speed (degree per second)", 25)
-	schema:register(XMLValueType.FLOAT, "vehicle.attachable.steeringAngleNodes.steeringAngleNode(?)#scale", "Scale of vehicle to vehicle angle that is applied", 1)
+	schema:register(XMLValueType.NODE_INDEX, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#node", "Steering angle node")
+	schema:register(XMLValueType.ANGLE, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#speed", "Change speed (degree per second)", 25)
+	schema:register(XMLValueType.FLOAT, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#scale", "Scale of vehicle to vehicle angle that is applied", 1)
+	schema:register(XMLValueType.ANGLE, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#offset", "Angle offset", 0)
+	schema:register(XMLValueType.FLOAT, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#minSpeed", "Min. speed of vehicle to update", 0)
 	schema:register(XMLValueType.STRING, "vehicle.attachable.support(?)#animationName", "Animation name")
 	schema:register(XMLValueType.BOOL, "vehicle.attachable.support(?)#delayedOnLoad", "Defines if the animation is played onPostLoad or onLoadFinished -> useful if the animation collides e.g. with the folding animation", false)
 	schema:register(XMLValueType.BOOL, "vehicle.attachable.support(?)#delayedOnAttach", "Defines if the animation is played before or after the attaching process", true)
@@ -160,6 +163,7 @@ function Attachable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.attachable.lowerAnimation#speed", "Animation speed", 1)
 	schema:register(XMLValueType.INT, "vehicle.attachable.lowerAnimation#directionOnDetach", "Direction on detach", 0)
 	schema:register(XMLValueType.BOOL, "vehicle.attachable.lowerAnimation#defaultLowered", "Is default lowered", false)
+	VehicleCamera.registerCameraXMLPaths(schema, "vehicle.attachable.toolCameras.toolCamera(?)")
 
 	for i = 1, #Lights.ADDITIONAL_LIGHT_ATTRIBUTES_KEYS do
 		local key = Lights.ADDITIONAL_LIGHT_ATTRIBUTES_KEYS[i]
@@ -829,10 +833,10 @@ function Attachable:loadInputAttacherJoint(xmlFile, key, inputAttacherJoint, ind
 		inputAttacherJoint.lowerDistanceToGroundOriginal = inputAttacherJoint.lowerDistanceToGround
 		inputAttacherJoint.upperDistanceToGroundOriginal = inputAttacherJoint.upperDistanceToGround
 		inputAttacherJoint.lowerRotationOffset = xmlFile:getValue(key .. "#lowerRotationOffset", 0)
-		local defaultUpperRotationOffset = 8
+		local defaultUpperRotationOffset = 0
 
-		if jointType == AttacherJoints.JOINTTYPE_CUTTER or jointType == AttacherJoints.JOINTTYPE_CUTTERHARVESTER or jointType == AttacherJoints.JOINTTYPE_WHEELLOADER or jointType == AttacherJoints.JOINTTYPE_TELEHANDLER or jointType == AttacherJoints.JOINTTYPE_FRONTLOADER or jointType == AttacherJoints.JOINTTYPE_LOADERFORK then
-			defaultUpperRotationOffset = 0
+		if jointType == AttacherJoints.JOINTTYPE_IMPLEMENT then
+			defaultUpperRotationOffset = 8
 		end
 
 		inputAttacherJoint.upperRotationOffset = xmlFile:getValue(key .. "#upperRotationOffset", defaultUpperRotationOffset)
@@ -1211,20 +1215,28 @@ function Attachable:loadSteeringAngleNodeFromXML(entry, xmlFile, key)
 	entry.node = xmlFile:getValue(key .. "#node", nil, self.components, self.i3dMappings)
 	entry.speed = xmlFile:getValue(key .. "#speed", 25) / 1000
 	entry.scale = xmlFile:getValue(key .. "#scale", 1)
+	entry.offset = xmlFile:getValue(key .. "#offset", 0)
+	entry.minSpeed = xmlFile:getValue(key .. "#minSpeed", 0)
 	entry.currentAngle = 0
 
 	return true
 end
 
 function Attachable:updateSteeringAngleNode(steeringAngleNode, angle, dt)
-	local direction = MathUtil.sign(angle - steeringAngleNode.currentAngle)
-	local limit = direction < 0 and math.max or math.min
-	local newAngle = limit(steeringAngleNode.currentAngle + steeringAngleNode.speed * dt * direction, angle)
+	if steeringAngleNode.minSpeed < self.lastSpeed * 3600 then
+		local direction = MathUtil.sign(angle - steeringAngleNode.currentAngle)
+		local limit = direction < 0 and math.max or math.min
+		local newAngle = limit(steeringAngleNode.currentAngle + steeringAngleNode.speed * dt * direction, angle)
 
-	if newAngle ~= steeringAngleNode.currentAngle then
-		steeringAngleNode.currentAngle = newAngle
+		if newAngle ~= steeringAngleNode.currentAngle then
+			steeringAngleNode.currentAngle = newAngle
 
-		setRotation(steeringAngleNode.node, 0, steeringAngleNode.currentAngle * steeringAngleNode.scale, 0)
+			setRotation(steeringAngleNode.node, 0, steeringAngleNode.offset + steeringAngleNode.currentAngle * steeringAngleNode.scale, 0)
+
+			if self.setMovingToolDirty ~= nil then
+				self:setMovingToolDirty(steeringAngleNode.node)
+			end
+		end
 	end
 end
 
@@ -1758,11 +1770,11 @@ function Attachable:getIsInUse(superFunc, connection)
 	return superFunc(self, connection)
 end
 
-function Attachable:getUpdatePriority(superFunc, skipCount, x, y, z, coeff, connection)
+function Attachable:getUpdatePriority(superFunc, skipCount, x, y, z, coeff, connection, isGuiVisible)
 	local attacherVehicle = self:getAttacherVehicle()
 
 	if attacherVehicle ~= nil then
-		return attacherVehicle:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+		return attacherVehicle:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	end
 
 	return superFunc(self, skipCount, x, y, z, coeff, connection)

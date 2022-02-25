@@ -14,9 +14,9 @@ GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
 local debugTool = debug
 debug = nil
-g_gameVersion = 5
-g_gameVersionNotification = "1.2.0.2"
-g_gameVersionDisplay = "1.2.0.2"
+g_gameVersion = 6
+g_gameVersionNotification = "1.3.0.0"
+g_gameVersionDisplay = "1.3.0.0"
 g_gameVersionDisplayExtra = ""
 g_presentationSettingsFile = "dataS/presentationSettings.xml"
 g_isPresentationVersion = false
@@ -44,7 +44,7 @@ g_isPresentationVersionNextLanguageTimer = nil
 g_isPresentationVersionPlaytimeCountdown = nil
 g_isPresentationVersionIsTourEnabled = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 63
+g_maxModDescVersion = 64
 
 source("dataS/scripts/std.lua")
 source("dataS/scripts/events.lua")
@@ -651,19 +651,16 @@ function init(args)
 	addSplitShapesShaderParameterOverwrite("windSnowLeafScale", 0, 0, 0, 80)
 
 	local loadAllMaps = not g_isPresentationVersion or g_isPresentationVersionAllMapsEnabled
+	local mapsXML = XMLFile.load("MapsXML", "dataS/maps.xml")
 
-	if loadAllMaps or g_isPresentationVersionUSMapEnabled then
-		g_mapManager:addMapItem("MapUS", "dataS/scripts/missions/mission00.lua", "Mission00", "data/maps/mapUS/map.xml", "data/maps/mapUS/vehicles.xml", "data/maps/mapUS/placeables.xml", "data/maps/mapUS/items.xml", g_i18n:getText("mapUS_title"), g_i18n:getText("mapUS_description"), "data/maps/mapUS/preview.png", "", nil, true, false)
-	end
+	mapsXML:iterate("maps.map", function (_, key)
+		local mapId = mapsXML:getString(key .. "#id", "")
 
-	if loadAllMaps or g_isPresentationVersionFRMapEnabled then
-		g_mapManager:addMapItem("MapFR", "dataS/scripts/missions/mission00.lua", "Mission00", "data/maps/mapFR/map.xml", "data/maps/mapFR/vehicles.xml", "data/maps/mapFR/placeables.xml", "data/maps/mapFR/items.xml", g_i18n:getText("mapFR_title"), g_i18n:getText("mapFR_description"), "data/maps/mapFR/preview.png", "", nil, true, false)
-	end
-
-	if loadAllMaps or g_isPresentationVersionAlpineMapEnabled then
-		g_mapManager:addMapItem("mapAlpine", "dataS/scripts/missions/mission00.lua", "Mission00", "data/maps/mapAlpine/map.xml", "data/maps/mapAlpine/vehicles.xml", "data/maps/mapAlpine/placeables.xml", "data/maps/mapAlpine/items.xml", g_i18n:getText("mapDE_title"), g_i18n:getText("mapDE_description"), "data/maps/mapAlpine/preview.png", "", nil, true, false)
-	end
-
+		if loadAllMaps or mapId == "MapUS" and g_isPresentationVersionUSMapEnabled or mapId == "MapFR" and g_isPresentationVersionFRMapEnabled or mapId == "mapAlpine" and g_isPresentationVersionAlpineMapEnabled then
+			g_mapManager:loadMapFromXML(mapsXML, key, "", nil, true, true, false)
+		end
+	end)
+	mapsXML:delete()
 	updateLoadingBarProgress()
 	g_characterModelManager:load("dataS/character/humans/player/playerModels.xml")
 	updateLoadingBarProgress()
@@ -751,6 +748,7 @@ function init(args)
 	g_settingsScreen = SettingsScreen.new(nil, nil, g_messageCenter, g_i18n, g_inputBinding, settingsModel, GS_IS_CONSOLE_VERSION)
 	local savegameController = SavegameController.new()
 	g_careerScreen = CareerScreen.new(nil, nil, savegameController, startMissionInfo)
+	g_scenariosScreen = ScenariosScreen.new(nil, nil, savegameController, startMissionInfo)
 	g_difficultyScreen = DifficultyScreen.new(nil, nil, startMissionInfo)
 
 	updateLoadingBarProgress()
@@ -900,6 +898,7 @@ function init(args)
 		g_gui:loadGui("dataS/gui/CareerScreen.xml", "CareerScreen", g_careerScreen)
 	end
 
+	g_gui:loadGui("dataS/gui/ScenariosScreen.xml", "ScenariosScreen", g_scenariosScreen)
 	updateLoadingBarProgress()
 	g_gui:loadGui("dataS/gui/DifficultyScreen.xml", "DifficultyScreen", g_difficultyScreen)
 	updateLoadingBarProgress()
@@ -1109,6 +1108,7 @@ function init(args)
 		addConsoleCommand("gsRenderingDebugMode", "", "setDebugRenderingMode", SystemConsoleCommands)
 		addConsoleCommand("gsInputDrawRaw", "", "drawRawInput", SystemConsoleCommands)
 		addConsoleCommand("gsTestForceFeedback", "", "testForceFeedback", SystemConsoleCommands)
+		addConsoleCommand("gsTextureStreamingSetBudget", "", "setTextureStreamingBudget", SystemConsoleCommands)
 	end
 
 	if g_addTestCommands then
@@ -1121,6 +1121,7 @@ function init(args)
 
 		addConsoleCommand("gsInputFuzz", "", "fuzzInput", SystemConsoleCommands)
 		addConsoleCommand("gsUpdateDownloadFinished", "", "updateDownloadFinished", SystemConsoleCommands)
+		addConsoleCommand("gsRenderingFidelityFxSRSet", "", "setFidelityFxSR", SystemConsoleCommands)
 		addConsoleCommand("gsSoftRestart", "", "softRestart", SystemConsoleCommands)
 	end
 
@@ -1160,10 +1161,37 @@ function init(args)
 
 	setFileLogPrefixTimestamp(g_logFilePrefixTimestamp)
 
+	if StartParams.getIsSet("invitePlatformServerId") then
+		g_invitePlatformServerId = StartParams.getValue("invitePlatformServerId")
+		local userName = StartParams.getValue("inviteRequestUserName")
+		g_inviteRequestUserName = base64Decode(userName)
+		g_handleInviteRequest = true
+	end
+
+	if Platform.needsSignIn and StartParams.getIsSet("autoSignIn") and StartParams.getIsSet("restart") and g_gui.currentGuiName ~= "GamepadSigninScreen" then
+		g_autoSignIn = true
+	end
+
 	return true
 end
 
 function update(dt)
+	if g_autoSignIn then
+		g_autoSignIn = nil
+
+		g_gamepadSigninScreen:signIn()
+	end
+
+	if g_handleInviteRequest then
+		local platformServerId = g_invitePlatformServerId
+		local requestUserName = g_inviteRequestUserName
+		g_invitePlatformServerId = nil
+		g_inviteRequestUserName = nil
+		g_handleInviteRequest = nil
+
+		acceptedGameInvite(platformServerId, requestUserName)
+	end
+
 	g_time = g_time + dt
 	g_currentDt = dt
 	g_physicsDt = getPhysicsDt()
@@ -1547,6 +1575,7 @@ function cleanUp()
 	removeConsoleCommand("gsSuspendApp")
 	removeConsoleCommand("gsInputFuzz")
 	removeConsoleCommand("gsUpdateDownloadFinished")
+	removeConsoleCommand("gsRenderingFidelityFxSRSet")
 	removeConsoleCommand("gsSoftRestart")
 end
 
@@ -1566,6 +1595,22 @@ function doRestart(restartProcess, args)
 	end
 
 	print("Application restart " .. restartType)
+
+	if g_invitePlatformServerId ~= nil then
+		local userName = base64Encode(g_inviteRequestUserName)
+		args = args .. "-invitePlatformServerId " .. g_invitePlatformServerId .. " -inviteRequestUserName " .. userName
+	end
+
+	if Platform.needsSignIn and g_isSignedIn then
+		local startScreen = getStartMode()
+
+		if startScreen ~= RestartManager.START_SCREEN_GAMEPAD_SIGNIN then
+			args = args .. " -autoSignIn"
+		end
+	end
+
+	g_isRestarting = true
+
 	restartApplication(restartProcess, args)
 end
 
@@ -1818,6 +1863,19 @@ SystemConsoleCommands = {
 			coroutine.resume(co)
 		else
 			print("Force feedback not available")
+		end
+	end,
+	setTextureStreamingBudget = function (self, sizeInMB)
+		sizeInMB = tonumber(sizeInMB)
+
+		if sizeInMB == nil then
+			setTextureStreamingMemoryBudget(0)
+
+			return "Reset Texture Streaming Memory Budget to default"
+		else
+			setTextureStreamingMemoryBudget(sizeInMB)
+
+			return "Set Texture Streaming Memory Budget to " .. sizeInMB .. " MB"
 		end
 	end,
 	cleanI3DCache = function (self, verbose)
@@ -2141,10 +2199,44 @@ SystemConsoleCommands = {
 		g_updateDownloadFinished = true
 
 		log("g_updateDownloadFinished = true")
+	end,
+	setFidelityFxSR = function (self, newQuality)
+		local usage = "Usage: gsRenderingFidelityFxSRSet <qualityNumber>"
+		newQuality = tonumber(newQuality)
+		local currentQuality = getFidelityFxSRQuality()
+
+		print(string.format("current setting: %s (%d)", getFidelityFxSRQualityName(currentQuality), currentQuality))
+		print("Available settings:")
+
+		for i = 0, FidelityFxSRQuality.NUM - 1 do
+			local name = getFidelityFxSRQualityName(i)
+
+			print(string.format("    %d | %s | supported=%s", i, name, getSupportsFidelityFxSRQuality(i)))
+		end
+
+		if newQuality ~= nil then
+			if newQuality >= 0 and newQuality < FidelityFxSRQuality.NUM and getSupportsFidelityFxSRQuality(newQuality) then
+				setFidelityFxSRQuality(newQuality)
+			else
+				return string.format("Error: Given quality '%d' not supported\n%s", newQuality, usage)
+			end
+
+			local effectiveQuality = getFidelityFxSRQuality()
+
+			return string.format("new setting: %s (%d)", getFidelityFxSRQualityName(effectiveQuality), effectiveQuality)
+		else
+			return usage
+		end
 	end
 }
 
 function startDevServer(savegameId, uniqueUserId)
+	if StartParams.getIsSet("restart") then
+		print("Skipping server auto start due to restart")
+
+		return
+	end
+
 	print("Start developer mp server (Savegame-Id: " .. tostring(savegameId) .. ")")
 	g_mainScreen:onMultiplayerClick()
 	g_multiplayerScreen:onClickCreateGame()
@@ -2178,6 +2270,12 @@ function startDevServer(savegameId, uniqueUserId)
 end
 
 function startDevClient(uniqueUserId)
+	if StartParams.getIsSet("restart") then
+		print("Skipping client auto join due to restart")
+
+		return
+	end
+
 	print("Start developer mp client")
 	g_mainScreen:onMultiplayerClick()
 

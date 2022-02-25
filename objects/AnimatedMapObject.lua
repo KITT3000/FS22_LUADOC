@@ -2,13 +2,19 @@ AnimatedMapObject = {}
 local AnimatedMapObject_mt = Class(AnimatedMapObject, AnimatedObject)
 
 InitStaticObjectClass(AnimatedMapObject, "AnimatedMapObject", ObjectIds.OBJECT_ANIMATED_MAP_OBJECT)
+g_xmlManager:addCreateSchemaFunction(function ()
+	AnimatedMapObject.xmlSchema = XMLSchema.new("animatedObjects")
+end)
+g_xmlManager:addInitSchemaFunction(function ()
+	AnimatedObject.registerXMLPaths(AnimatedMapObject.xmlSchema, "animatedObjects")
+	AnimatedObject.registerSavegameXMLPaths(OnCreateObjectSystem.xmlSchemaSavegame, "onCreateLoadedObjects.object(?)")
+end)
 
 function AnimatedMapObject:onCreate(id)
 	local object = AnimatedMapObject.new(g_server ~= nil, g_client ~= nil)
 
 	if object:load(id) then
-		g_currentMission:addOnCreateLoadedObject(object)
-		g_currentMission:addOnCreateLoadedObjectToSave(object)
+		g_currentMission.onCreateObjectSystem:add(object, true)
 		object:register(true)
 	else
 		object:delete()
@@ -16,13 +22,11 @@ function AnimatedMapObject:onCreate(id)
 end
 
 function AnimatedMapObject.new(isServer, isClient, customMt)
-	local self = AnimatedObject.new(isServer, isClient, customMt or AnimatedMapObject_mt)
-
-	return self
+	return AnimatedObject.new(isServer, isClient, customMt or AnimatedMapObject_mt)
 end
 
 function AnimatedMapObject:delete()
-	g_currentMission:removeOnCreateLoadedObjectToSave(self)
+	g_currentMission.onCreateObjectSystem:remove(self)
 	AnimatedMapObject:superClass().delete(self)
 end
 
@@ -30,7 +34,7 @@ function AnimatedMapObject:load(nodeId)
 	local xmlFilename = getUserAttribute(nodeId, "xmlFilename")
 
 	if xmlFilename == nil then
-		print("Error: Missing 'xmlFilename' user attribute for AnimatedMapObject node '" .. getName(nodeId) .. "'!")
+		Logging.error("Missing 'xmlFilename' user attribute for AnimatedMapObject node '%s'!", getName(nodeId))
 
 		return false
 	end
@@ -45,47 +49,38 @@ function AnimatedMapObject:load(nodeId)
 	local index = getUserAttribute(nodeId, "index")
 
 	if index == nil then
-		print("Error: Missing 'index' user attribute for AnimatedMapObject node '" .. getName(nodeId) .. "'!")
+		Logging.error("Missing 'index' user attribute for AnimatedMapObject node '%s'!", getName(nodeId))
 
 		return false
 	end
 
-	local xmlFile = loadXMLFile("AnimatedObject", xmlFilename)
+	local xmlFile = XMLFile.load("AnimatedObject", xmlFilename, AnimatedMapObject.xmlSchema)
 
-	if xmlFile == 0 then
+	if xmlFile == nil then
 		return false
 	end
 
 	local key = nil
-	local i = 0
 
-	while true do
-		local objectKey = string.format("animatedObjects.animatedObject(%d)", i)
-
-		if not hasXMLProperty(xmlFile, objectKey) then
-			break
-		end
-
-		local configIndex = getXMLString(xmlFile, objectKey .. "#index")
+	xmlFile:iterate("animatedObjects.animatedObject", function (_, objectKey)
+		local configIndex = xmlFile:getString(objectKey .. "#index")
 
 		if configIndex == index then
 			key = objectKey
 
-			break
+			return true
 		end
-
-		i = i + 1
-	end
+	end)
 
 	if key == nil then
-		print("Error: index '" .. index .. "' not found in AnimatedObject xml '" .. xmlFilename .. "'!")
+		Logging.error("index '%s' not found in AnimatedObject xml '%s'!", index, xmlFilename)
 
 		return false
 	end
 
 	local result = AnimatedMapObject:superClass().load(self, nodeId, xmlFile, key, xmlFilename)
 
-	delete(xmlFile)
+	xmlFile:delete()
 
 	return result
 end

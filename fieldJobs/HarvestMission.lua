@@ -357,9 +357,9 @@ function HarvestMission:getData()
 end
 
 function HarvestMission:getCompletion()
-	local sellCompletion = self.depositedLiters / self.expectedLiters / HarvestMission.SUCCESS_FACTOR
+	local sellCompletion = math.min(self.depositedLiters / self.expectedLiters / HarvestMission.SUCCESS_FACTOR, 1)
 	local fieldCompletion = self:getFieldCompletion()
-	local harvestCompletion = fieldCompletion / AbstractMission.SUCCESS_FACTOR
+	local harvestCompletion = math.min(fieldCompletion / AbstractMission.SUCCESS_FACTOR, 1)
 
 	return math.min(1, 0.8 * harvestCompletion + 0.2 * sellCompletion)
 end

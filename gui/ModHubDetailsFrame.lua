@@ -158,6 +158,7 @@ function ModHubDetailsFrame:setModInfo(modInfo)
 
 	self.modDescription:setSize(nil, totalHeight)
 	self.modDescription.parent:invalidateLayout()
+	self.descriptionLayout:scrollTo(0, true)
 	self.modAuthor:setText(modInfo:getAuthor())
 
 	local isDLC = modInfo:getIsDLC()
@@ -394,7 +395,7 @@ function ModHubDetailsFrame:inputEvent(action, value, eventUsed)
 			self.scrollInputDelayDir = dir
 			self.scrollInputDelay = g_time
 
-			self.textSlider:setValue(self.textSlider:getValue() + dir)
+			self.textSlider:setValue(self.textSlider:getValue() + dir * 5)
 		end
 	end
 

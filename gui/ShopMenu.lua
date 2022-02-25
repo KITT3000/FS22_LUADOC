@@ -404,6 +404,13 @@ function ShopMenu:onClose(element)
 		g_currentMission:showMoneyChange(MoneyType.SHOP_VEHICLE_SELL)
 		g_currentMission:showMoneyChange(MoneyType.SHOP_PROPERTY_BUY)
 		g_currentMission:showMoneyChange(MoneyType.SHOP_PROPERTY_SELL)
+		g_currentMission:showMoneyChange(MoneyType.LEASING_COSTS)
+		g_currentMission:showMoneyChange(MoneyType.PURCHASE_SEEDS)
+		g_currentMission:showMoneyChange(MoneyType.PURCHASE_FERTILIZER)
+		g_currentMission:showMoneyChange(MoneyType.PURCHASE_FUEL)
+		g_currentMission:showMoneyChange(MoneyType.PURCHASE_SAPLINGS)
+		g_currentMission:showMoneyChange(MoneyType.OTHER)
+		g_currentMission:showMoneyChange(MoneyType.BOUGHT_MATERIALS)
 	end
 
 	self.closingForConfigurationScreen = false
@@ -480,6 +487,17 @@ function ShopMenu:setConfigurations(vehicle, leaseItem, storeItem, configs, pric
 end
 
 function ShopMenu:showConfigurationScreen(storeItem, saleItem, configurations)
+	local enoughSlots = g_currentMission.slotSystem:hasEnoughSlots(storeItem)
+
+	if not enoughSlots then
+		self:playSample(GuiSoundPlayer.SOUND_SAMPLES.ERROR)
+		g_gui:showInfoDialog({
+			text = self.l10n:getText(ShopConfigScreen.L10N_SYMBOL.TOO_FEW_SLOTS)
+		})
+
+		return
+	end
+
 	self.closingForConfigurationScreen = true
 
 	self:changeScreen(ShopConfigScreen)
@@ -647,7 +665,7 @@ function ShopMenu:updateGarageButtonInfo(isOwned, numItems, hasCombinations)
 end
 
 function ShopMenu:getPageButtonInfo(page)
-	local buttonInfo = ShopMenu:superClass().getPageButtonInfo(self, page)
+	local buttonInfo = nil
 
 	if self:getIsDetailMode() then
 		if page == self.pageShopGarageOwned or page == self.pageShopGarageLeased then
@@ -655,6 +673,8 @@ function ShopMenu:getPageButtonInfo(page)
 		else
 			buttonInfo = self.shopDetailsButtonInfo
 		end
+	elseif page == self.pageShopItemDetails then
+		buttonInfo = self.shopDetailsButtonInfo
 	else
 		buttonInfo = self.shopMenuButtonInfo
 	end

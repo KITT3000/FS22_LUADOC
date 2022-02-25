@@ -372,6 +372,7 @@ function InGameMenu:onGuiSetupFinished()
 	self.messageCenter:subscribe(MessageType.MONEY_CHANGED, self.onMoneyChanged, self)
 	self.messageCenter:subscribe(MessageType.MASTERUSER_ADDED, self.onMasterUserAdded, self)
 	self.messageCenter:subscribe(MessageType.UNLOADING_STATIONS_CHANGED, self.onUnloadingStationsChanged, self)
+	self.messageCenter:subscribe(MessageType.LOADING_STATIONS_CHANGED, self.onUnloadingStationsChanged, self)
 	self:initializePages()
 	self:setupMenuPages()
 end
@@ -395,8 +396,6 @@ function InGameMenu:setMissionInfo(missionInfo, missionDynamicInfo, missionBaseD
 	if self.pageSettingsMobile ~= nil then
 		self.pageSettingsMobile:setMissionInfo(missionInfo)
 	end
-
-	self.pageHelpLine:setMissionBaseDirectory(missionBaseDirectory)
 
 	self.currentDeviceHasNoSpace = false
 end
@@ -620,7 +619,9 @@ function InGameMenu:update(dt)
 	if GS_PLATFORM_PLAYSTATION and g_currentMission ~= nil and self.missionDynamicInfo.isMultiplayer and getMultiplayerAvailability() == MultiplayerAvailability.NOT_AVAILABLE and self.continueEnabled then
 		self.continueEnabled = false
 
-		g_gui:changeScreen(InGameMenu)
+		g_gui:showGui("InGameMenu")
+
+		return
 	end
 
 	self:updateCurrentBalanceDisplay(dt)
@@ -704,6 +705,7 @@ function InGameMenu:setMasterServerConnectionFailed(reason)
 		g_gui:showYesNoDialog({
 			text = self.l10n:getText(InGameMenu.L10N_SYMBOL.MASTER_SERVER_CONNECTION_LOST),
 			yesText = self.l10n:getText("button_save"),
+			noText = self.l10n:getText("button_quit"),
 			callback = self.onConnectionFailedDialogClick,
 			target = self
 		})

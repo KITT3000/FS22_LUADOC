@@ -434,8 +434,7 @@ function BaleManager:consoleCommandAddBale(fillTypeName, isRoundbale, width, hei
 	local baleObject = Bale.new(g_currentMission:getIsServer(), g_currentMission:getIsClient())
 
 	if baleObject:loadFromConfigXML(baleXMLFilename, x, y, z, 0, ry, 0) then
-		baleObject:setFillType(fillTypeIndex)
-		baleObject:setFillLevel(99999)
+		baleObject:setFillType(fillTypeIndex, true)
 		baleObject:setWrappingState(wrapState)
 		baleObject:setOwnerFarmId(farmId, true)
 		baleObject:register()

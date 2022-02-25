@@ -125,8 +125,6 @@ function OnInGameMenuMenu(goToSignIn, wasNetworkError)
 		goToMainMenu = true
 	end
 
-	local hasScriptsLoaded = g_currentMission ~= nil and g_currentMission.missionDynamicInfo ~= nil and g_currentMission.missionDynamicInfo.hasScriptsLoaded
-
 	if g_currentMission ~= nil then
 		g_gui:showGui("")
 		g_currentMission:delete()
@@ -150,22 +148,16 @@ function OnInGameMenuMenu(goToSignIn, wasNetworkError)
 	if wasNetworkError and GS_PLATFORM_PLAYSTATION then
 		ConnectionFailedDialog.showMasterServerConnectionFailedReason(MasterServerConnection.FAILED_CONNECTION_LOST, "MainScreen")
 	elseif isCareer then
-		if next(g_modIsLoaded) ~= nil then
-			if hasScriptsLoaded then
-				RestartManager:setStartScreen(RestartManager.START_SCREEN_MAIN)
-				doRestart(false, "")
-
-				return
-			else
-				reloadDlcsAndMods()
-			end
-		end
+		local restartScreen = RestartManager.START_SCREEN_MAIN
 
 		if goToSignIn then
-			g_gui:showGui("GamepadSigninScreen")
-		else
-			g_gui:showGui("MainScreen")
+			restartScreen = RestartManager.START_SCREEN_GAMEPAD_SIGNIN
 		end
+
+		RestartManager:setStartScreen(restartScreen)
+		doRestart(false, "")
+
+		return
 	elseif not goToMainMenu then
 		g_gameSettings:saveToXMLFile(g_savegameXML)
 

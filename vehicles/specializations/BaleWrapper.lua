@@ -1401,12 +1401,15 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 
 			local baleType = spec.currentWrapper.allowedBaleTypes[spec.currentBaleTypeIndex]
 
-			if bale:getSupportsWrapping() and not baleType.skipWrapping and bale.wrappingState < 1 then
+			if bale:getSupportsWrapping() and not baleType.skipWrapping then
 				local stats = g_currentMission:farmStats(self:getOwnerFarmId())
 				local total = stats:updateStats("wrappedBales", 1)
 
 				g_achievementManager:tryUnlock("WrappedBales", total)
-				bale:setWrappingState(1)
+
+				if bale.wrappingState < 1 then
+					bale:setWrappingState(1)
+				end
 			end
 		end
 

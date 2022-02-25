@@ -33,6 +33,8 @@ function ConstructionBrushSelect:deactivate()
 		end
 
 		self.lastPlaceable = nil
+
+		self:setInputTextDirty()
 	end
 
 	self.pauseUpdates = false
@@ -48,6 +50,8 @@ function ConstructionBrushSelect:update(dt)
 	if self.lastPlaceable ~= nil and self.lastPlaceable.isDeleted then
 		self.lastPlaceable = nil
 		self.pauseUpdates = false
+
+		self:setInputTextDirty()
 	end
 
 	if not self.pauseUpdates then
@@ -65,6 +69,8 @@ function ConstructionBrushSelect:visualizeMouseOver()
 			end
 
 			self.lastPlaceable = nil
+
+			self:setInputTextDirty()
 		end
 
 		if placeable ~= nil and placeable:getDestructionMethod() ~= Placeable.DESTRUCTION.PER_NODE then
@@ -73,6 +79,8 @@ function ConstructionBrushSelect:visualizeMouseOver()
 			placeable:setOverlayColor(color[1], color[2], color[3], 0.8)
 
 			self.lastPlaceable = placeable
+
+			self:setInputTextDirty()
 		end
 	end
 end
@@ -81,6 +89,8 @@ function ConstructionBrushSelect:onButtonFourth()
 	if self.lastPlaceable == nil or self.lastPlaceable.isDeleted then
 		self.lastPlaceable = nil
 		self.pauseUpdates = false
+
+		self:setInputTextDirty()
 
 		return
 	end
@@ -92,6 +102,8 @@ function ConstructionBrushSelect:onButtonFourth()
 		callback = function (didSell)
 			if didSell then
 				self.lastPlaceable = nil
+
+				self:setInputTextDirty()
 			end
 
 			self.pauseUpdates = false
@@ -99,13 +111,18 @@ function ConstructionBrushSelect:onButtonFourth()
 	})
 end
 
-function ConstructionBrushSelect:onPlaceableDestroyed()
-	if self.lastPlaceable ~= nil and self.lastPlaceable.isDeleted then
+function ConstructionBrushSelect:onPlaceableDestroyed(state, sellPrice)
+	if self.lastPlaceable ~= nil then
 		self.lastPlaceable = nil
 		self.pauseUpdates = false
+
+		g_currentMission.shopController:onPlaceableSellEvent(state, sellPrice)
+		self:setInputTextDirty()
 	end
 end
 
 function ConstructionBrushSelect:getButtonFourthText()
-	return "$l10n_button_select"
+	if self.lastPlaceable ~= nil then
+		return "$l10n_button_select"
+	end
 end

@@ -13,6 +13,7 @@ PlaceableTriggerMarkers = {
 function PlaceableTriggerMarkers.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "onPlayerFarmChanged", PlaceableTriggerMarkers.onPlayerFarmChanged)
 	SpecializationUtil.registerFunction(placeableType, "onMarkerFileLoaded", PlaceableTriggerMarkers.onMarkerFileLoaded)
+	SpecializationUtil.registerFunction(placeableType, "getTriggerMarkerPosition", PlaceableTriggerMarkers.getTriggerMarkerPosition)
 	SpecializationUtil.registerFunction(placeableType, "setShowMarkers", PlaceableTriggerMarkers.setShowMarkers)
 end
 
@@ -196,5 +197,14 @@ function PlaceableTriggerMarkers:setShowMarkers(doShow)
 		else
 			g_currentMission:removeTriggerMarker(marker.node)
 		end
+	end
+end
+
+function PlaceableTriggerMarkers:getTriggerMarkerPosition(index)
+	local spec = self.spec_triggerMarkers
+	local marker = spec.triggerMarkers[index]
+
+	if marker ~= nil then
+		return getWorldTranslation(marker.node)
 	end
 end

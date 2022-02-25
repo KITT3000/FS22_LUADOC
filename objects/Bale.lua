@@ -64,7 +64,7 @@ function Bale.new(isServer, isClient, customMt)
 	self.obstacleNodeId = nil
 	self.sharedLoadRequestId = nil
 
-	g_currentMission:addLimitedObject(FSBaseMission.LIMITED_OBJECT_TYPE_BALE, self)
+	g_currentMission.slotSystem:addLimitedObject(SlotSystem.LIMITED_OBJECT_BALE, self)
 
 	return self
 end
@@ -83,7 +83,7 @@ function Bale:delete()
 	end
 
 	self:setBaleAIObstacle(false)
-	g_currentMission:removeLimitedObject(FSBaseMission.LIMITED_OBJECT_TYPE_BALE, self)
+	g_currentMission.slotSystem:removeLimitedObject(SlotSystem.LIMITED_OBJECT_BALE, self)
 	unregisterObjectClassName(self)
 	g_currentMission.itemSystem:removeItemToSave(self)
 	Bale:superClass().delete(self)
@@ -254,8 +254,8 @@ function Bale:writeStream(streamId, connection)
 end
 
 function Bale:mount(object, node, x, y, z, rx, ry, rz)
-	g_currentMission.itemSystem:removeItemToSave(self)
 	Bale:superClass().mount(self, object, node, x, y, z, rx, ry, rz)
+	g_currentMission.itemSystem:removeItemToSave(self)
 	self:setBaleAIObstacle(false)
 end
 
@@ -272,8 +272,8 @@ function Bale:unmount()
 end
 
 function Bale:mountKinematic(object, node, x, y, z, rx, ry, rz)
-	g_currentMission.itemSystem:removeItemToSave(self)
 	Bale:superClass().mountKinematic(self, object, node, x, y, z, rx, ry, rz)
+	g_currentMission.itemSystem:removeItemToSave(self)
 	self:setBaleAIObstacle(false)
 end
 
@@ -550,6 +550,12 @@ function Bale:saveToXMLFile(xmlFile, key)
 	end
 end
 
+function Bale:getNeedsSaving()
+	local _, y, _ = getTranslation(self.nodeId)
+
+	return y > -90
+end
+
 function Bale:removeFromPhysics()
 	removeFromPhysics(self.nodeId)
 end
@@ -630,17 +636,21 @@ function Bale:setFillType(fillTypeIndex, fillBale)
 	end
 end
 
+function Bale:getCapacity()
+	local fillTypeInfo = self:getFillTypeInfo(self.fillType)
+
+	if fillTypeInfo ~= nil then
+		return fillTypeInfo.capacity
+	end
+
+	return 0
+end
+
 function Bale:getFillLevel()
 	return self.fillLevel
 end
 
 function Bale:setFillLevel(fillLevel)
-	local fillTypeInfo = self:getFillTypeInfo(self.fillType)
-
-	if fillTypeInfo ~= nil then
-		fillLevel = math.min(fillLevel, fillTypeInfo.capacity)
-	end
-
 	self.fillLevel = fillLevel
 
 	if self.isServer then
@@ -854,6 +864,10 @@ function Bale:getInteractionPosition()
 end
 
 function Bale:getCanInteract()
+	if not g_currentMission.accessHandler:canPlayerAccess(self) then
+		return false
+	end
+
 	local px, py, pz = self:getInteractionPosition()
 
 	if px ~= nil then
@@ -1156,6 +1170,10 @@ function BaleActivatable:getIsActivatable()
 	end
 
 	return false
+end
+
+function BaleActivatable:getHasAccess(farmId)
+	return g_currentMission.accessHandler:canFarmAccessOtherId(farmId, self.bale:getOwnerFarmId())
 end
 
 function BaleActivatable:getDistance(posX, posY, posZ)

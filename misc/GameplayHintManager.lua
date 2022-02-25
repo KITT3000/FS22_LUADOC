@@ -23,6 +23,7 @@ function GameplayHintManager:loadMapData(xmlFile, missionInfo)
 		return false
 	end
 
+	local customEnvironment, _ = Utils.getModNameAndBaseDirectory(filename)
 	local gameplayHintXmlFile = loadXMLFile("gameplayHints", filename)
 	local i = 0
 
@@ -36,7 +37,7 @@ function GameplayHintManager:loadMapData(xmlFile, missionInfo)
 		local text = getXMLString(gameplayHintXmlFile, key)
 
 		if text:sub(1, 6) == "$l10n_" then
-			text = g_i18n:getText(text:sub(7), missionInfo.customEnvironment)
+			text = g_i18n:getText(text:sub(7), customEnvironment)
 		end
 
 		table.insert(self.gameplayHints, text)

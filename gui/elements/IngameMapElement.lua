@@ -314,7 +314,7 @@ function IngameMapElement:reset()
 end
 
 function IngameMapElement:updateCursor(deltaX, deltaY, dt)
-	if self.cursorElement ~= nil and (self.isCursorActive or GS_IS_MOBILE_VERSION) then
+	if self.cursorElement ~= nil then
 		local speed = IngameMapElement.CURSOR_SPEED_FACTOR
 		local diffX = deltaX * speed * dt / g_screenAspectRatio
 		local diffY = deltaY * speed * dt

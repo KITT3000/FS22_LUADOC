@@ -40,6 +40,7 @@ function DynamicMountAttacher.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "readDynamicMountObjectsFromStream", DynamicMountAttacher.readDynamicMountObjectsFromStream)
 	SpecializationUtil.registerFunction(vehicleType, "getAllowDynamicMountObjects", DynamicMountAttacher.getAllowDynamicMountObjects)
 	SpecializationUtil.registerFunction(vehicleType, "dynamicMountTriggerCallback", DynamicMountAttacher.dynamicMountTriggerCallback)
+	SpecializationUtil.registerFunction(vehicleType, "lockDynamicMountedObject", DynamicMountAttacher.lockDynamicMountedObject)
 	SpecializationUtil.registerFunction(vehicleType, "addDynamicMountedObject", DynamicMountAttacher.addDynamicMountedObject)
 	SpecializationUtil.registerFunction(vehicleType, "removeDynamicMountedObject", DynamicMountAttacher.removeDynamicMountedObject)
 	SpecializationUtil.registerFunction(vehicleType, "setDynamicMountAnimationState", DynamicMountAttacher.setDynamicMountAnimationState)
@@ -331,36 +332,68 @@ function DynamicMountAttacher:onUpdateTick(dt, isActiveForInput, isActiveForInpu
 	end
 end
 
+function DynamicMountAttacher:lockDynamicMountedObject(object, x, y, z, rx, ry, rz)
+	local spec = self.spec_dynamicMountAttacher
+
+	DynamicMountUtil.unmountDynamic(object, false)
+	object:removeFromPhysics()
+
+	spec.pendingDynamicMountObjects[object] = nil
+
+	object:setWorldPosition(x, y, z, rx, ry, rz, 1, true)
+	object:addToPhysics()
+
+	local trigger = spec.dynamicMountAttacherTrigger
+	local couldMount = object:mountDynamic(self, trigger.rootNode, trigger.jointNode, trigger.mountType, trigger.forceAcceleration)
+
+	if not couldMount then
+		self:removeDynamicMountedObject(object, false)
+	end
+end
+
 function DynamicMountAttacher:addDynamicMountedObject(object)
 	local spec = self.spec_dynamicMountAttacher
 
 	if spec.dynamicMountedObjects[object] == nil then
 		spec.dynamicMountedObjects[object] = object
+		local lockedToPosition = false
 
-		for i = 1, #spec.lockPositions do
-			local position = spec.lockPositions[i]
+		if object.getMountableLockPositions ~= nil then
+			local lockPositions = object:getMountableLockPositions()
 
-			if string.endsWith(object.configFileName, position.xmlFilename) then
-				DynamicMountUtil.unmountDynamic(object, false)
+			for i = 1, #lockPositions do
+				local position = lockPositions[i]
 
-				local x, y, z = getWorldTranslation(position.jointNode)
-				local rx, ry, rz = getWorldRotation(position.jointNode)
+				if string.endsWith(self.configFileName, position.xmlFilename) then
+					local jointNode = I3DUtil.indexToObject(self.components, position.jointNode, self.i3dMappings)
 
-				object:removeFromPhysics()
+					if jointNode ~= nil then
+						local x, y, z = localToWorld(jointNode, position.transOffset[1], position.transOffset[2], position.transOffset[3])
+						local rx, ry, rz = localRotationToWorld(jointNode, position.rotOffset[1], position.rotOffset[2], position.rotOffset[3])
 
-				spec.pendingDynamicMountObjects[object] = nil
+						self:lockDynamicMountedObject(object, x, y, z, rx, ry, rz)
 
-				object:setWorldPosition(x, y, z, rx, ry, rz, 1, true)
-				object:addToPhysics()
+						lockedToPosition = true
 
-				local trigger = spec.dynamicMountAttacherTrigger
-				local couldMount = object:mountDynamic(self, trigger.rootNode, trigger.jointNode, trigger.mountType, trigger.forceAcceleration)
-
-				if not couldMount then
-					self:removeDynamicMountedObject(object, false)
+						break
+					end
 				end
+			end
+		end
 
-				ObjectChangeUtil.setObjectChanges(position.objectChanges, true, self, self.setMovingToolDirty)
+		if not lockedToPosition then
+			for i = 1, #spec.lockPositions do
+				local position = spec.lockPositions[i]
+
+				if string.endsWith(object.configFileName, position.xmlFilename) then
+					local x, y, z = getWorldTranslation(position.jointNode)
+					local rx, ry, rz = getWorldRotation(position.jointNode)
+
+					self:lockDynamicMountedObject(object, x, y, z, rx, ry, rz)
+					ObjectChangeUtil.setObjectChanges(position.objectChanges, true, self, self.setMovingToolDirty)
+
+					break
+				end
 			end
 		end
 

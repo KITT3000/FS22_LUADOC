@@ -61,7 +61,7 @@ function TreeSaplingPallet:onLoad(savegame)
 				setScale(entry.node, 1, math.random(90, 110) / 100, 1)
 
 				entry.sharedLoadRequestId = self:loadSubSharedI3DFile(spec.treeTypeFilename, false, false, self.onTreeSaplingLoaded, self, {
-					entry
+					entry = entry
 				})
 
 				table.insert(spec.saplingNodes, entry)
@@ -87,9 +87,9 @@ function TreeSaplingPallet:onDelete()
 end
 
 function TreeSaplingPallet:onTreeSaplingLoaded(i3dNode, failedReason, args)
-	local entry = unpack(args)
-
 	if i3dNode ~= 0 then
+		local entry = args.entry
+
 		link(entry.node, getChildAt(i3dNode, 0))
 		delete(i3dNode)
 	end

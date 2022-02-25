@@ -82,19 +82,22 @@ function AnimalUnloadEvent:run(connection)
 			yRot = place.rotY
 		}
 		local farmId = self.trailer:getOwnerFarmId()
+		local arguments = {
+			cluster = cluster,
+			connection = connection,
+			trailer = self.trailer
+		}
 
-		VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, farmId, nil, nil, self.onLoadedRideable, self, {
-			cluster,
-			connection,
-			self.trailer
-		})
+		VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, farmId, nil, nil, self.onLoadedRideable, self, arguments)
 	else
 		g_messageCenter:publish(AnimalUnloadEvent, self.errorCode)
 	end
 end
 
 function AnimalUnloadEvent:onLoadedRideable(rideableVehicle, vehicleLoadState, arguments)
-	local cluster, connection, trailer = unpack(arguments)
+	local cluster = arguments.cluster
+	local connection = arguments.connection
+	local trailer = arguments.trailer
 
 	if rideableVehicle == nil then
 		connection:sendEvent(AnimalUnloadEvent.newServerToClient(AnimalUnloadEvent.UNLOAD_ERROR_COULD_NOT_BE_LOADED))

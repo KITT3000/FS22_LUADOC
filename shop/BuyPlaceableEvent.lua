@@ -112,11 +112,12 @@ function BuyPlaceableEvent:run(connection)
 						y = self.ry,
 						z = self.rz
 					}
+					local arguments = {
+						price = price,
+						connection = connection
+					}
 
-					PlaceableUtil.loadPlaceable(self.filename, position, rotation, self.ownerFarmId, nil, self.placeableLoaded, self, {
-						price,
-						connection
-					})
+					PlaceableUtil.loadPlaceable(self.filename, position, rotation, self.ownerFarmId, nil, self.placeableLoaded, self, arguments)
 				else
 					errorCode = BuyPlaceableEvent.STATE_NOT_ENOUGH_MONEY
 					errorOccurred = true
@@ -133,7 +134,8 @@ function BuyPlaceableEvent:run(connection)
 end
 
 function BuyPlaceableEvent:placeableLoaded(placeable, loadingState, args)
-	local price, connection = unpack(args)
+	local price = args.price
+	local connection = args.connection
 
 	if loadingState == Placeable.LOADING_STATE_ERROR then
 		connection:sendEvent(BuyPlaceableEvent.newServerToClient(BuyPlaceableEvent.STATE_FAILED_TO_LOAD, price))

@@ -18,6 +18,7 @@ InGameMenuMultiplayerUsersFrame.CONTROLS = {
 	"reportButton",
 	"muteButton",
 	"showProfileButton",
+	"peerVolumeOption",
 	"buyVehiclePermissionCheckbox",
 	"sellVehiclePermissionCheckbox",
 	"resetVehiclePermissionCheckbox",
@@ -301,10 +302,29 @@ function InGameMenuMultiplayerUsersFrame:updateElements()
 		self.blockButton:setText(self.l10n:getText(user:getIsBlocked() and "button_unblock" or "button_block"))
 	end
 
-	self.muteButton:setVisible(selectionIsUser and (not isSelfSelected or VoiceChatUtil.getHasRecordingDevice()) and not VoiceChatUtil.getIsVoiceRestricted())
+	self.muteButton:setVisible(selectionIsUser and isSelfSelected and VoiceChatUtil.getHasRecordingDevice() and not VoiceChatUtil.getIsVoiceRestricted())
 
 	if selectionIsUser then
 		self.muteButton:setText(self.l10n:getText(user:getVoiceMuted() and "button_unmute" or "button_mute"))
+	end
+
+	self.peerVolumeOption:setVisible(selectionIsUser and not isSelfSelected and not VoiceChatUtil.getIsVoiceRestricted())
+
+	if selectionIsUser then
+		local texts = {
+			self.l10n:getText("button_mute")
+		}
+		local volumeText = self.l10n:getText("ui_volumeSound")
+
+		for i = 1, 10 do
+			table.insert(texts, string.format("%s: %d%%", volumeText, i * 10))
+		end
+
+		self.peerVolumeOption:setTexts(texts)
+
+		local rawVolume = g_currentMission.userManager:getUserByUserId(self.selectedUserId):getVoiceVolume()
+
+		self.peerVolumeOption:setState(MathUtil.round(rawVolume / 0.1 + 1, 0))
 	end
 
 	if selectionIsUser then
@@ -644,7 +664,9 @@ function InGameMenuMultiplayerUsersFrame:onButtonBlockFromServer()
 		text = text,
 		title = self.l10n:getText("ui_banTitle"),
 		callback = function (yes)
-			g_client:getServerConnection():sendEvent(KickBanEvent.new(false, self.selectedUserId))
+			if yes then
+				g_client:getServerConnection():sendEvent(KickBanEvent.new(false, self.selectedUserId))
+			end
 		end
 	})
 end
@@ -674,6 +696,13 @@ function InGameMenuMultiplayerUsersFrame:onButtonMute()
 	end
 
 	self:updateDisplay()
+end
+
+function InGameMenuMultiplayerUsersFrame:onPeerVolumeChanged(state)
+	local volume = (state - 1) * 0.1
+	local user = g_currentMission.userManager:getUserByUserId(self.selectedUserId)
+
+	user:setVoiceVolume(volume)
 end
 
 function InGameMenuMultiplayerUsersFrame:getNumberOfSections()

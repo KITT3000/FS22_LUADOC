@@ -27,6 +27,7 @@ function WorkMode.registerWorkModeXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#foldMaxLimit", "Fold max. limit to change mode", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. "#foldMinLimit", "Fold min. limit to change mode", 0)
 	schema:register(XMLValueType.BOOL, basePath .. "#allowChangeOnLowered", "Allow change while lowered", true)
+	schema:register(XMLValueType.BOOL, basePath .. "#allowChangeWhileTurnedOn", "Allow change while turned on", true)
 	schema:register(XMLValueType.L10N_STRING, basePath .. ".workMode(?)#name", "Work mode name")
 	schema:register(XMLValueType.STRING, basePath .. ".workMode(?)#inputBindingName", "Input action name for quick access")
 	schema:register(XMLValueType.STRING, basePath .. ".workMode(?).turnedOnAnimations.turnedOnAnimation(?)#name", "Turned on animation name")
@@ -42,9 +43,13 @@ function WorkMode.registerWorkModeXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. ".workMode(?).animation(?)#stopTime", "Mode change animation stop time")
 	schema:register(XMLValueType.BOOL, basePath .. ".workMode(?).animation(?)#repeatAfterUnfolding", "Repeat animation after unfolding", false)
 	schema:register(XMLValueType.FLOAT, basePath .. ".workMode(?).animation(?)#repeatStartTime", "Repeat start time")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".workMode(?).movingToolLimit#node", "Target moving tool node")
+	schema:register(XMLValueType.ANGLE, basePath .. ".workMode(?).movingToolLimit#minRot", "Min. rotation", 0)
+	schema:register(XMLValueType.ANGLE, basePath .. ".workMode(?).movingToolLimit#maxRot", "Max. rotation", 0)
 	EffectManager.registerEffectXMLPaths(schema, basePath .. ".workMode(?).windrowerEffect")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, basePath .. ".workMode(?).animationNodes")
 	schema:register(XMLValueType.INT, Sprayer.SPRAY_TYPE_XML_KEY .. "#workModeIndex", "Index of work mode to activate spray type")
+	schema:register(XMLValueType.BOOL, Cylindered.MOVING_TOOL_XML_KEY .. "#allowWhileChangingWorkMode", "Allow movement while changing work mode", true)
 end
 
 function WorkMode.registerFunctions(vehicleType)
@@ -59,6 +64,9 @@ function WorkMode.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAllowsLowering", WorkMode.getAllowsLowering)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadSprayTypeFromXML", WorkMode.loadSprayTypeFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsSprayTypeActive", WorkMode.getIsSprayTypeActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadMovingToolFromXML", WorkMode.loadMovingToolFromXML)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsMovingToolActive", WorkMode.getIsMovingToolActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAreEffectsVisible", WorkMode.getAreEffectsVisible)
 end
 
 function WorkMode.registerEventListeners(vehicleType)
@@ -97,6 +105,7 @@ function WorkMode:onLoad(savegame)
 	spec.foldMaxLimit = self.xmlFile:getValue(configKey .. "#foldMaxLimit", 1)
 	spec.foldMinLimit = self.xmlFile:getValue(configKey .. "#foldMinLimit", 0)
 	spec.allowChangeOnLowered = self.xmlFile:getValue(configKey .. "#allowChangeOnLowered", true)
+	spec.allowChangeWhileTurnedOn = self.xmlFile:getValue(configKey .. "#allowChangeWhileTurnedOn", true)
 	spec.workModes = {}
 	local i = 0
 
@@ -208,6 +217,14 @@ function WorkMode:onLoad(savegame)
 			end
 
 			j = j + 1
+		end
+
+		local movingToolLimitNode = self.xmlFile:getValue(key .. ".movingToolLimit#node", nil, self.components, self.i3dMappings)
+
+		if movingToolLimitNode ~= nil then
+			entry.movingTool = self:getMovingToolByNode(movingToolLimitNode)
+			entry.movingToolMinRot = self.xmlFile:getValue(key .. ".movingToolLimit#minRot", 0)
+			entry.movingToolMaxRot = self.xmlFile:getValue(key .. ".movingToolLimit#maxRot", 0)
 		end
 
 		entry.windrowerEffects = g_effectManager:loadEffect(self.xmlFile, string.format("%s.windrowerEffect", key), self.components, self, self.i3dMappings)
@@ -608,6 +625,22 @@ function WorkMode:setWorkMode(state, noEventSend)
 		for _, effect in pairs(currentMode.windrowerEffects) do
 			g_effectManager:stopEffect(effect)
 		end
+
+		if newMode.movingTool ~= nil then
+			local movingTool = newMode.movingTool
+
+			if newMode.movingToolMinRot ~= nil then
+				movingTool.rotMin = newMode.movingToolMinRot
+			end
+
+			if newMode.movingToolMaxRot ~= nil then
+				movingTool.rotMax = newMode.movingToolMaxRot
+			end
+
+			if self.isClient then
+				movingTool.networkInterpolators.rotation:setMinMax(movingTool.rotMin, movingTool.rotMax)
+			end
+		end
 	end
 
 	local workAreaSpec = self.spec_workArea
@@ -672,6 +705,56 @@ function WorkMode:getIsSprayTypeActive(superFunc, sprayType)
 	end
 
 	return superFunc(self, sprayType)
+end
+
+function WorkMode:loadMovingToolFromXML(superFunc, xmlFile, key, entry)
+	if not superFunc(self, xmlFile, key, entry) then
+		return false
+	end
+
+	entry.allowWhileChangingWorkMode = self.xmlFile:getValue(key .. "#allowWhileChangingWorkMode", true)
+
+	return true
+end
+
+function WorkMode:getIsMovingToolActive(superFunc, movingTool)
+	if not movingTool.allowWhileChangingWorkMode then
+		local spec = self.spec_workMode
+
+		for i = 1, #spec.workModes do
+			local workMode = spec.workModes[i]
+
+			for j = 1, #workMode.animations do
+				if self:getIsAnimationPlaying(workMode.animations[j].animName) then
+					return false
+				end
+			end
+		end
+	end
+
+	return superFunc(self, movingTool)
+end
+
+function WorkMode:getAreEffectsVisible(superFunc)
+	if not superFunc(self) then
+		return false
+	end
+
+	local spec = self.spec_workMode
+
+	if spec.stateMax > 0 then
+		for i = 1, #spec.workModes do
+			local workMode = spec.workModes[i]
+
+			for j = 1, #workMode.animations do
+				if self:getIsAnimationPlaying(workMode.animations[j].animName) then
+					return false
+				end
+			end
+		end
+	end
+
+	return true
 end
 
 function WorkMode:getIsWorkModeChangeAllowed()

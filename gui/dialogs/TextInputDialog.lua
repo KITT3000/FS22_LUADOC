@@ -32,16 +32,7 @@ function TextInputDialog:onOpen()
 	self.textElement.blockTime = 0
 
 	self.textElement:onFocusActivate()
-
-	if self.textElement.imeActive then
-		if self.yesButton ~= nil then
-			self.yesButton:setVisible(false)
-		end
-
-		if self.noButton ~= nil then
-			self.noButton:setVisible(false)
-		end
-	end
+	self:updateButtonVisibility()
 end
 
 function TextInputDialog:onClose()
@@ -51,13 +42,7 @@ function TextInputDialog:onClose()
 		self.textElement:setForcePressed(false)
 	end
 
-	if self.yesButton ~= nil then
-		self.yesButton:setVisible(true)
-	end
-
-	if self.noButton ~= nil then
-		self.noButton:setVisible(true)
-	end
+	self:updateButtonVisibility()
 end
 
 function TextInputDialog:setCallback(onTextEntered, target, defaultInputText, dialogPrompt, imePrompt, maxCharacters, callbackArgs, isPasswordDialog, disableFilter)
@@ -126,11 +111,16 @@ function TextInputDialog:onClickOk()
 				self.textElement:setText(filteredText)
 				Logging.info("Entered text contains profanity and has been adjusted.")
 
+				self.reactivateNextFrame = true
+
+				self:updateButtonVisibility()
+
 				return false
 			end
 		end
 
 		self:sendCallback(true)
+		self:updateButtonVisibility()
 
 		return false
 	else
@@ -138,8 +128,28 @@ function TextInputDialog:onClickOk()
 	end
 end
 
+function TextInputDialog:updateButtonVisibility()
+	if self.yesButton ~= nil then
+		self.yesButton:setVisible(not self.textElement.imeActive)
+	end
+
+	if self.noButton ~= nil then
+		self.noButton:setVisible(not self.textElement.imeActive)
+	end
+end
+
 function TextInputDialog:update(dt)
 	TextInputDialog:superClass().update(self, dt)
+
+	if self.reactivateNextFrame then
+		self.textElement.blockTime = 0
+
+		self.textElement:onFocusActivate()
+
+		self.reactivateNextFrame = false
+
+		self:updateButtonVisibility()
+	end
 
 	if self.extraInputDisableTime > 0 then
 		self.extraInputDisableTime = self.extraInputDisableTime - dt

@@ -233,8 +233,7 @@ function AIDriveStrategyCombine:getDriveData(dt, vX, vY, vZ)
 			self.vehicle:addAIDebugText("COMBINE -> Waiting for straw to drop")
 		end
 
-		local h = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, self.vehicle.aiDriveTarget[1], 0, self.vehicle.aiDriveTarget[2])
-		local x, _, z = worldToLocal(self.vehicle:getAIDirectionNode(), self.vehicle.aiDriveTarget[1], h, self.vehicle.aiDriveTarget[2])
+		local x, _, z = localToWorld(self.vehicle:getAIDirectionNode(), 0, 0, -10)
 		local dist = MathUtil.vector2Length(vX - x, vZ - z)
 
 		return x, z, false, 10, dist

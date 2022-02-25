@@ -294,25 +294,26 @@ function WorkParticles:loadGroundAnimations(xmlFile, key, animation, index)
 
 	if filenameStr ~= nil then
 		filenameStr = Utils.getFilename(filenameStr, self.baseDirectory)
-		animation.sharedLoadRequestId = self:loadSubSharedI3DFile(filenameStr, false, false, self.onGroundAnimationI3DLoaded, self, {
-			filenameStr,
-			animation
-		})
+		local arguments = {
+			filename = filenameStr,
+			animation = animation
+		}
+		animation.sharedLoadRequestId = self:loadSubSharedI3DFile(filenameStr, false, false, self.onGroundAnimationI3DLoaded, self, arguments)
 	end
 
 	return true
 end
 
 function WorkParticles:onGroundAnimationI3DLoaded(i3dNode, args)
-	local filename, animation = unpack(args)
-
 	if i3dNode ~= 0 then
+		local animation = args.animation
+
 		for _, mapping in ipairs(animation.mappings) do
 			link(mapping.node, mapping.animNode)
 			setVisibility(mapping.animNode, false)
 		end
 
-		animation.filename = filename
+		animation.filename = args.filename
 
 		delete(i3dNode)
 	end
@@ -387,12 +388,13 @@ function WorkParticles:loadGroundParticles(xmlFile, key, particle, index)
 
 	if filename ~= nil then
 		filename = Utils.getFilename(filename, self.baseDirectory)
-		particle.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.groundParticleI3DLoaded, self, {
-			xmlFile,
-			key,
-			particle,
-			filename
-		})
+		local arguments = {
+			xmlFile = xmlFile,
+			key = key,
+			particle = particle,
+			filename = filename
+		}
+		particle.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.groundParticleI3DLoaded, self, arguments)
 	else
 		local j = 0
 
@@ -417,7 +419,10 @@ function WorkParticles:loadGroundParticles(xmlFile, key, particle, index)
 end
 
 function WorkParticles:groundParticleI3DLoaded(i3dNode, failedReason, args)
-	local xmlFile, key, particle, filename = unpack(args)
+	local xmlFile = args.xmlFile
+	local key = args.key
+	local particle = args.particle
+	local filename = args.filename
 	local j = 0
 
 	while true do

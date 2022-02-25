@@ -11,7 +11,7 @@ function Basketball:onCreate(id)
 	filename = Utils.getFilename(filename, g_currentMission.loadingMapBaseDirectory)
 
 	if basketball:load(filename, x, y, z, rx, ry, rz) then
-		g_currentMission:addOnCreateLoadedObject(basketball)
+		g_currentMission.onCreateObjectSystem:add(basketball)
 		basketball:register(true)
 	else
 		basketball:delete()

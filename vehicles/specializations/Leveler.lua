@@ -29,6 +29,7 @@ function Leveler.initSpecialization()
 	schema:register(XMLValueType.FLOAT, basePath .. ".smoothing#radius", "Smooth ground radius", 0.5)
 	schema:register(XMLValueType.FLOAT, basePath .. ".smoothing#overlap", "Radius overlap", 1.7)
 	schema:register(XMLValueType.INT, basePath .. ".smoothing#direction", "Smooth direction (if set to '0' it smooths in both directions)", -1)
+	schema:register(XMLValueType.INT, basePath .. "#fillUnitIndex", "Fill unit index", "Value of vehicle.leveler#fillUnitIndex")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".occlusionAreas.occlusionArea(?)#startNode", "Start node")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".occlusionAreas.occlusionArea(?)#widthNode", "Width node")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".occlusionAreas.occlusionArea(?)#heightNode", "Height node")
@@ -70,6 +71,9 @@ function Leveler:onLoad(savegame)
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, self.configFileName, "vehicle.leveler.levelerNode(0)#minDropHeight")
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, self.configFileName, "vehicle.leveler.levelerNode(0)#maxDropHeight")
 
+	spec.pickUpDirection = self.xmlFile:getValue("vehicle.leveler.pickUpDirection", 1)
+	spec.maxFillLevelPerMS = self.xmlFile:getValue("vehicle.leveler#maxFillLevelPerMS", 35)
+	spec.fillUnitIndex = self.xmlFile:getValue("vehicle.leveler#fillUnitIndex")
 	spec.nodes = {}
 	local i = 0
 
@@ -90,16 +94,6 @@ function Leveler:onLoad(savegame)
 		end
 
 		i = i + 1
-	end
-
-	spec.pickUpDirection = self.xmlFile:getValue("vehicle.leveler.pickUpDirection", 1)
-	spec.maxFillLevelPerMS = self.xmlFile:getValue("vehicle.leveler#maxFillLevelPerMS", 35)
-	spec.fillUnitIndex = self.xmlFile:getValue("vehicle.leveler#fillUnitIndex")
-
-	if not self:getFillUnitExists(spec.fillUnitIndex) then
-		Logging.xmlWarning(self.xmlFile, "Unknown fillUnitIndex '%s' for leveler", tostring(spec.fillUnitIndex))
-
-		spec.nodes = {}
 	end
 
 	spec.litersToPickup = 0
@@ -155,7 +149,15 @@ function Leveler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 	local spec = self.spec_leveler
 
 	if self.isClient then
-		local fillType = self:getFillUnitLastValidFillType(spec.fillUnitIndex)
+		local fillType = FillType.UNKNOWN
+
+		for _, levelerNode in pairs(spec.nodes) do
+			fillType = self:getFillUnitLastValidFillType(levelerNode.fillUnitIndex)
+
+			if fillType ~= FillType.UNKNOWN then
+				break
+			end
+		end
 
 		if fillType ~= FillType.UNKNOWN and spec.lastFillLevelMovedPct > 0 then
 			g_effectManager:setFillType(spec.effects, fillType)
@@ -186,14 +188,14 @@ function Leveler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 			end
 
 			local pickedUpFillLevel = 0
-			local fillType = self:getFillUnitFillType(spec.fillUnitIndex)
-			local fillLevel = self:getFillUnitFillLevel(spec.fillUnitIndex)
+			local fillType = self:getFillUnitFillType(levelerNode.fillUnitIndex)
+			local fillLevel = self:getFillUnitFillLevel(levelerNode.fillUnitIndex)
 
 			if fillType == FillType.UNKNOWN or fillLevel < g_densityMapHeightManager:getMinValidLiterValue(fillType) + 0.001 then
 				local newFillType = DensityMapHeightUtil.getFillTypeAtLine(x0, y0, z0, x1, y1, z1, 0.5 * levelerNode.maxDropDirOffset)
 
-				if newFillType ~= FillType.UNKNOWN and newFillType ~= fillType and self:getFillUnitSupportsFillType(spec.fillUnitIndex, newFillType) then
-					self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, -math.huge)
+				if newFillType ~= FillType.UNKNOWN and newFillType ~= fillType and self:getFillUnitSupportsFillType(levelerNode.fillUnitIndex, newFillType) then
+					self:addFillUnitFillLevel(self:getOwnerFarmId(), levelerNode.fillUnitIndex, -math.huge)
 
 					fillType = newFillType
 				end
@@ -204,7 +206,7 @@ function Leveler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 			if fillType ~= FillType.UNKNOWN and heightType ~= nil then
 				local innerRadius = 0.5
 				local outerRadius = 2
-				local capacity = self:getFillUnitCapacity(spec.fillUnitIndex)
+				local capacity = self:getFillUnitCapacity(levelerNode.fillUnitIndex)
 				local dirY = 0
 
 				if levelerNode.alignToWorldY then
@@ -225,7 +227,7 @@ function Leveler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 						ey = math.max(ey, ey2)
 					end
 
-					fillLevel = self:getFillUnitFillLevel(spec.fillUnitIndex)
+					fillLevel = self:getFillUnitFillLevel(levelerNode.fillUnitIndex)
 					local delta = -(capacity - fillLevel)
 					local numHeightLimitChecks = levelerNode.numHeightLimitChecks
 
@@ -257,7 +259,7 @@ function Leveler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 						levelerNode.lastPickUp = levelerNode.lastPickUp + spec.litersToPickup
 						spec.litersToPickup = 0
 
-						self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, -levelerNode.lastPickUp, fillType, ToolType.UNDEFINED, nil)
+						self:addFillUnitFillLevel(self:getOwnerFarmId(), levelerNode.fillUnitIndex, -levelerNode.lastPickUp, fillType, ToolType.UNDEFINED, nil)
 
 						pickedUpFillLevel = levelerNode.lastPickUp
 					end
@@ -277,7 +279,7 @@ function Leveler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 					spec.lastFillLevelMovedBuffer = 0
 				end
 
-				fillLevel = self:getFillUnitFillLevel(spec.fillUnitIndex)
+				fillLevel = self:getFillUnitFillLevel(levelerNode.fillUnitIndex)
 
 				if fillLevel > 0 then
 					local f = fillLevel / capacity
@@ -295,11 +297,11 @@ function Leveler:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 							spec.litersToPickup = spec.litersToPickup + leftOver
 						end
 
-						self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, -levelerNode.lastDrop1, fillType, ToolType.UNDEFINED, nil)
+						self:addFillUnitFillLevel(self:getOwnerFarmId(), levelerNode.fillUnitIndex, -levelerNode.lastDrop1, fillType, ToolType.UNDEFINED, nil)
 					end
 				end
 
-				fillLevel = self:getFillUnitFillLevel(spec.fillUnitIndex)
+				fillLevel = self:getFillUnitFillLevel(levelerNode.fillUnitIndex)
 
 				if fillLevel > 0 then
 					local dropOffset = MathUtil.lerp(levelerNode.minDropDirOffset, levelerNode.maxDropDirOffset, spec.lastFillLevelMovedPct)
@@ -427,6 +429,13 @@ function Leveler:loadLevelerNodeFromXML(levelerNode, xmlFile, key)
 		levelerNode.lineOffsetDrop = nil
 		levelerNode.lastPickUp = 0
 		levelerNode.lastDrop = 0
+		levelerNode.fillUnitIndex = xmlFile:getValue(key .. "#fillUnitIndex", self.spec_leveler.fillUnitIndex)
+
+		if not self:getFillUnitExists(levelerNode.fillUnitIndex) then
+			Logging.xmlWarning(self.xmlFile, "Unknown fillUnitIndex '%s' for leveler", tostring(levelerNode.fillUnitIndex))
+
+			return false
+		end
 
 		return true
 	end
@@ -464,7 +473,7 @@ function Leveler.onLevelerRaycastCallback(levelerNode, hitObjectId, x, y, z, dis
 	end
 
 	if isLast and not levelerNode.raycastHitObject then
-		local fillLevel = self:getFillUnitFillLevel(spec.fillUnitIndex)
+		local fillLevel = self:getFillUnitFillLevel(levelerNode.fillUnitIndex)
 
 		if fillLevel > 0 then
 			local fillType = levelerNode.raycastLastFillType
@@ -498,7 +507,7 @@ function Leveler.onLevelerRaycastCallback(levelerNode, hitObjectId, x, y, z, dis
 					spec.litersToPickup = spec.litersToPickup + leftOver
 				end
 
-				self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, -levelerNode.lastDrop2, fillType, ToolType.UNDEFINED, nil)
+				self:addFillUnitFillLevel(self:getOwnerFarmId(), levelerNode.fillUnitIndex, -levelerNode.lastDrop2, fillType, ToolType.UNDEFINED, nil)
 			end
 		end
 	end

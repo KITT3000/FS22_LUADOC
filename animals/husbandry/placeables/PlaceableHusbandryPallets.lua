@@ -53,7 +53,7 @@ end
 
 function PlaceableHusbandryPallets:onLoad(savegame)
 	local spec = self.spec_husbandryPallets
-	spec.palletSpawner = PalletSpawner.new()
+	spec.palletSpawner = PalletSpawner.new(self.baseDirectory)
 
 	spec.palletSpawner:load(self.components, self.xmlFile, "placeable.husbandry.pallets", self.customEnvironment, self.i3dMappings)
 

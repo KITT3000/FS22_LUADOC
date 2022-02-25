@@ -116,6 +116,7 @@ function WoodUnloadTrigger:processWood(farmId, noEventSend)
 
 	local soldWood = false
 	local totalMass = 0
+	local isFull = false
 
 	for _, nodeId in pairs(self.woodInTrigger) do
 		if entityExists(nodeId) then
@@ -124,12 +125,20 @@ function WoodUnloadTrigger:processWood(farmId, noEventSend)
 			self.extraAttributes.price = qualityScale
 
 			if g_currentMission:getIsServer() then
-				self.target:addFillUnitFillLevel(farmId, nil, volume, FillType.WOOD, ToolType.undefined, nil, self.extraAttributes)
-				delete(nodeId)
+				if self.target.getFillUnitFreeCapacity == nil or self.target:getFillUnitFreeCapacity(nil, FillType.WOOD, farmId) > volume * 0.9 then
+					self.target:addFillUnitFillLevel(farmId, nil, volume, FillType.WOOD, ToolType.undefined, nil, self.extraAttributes)
+					delete(nodeId)
+				else
+					isFull = true
+				end
 			end
 		end
 
-		self.woodInTrigger[nodeId] = nil
+		if isFull then
+			break
+		else
+			self.woodInTrigger[nodeId] = nil
+		end
 	end
 
 	if soldWood and g_currentMission:getIsServer() then

@@ -199,7 +199,13 @@ function Utils.getYRotationBetweenNodes(node1, node2, offset1, offset2)
 		dir = -dir
 	end
 
-	return MathUtil.getVectorAngleDifference(wDirX1, 0, wDirZ1, wDirX2, 0, wDirZ2) * dir
+	local angle = MathUtil.getVectorAngleDifference(wDirX1, 0, wDirZ1, wDirX2, 0, wDirZ2)
+
+	if math.abs(angle) > math.pi * 0.5 then
+		angle = -(math.pi - angle)
+	end
+
+	return angle * dir
 end
 
 function Utils.getPerformanceClassIndex(profileClass)

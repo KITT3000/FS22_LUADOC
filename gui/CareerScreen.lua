@@ -348,6 +348,8 @@ function CareerScreen:updateButtons()
 	end
 
 	local canStartGame = self.savegameController:getCanStartGame(self.savegameList.selectedIndex)
+	local isNewSave = not self.savegameController:getSavegame(self.savegameList.selectedIndex).isValid
+	canStartGame = canStartGame and (self.startMissionInfo.scenarioId == nil or isNewSave)
 
 	if self.buttonStart then
 		self.buttonStart:setDisabled(not canStartGame)
@@ -390,66 +392,79 @@ function CareerScreen:startSavegame(savegame)
 			text = string.format(g_i18n:getText("ui_modsZipOnly"), savegame.map.title)
 		})
 	elseif SlotSystem.TOTAL_NUM_GARAGE_SLOTS[GS_PLATFORM_ID] < savegame.slotUsage then
-		g_gui:showInfoDialog({
-			text = g_i18n:getText("ui_savegameSlotLimitReached")
+		local function continue(yes)
+			if yes then
+				self:doModCheck(savegame)
+			end
+		end
+
+		g_gui:showYesNoDialog({
+			text = g_i18n:getText("ui_savegameSlotLimitReached"),
+			callback = continue,
+			yesButton = g_i18n:getText("button_continue"),
+			noButton = g_i18n:getText("button_cancel")
 		})
 	else
-		local missingModTitles = {}
-		local hasRequiredMissing = false
-		local hasNoMpMods = false
+		self:doModCheck(savegame)
+	end
+end
 
-		for _, modInfo in pairs(savegame.mods) do
-			local mod = g_modManager:getModByName(modInfo.modName)
+function CareerScreen:doModCheck(savegame)
+	local missingModTitles = {}
+	local hasRequiredMissing = false
+	local hasNoMpMods = false
 
-			if mod == nil then
-				if modInfo.required then
-					table.insert(missingModTitles, 1, modInfo.title)
+	for _, modInfo in pairs(savegame.mods) do
+		local mod = g_modManager:getModByName(modInfo.modName)
 
-					hasRequiredMissing = true
-				else
-					table.insert(missingModTitles, modInfo.title)
-				end
-			elseif not mod.isMultiplayerSupported and self.isMultiplayer then
-				if not hasRequiredMissing and not GS_IS_CONSOLE_VERSION then
-					hasNoMpMods = true
+		if mod == nil then
+			if modInfo.required then
+				table.insert(missingModTitles, 1, modInfo.title)
 
-					table.insert(missingModTitles, 1, mod.title)
-				else
-					table.insert(missingModTitles, mod.title)
-				end
-			end
-		end
-
-		if #missingModTitles > 0 and g_dedicatedServer == nil then
-			local numMissing = math.min(#missingModTitles, 4)
-			local modsText = missingModTitles[1]
-
-			for i = 2, numMissing do
-				modsText = modsText .. ", " .. missingModTitles[i]
-			end
-
-			if hasRequiredMissing then
-				g_gui:showInfoDialog({
-					text = g_i18n:getText("ui_savegameHasMissingDlcs") .. "\n" .. modsText
-				})
-			elseif hasNoMpMods then
-				g_gui:showInfoDialog({
-					text = string.format(g_i18n:getText("ui_modsZipOnly"), missingModTitles[1]),
-					callback = CareerScreen.onOkZipModsOptional,
-					target = self
-				})
+				hasRequiredMissing = true
 			else
-				g_gui:showYesNoDialog({
-					text = g_i18n:getText("ui_savegameHasMissingDlcsOptional") .. "\n" .. modsText .. "\n\n" .. g_i18n:getText("ui_continueQuestion"),
-					callback = self.onYesNoInstallMissingModsOptional,
-					target = self,
-					yesButton = g_i18n:getText("button_continue"),
-					noButton = g_i18n:getText("button_cancel")
-				})
+				table.insert(missingModTitles, modInfo.title)
 			end
-		else
-			self:startCurrentSavegame()
+		elseif not mod.isMultiplayerSupported and self.isMultiplayer then
+			if not hasRequiredMissing and not GS_IS_CONSOLE_VERSION then
+				hasNoMpMods = true
+
+				table.insert(missingModTitles, 1, mod.title)
+			else
+				table.insert(missingModTitles, mod.title)
+			end
 		end
+	end
+
+	if #missingModTitles > 0 and g_dedicatedServer == nil then
+		local numMissing = math.min(#missingModTitles, 4)
+		local modsText = missingModTitles[1]
+
+		for i = 2, numMissing do
+			modsText = modsText .. ", " .. missingModTitles[i]
+		end
+
+		if hasRequiredMissing then
+			g_gui:showInfoDialog({
+				text = g_i18n:getText("ui_savegameHasMissingDlcs") .. "\n" .. modsText
+			})
+		elseif hasNoMpMods then
+			g_gui:showInfoDialog({
+				text = string.format(g_i18n:getText("ui_modsZipOnly"), missingModTitles[1]),
+				callback = CareerScreen.onOkZipModsOptional,
+				target = self
+			})
+		else
+			g_gui:showYesNoDialog({
+				text = g_i18n:getText("ui_savegameHasMissingDlcsOptional") .. "\n" .. modsText .. "\n\n" .. g_i18n:getText("ui_continueQuestion"),
+				callback = self.onYesNoInstallMissingModsOptional,
+				target = self,
+				yesButton = g_i18n:getText("button_continue"),
+				noButton = g_i18n:getText("button_cancel")
+			})
+		end
+	else
+		self:startCurrentSavegame()
 	end
 end
 
@@ -457,7 +472,9 @@ function CareerScreen:onYesNoNotEnoughSpaceForNewSaveGame(yes)
 	self.startMissionInfo.createGame = yes
 
 	if yes then
-		if g_isPresentationVersion and g_presentationVersionDifficulty ~= nil then
+		if self.startMissionInfo.scenarioId ~= nil then
+			self:startCurrentSavegame(true)
+		elseif g_isPresentationVersion and g_presentationVersionDifficulty ~= nil then
 			self.startMissionInfo.difficulty = MathUtil.clamp(g_presentationVersionDifficulty, 1, 3)
 
 			self:changeScreen(MapSelectionScreen, CareerScreen)
@@ -513,6 +530,7 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 	if useStartMissionInfo then
 		savegame:setMapId(self.startMissionInfo.mapId)
 		savegame:setDifficulty(self.startMissionInfo.difficulty)
+		savegame:setScenarioId(self.startMissionInfo.scenarioId)
 	end
 
 	savegame.isNewSPCareer = false
@@ -545,17 +563,11 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 		savegame.farmlandXMLLoad = nil
 		savegame.aiSystemXMLLoad = nil
 		savegame.npcXMLLoad = nil
-		savegame.npcXMLLoad = nil
 		savegame.densityMapHeightXMLLoad = nil
 		savegame.treePlantXMLLoad = nil
-		savegame.timeScale = Platform.gameplay.defaultTimeScale
-		savegame.dirtInterval = 3
-		savegame.trafficEnabled = true
 		savegame.fieldJobMissionCount = 0
 		savegame.fieldJobMissionByNPC = 0
 		savegame.transportMissionCount = 0
-		savegame.eastState1 = 0
-		savegame.eastState2 = 0
 
 		if g_isPresentationVersion then
 			savegame.isNewSPCareer = false
@@ -570,7 +582,11 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 		autoSave = false
 	}
 
-	if self.isMultiplayer and g_modManager:getNumOfValidMods() > 0 or not self.isMultiplayer and g_modManager:getNumOfMods() > 0 then
+	if savegame.scenarioId then
+		missionDynamicInfo.mods = {}
+
+		self:startGame(missionInfo, missionDynamicInfo)
+	elseif self.isMultiplayer and g_modManager:getNumOfValidMods() > 0 or not self.isMultiplayer and g_modManager:getNumOfMods() > 0 then
 		g_modSelectionScreen:setMissionInfo(missionInfo, missionDynamicInfo)
 
 		self.startMissionInfo.canStart = false

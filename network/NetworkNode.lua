@@ -27,69 +27,102 @@ function NetworkNode.new(customMt)
 	self.lastUploadedKBs = 0
 	self.lastUploadedKBsSmooth = 0
 	self.maxUploadedKBs = 0
-	self.graphColors = {
+	self.graphData = {
 		[NetworkNode.PACKET_EVENT] = {
-			1,
-			0,
-			0,
-			1
+			title = "event",
+			color = {
+				1,
+				0,
+				0,
+				1
+			}
 		},
 		[NetworkNode.PACKET_VEHICLE] = {
-			0,
-			1,
-			0,
-			1
+			title = "vehicle",
+			color = {
+				0,
+				1,
+				0,
+				1
+			}
 		},
 		[NetworkNode.PACKET_PLAYER] = {
-			0,
-			0,
-			1,
-			1
+			title = "player",
+			color = {
+				0,
+				0,
+				1,
+				1
+			}
 		},
 		[NetworkNode.PACKET_SPLITSHAPES] = {
-			1,
-			1,
-			0,
-			1
+			title = "split shapes",
+			color = {
+				1,
+				1,
+				0,
+				1
+			}
 		},
 		[NetworkNode.PACKET_DENSITY_MAPS] = {
-			0.5,
-			0.5,
-			0,
-			1
+			title = "density maps",
+			color = {
+				0.5,
+				0.5,
+				0,
+				1
+			}
 		},
 		[NetworkNode.PACKET_TERRAIN_DEFORM] = {
-			0.5,
-			0.5,
-			0.5,
-			1
+			title = "terrain deform",
+			color = {
+				0.5,
+				0.5,
+				0.5,
+				1
+			}
 		},
 		[NetworkNode.PACKET_VOICE_CHAT] = {
-			1,
-			0.5,
-			0.5,
-			1
+			title = "voice chat",
+			color = {
+				1,
+				0.5,
+				0.5,
+				1
+			}
 		},
 		[NetworkNode.PACKET_OTHERS] = {
-			0,
-			1,
-			1,
-			1
+			title = "others",
+			color = {
+				0,
+				1,
+				1,
+				1
+			}
 		}
 	}
 	self.packetGraphs = {}
+	self.connectionPacketGraphs = {}
 	self.packetBytes = {}
 
 	for i = 1, NetworkNode.NUM_PACKETS do
 		local showGraphLabels = i == 1
-		self.packetGraphs[i] = Graph.new(80, 0.2, 0.22, 0.6, 0.6, 0, 1000, showGraphLabels, "bytes")
+		self.packetGraphs[i] = Graph.new(80, 0.4, 0.05, 0.55, 0.8, 0, 1000, showGraphLabels, "bytes (max)")
+		local color = self.graphData[i].color
 
-		self.packetGraphs[i]:setColor(self.graphColors[i][1], self.graphColors[i][2], self.graphColors[i][3], self.graphColors[i][4])
+		self.packetGraphs[i]:setColor(color[1], color[2], color[3], color[4])
 
-		self.packetBytes[i] = 0
+		if showGraphLabels then
+			self.packetGraphs[i]:setHorizontalLine(1000, false, 1, 1, 1, 0.2)
+			self.packetGraphs[i]:setBackgroundColor(0.2, 0.2, 0.2, 0.3)
+		end
+
+		self.packetBytes[i] = {}
+		self.connectionPacketGraphs[i] = {}
 	end
 
 	self.showNetworkTraffic = false
+	self.showNetworkTrafficClients = false
 	self.showObjects = false
 
 	return self
@@ -107,6 +140,14 @@ function NetworkNode:delete()
 	self.activeObjectsNextFrame = {}
 	self.removedObjects = {}
 	self.dirtyObjects = {}
+
+	for _, connections in pairs(self.connectionPacketGraphs) do
+		for connection, graph in pairs(connections) do
+			graph:delete()
+
+			connections[connection] = nil
+		end
+	end
 
 	for i = 1, NetworkNode.NUM_PACKETS do
 		self.packetGraphs[i]:delete()
@@ -171,7 +212,7 @@ function NetworkNode:updateActiveObjectsTick(dt)
 	return self.dirtyObjects
 end
 
-function NetworkNode:drawConnectionNetworkStats(connection, offsetY)
+function NetworkNode:drawConnectionNetworkStats(connection, posX, posY, textSize)
 	if connection.streamId == NetworkNode.LOCAL_STREAM_ID then
 		return false
 	end
@@ -200,13 +241,14 @@ function NetworkNode:drawConnectionNetworkStats(connection, offsetY)
 	upload = connection.uploadSmooth
 	download = connection.downloadSmooth
 	ping = connection.pingSmooth
+	local refTextSize = getCorrectTextSize(0.01)
 
-	renderText(0.5, 0.77 - offsetY * 0.03, 0.025, string.format("%dms", ping))
-	renderText(0.55, 0.77 - offsetY * 0.03, 0.025, string.format("w:%2d", connection.lastSeqSent - connection.highestAckedSeq))
-	renderText(0.6, 0.77 - offsetY * 0.03, 0.025, string.format("d:%4.2fkb/s", download / 1024))
-	renderText(0.69, 0.77 - offsetY * 0.03, 0.025, string.format("u:%4.2fkb/s", upload / 1024))
-	renderText(0.78, 0.77 - offsetY * 0.03, 0.025, string.format("l:%4.2f%%", packetLoss * 100))
-	renderText(0.85, 0.77 - offsetY * 0.03, 0.025, string.format("comp:%.2f%%", 1 / connection.compressionRatio * 100))
+	renderText(posX, posY, textSize, string.format("%dms", ping))
+	renderText(posX + 0.016 * textSize / refTextSize, posY, textSize, string.format("w:%2d", connection.lastSeqSent - connection.highestAckedSeq))
+	renderText(posX + 0.029 * textSize / refTextSize, posY, textSize, string.format("d:%4.2fkb/s", download / 1024))
+	renderText(posX + 0.059 * textSize / refTextSize, posY, textSize, string.format("u:%4.2fkb/s", upload / 1024))
+	renderText(posX + 0.092 * textSize / refTextSize, posY, textSize, string.format("l:%4.2f%%", packetLoss * 100))
+	renderText(posX + 0.117 * textSize / refTextSize, posY, textSize, string.format("comp:%.2f%%", 1 / connection.compressionRatio * 100))
 
 	return true
 end
@@ -252,25 +294,80 @@ function NetworkNode:checkObjectUpdateDebugReadSize(streamId, numBits, startOffs
 	end
 end
 
-function NetworkNode:addPacketSize(packetType, packetSizeInBytes)
-	if self.showNetworkTraffic then
-		self.packetBytes[packetType] = self.packetBytes[packetType] + packetSizeInBytes
+function NetworkNode:addPacketSize(connection, packetType, packetSizeInBytes)
+	if self.showNetworkTraffic or self.showNetworkTrafficClients then
+		self.packetBytes[packetType][connection] = (self.packetBytes[packetType][connection] or 0) + packetSizeInBytes
 	end
 end
 
 function NetworkNode:updatePacketStats(dt)
-	if self.showNetworkTraffic then
+	if self.showNetworkTraffic or self.showNetworkTrafficClients then
 		local packetBytesSum = 0
+		local connectionSum = {}
 
 		for i = 1, NetworkNode.NUM_PACKETS do
-			self.packetGraphs[i]:addValue(packetBytesSum + self.packetBytes[i], packetBytesSum)
+			local connections = self.packetBytes[i]
+			local totalPacketBytes = 0
 
-			packetBytesSum = packetBytesSum + self.packetBytes[i]
-			self.packetBytes[i] = 0
+			for connection, bytes in pairs(connections) do
+				if self.clientConnections ~= nil and self.clientConnections[connection.streamId] == nil then
+					connections[connection] = nil
+
+					if self.connectionPacketGraphs[i][connection] ~= nil then
+						self.connectionPacketGraphs[i][connection]:delete()
+
+						self.connectionPacketGraphs[i][connection] = nil
+					end
+				end
+
+				if connections[connection] ~= nil then
+					if self.connectionPacketGraphs[i][connection] == nil then
+						local showGraphLabels = i == 1
+						self.connectionPacketGraphs[i][connection] = Graph.new(80, 0, 0, 0.15, 0.25, 0, 7500, showGraphLabels, "bytes", nil, nil, nil, getCorrectTextSize(0.008))
+						local color = self.graphData[i].color
+
+						self.connectionPacketGraphs[i][connection]:setColor(color[1], color[2], color[3], color[4])
+
+						if showGraphLabels then
+							self.connectionPacketGraphs[i][connection]:setHorizontalLine(1000, false, 1, 1, 1, 0.3)
+							self.connectionPacketGraphs[i][connection]:setBackgroundColor(0.2, 0.2, 0.2, 0.3)
+						end
+					end
+
+					if connectionSum[connection] == nil then
+						connectionSum[connection] = 0
+					end
+
+					self.connectionPacketGraphs[i][connection]:addValue(connectionSum[connection] + bytes, connectionSum[connection])
+
+					connectionSum[connection] = connectionSum[connection] + bytes
+					connections[connection] = 0
+					totalPacketBytes = totalPacketBytes + bytes
+				end
+			end
+
+			self.packetGraphs[i]:addValue(packetBytesSum + totalPacketBytes, packetBytesSum)
+
+			packetBytesSum = packetBytesSum + totalPacketBytes
+		end
+
+		for i = 1, NetworkNode.NUM_PACKETS do
+			self.packetGraphs[i].maxValue = math.max(self.packetGraphs[i].maxValue, packetBytesSum)
 		end
 
 		self.lastUploadedKBs = packetBytesSum / 1024 * 1000 / dt
 	end
+end
+
+function NetworkNode:drawGraphLabels(x, y, textSize)
+	for i = 1, NetworkNode.NUM_PACKETS do
+		local data = self.graphData[i]
+
+		setTextColor(unpack(data.color))
+		renderText(x, y + (i - 1) * textSize, textSize, data.title)
+	end
+
+	setTextColor(1, 1, 1, 1)
 end
 
 function NetworkNode:draw()
@@ -278,45 +375,83 @@ function NetworkNode:draw()
 		local smoothAlpha = 0.8
 		self.lastUploadedKBsSmooth = self.lastUploadedKBsSmooth * smoothAlpha + self.lastUploadedKBs * (1 - smoothAlpha)
 
-		renderText(0.6, 0.8, getCorrectTextSize(0.025), string.format("Game Data Upload %.2fkb/s ", self.lastUploadedKBsSmooth))
+		renderText(0.01, 0.8, getCorrectTextSize(0.015), string.format("Game Data Upload %.2fkb/s ", self.lastUploadedKBsSmooth))
+
+		local x = self.packetGraphs[1].left - 0.15
+		local y = self.packetGraphs[1].bottom
+
+		self:drawGraphLabels(x, y, getCorrectTextSize(0.02))
 
 		for i = 1, NetworkNode.NUM_PACKETS do
 			self.packetGraphs[i]:draw()
 		end
 
-		local x = self.packetGraphs[1].left + self.packetGraphs[1].width + 0.01
-		local y = self.packetGraphs[1].bottom
-		local textSize = getCorrectTextSize(0.025)
-
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_EVENT]))
-		renderText(x, y, textSize, "event")
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_VEHICLE]))
-		renderText(x, y + textSize, textSize, "vehicle")
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_PLAYER]))
-		renderText(x, y + 2 * textSize, textSize, "player")
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_SPLITSHAPES]))
-		renderText(x, y + 3 * textSize, textSize, "split shapes")
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_DENSITY_MAPS]))
-		renderText(x, y + 4 * textSize, textSize, "density maps")
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_TERRAIN_DEFORM]))
-		renderText(x, y + 5 * textSize, textSize, "terrain deform")
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_VOICE_CHAT]))
-		renderText(x, y + 6 * textSize, textSize, "voice chat")
-		setTextColor(unpack(self.graphColors[NetworkNode.PACKET_OTHERS]))
-		renderText(x, y + 7 * textSize, textSize, "others")
-		setTextColor(1, 1, 1, 1)
+		local textSize = getCorrectTextSize(0.015)
 
 		if self.clientConnections ~= nil then
-			local i = 0
+			local i = 1
 
 			for _, connection in pairs(self.clientConnections) do
-				if self:drawConnectionNetworkStats(connection, i) then
+				local posY = 0.78 - i * textSize * 1.1
+
+				if self:drawConnectionNetworkStats(connection, 0.01, posY, textSize) then
+					local user = g_currentMission.userManager:getUserByConnection(connection)
+
+					if user ~= nil then
+						renderText(0.25, posY, textSize, user:getNickname())
+					end
+
 					i = i + 1
 				end
 			end
 		elseif self.serverConnection ~= nil then
-			self:drawConnectionNetworkStats(self.serverConnection, 0)
+			self:drawConnectionNetworkStats(self.serverConnection, 0.01, 0.8, textSize)
 		end
+	end
+
+	if self.showNetworkTrafficClients and self.clientConnections ~= nil then
+		local connections = self.clientConnections
+		local startPosX = 0.04
+		local posX = startPosX
+		local posY = 0.7
+		local textSize = getCorrectTextSize(0.01)
+
+		for _, connection in pairs(connections) do
+			local hasGraph = false
+
+			for packetType = 1, NetworkNode.NUM_PACKETS do
+				local graph = self.connectionPacketGraphs[packetType][connection]
+
+				if graph ~= nil then
+					graph.left = posX
+					graph.bottom = posY + 0.015
+					graph.showLabels = packetType == 1 and posX == startPosX
+
+					self.connectionPacketGraphs[packetType][connection]:draw()
+
+					hasGraph = true
+				end
+			end
+
+			if hasGraph then
+				self:drawConnectionNetworkStats(connection, posX, posY, textSize)
+
+				local user = g_currentMission.userManager:getUserByConnection(connection)
+
+				if user ~= nil then
+					renderText(posX, posY - 0.011, textSize, user:getNickname())
+				end
+
+				posX = posX + 0.16
+
+				if posX + 0.16 > 1 then
+					posX = startPosX
+					posY = posY - 0.32
+				end
+			end
+		end
+
+		self:drawGraphLabels(0.8, 0.1, getCorrectTextSize(0.02))
 	end
 
 	if self.showObjects then
@@ -460,15 +595,21 @@ end
 function NetworkNode:unregisterObject(object, alreadySent)
 end
 
+function NetworkNode:consoleCommandToggleNetworkShowObjects(sortByClassName)
+	self.showObjects = not self.showObjects
+	self.debugSortByClassName = string.lower(sortByClassName or "true") == "true"
+
+	return "NetworkShowObjects = " .. tostring(self.showObjects)
+end
+
 function NetworkNode:consoleCommandToggleShowNetworkTraffic()
 	self.showNetworkTraffic = not self.showNetworkTraffic
 
 	return "ShowNetworkTraffic = " .. tostring(self.showNetworkTraffic)
 end
 
-function NetworkNode:consoleCommandToggleNetworkShowObjects(sortByClassName)
-	self.showObjects = not self.showObjects
-	self.debugSortByClassName = string.lower(sortByClassName or "true") == "true"
+function NetworkNode:consoleCommandToggleShowNetworkTrafficClients()
+	self.showNetworkTrafficClients = not self.showNetworkTrafficClients
 
-	return "NetworkShowObjects = " .. tostring(self.showObjects)
+	return "ShowNetworkTrafficClients = " .. tostring(self.showNetworkTrafficClients)
 end

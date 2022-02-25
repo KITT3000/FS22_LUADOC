@@ -1,13 +1,12 @@
 g_isConsoleSimulationActive = false
 
 if g_isConsoleSimulationActive then
+	source("dataS/scripts/debug/ImeSimulator.lua")
 	print("--> Console Simulator active!")
 
-	forcedNetworkError = nil
-	forcedMPAvailability = nil
-	colorGradingActive = false
-	forcedNewDLCs = false
-	forcedStoreHaveDLCsChanged = false
+	local forcedNetworkError, forcedMPAvailability = nil
+	local forcedNewDLCs = false
+	local forcedStoreHaveDLCsChanged = false
 	local achievementsAvailable = true
 	local allSpeakersTalking = false
 	local oldKeyEvent = keyEvent
@@ -28,8 +27,6 @@ if g_isConsoleSimulationActive then
 				forcedMPAvailability = MultiplayerAvailability.NO_PRIVILEGES
 			elseif sym == Input.KEY_7 then
 				finishedUserProfileSync()
-			elseif sym == Input.KEY_8 then
-				onActiveUserChanged(true)
 			elseif sym == Input.KEY_9 then
 				g_currentMission:onMasterServerConnectionFailed(MasterServerConnection.FAILED_CONNECTION_LOST)
 			elseif sym == Input.KEY_0 then
@@ -39,6 +36,8 @@ if g_isConsoleSimulationActive then
 				achievementsAvailable = not achievementsAvailable
 			elseif sym == Input.KEY_KP_2 then
 				allSpeakersTalking = not allSpeakersTalking
+			elseif sym == Input.KEY_KP_3 then
+				acceptedGameInvite("2", "White space -user")
 			end
 		end
 
@@ -93,44 +92,6 @@ if g_isConsoleSimulationActive then
 		end
 
 		return oldGetMultiplayerAvailability()
-	end
-
-	function imeIsSupported()
-		log("[console debug] Reporting IME as available")
-
-		return true
-	end
-
-	function imeAbort()
-		log("[console debug] IME aborted")
-	end
-
-	function imeOpen(text, title, description, placeholder, keyboardType, maxCharacters)
-		log("[console debug] Opened IME with text=", text, "; title=", title, "; description=", description, "; placeholder=", placeholder, "; keyboardType=", keyboardType, "; maxCharacters=", maxCharacters)
-
-		if title == nil then
-			log("Error: IME title must be set")
-		end
-
-		if description == nil then
-			log("Error: IME description must be set")
-		end
-
-		if placeholder == nil then
-			log("Error: IME placeholder must be set")
-		end
-
-		log("[console debug] IME will be closed directly with string 'hello console world'")
-
-		return true
-	end
-
-	function imeIsComplete()
-		return true, false
-	end
-
-	function imeGetLastString()
-		return "hello console world"
 	end
 
 	function areAchievementsAvailable()

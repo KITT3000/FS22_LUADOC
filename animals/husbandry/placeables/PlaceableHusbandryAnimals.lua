@@ -128,9 +128,10 @@ function PlaceableHusbandryAnimals:onLoad(savegame)
 		navigationMeshFilename = Utils.getFilename(navigationMeshFilename, self.baseDirectory)
 		local loadingTask = self:createLoadingTask(spec)
 		spec.navigationMeshNodePath = xmlFile:getValue("placeable.husbandry.animals.navigation#nodePath", "0")
-		spec.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(navigationMeshFilename, true, false, self.onExternalNavigationMeshLoaded, self, {
-			loadingTask
-		})
+		local arguments = {
+			loadingTask = loadingTask
+		}
+		spec.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(navigationMeshFilename, true, false, self.onExternalNavigationMeshLoaded, self, arguments)
 	end
 
 	spec.placementRaycastDistance = xmlFile:getValue("placeable.husbandry.animals#placementRaycastDistance", 10)
@@ -292,7 +293,7 @@ end
 
 function PlaceableHusbandryAnimals:onExternalNavigationMeshLoaded(node, failedReason, args)
 	local spec = self.spec_husbandryAnimals
-	local loadingTask = unpack(args)
+	local loadingTask = args.loadingTask
 
 	if node == 0 or node == nil then
 		self:finishLoadingTask(loadingTask)
@@ -612,19 +613,18 @@ function PlaceableHusbandryAnimals:startRiding(clusterId, player)
 					z = z,
 					yRot = ry
 				}
+				local arguments = {
+					player = player,
+					cluster = cluster
+				}
 
-				VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, farmId, nil, nil, self.onLoadedRideable, self, {
-					player,
-					cluster
-				})
+				VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_OWNED, farmId, nil, nil, self.onLoadedRideable, self, arguments)
 			end
 		end
 	end
 end
 
 function PlaceableHusbandryAnimals:onLoadedRideable(rideableVehicle, vehicleLoadState, arguments)
-	local player, cluster = unpack(arguments)
-
 	if rideableVehicle == nil then
 		return
 	end
@@ -635,11 +635,12 @@ function PlaceableHusbandryAnimals:onLoadedRideable(rideableVehicle, vehicleLoad
 		return
 	end
 
+	local cluster = arguments.cluster
 	local newCluster = cluster:clone()
 
 	newCluster:changeNumAnimals(1)
 	rideableVehicle:setCluster(newCluster)
-	rideableVehicle:setPlayerToEnter(player)
+	rideableVehicle:setPlayerToEnter(arguments.player)
 
 	local spec = self.spec_husbandryAnimals
 

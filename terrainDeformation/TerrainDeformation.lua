@@ -72,7 +72,9 @@ function TerrainDeformation:setOutsideAreaBrush(brushId)
 end
 
 function TerrainDeformation:setOutsideAreaConstraints(maxSmoothDistance, maxSlope, maxEdgeAngle)
-	setTerrainDeformationOutsideAreaConstraints(self.terrainDeformationId, maxSmoothDistance, maxSlope, maxEdgeAngle)
+	local steepness = maxSlope / math.rad(45)
+
+	setTerrainDeformationOutsideAreaConstraints(self.terrainDeformationId, maxSmoothDistance, steepness, maxEdgeAngle)
 end
 
 function TerrainDeformation:getBlockedAreaMapSize()

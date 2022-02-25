@@ -204,7 +204,7 @@ function SleepManager:stopSleep(noEventSend)
 end
 
 function SleepManager:getCanSleep()
-	return not self.isSleeping and not g_currentMission.guidedTour:getIsRunning()
+	return not self.isSleeping and not g_currentMission.guidedTour:getBlocksTimeChange()
 end
 
 function SleepManager:getIsSleeping()

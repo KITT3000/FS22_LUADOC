@@ -91,9 +91,9 @@ function AutoSaveManager:onSavegameLoaded()
 	end
 end
 
-function AutoSaveManager:setInterval(interval)
-	if interval > 0 then
-		self.interval = interval * 60 * 1000
+function AutoSaveManager:setInterval(intervalMinutes)
+	if intervalMinutes > 0 then
+		self.interval = intervalMinutes * 60 * 1000
 		self.time = g_time + self.interval
 
 		self:setIsActive(true)
@@ -162,17 +162,19 @@ function AutoSaveManager:getIsAutoSaveAllowed()
 	return self.isActive
 end
 
-function AutoSaveManager:consoleCommandAutoSaveInterval(interval)
+function AutoSaveManager:consoleCommandAutoSaveInterval(intervalMinutes)
 	if g_currentMission:getIsServer() then
-		interval = tonumber(interval)
+		intervalMinutes = tonumber(intervalMinutes)
 
-		if interval == nil then
+		if intervalMinutes == nil then
 			return "AutoSaveInterval = " .. string.format("%1.3f", g_autoSaveManager:getInterval() / 60 / 1000) .. ". Arguments: interval[minutes]"
 		end
 
-		g_autoSaveManager:setInterval(math.max(interval, 1))
+		intervalMinutes = math.max(intervalMinutes, 1)
 
-		return "AutoSaveInterval = " .. interval
+		g_autoSaveManager:setInterval(intervalMinutes)
+
+		return "AutoSaveInterval minutes = " .. intervalMinutes
 	end
 end
 

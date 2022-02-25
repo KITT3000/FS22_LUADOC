@@ -2,7 +2,7 @@ MainScreen = {}
 local MainScreen_mt = Class(MainScreen, ScreenElement)
 MainScreen.CONTROLS = {
 	NOTIFICATION_INDEX_STATE = "indexState",
-	TUTORIALSBUTTON = "tutorialsButton",
+	NOTIFICATION_IMAGE = "notificationImage",
 	CHANGEUSERBUTTON = "changeUserButton",
 	DOWNLOADMODSBUTTON = "downloadModsButton",
 	NOTIFICATION_DATE = "notificationDate",
@@ -15,7 +15,7 @@ MainScreen.CONTROLS = {
 	SETTINGSBUTTON = "settingsButton",
 	GAMER_TAG_ELEMENT = "gamerTagElement",
 	NOTIFICATION_BOX = "notificationElement",
-	NOTIFICATION_IMAGE = "notificationImage",
+	SCENARIOSBUTTON = "scenariosButton",
 	BUTTON_NOTIFICATION_RIGHT = "notificationButtonRight",
 	QUITBUTTON = "quitButton",
 	CREDITSBUTTON = "creditsButton",
@@ -49,6 +49,8 @@ function MainScreen.new(target, custom_mt, startMissionInfo)
 	}
 
 	self:registerControls(MainScreen.CONTROLS)
+
+	self.isDeleted = false
 
 	return self
 end
@@ -89,6 +91,10 @@ function MainScreen:setupButtons()
 
 	if Platform.supportsMultiplayer then
 		table.insert(buttonSetup, self.multiplayerButton)
+	end
+
+	if g_scenarioManager:getNumScenarios() > 0 then
+		table.insert(buttonSetup, self.scenariosButton)
 	end
 
 	if Platform.supportsMods then
@@ -145,6 +151,12 @@ function MainScreen:onHighlight(element)
 	if not Platform.isConsole then
 		FocusManager:setFocus(element)
 	end
+end
+
+function MainScreen:delete()
+	self.isDeleted = true
+
+	MainScreen:superClass().delete(self)
 end
 
 function MainScreen:onClose()
@@ -226,6 +238,10 @@ function MainScreen:setNotificationButtonsDisabled(isDisabled)
 end
 
 function MainScreen:resetNotifications()
+	if self.isDeleted then
+		return
+	end
+
 	self.notificationsReady = false
 	self.notificationsCheckTimer = 0
 	self.notifications = {}
@@ -333,6 +349,23 @@ function MainScreen:onStoreClick(element)
 			target = self
 		})
 	end
+end
+
+function MainScreen:onScenariosClick(element)
+	self.lastActiveButton = element
+
+	if not isGameFullyInstalled() then
+		showGameInstallProgress()
+
+		return
+	end
+
+	self.startMissionInfo:reset()
+
+	self.startMissionInfo.isMultiplayer = false
+
+	g_gui:setIsMultiplayer(false)
+	self:changeScreen(ScenariosScreen)
 end
 
 function MainScreen:onStoreFailedOk()

@@ -46,6 +46,8 @@ function Client:delete()
 		object:delete()
 	end
 
+	self.finishedAsyncObjects = {}
+
 	Client:superClass().delete(self)
 	self:stop()
 end
@@ -62,12 +64,25 @@ function Client:update(dt, isRunning)
 			return
 		end
 
-		for i = 1, #self.finishedAsyncObjects do
-			local nextObject = table.remove(self.finishedAsyncObjects, 1)
+		if #self.finishedAsyncObjects > 0 then
+			local numObjects = math.min(#self.finishedAsyncObjects, 255)
 
-			if not nextObject.isDeleted then
-				g_client:getServerConnection():sendEvent(ObjectAsyncRequestEvent.new(nextObject))
+			streamWriteUIntN(self.serverStreamId, MessageIds.OBJECT_LOADED, MessageIds.SEND_NUM_BITS)
+			streamWriteUInt8(self.serverStreamId, numObjects)
+
+			for i = 1, numObjects do
+				local object = table.remove(self.finishedAsyncObjects, 1)
+				local serverObjectId = NetworkUtil.getObjectId(object)
+				local objectInfo = self.serverConnection.objectsInfo[serverObjectId]
+
+				if objectInfo ~= nil then
+					objectInfo.sync = Connection.SYNC_LOADED
+
+					NetworkUtil.writeNodeObjectId(self.serverStreamId, serverObjectId)
+				end
 			end
+
+			netSendStream(self.serverStreamId, "high", "reliable_ordered", 1, true)
 		end
 
 		self:updateActiveObjects(dt)
@@ -104,11 +119,14 @@ function Client:update(dt, isRunning)
 				local x = 0
 				local y = 0
 				local z = 0
+				local isGuiActive = false
 
 				if self.networkListener ~= nil then
 					x, y, z = self.networkListener:getClientPosition()
+					isGuiActive = self.networkListener:getClientGuiVisibility()
 				end
 
+				streamWriteBool(self.serverStreamId, isGuiActive)
 				streamWriteFloat32(self.serverStreamId, x)
 				streamWriteFloat32(self.serverStreamId, y)
 				streamWriteFloat32(self.serverStreamId, z)
@@ -126,7 +144,7 @@ function Client:update(dt, isRunning)
 					object.dirtyMask = 0
 					local packetSize = streamGetWriteOffset(self.serverStreamId)
 
-					self:addPacketSize(self:getObjectPacketType(object), (packetSize - oldPacketSize) / 8)
+					self:addPacketSize(self.serverConnection, self:getObjectPacketType(object), (packetSize - oldPacketSize) / 8)
 
 					oldPacketSize = packetSize
 
@@ -146,7 +164,7 @@ function Client:update(dt, isRunning)
 				endOffset = streamGetWriteOffset(self.serverStreamId)
 
 				voiceChatWriteClientUpdateToStream(self.serverStreamId, self.serverStreamId, self.serverConnection.lastSeqSent)
-				self:addPacketSize(NetworkNode.PACKET_VOICE_CHAT, (streamGetWriteOffset(self.serverStreamId) - endOffset) / 8)
+				self:addPacketSize(self.serverConnection, NetworkNode.PACKET_VOICE_CHAT, (streamGetWriteOffset(self.serverStreamId) - endOffset) / 8)
 				netSendStream(self.serverStreamId, "medium", "unreliable_sequenced", 1, true)
 			end
 
@@ -289,9 +307,9 @@ function Client:packetReceived(packetType, timestamp, streamId)
 					numBits = streamReadInt32(streamId)
 				end
 
-				local infoId = streamReadUIntN(streamId, 2)
+				local infoId = streamReadUIntN(streamId, Connection.SEND_INFO_NUM_BITS)
 
-				if infoId == 0 then
+				if infoId == Connection.SEND_INFO_DELETE then
 					local objectId = NetworkUtil.readNodeObjectId(streamId)
 					local object = self:getObject(objectId)
 
@@ -303,7 +321,7 @@ function Client:packetReceived(packetType, timestamp, streamId)
 					if networkDebug then
 						self:checkObjectUpdateDebugReadSize(streamId, numBits, startOffset, "object", object)
 					end
-				elseif infoId == 1 then
+				elseif infoId == Connection.SEND_INFO_CREATE then
 					if g_server ~= nil then
 						print("Error: Unexpected packet object created")
 
@@ -331,7 +349,15 @@ function Client:packetReceived(packetType, timestamp, streamId)
 
 					object:readStream(streamId, self.serverConnection, objectId)
 
+					local syncState = Connection.SYNC_CREATED
+
 					if needsCreation then
+						if object:getIsDelayedLoaded() then
+							syncState = Connection.SYNC_CREATING_DELAYED
+						else
+							object.recieveUpdates = true
+						end
+
 						self:addObject(object, objectId)
 					else
 						object:onGhostAdd()
@@ -339,14 +365,30 @@ function Client:packetReceived(packetType, timestamp, streamId)
 
 					self.serverConnection.objectsInfo[objectId] = {
 						dirtyMask = 0,
-						sync = Connection.SYNC_CREATED,
+						sync = syncState,
 						history = {}
 					}
 
 					if networkDebug then
 						self:checkObjectUpdateDebugReadSize(streamId, numBits, startOffset, "creation", object)
 					end
-				elseif infoId == 2 then
+				elseif infoId == Connection.SEND_INFO_SYNC then
+					local objectId = NetworkUtil.readNodeObjectId(streamId)
+					local object = self:getObject(objectId)
+
+					if object == nil then
+						return
+					end
+
+					object:postReadStream(streamId, self.serverConnection)
+
+					self.serverConnection.objectsInfo[objectId].sync = Connection.SYNC_CREATED
+					object.recieveUpdates = true
+
+					if networkDebug then
+						self:checkObjectUpdateDebugReadSize(streamId, numBits, startOffset, "sync", object)
+					end
+				elseif infoId == Connection.SEND_INFO_UPDATE then
 					local objectId = NetworkUtil.readNodeObjectId(streamId)
 					local object = self:getObject(objectId)
 
@@ -422,6 +464,20 @@ function Client:packetReceived(packetType, timestamp, streamId)
 
 				object:readStream(streamId, self.serverConnection, objectId)
 				self:addObject(object, objectId)
+
+				local syncState = Connection.SYNC_CREATED
+
+				if object:getIsDelayedLoaded() then
+					syncState = Connection.SYNC_CREATING_DELAYED
+				else
+					object.recieveUpdates = true
+				end
+
+				self.serverConnection.objectsInfo[objectId] = {
+					dirtyMask = 0,
+					sync = syncState,
+					history = {}
+				}
 
 				if networkDebug then
 					local endOffset = streamGetReadOffset(streamId)
@@ -576,6 +632,7 @@ function Client:finishRegisterObject(object, serverId)
 		sync = Connection.SYNC_CREATED,
 		history = {}
 	}
+	object.recieveUpdates = true
 	self.tempClientManuallyRegisteringObjects[object.id] = nil
 	self.tempClientCreatingObjects[object.id] = nil
 end

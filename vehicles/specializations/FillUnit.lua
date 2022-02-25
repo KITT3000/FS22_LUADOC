@@ -154,6 +154,7 @@ function FillUnit.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getFillUnitExists", FillUnit.getFillUnitExists)
 	SpecializationUtil.registerFunction(vehicleType, "getFillUnitCapacity", FillUnit.getFillUnitCapacity)
 	SpecializationUtil.registerFunction(vehicleType, "getFillUnitFreeCapacity", FillUnit.getFillUnitFreeCapacity)
+	SpecializationUtil.registerFunction(vehicleType, "getIsFillAllowedFromFarm", FillUnit.getIsFillAllowedFromFarm)
 	SpecializationUtil.registerFunction(vehicleType, "getFillUnitFillLevel", FillUnit.getFillUnitFillLevel)
 	SpecializationUtil.registerFunction(vehicleType, "getFillUnitFillLevelPercentage", FillUnit.getFillUnitFillLevelPercentage)
 	SpecializationUtil.registerFunction(vehicleType, "getFillUnitFillType", FillUnit.getFillUnitFillType)
@@ -558,9 +559,15 @@ function FillUnit:onReadUpdateStream(streamId, timestamp, connection)
 					local fillType = streamReadUIntN(streamId, FillTypeManager.SEND_NUM_BITS)
 
 					if fillLevel ~= fillUnit.fillLevel or fillType ~= fillUnit.fillType then
+						local oldFillType = self:getFillUnitFillType(i)
+
 						if fillType == FillType.UNKNOWN then
-							self:addFillUnitFillLevel(self:getOwnerFarmId(), i, -math.huge, self:getFillUnitFillType(i), ToolType.UNDEFINED, nil)
+							self:addFillUnitFillLevel(self:getOwnerFarmId(), i, -math.huge, oldFillType, ToolType.UNDEFINED, nil)
 						else
+							if oldFillType ~= FillType.UNKNOWN and fillType ~= oldFillType then
+								self:setFillUnitFillType(i, fillType)
+							end
+
 							self:addFillUnitFillLevel(self:getOwnerFarmId(), i, fillLevel - fillUnit.fillLevel, fillType, ToolType.UNDEFINED, nil)
 						end
 					end
@@ -775,6 +782,10 @@ function FillUnit:getFillUnitFreeCapacity(fillUnitIndex, fillTypeIndex, farmId)
 	end
 
 	return nil
+end
+
+function FillUnit:getIsFillAllowedFromFarm(farmId)
+	return true
 end
 
 function FillUnit:getFillUnitFillLevel(fillUnitIndex)

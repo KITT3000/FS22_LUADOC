@@ -27,8 +27,8 @@ function Cover.initSpecialization()
 	schema:register(XMLValueType.BOOL, "vehicle.cover.coverConfigurations.coverConfiguration(?)#closeCoverIfNotAllowed", "Close cover if not allowed to open it", false)
 	schema:register(XMLValueType.BOOL, "vehicle.cover.coverConfigurations.coverConfiguration(?)#openCoverWhileTipping", "Open cover while tipping", false)
 	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.cover.coverConfigurations.coverConfiguration(?)")
-	schema:register(XMLValueType.STRING, "vehicle.pipe#coverMinState", "Min. cover state to allow pipe state change", 0)
-	schema:register(XMLValueType.STRING, "vehicle.pipe#coverMaxState", "Max. cover state to allow pipe state change", "Max. cover state")
+	schema:register(XMLValueType.INT, "vehicle.pipe#coverMinState", "Min. cover state to allow pipe state change", 0)
+	schema:register(XMLValueType.INT, "vehicle.pipe#coverMaxState", "Max. cover state to allow pipe state change", "Max. cover state")
 	schema:setXMLSpecializationType()
 
 	local schemaSavegame = Vehicle.xmlSchemaSavegame

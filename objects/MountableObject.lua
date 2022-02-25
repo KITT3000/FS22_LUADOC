@@ -55,16 +55,16 @@ function MountableObject:testScope(x, y, z, coeff)
 	return MountableObject:superClass().testScope(self, x, y, z, coeff)
 end
 
-function MountableObject:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+function MountableObject:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	if self.mountObject ~= nil then
-		return self.mountObject:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+		return self.mountObject:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	end
 
 	if self.dynamicMountObject ~= nil then
-		return self.dynamicMountObject:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+		return self.dynamicMountObject:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	end
 
-	return MountableObject:superClass().getUpdatePriority(self, skipCount, x, y, z, coeff, connection)
+	return MountableObject:superClass().getUpdatePriority(self, skipCount, x, y, z, coeff, connection, isGuiVisible)
 end
 
 function MountableObject:updateTick(dt)

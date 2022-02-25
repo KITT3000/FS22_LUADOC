@@ -71,6 +71,8 @@ end
 function RenderElement:setScene(filename)
 	if self.scene ~= nil then
 		delete(self.scene)
+
+		self.scene = nil
 	end
 
 	self.isLoading = true

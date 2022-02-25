@@ -1,5 +1,6 @@
 source("dataS/scripts/gui/hud/mapHotspots/MapHotspot.lua")
 source("dataS/scripts/gui/hud/mapHotspots/AIHotspot.lua")
+source("dataS/scripts/gui/hud/mapHotspots/AIPlaceableMarkerHotspot.lua")
 source("dataS/scripts/gui/hud/mapHotspots/AITargetHotspot.lua")
 source("dataS/scripts/gui/hud/mapHotspots/FieldHotspot.lua")
 source("dataS/scripts/gui/hud/mapHotspots/MissionHotspot.lua")
@@ -487,7 +488,7 @@ function HUD:showMoneyChange(moneyType, text)
 		local change = self.moneyChanges[moneyType.id]
 
 		if text == nil then
-			text = g_i18n:getText(moneyType.title)
+			text = g_i18n:getText(moneyType.title, moneyType.customEnv)
 		end
 
 		if text ~= nil and text ~= "" then
@@ -497,7 +498,13 @@ function HUD:showMoneyChange(moneyType, text)
 		end
 
 		if change > 0 then
-			self:addSideNotification(FSBaseMission.INGAME_NOTIFICATION_OK, string.format("+ %s%s", g_i18n:formatMoney(change, 0, true), text), nil, GuiSoundPlayer.SOUND_SAMPLES.TRANSACTION)
+			local sound = GuiSoundPlayer.SOUND_SAMPLES.TRANSACTION
+
+			if moneyType == MoneyType.COLLECTIBLE then
+				sound = GuiSoundPlayer.SOUND_SAMPLES.COLLECTIBLE
+			end
+
+			self:addSideNotification(FSBaseMission.INGAME_NOTIFICATION_OK, string.format("+ %s%s", g_i18n:formatMoney(change, 0, true), text), nil, sound)
 		elseif change <= -1 then
 			self:addSideNotification(FSBaseMission.INGAME_NOTIFICATION_CRITICAL, string.format("- %s%s", g_i18n:formatMoney(math.abs(change), 0, true), text), nil, GuiSoundPlayer.SOUND_SAMPLES.TRANSACTION)
 		end

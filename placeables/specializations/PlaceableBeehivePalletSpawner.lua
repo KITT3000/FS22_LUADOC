@@ -26,11 +26,15 @@ function PlaceableBeehivePalletSpawner.registerXMLPaths(schema, basePath)
 	schema:setXMLSpecializationType()
 end
 
+function PlaceableBeehivePalletSpawner.registerSavegameXMLPaths(schema, basePath)
+	schema:register(XMLValueType.FLOAT, basePath .. ".beehivePalletSpawner#pendingLiters", "Pending liters to be spawned")
+end
+
 function PlaceableBeehivePalletSpawner:onLoad(savegame)
 	local spec = self.spec_beehivePalletSpawner
 	local xmlFile = self.xmlFile
 	local palletSpawnerKey = "placeable.beehivePalletSpawner"
-	spec.palletSpawner = PalletSpawner.new()
+	spec.palletSpawner = PalletSpawner.new(self.baseDirectory)
 
 	if not spec.palletSpawner:load(self.components, xmlFile, palletSpawnerKey, self.customEnvironment, self.i3dMappings) then
 		Logging.xmlError(xmlFile, "Unable to load pallet spawner %s", palletSpawnerKey)
@@ -57,6 +61,19 @@ function PlaceableBeehivePalletSpawner:onFinalizePlacement()
 	g_currentMission.beehiveSystem:addBeehivePalletSpawner(self)
 end
 
+function PlaceableBeehivePalletSpawner:loadFromXMLFile(xmlFile, key)
+	local spec = self.spec_beehivePalletSpawner
+	spec.pendingLiters = xmlFile:getValue(key .. ".beehivePalletSpawner#pendingLiters") or spec.pendingLiters
+end
+
+function PlaceableBeehivePalletSpawner:saveToXMLFile(xmlFile, key, usedModNames)
+	local spec = self.spec_beehivePalletSpawner
+
+	if spec.pendingLiters > 0 then
+		xmlFile:setValue(key .. ".beehivePalletSpawner#pendingLiters", spec.pendingLiters)
+	end
+end
+
 function PlaceableBeehivePalletSpawner:addFillLevel(fillLevel)
 	if self.isServer then
 		local spec = self.spec_beehivePalletSpawner
@@ -71,7 +88,7 @@ function PlaceableBeehivePalletSpawner:updatePallets()
 	if self.isServer then
 		local spec = self.spec_beehivePalletSpawner
 
-		if spec.pendingLiters > 5 then
+		if not spec.spawnPending and spec.pendingLiters > 10 then
 			spec.spawnPending = true
 
 			spec.palletSpawner:getOrSpawnPallet(self:getOwnerFarmId(), spec.fillType, self.getPalletCallback, self)
@@ -90,10 +107,6 @@ function PlaceableBeehivePalletSpawner:getPalletCallback(pallet, result, fillTyp
 
 		local delta = pallet:addFillUnitFillLevel(self:getOwnerFarmId(), 1, spec.pendingLiters, fillTypeIndex, ToolType.UNDEFINED)
 		spec.pendingLiters = math.max(spec.pendingLiters - delta, 0)
-
-		if spec.pendingLiters > 5 then
-			self:updatePallets()
-		end
 	end
 end
 

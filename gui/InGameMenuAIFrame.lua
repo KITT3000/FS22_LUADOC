@@ -97,6 +97,13 @@ function InGameMenuAIFrame.new(subclass_mt, messageCenter, l10n, inputManager, i
 	self.lastMousePosY = 0
 	self.updateTime = 0
 	self.aiTargetMapHotspot = AITargetHotspot.new()
+	self.aiLoadingMarkerHotspot = AIPlaceableMarkerHotspot.new()
+
+	self.aiLoadingMarkerHotspot:setColor(0.3763, 0.6038, 0.0782)
+
+	self.aiUnloadingMarkerHotspot = AIPlaceableMarkerHotspot.new()
+
+	self.aiUnloadingMarkerHotspot:setColor(0.2832, 0.0091, 0.0091)
 
 	return self
 end
@@ -135,6 +142,18 @@ function InGameMenuAIFrame:delete()
 		self.aiTargetMapHotspot:delete()
 
 		self.aiTargetMapHotspot = nil
+	end
+
+	if self.aiLoadingMarkerHotspot ~= nil then
+		self.aiLoadingMarkerHotspot:delete()
+
+		self.aiLoadingMarkerHotspot = nil
+	end
+
+	if self.aiUnloadingMarkerHotspot ~= nil then
+		self.aiUnloadingMarkerHotspot:delete()
+
+		self.aiUnloadingMarkerHotspot = nil
 	end
 
 	InGameMenuAIFrame:superClass().delete(self)
@@ -187,6 +206,8 @@ function InGameMenuAIFrame:onFrameOpen()
 	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_COMBINE, true)
 	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_STEERABLE, true)
 	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_PLAYER, true)
+	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_SHOP, true)
+	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_OTHER, true)
 
 	self.mapOverviewZoom = 1
 	self.mapOverviewCenterX = 0.5
@@ -229,6 +250,8 @@ function InGameMenuAIFrame:onFrameClose()
 	end
 
 	g_currentMission:removeMapHotspot(self.aiTargetMapHotspot)
+	g_currentMission:removeMapHotspot(self.aiLoadingMarkerHotspot)
+	g_currentMission:removeMapHotspot(self.aiUnloadingMarkerHotspot)
 	g_messageCenter:unsubscribe(AIJobStartRequestEvent, self)
 	g_messageCenter:unsubscribe(MessageType.AI_VEHICLE_STATE_CHANGE, self)
 	g_messageCenter:unsubscribe(MessageType.AI_JOB_STARTED, self)
@@ -395,23 +418,23 @@ function InGameMenuAIFrame:setTargetPointHotspotPosition(localX, localY)
 end
 
 function InGameMenuAIFrame:getCanCancelJob()
-	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canCancel
+	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canCancel and g_currentMission:getHasPlayerPermission("hireAssistant")
 end
 
 function InGameMenuAIFrame:getCanCreateJob()
-	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canCreateJob
+	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canCreateJob and g_currentMission:getHasPlayerPermission("hireAssistant")
 end
 
 function InGameMenuAIFrame:getCanGoTo()
-	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canGoTo
+	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canGoTo and g_currentMission:getHasPlayerPermission("hireAssistant")
 end
 
 function InGameMenuAIFrame:getCanStartJob()
-	return self.mode == InGameMenuAIFrame.MODE_CREATE and not self:getIsPicking()
+	return self.mode == InGameMenuAIFrame.MODE_CREATE and not self:getIsPicking() and g_currentMission:getHasPlayerPermission("hireAssistant")
 end
 
 function InGameMenuAIFrame:getCanSkipJobTask()
-	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canSkipTask
+	return self.mode == InGameMenuAIFrame.MODE_OVERVIEW and not self:getIsPicking() and self.canSkipTask and g_currentMission:getHasPlayerPermission("hireAssistant")
 end
 
 function InGameMenuAIFrame:getCanGoBack()
@@ -532,6 +555,8 @@ function InGameMenuAIFrame:setMapSelectionItem(hotspot)
 	local showContextBox = false
 
 	g_currentMission:removeMapHotspot(self.aiTargetMapHotspot)
+	g_currentMission:removeMapHotspot(self.aiLoadingMarkerHotspot)
+	g_currentMission:removeMapHotspot(self.aiUnloadingMarkerHotspot)
 
 	if hotspot ~= nil then
 		vehicle = InGameMenuMapUtil.getHotspotVehicle(hotspot)
@@ -547,16 +572,50 @@ function InGameMenuAIFrame:setMapSelectionItem(hotspot)
 			if vehicle.getJob ~= nil then
 				local job = vehicle:getJob()
 
-				if job ~= nil and job.getTarget ~= nil then
-					local x, z, rot = job:getTarget()
+				if job ~= nil then
+					if job.getTarget ~= nil then
+						local x, z, rot = job:getTarget()
 
-					self.aiTargetMapHotspot:setWorldPosition(x, z)
+						self.aiTargetMapHotspot:setWorldPosition(x, z)
 
-					if rot ~= nil then
-						self.aiTargetMapHotspot:setWorldRotation(rot + math.pi)
+						if rot ~= nil then
+							self.aiTargetMapHotspot:setWorldRotation(rot + math.pi)
+						end
+
+						g_currentMission:addMapHotspot(self.aiTargetMapHotspot)
 					end
 
-					g_currentMission:addMapHotspot(self.aiTargetMapHotspot)
+					if job.unloadingStationParameter ~= nil then
+						local unloadingStation = job.unloadingStationParameter:getUnloadingStation()
+
+						if unloadingStation ~= nil then
+							local placeable = unloadingStation.owningPlaceable
+
+							if placeable ~= nil and placeable.getHotspot ~= nil then
+								local unloadingHotspot = placeable:getHotspot(1)
+								local x, z = unloadingHotspot:getWorldPosition()
+
+								self.aiUnloadingMarkerHotspot:setWorldPosition(x, z)
+								g_currentMission:addMapHotspot(self.aiUnloadingMarkerHotspot)
+							end
+						end
+					end
+
+					if job.loadingStationParameter ~= nil then
+						local loadingStation = job.loadingStationParameter:getLoadingStation()
+
+						if loadingStation ~= nil then
+							local placeable = loadingStation.owningPlaceable
+
+							if placeable ~= nil and placeable.getHotspot ~= nil then
+								local loadingHotspot = placeable:getHotspot(1)
+								local x, z = loadingHotspot:getWorldPosition()
+
+								self.aiLoadingMarkerHotspot:setWorldPosition(x, z)
+								g_currentMission:addMapHotspot(self.aiLoadingMarkerHotspot)
+							end
+						end
+					end
 				end
 			end
 		elseif hotspot:isa(PlaceableHotspot) then
@@ -939,6 +998,8 @@ end
 
 function InGameMenuAIFrame:updateParameterValueTexts()
 	g_currentMission:removeMapHotspot(self.aiTargetMapHotspot)
+	g_currentMission:removeMapHotspot(self.aiLoadingMarkerHotspot)
+	g_currentMission:removeMapHotspot(self.aiUnloadingMarkerHotspot)
 
 	local addedPositionHotspot = false
 
@@ -968,6 +1029,42 @@ function InGameMenuAIFrame:updateParameterValueTexts()
 			end
 		else
 			element:updateTitle()
+
+			if parameterType == AIParameterType.UNLOADING_STATION then
+				local unloadingStation = parameter:getUnloadingStation()
+
+				if unloadingStation ~= nil then
+					local placeable = unloadingStation.owningPlaceable
+
+					if placeable ~= nil and placeable.getHotspot ~= nil then
+						local hotspot = placeable:getHotspot(1)
+
+						if hotspot ~= nil then
+							local x, z = hotspot:getWorldPosition()
+
+							self.aiUnloadingMarkerHotspot:setWorldPosition(x, z)
+							g_currentMission:addMapHotspot(self.aiUnloadingMarkerHotspot)
+						end
+					end
+				end
+			elseif parameterType == AIParameterType.LOADING_STATION then
+				local loadingStation = parameter:getLoadingStation()
+
+				if loadingStation ~= nil then
+					local placeable = loadingStation.owningPlaceable
+
+					if placeable ~= nil and placeable.getHotspot ~= nil then
+						local hotspot = placeable:getHotspot(1)
+
+						if hotspot ~= nil then
+							local x, z = hotspot:getWorldPosition()
+
+							self.aiLoadingMarkerHotspot:setWorldPosition(x, z)
+							g_currentMission:addMapHotspot(self.aiLoadingMarkerHotspot)
+						end
+					end
+				end
+			end
 		end
 	end
 end
@@ -1194,6 +1291,10 @@ function InGameMenuAIFrame:setJobMenuVisible(isVisible)
 	self.actionMessage:setText("")
 	self.jobMenu:setVisible(isVisible)
 	self.jobOverview:setVisible(not isVisible)
+
+	if not isVisible then
+		self:setMapSelectionItem(self.currentHotspot)
+	end
 end
 
 function InGameMenuAIFrame:createJob()
@@ -1343,8 +1444,13 @@ InGameMenuAIFrame.HOTSPOT_VALID_CATEGORIES = {
 	[MapHotspot.CATEGORY_COMBINE] = true,
 	[MapHotspot.CATEGORY_TRAILER] = true,
 	[MapHotspot.CATEGORY_TOOL] = true,
+	[MapHotspot.CATEGORY_UNLOADING] = true,
+	[MapHotspot.CATEGORY_LOADING] = true,
+	[MapHotspot.CATEGORY_PRODUCTION] = true,
+	[MapHotspot.CATEGORY_ANIMAL] = true,
 	[MapHotspot.CATEGORY_OTHER] = false,
 	[MapHotspot.CATEGORY_AI] = true,
+	[MapHotspot.CATEGORY_SHOP] = true,
 	[MapHotspot.CATEGORY_PLAYER] = true
 }
 InGameMenuAIFrame.HOTSPOT_SWITCH_CATEGORIES = {

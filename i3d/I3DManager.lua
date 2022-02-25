@@ -195,8 +195,6 @@ function I3DManager:setLoadingDelay(minDelaySeconds, maxDelaySeconds, minDelayCa
 	setStreamI3DFileDelay(minDelaySeconds, maxDelaySeconds)
 	setStreamSharedI3DFileDelay(minDelaySeconds, maxDelaySeconds, minDelayCachedSeconds, maxDelayCachedSeconds)
 	Logging.info("Set new loading delay. MinDelay: %.2fs, MaxDelay: %.2fs, MinDelayCached: %.2fs, MaxDelayCached: %.2fs", minDelaySeconds, maxDelaySeconds, minDelayCachedSeconds, maxDelayCachedSeconds)
-
-	return string.format("loadingDelay=%dms", I3DManager.loadingDelay)
 end
 
 function I3DManager:consoleCommandSetLoadingDelay(minDelaySec, maxDelaySec, minDelayCachedSec, maxDelayCachedSec)

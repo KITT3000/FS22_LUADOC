@@ -69,7 +69,6 @@ function ShopController:subscribeEvents(messageCenter)
 	messageCenter:subscribe(BuyObjectEvent, self.onObjectBuyEvent, self)
 	messageCenter:subscribe(BuyHandToolEvent, self.onHandToolBuyEvent, self)
 	messageCenter:subscribe(SellVehicleEvent, self.onVehicleSellEvent, self)
-	messageCenter:subscribe(SellPlaceableEvent, self.onPlaceableSellEvent, self)
 	messageCenter:subscribe(SellHandToolEvent, self.onHandToolSellEvent, self)
 end
 
@@ -1210,6 +1209,8 @@ function ShopController:onVehicleBuyFailed(leaseVehicle, errorCode)
 		text = self.l10n:getText(ShopController.L10N_SYMBOL.BUY_VEHICLE_NO_PERMISSION)
 	elseif errorCode == BuyVehicleEvent.STATE_NOT_ENOUGH_MONEY then
 		text = self.l10n:getText(ShopController.L10N_SYMBOL.WARNING_NOT_ENOUGH_MONEY)
+	elseif errorCode == BuyVehicleEvent.STATE_TOO_MANY_BALES then
+		text = self.l10n:getText(ShopController.L10N_SYMBOL.WARNING_TOO_MANY_BALES)
 	else
 		text = self.l10n:getText(ShopController.L10N_SYMBOL.BUY_VEHICLE_FAILED_TO_LOAD)
 	end
@@ -1486,35 +1487,36 @@ ShopController.PROFILE = {
 	ICON_OWNED = "shopListAttributeIconOwned"
 }
 ShopController.L10N_SYMBOL = {
-	SELL_OBJECT_SUCCESS = "shop_messageSoldObject",
+	RETURN_VEHICLE_SUCCESS = "shop_messageReturnedVehicle",
 	RETURN_LAST_VEHICLE_FAILED = "shop_messageFailedToReturnLastVehicleText",
 	SELLING_VEHICLE = "shop_messageSellingVehicle",
-	RETURN_VEHICLE_SUCCESS = "shop_messageReturnedVehicle",
-	LOAD_OBJECT_FAILED = "shop_messageFailedToLoadObject",
-	WARNING_NOT_ENOUGH_MONEY = "shop_messageNotEnoughMoneyToBuy",
-	BUYING_VEHICLE = "shop_messageBuyingVehicle",
-	BUY_OBJECT_SUCCESS = "shop_messageGardenCenterPurchaseReady",
+	BUY_ALREADY_OWNED = "shop_messageAlreadyOwned",
 	WARNING_TOO_MANY_PLACEABLES = "warning_tooManyPlaceables",
+	WARNING_NOT_ENOUGH_MONEY = "shop_messageNotEnoughMoneyToBuy",
+	BUY_CONFIRMATION = "shop_doYouWantToBuy",
+	BUY_OBJECT_SUCCESS = "shop_messageGardenCenterPurchaseReady",
+	BUYING_VEHICLE = "shop_messageBuyingVehicle",
 	RETURNING_VEHICLE = "shop_messageReturningVehicle",
 	WARNING_NOT_ENOUGH_SLOTS = "shop_messageNotEnoughSlotsToBuy",
-	BUY_CONFIRMATION = "shop_doYouWantToBuy",
+	LOAD_OBJECT_FAILED = "shop_messageFailedToLoadObject",
 	WARNING_TOO_MANY_PALLETS = "warning_tooManyPallets",
 	SELL_VEHICLE_FAILED = "shop_messageFailedToSellVehicle",
 	SELL_LAST_VEHICLE_FAILED = "shop_messageFailedToSellLastVehicleText",
 	SELL_VEHICLE_IN_USE = "shop_messageSellVehicleInUse",
 	BUY_VEHICLE_FAILED_TO_LOAD = "shop_messageFailedToLoadVehicle",
 	RETURN_VEHICLE_NO_PERMISSION = "shop_messageNoPermissionToReturnVehicleText",
+	SELL_OBJECT_FAILED = "shop_messageFailedToSellObject",
 	RETURN_VEHICLE_FAILED = "shop_messageFailedToReturnVehicle",
 	BUY_VEHICLE_NO_PERMISSION = "shop_messageNoPermissionToBuyVehicleText",
 	LEASE_VEHICLE_SUCCESS = "shop_messageLeasingReady",
 	BUY_CHAINSAW_THANKS = "shop_messageThanksForBuying",
-	SELL_OBJECT_FAILED = "shop_messageFailedToSellObject",
+	SELL_OBJECT_SUCCESS = "shop_messageSoldObject",
 	SELL_VEHICLE_SUCCESS = "shop_messageSoldVehicle",
 	NO_PERMISSION = "shop_messageNoPermissionGeneral",
 	SELL_OBJECT_IN_USE = "shop_messageObjectInUse",
 	LEASING_VEHICLE = "shop_messageLeasingVehicle",
 	BUY_CHAINSAW_SUCCESS = "shop_messageBoughtChainsaw",
-	BUY_ALREADY_OWNED = "shop_messageAlreadyOwned",
+	WARNING_TOO_MANY_BALES = "warning_tooManyBales",
 	CANNOT_SELL_TOUR_ITEMS = "shop_messageTourItemsCannotBeSold",
 	WARNING_NO_SPACE = "shop_messageNoSpace",
 	SELL_VEHICLE_NO_PERMISSION = "shop_messageNoPermissionToSellVehicleText",

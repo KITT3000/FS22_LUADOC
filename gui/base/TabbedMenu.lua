@@ -563,7 +563,7 @@ function TabbedMenu:registerPage(pageFrameElement, position, enablingPredicateFu
 	table.insert(self.pageFrames, position, pageFrameElement)
 
 	self.pageTypeControllers[pageFrameElement:class()] = pageFrameElement
-	local pageRoot = pageFrameElement:getFirstDescendant()
+	local pageRoot = pageFrameElement.elements[1]
 	self.pageRoots[pageFrameElement] = pageRoot
 	self.pageEnablingPredicates[pageFrameElement] = enablingPredicateFunction
 

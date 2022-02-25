@@ -375,7 +375,8 @@ function PlaceableSystem:consoleCommandReloadAllPlaceables()
 			Logging.info("Start reloading placeables...")
 
 			local function callback(_, placeable, loadingState, args)
-				local oldPlaceable, xmlFile = unpack(args)
+				local oldPlaceable = args.placeable
+				local xmlFile = args.xmlFile
 
 				xmlFile:delete()
 				table.removeElement(placeablesToReload, oldPlaceable)
@@ -411,11 +412,12 @@ function PlaceableSystem:consoleCommandReloadAllPlaceables()
 				local key = "placeables.placeable(0)"
 				local missionInfo = g_currentMission.missionInfo
 				local missionDynamicInfo = g_currentMission.missionDynamicInfo
+				local arguments = {
+					placeable = placeable,
+					xmlFile = xmlFile
+				}
 
-				self:loadPlaceableFromXML(xmlFile, key, missionInfo, missionDynamicInfo, false, callback, nil, {
-					placeable,
-					xmlFile
-				})
+				self:loadPlaceableFromXML(xmlFile, key, missionInfo, missionDynamicInfo, false, callback, nil, arguments)
 			end
 		else
 			Logging.info("No placeables found")

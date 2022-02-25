@@ -11,5 +11,6 @@ MessageIds = {
 	EVENT = 10,
 	OBJECT_CLASS_IDS = 11,
 	CLIP_COEFF = 12,
+	OBJECT_LOADED = 13,
 	SEND_NUM_BITS = 4
 }

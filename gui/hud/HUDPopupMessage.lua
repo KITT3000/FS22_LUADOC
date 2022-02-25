@@ -187,7 +187,7 @@ function HUDPopupMessage:update(dt)
 	if not self.isMenuVisible then
 		HUDPopupMessage:superClass().update(self, dt)
 
-		if not self.isGamePaused then
+		if not self.isGamePaused and not g_sleepManager:getIsSleeping() then
 			self.time = self.time + dt
 
 			self:updateCurrentMessage()

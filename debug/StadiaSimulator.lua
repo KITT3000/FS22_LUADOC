@@ -3,6 +3,7 @@ local isHDRActive = false
 local hasRecordingDevice = false
 
 if g_isStadiaSimulationActive then
+	source("dataS/scripts/debug/ImeSimulator.lua")
 	print("--> Stadia Simulator active!")
 
 	local activeGamepadIndex = 0

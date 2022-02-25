@@ -77,7 +77,8 @@ function PlaceableSilo:onLoad(savegame)
 
 	spec.loadingStation.owningPlaceable = self
 	spec.loadingStation.hasStoragePerFarm = spec.storagePerFarm
-	spec.infoTriggerDataDirty = true
+	spec.fillTypesAndLevelsAuxiliary = {}
+	spec.fillTypeToFillTypeStorageTable = {}
 	spec.infoTriggerFillTypesAndLevels = {}
 	local numStorageSets = spec.storagePerFarm and FarmManager.MAX_NUM_FARMS or 1
 
@@ -165,10 +166,6 @@ function PlaceableSilo:onFinalizePlacement()
 	spec.loadingStation:register(true)
 	storageSystem:addLoadingStation(spec.loadingStation, self)
 
-	function spec.storageFilLLevelChangedCallback()
-		spec.infoTriggerDataDirty = true
-	end
-
 	for _, storage in ipairs(spec.storages) do
 		if not spec.storagePerFarm then
 			storage:setOwnerFarmId(self:getOwnerFarmId(), true)
@@ -178,7 +175,6 @@ function PlaceableSilo:onFinalizePlacement()
 		storage:register(true)
 		storageSystem:addStorageToUnloadingStation(storage, spec.unloadingStation)
 		storageSystem:addStorageToLoadingStation(storage, spec.loadingStation)
-		storage:addFillLevelChangedListeners(spec.storageFilLLevelChangedCallback)
 	end
 
 	local storagesInRange = storageSystem:getStorageExtensionsInRange(spec.unloadingStation, self:getOwnerFarmId())
@@ -466,33 +462,30 @@ function PlaceableSilo:updateInfo(superFunc, infoTable)
 	superFunc(self, infoTable)
 
 	local spec = self.spec_silo
+	local farmId = g_currentMission:getFarmId()
 
-	if spec.infoTriggerDataDirty then
-		local fillLevels = {}
-
-		for _, storage in pairs(self.spec_silo.storages) do
-			for fillType, fillLevel in pairs(storage:getFillLevels()) do
-				fillLevels[fillType] = (fillLevels[fillType] or 0) + fillLevel
-			end
-		end
-
-		table.clear(spec.infoTriggerFillTypesAndLevels)
-
-		for fillType, fillLevel in pairs(fillLevels) do
-			if fillLevel > 0.1 then
-				table.insert(spec.infoTriggerFillTypesAndLevels, {
-					fillType = fillType,
-					fillLevel = fillLevel
-				})
-			end
-		end
-
-		table.sort(spec.infoTriggerFillTypesAndLevels, function (a, b)
-			return b.fillLevel < a.fillLevel
-		end)
-
-		spec.infoTriggerDataDirty = false
+	for fillType, fillLevel in pairs(spec.loadingStation:getAllFillLevels(farmId)) do
+		spec.fillTypesAndLevelsAuxiliary[fillType] = (spec.fillTypesAndLevelsAuxiliary[fillType] or 0) + fillLevel
 	end
+
+	table.clear(spec.infoTriggerFillTypesAndLevels)
+
+	for fillType, fillLevel in pairs(spec.fillTypesAndLevelsAuxiliary) do
+		if fillLevel > 0.1 then
+			spec.fillTypeToFillTypeStorageTable[fillType] = spec.fillTypeToFillTypeStorageTable[fillType] or {
+				fillType = fillType,
+				fillLevel = fillLevel
+			}
+			spec.fillTypeToFillTypeStorageTable[fillType].fillLevel = fillLevel
+
+			table.insert(spec.infoTriggerFillTypesAndLevels, spec.fillTypeToFillTypeStorageTable[fillType])
+		end
+	end
+
+	table.clear(spec.fillTypesAndLevelsAuxiliary)
+	table.sort(spec.infoTriggerFillTypesAndLevels, function (a, b)
+		return b.fillLevel < a.fillLevel
+	end)
 
 	local numEntries = math.min(#spec.infoTriggerFillTypesAndLevels, PlaceableSilo.INFO_TRIGGER_NUM_DISPLAYED_FILLTYPES)
 
@@ -501,7 +494,7 @@ function PlaceableSilo:updateInfo(superFunc, infoTable)
 			local fillTypeAndLevel = spec.infoTriggerFillTypesAndLevels[i]
 
 			table.insert(infoTable, {
-				title = g_fillTypeManager:getFillTypeByIndex(fillTypeAndLevel.fillType).title,
+				title = g_fillTypeManager:getFillTypeTitleByIndex(fillTypeAndLevel.fillType),
 				text = g_i18n:formatVolume(fillTypeAndLevel.fillLevel, 0)
 			})
 		end

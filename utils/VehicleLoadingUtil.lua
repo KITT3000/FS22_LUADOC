@@ -147,16 +147,21 @@ function VehicleLoadingUtil.loadVehicle(filename, location, save, price, propert
 		}
 	end
 
-	vehicle:load(vehicleData, VehicleLoadingUtil.loadVehicleFinished, nil, {
-		asyncCallbackFunction,
-		asyncCallbackObject,
-		asyncCallbackArguments,
-		registerVehicle
-	})
+	local arguments = {
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackObject = asyncCallbackObject,
+		asyncCallbackArguments = asyncCallbackArguments,
+		registerVehicle = registerVehicle
+	}
+
+	vehicle:load(vehicleData, VehicleLoadingUtil.loadVehicleFinished, nil, arguments)
 end
 
 function VehicleLoadingUtil.loadVehicleFinished(_, vehicle, vehicleLoadState, arguments)
-	local asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments, registerVehicle = unpack(arguments)
+	local asyncCallbackFunction = arguments.asyncCallbackFunction
+	local asyncCallbackObject = arguments.asyncCallbackObject
+	local asyncCallbackArguments = arguments.asyncCallbackArguments
+	local registerVehicle = arguments.registerVehicle
 
 	if registerVehicle and vehicle ~= nil then
 		vehicle:register()
@@ -190,17 +195,21 @@ function VehicleLoadingUtil.loadVehiclesFromList(list, asyncCallbackFunction, as
 	end
 
 	local firstVehicle = list[1]
+	local arguments = {
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackObject = asyncCallbackObject,
+		asyncCallbackArguments = asyncCallbackArguments,
+		list = list
+	}
 
-	VehicleLoadingUtil.loadVehicle(firstVehicle.filename, firstVehicle.location, firstVehicle.save, 0, Vehicle.PROPERTY_STATE_NONE, firstVehicle.ownerFarmId, firstVehicle.configurations, nil, VehicleLoadingUtil.loadVehiclesFromListFinished, nil, {
-		asyncCallbackFunction,
-		asyncCallbackObject,
-		asyncCallbackArguments,
-		list
-	})
+	VehicleLoadingUtil.loadVehicle(firstVehicle.filename, firstVehicle.location, firstVehicle.save, 0, Vehicle.PROPERTY_STATE_NONE, firstVehicle.ownerFarmId, firstVehicle.configurations, nil, VehicleLoadingUtil.loadVehiclesFromListFinished, nil, arguments)
 end
 
 function VehicleLoadingUtil.loadVehiclesFromListFinished(_, vehicle, vehicleLoadState, arguments)
-	local asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments, list = unpack(arguments)
+	local asyncCallbackFunction = arguments.asyncCallbackFunction
+	local asyncCallbackObject = arguments.asyncCallbackObject
+	local asyncCallbackArguments = arguments.asyncCallbackArguments
+	local list = arguments.list
 
 	if vehicle == nil then
 		asyncCallbackFunction(asyncCallbackObject, vehicleLoadState, asyncCallbackArguments)
@@ -337,11 +346,12 @@ function VehicleLoadingUtil.loadVehiclesAtPlaceStep(targetOwner, vehiclesToLoad)
 			yRot = yRot,
 			zRot = zRot
 		}
+		local arguments = {
+			targetOwner = targetOwner,
+			vehiclesToLoad = vehiclesToLoad
+		}
 
-		VehicleLoadingUtil.loadVehicle(item.xmlFilename, location, true, item.price, item.propertyState, item.ownerFarmId, item.configurations, nil, VehicleLoadingUtil.loadVehiclesAtPlaceStepFinished, nil, {
-			targetOwner,
-			vehiclesToLoad
-		})
+		VehicleLoadingUtil.loadVehicle(item.xmlFilename, location, true, item.price, item.propertyState, item.ownerFarmId, item.configurations, nil, VehicleLoadingUtil.loadVehiclesAtPlaceStepFinished, nil, arguments)
 
 		return true
 	end
@@ -350,7 +360,8 @@ function VehicleLoadingUtil.loadVehiclesAtPlaceStep(targetOwner, vehiclesToLoad)
 end
 
 function VehicleLoadingUtil.loadVehiclesAtPlaceStepFinished(_, vehicle, vehicleLoadState, arguments)
-	local targetOwner, vehiclesToLoad = unpack(arguments)
+	local targetOwner = arguments.targetOwner
+	local vehiclesToLoad = arguments.vehiclesToLoad
 
 	if vehicle ~= nil then
 		vehiclesToLoad.loadedVehicleIndex = vehiclesToLoad.loadedVehicleIndex + 1
@@ -458,20 +469,29 @@ function VehicleLoadingUtil.loadVehiclesFromSavegameStep(loadingData)
 			end
 
 			filename = NetworkUtil.convertFromNetworkFilename(filename)
-			local savegame = {
-				xmlFile = xmlFile,
-				key = key,
-				resetVehicles = loadingData.resetVehicles
-			}
-			loadingData.key = key
-			local location = {
-				x = 0,
-				z = 0
-			}
+			local storeItem = g_storeManager:getItemByXMLFilename(filename)
 
-			VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_NONE, AccessHandler.EVERYONE, nil, savegame, VehicleLoadingUtil.loadVehiclesFromSavegameStepFinished, nil, loadingData)
+			if storeItem ~= nil then
+				if g_currentMission.slotSystem:hasEnoughSlots(storeItem) then
+					local savegame = {
+						xmlFile = xmlFile,
+						key = key,
+						resetVehicles = loadingData.resetVehicles
+					}
+					loadingData.key = key
+					local location = {
+						x = 0,
+						z = 0
+					}
 
-			return true
+					VehicleLoadingUtil.loadVehicle(filename, location, true, 0, Vehicle.PROPERTY_STATE_NONE, AccessHandler.EVERYONE, nil, savegame, VehicleLoadingUtil.loadVehiclesFromSavegameStepFinished, nil, loadingData)
+
+					return true
+				else
+					g_currentMission:addMoney(storeItem.price, farmId, MoneyType.SHOP_VEHICLE_SELL, true)
+					Logging.warning("Too many slots in use. Selling vehicle '%s' for '%d'", filename, storeItem.price)
+				end
+			end
 		end
 	end
 end

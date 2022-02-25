@@ -14,7 +14,6 @@ function InGameMenuHelpFrame.new(subclass_mt, l10n, helpLineManager)
 
 	self.l10n = l10n
 	self.helpLineManager = helpLineManager
-	self.baseDirectory = ""
 
 	return self
 end
@@ -51,10 +50,6 @@ function InGameMenuHelpFrame:onFrameClose()
 	InGameMenuHelpFrame:superClass().onFrameClose(self)
 end
 
-function InGameMenuHelpFrame:setMissionBaseDirectory(baseDirectory)
-	self.baseDirectory = baseDirectory
-end
-
 function InGameMenuHelpFrame:updateContents(page)
 	self.helpLineContentItem:unlinkElement()
 
@@ -68,7 +63,7 @@ function InGameMenuHelpFrame:updateContents(page)
 		return
 	end
 
-	self.helpLineTitleElement:setText(self.helpLineManager:convertText(page.title))
+	self.helpLineTitleElement:setText(self.helpLineManager:convertText(page.title, page.customEnvironment))
 
 	for _, paragraph in ipairs(page.paragraphs) do
 		local row = self.helpLineContentItem:clone(self.helpLineContentBox)
@@ -82,14 +77,14 @@ function InGameMenuHelpFrame:updateContents(page)
 			textFullElement:setVisible(false)
 
 			if paragraph.text ~= nil then
-				textElement:setText(self.helpLineManager:convertText(paragraph.text))
+				textElement:setText(self.helpLineManager:convertText(paragraph.text, paragraph.customEnvironment))
 
 				textHeight = textElement:getTextHeight()
 
 				textElement:setSize(nil, textHeight)
 			end
 
-			local filename = Utils.getFilename(paragraph.image.filename, self.baseDirectory)
+			local filename = Utils.getFilename(paragraph.image.filename, paragraph.baseDirectory)
 
 			imageElement:setImageFilename(filename)
 			imageElement:setImageUVs(nil, unpack(paragraph.image.uvs))
@@ -106,7 +101,7 @@ function InGameMenuHelpFrame:updateContents(page)
 		else
 			textElement:setVisible(false)
 			imageElement:setVisible(false)
-			textFullElement:setText(self.helpLineManager:convertText(paragraph.text))
+			textFullElement:setText(self.helpLineManager:convertText(paragraph.text, paragraph.customEnvironment))
 
 			textHeightFullHeight = textFullElement:getTextHeight()
 
@@ -135,13 +130,15 @@ function InGameMenuHelpFrame:getNumberOfItemsInSection(list, section)
 end
 
 function InGameMenuHelpFrame:getTitleForSectionHeader(list, section)
-	return self.l10n:convertText(self.helpLineManager.categories[section].title)
+	local sectionData = self.helpLineManager.categories[section]
+
+	return self.l10n:convertText(sectionData.title, sectionData.customEnvironment)
 end
 
 function InGameMenuHelpFrame:populateCellForItemInSection(list, section, index, cell)
 	local page = self:getPage(section, index)
 
-	cell:getAttribute("title"):setText(self.l10n:convertText(page.title))
+	cell:getAttribute("title"):setText(self.l10n:convertText(page.title, page.customEnvironment))
 end
 
 function InGameMenuHelpFrame:getPage(categoryIndex, pageIndex)

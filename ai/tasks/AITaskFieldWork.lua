@@ -29,8 +29,8 @@ function AITaskFieldWork:start()
 	AITaskFieldWork:superClass().start(self)
 end
 
-function AITaskFieldWork:stop()
-	AITaskFieldWork:superClass().stop(self)
+function AITaskFieldWork:stop(wasJobStopped)
+	AITaskFieldWork:superClass().stop(self, wasJobStopped)
 
 	if self.isServer then
 		self.vehicle:stopFieldWorker()

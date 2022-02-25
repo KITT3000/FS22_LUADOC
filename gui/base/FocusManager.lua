@@ -69,7 +69,12 @@ function FocusManager:setGui(gui)
 		local focusElement = self.currentFocusData.initialFocusElement or self.currentFocusData.focusElement
 
 		if focusElement ~= nil then
+			local oldSound = focusElement.soundDisabled
+			focusElement.soundDisabled = true
+
 			self:setFocus(focusElement)
+
+			focusElement.soundDisabled = oldSound
 		end
 	end
 

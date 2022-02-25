@@ -33,6 +33,7 @@ g_xmlManager:addInitSchemaFunction(function ()
 	schema:register(XMLValueType.STRING, "feedingRobot.robot.mixer#recipe", "Recipe filltype")
 	FillPlaneUtil.registerFillPlaneXMLPaths(schema, "feedingRobot.robot.fillPlane")
 	SoundManager.registerSampleXMLPaths(schema, "feedingRobot.robot.sounds", "driving")
+	SoundManager.registerSampleXMLPaths(schema, "feedingRobot.robot.sounds", "discharging")
 	UnloadTrigger.registerXMLPaths(schema, "feedingRobot.unloadingSpots.unloadingSpot(?).unloadTrigger")
 	FillPlane.registerXMLPaths(schema, "feedingRobot.unloadingSpots.unloadingSpot(?).fillPlane", "Fillplane")
 	schema:register(XMLValueType.STRING, "feedingRobot.unloadingSpots.unloadingSpot(?)#capacity", "Unloading spot capacity")
@@ -90,13 +91,14 @@ function FeedingRobot:load(linkNode, filename, asyncCallbackFunction, asyncCallb
 
 	self.configFileName = filename
 	local i3dFilename = Utils.getFilename(xmlFile:getValue("feedingRobot.filename"), self.baseDirectory)
-	self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(i3dFilename, true, false, self.onI3DFileLoaded, self, {
-		xmlFile,
-		linkNode,
-		asyncCallbackFunction,
-		asyncCallbackObject,
-		asyncCallbackArgs
-	})
+	local arguments = {
+		xmlFile = xmlFile,
+		linkNode = linkNode,
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackObject = asyncCallbackObject,
+		asyncCallbackArgs = asyncCallbackArgs
+	}
+	self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(i3dFilename, true, false, self.onI3DFileLoaded, self, arguments)
 end
 
 function FeedingRobot:delete()
@@ -156,7 +158,10 @@ function FeedingRobot:delete()
 end
 
 function FeedingRobot:onI3DFileLoaded(node, failedReason, args)
-	local xmlFile, linkNode, asyncCallbackFunction, asyncCallbackObject, asyncCallbackArgs = unpack(args)
+	local xmlFile = args.xmlFile
+	local asyncCallbackFunction = args.asyncCallbackFunction
+	local asyncCallbackObject = args.asyncCallbackObject
+	local asyncCallbackArgs = args.asyncCallbackArgs
 
 	if node ~= 0 then
 		local numChildren = getNumOfChildren(node)
@@ -180,7 +185,7 @@ function FeedingRobot:onI3DFileLoaded(node, failedReason, args)
 		I3DUtil.loadI3DMapping(xmlFile, "feedingRobot", self.components, self.i3dMappings)
 
 		for _, component in ipairs(self.components) do
-			link(linkNode, component.node)
+			link(args.linkNode, component.node)
 		end
 
 		self.rootNode = node

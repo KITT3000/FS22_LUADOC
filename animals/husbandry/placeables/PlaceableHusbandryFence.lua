@@ -96,11 +96,12 @@ function PlaceableHusbandryFence:onLoad(savegame)
 
 			fence.i3dFilename = Utils.getFilename(fenceFilename, self.baseDirectory)
 			local loadingTask = self:createLoadingTask()
-			fence.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(fence.i3dFilename, false, false, self.onFenceI3DLoaded, self, {
-				fence,
-				fenceXmlFile,
-				loadingTask
-			})
+			local arguments = {
+				fence = fence,
+				fenceXmlFile = fenceXmlFile,
+				loadingTask = loadingTask
+			}
+			fence.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(fence.i3dFilename, false, false, self.onFenceI3DLoaded, self, arguments)
 		end
 
 		table.insert(spec.fences, fence)
@@ -147,18 +148,21 @@ function PlaceableHusbandryFence:onLoad(savegame)
 
 		gate.i3dFilename = Utils.getFilename(gateFilename, self.baseDirectory)
 		local loadingTask = self:createLoadingTask()
-		gate.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(gate.i3dFilename, false, false, self.onGateI3DLoaded, self, {
-			gate,
-			gateXmlFile,
-			loadingTask
-		})
+		local arguments = {
+			gate = gate,
+			gateXmlFile = gateXmlFile,
+			loadingTask = loadingTask
+		}
+		gate.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(gate.i3dFilename, false, false, self.onGateI3DLoaded, self, arguments)
 
 		table.insert(spec.gates, gate)
 	end)
 end
 
 function PlaceableHusbandryFence:onFenceI3DLoaded(i3dNode, failedReason, args)
-	local fence, fenceXmlFile, loadingTask = unpack(args)
+	local fence = args.fence
+	local fenceXmlFile = args.fenceXmlFile
+	local loadingTask = args.loadingTask
 
 	if i3dNode ~= 0 then
 		local components = {}
@@ -181,7 +185,9 @@ function PlaceableHusbandryFence:onFenceI3DLoaded(i3dNode, failedReason, args)
 end
 
 function PlaceableHusbandryFence:onGateI3DLoaded(i3dNode, failedReason, args)
-	local gate, gateXmlFile, loadingTask = unpack(args)
+	local gate = args.gate
+	local gateXmlFile = args.gateXmlFile
+	local loadingTask = args.loadingTask
 
 	if i3dNode ~= 0 then
 		local components = {}

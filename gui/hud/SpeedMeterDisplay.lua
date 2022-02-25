@@ -94,6 +94,7 @@ function SpeedMeterDisplay:createComponents(hudAtlasPath)
 	self.damageGaugeIconElement, self.fuelGaugeIconElement = self:createGaugeIconElements(hudAtlasPath, baseX, baseY)
 	self.damageBarElement = self:createDamageBar(hudAtlasPath, baseX, baseY)
 	self.fuelBarElement = self:createFuelBar(hudAtlasPath, baseX, baseY)
+	self.fuelBarElementBlinkTimer = 0
 	self.gearElement = self:createGearIndicator(hudAtlasPath, baseX, baseY)
 	self.speedIndicatorElement = self:createSpeedGaugeIndicator(hudAtlasPath, baseX, baseY)
 	self.operatingTimeElement = self:createOperatingTimeElement(hudAtlasPath, baseX, baseY)
@@ -364,8 +365,24 @@ function SpeedMeterDisplay:updateFuelGauge(dt)
 		local level, capacity = SpeedMeterDisplay.getVehicleFuelLevelAndCapacity(self.vehicle)
 
 		if capacity > 0 then
-			self.fuelBarElement:setValue(level / capacity, "FUEL")
+			local levelPct = level / capacity
+			local alpha = 1
+			local color = SpeedMeterDisplay.COLOR.FUEL_GAUGE
+
+			if levelPct < SpeedMeterDisplay.FUEL_LOW_PERCENTAGE then
+				color = SpeedMeterDisplay.COLOR.FUEL_GAUGE_LOW
+				self.fuelBarElementBlinkTimer = self.fuelBarElementBlinkTimer + dt
+				alpha = math.abs(math.cos(self.fuelBarElementBlinkTimer / 300))
+			else
+				self.fuelBarElementBlinkTimer = 0
+			end
+
+			self.fuelBarElement:setBarColor(color[1], color[2], color[3])
+			self.fuelBarElement:setBarAlpha(alpha)
+			self.fuelBarElement:setValue(levelPct, "FUEL")
 		else
+			self.fuelBarElement:setBarColor(SpeedMeterDisplay.COLOR.FUEL_GAUGE[1], SpeedMeterDisplay.COLOR.FUEL_GAUGE[2], SpeedMeterDisplay.COLOR.FUEL_GAUGE[3])
+			self.fuelBarElement:setBarAlpha(1)
 			self.fuelBarElement:setValue(1)
 		end
 	end
@@ -1285,6 +1302,11 @@ SpeedMeterDisplay.COLOR = {
 		0.6724,
 		0.0093
 	},
+	FUEL_GAUGE_LOW = {
+		1,
+		0.1233,
+		0
+	},
 	CRUISE_CONTROL_OFF = {
 		1,
 		1,
@@ -1347,3 +1369,4 @@ SpeedMeterDisplay.ANGLE = {
 }
 SpeedMeterDisplay.GAUGE_MODE_RPM = 1
 SpeedMeterDisplay.GAUGE_MODE_SPEED = 2
+SpeedMeterDisplay.FUEL_LOW_PERCENTAGE = 0.1

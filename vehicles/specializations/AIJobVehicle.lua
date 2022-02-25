@@ -17,6 +17,8 @@ AIJobVehicle = {
 	registerEvents = function (vehicleType)
 		SpecializationUtil.registerEvent(vehicleType, "onAIJobStarted")
 		SpecializationUtil.registerEvent(vehicleType, "onAIJobFinished")
+		SpecializationUtil.registerEvent(vehicleType, "onAIJobVehicleBlock")
+		SpecializationUtil.registerEvent(vehicleType, "onAIJobVehicleContinue")
 	end
 }
 
@@ -418,8 +420,14 @@ function AIJobVehicle:getFullName(superFunc)
 	local name = superFunc(self)
 
 	if self:getIsAIActive() then
+		local helperName = g_i18n:getText("ui_helper")
 		local currentHelper = self:getCurrentHelper()
-		name = name .. " (" .. g_i18n:getText("ui_helper") .. " " .. currentHelper.name .. ")"
+
+		if currentHelper ~= nil then
+			helperName = helperName .. " " .. currentHelper.name
+		end
+
+		name = name .. " (" .. helperName .. ")"
 	end
 
 	return name
@@ -428,13 +436,22 @@ end
 function AIJobVehicle:aiBlock()
 	if self.isClient and g_currentMission.player.farmId == self:getAIJobFarmId() then
 		local currentHelper = self:getCurrentHelper()
-		local text = string.format(g_i18n:getText("ai_messageErrorBlockedByObject"), currentHelper.name)
+		local name = ""
+
+		if currentHelper ~= nil then
+			name = currentHelper.name
+		end
+
+		local text = string.format(g_i18n:getText("ai_messageErrorBlockedByObject"), name)
 
 		g_currentMission:addIngameNotification(FSBaseMission.INGAME_NOTIFICATION_CRITICAL, text)
 	end
+
+	self:raiseAIEvent("onAIJobVehicleBlock", "onAIImplementJobVehicleBlock")
 end
 
 function AIJobVehicle:aiContinue()
+	self:raiseAIEvent("onAIJobVehicleContinue", "onAIImplementJobVehicleContinue")
 end
 
 function AIJobVehicle:getAIDirectionNode()

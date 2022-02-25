@@ -179,7 +179,7 @@ function Landscaping:assignSculptingParameters(deform, x, y, z, nx, ny, nz, d, m
 		self:addModifiedCircleArea(x, z, radius)
 	end
 
-	deform:setOutsideAreaConstraints(0, math.pi * 2, math.pi * 2)
+	deform:setOutsideAreaConstraints(0, math.rad(75), math.rad(75))
 end
 
 function Landscaping:validateWaterLevel(positionY, strength, operation)

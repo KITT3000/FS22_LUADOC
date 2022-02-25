@@ -37,27 +37,29 @@ end
 
 function DensityMapSyncer:writeUpdateStream(connection, maxPacketSize, x, y, z, viewCoeff, networkDebug)
 	if self.syncerId ~= nil then
-		local startDensityOffset = nil
+		local densityStreamOffsetStart = streamGetWriteOffset(connection.streamId)
 
 		if networkDebug then
-			startDensityOffset = streamGetWriteOffset(connection.streamId)
-
 			streamWriteInt32(connection.streamId, 0)
 		end
 
-		local oldPacketSize = streamGetWriteOffset(connection.streamId)
-
 		writeDensityMapSyncerServerUpdateToStream(self.syncerId, connection.streamId, connection.streamId, x, y, z, viewCoeff, maxPacketSize, connection.lastSeqSent)
-		g_server:addPacketSize(NetworkNode.PACKET_DENSITY_MAPS, (streamGetWriteOffset(connection.streamId) - oldPacketSize) / 8)
+
+		local densityStreamOffsetEnd = streamGetWriteOffset(connection.streamId)
+		local densityPacketSize = densityStreamOffsetEnd - densityStreamOffsetStart
+
+		g_server:addPacketSize(connection, NetworkNode.PACKET_DENSITY_MAPS, densityPacketSize / 8)
 
 		if networkDebug then
-			local endDensityOffset = streamGetWriteOffset(connection.streamId)
-
-			streamSetWriteOffset(connection.streamId, startDensityOffset)
-			streamWriteInt32(connection.streamId, endDensityOffset - (startDensityOffset + 32))
-			streamSetWriteOffset(connection.streamId, endDensityOffset)
+			streamSetWriteOffset(connection.streamId, densityStreamOffsetStart)
+			streamWriteInt32(connection.streamId, densityStreamOffsetEnd - (densityStreamOffsetStart + 32))
+			streamSetWriteOffset(connection.streamId, densityStreamOffsetEnd)
 		end
+
+		return densityPacketSize
 	end
+
+	return 0
 end
 
 function DensityMapSyncer:readUpdateStream(connection, networkDebug)

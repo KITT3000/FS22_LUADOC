@@ -157,6 +157,7 @@ function Environment:load(filename)
 	self.currentDayInPeriod = 1
 	self.currentYear = 1
 	self.currentDayInSeason = 1
+	self.currentVisualDayInSeason = 1
 	self.currentSeason = Environment.SEASON.SPRING
 	self.currentPeriod = Environment.PERIOD.EARLY_SPRING
 	self.daysPerPeriod = 1
@@ -496,10 +497,12 @@ function Environment:updateTimeValues(initialState)
 			end
 		end
 
+		self.currentDayInSeason = math.fmod(self.currentDay - 1, self.daysPerPeriod * 3) + 1
+
 		if self.visualPeriodLocked then
-			self.currentDayInSeason = math.floor((self.currentVisualPeriod - 1) % 3 * self.daysPerPeriod + 1)
+			self.currentVisualDayInSeason = math.floor((self.currentVisualPeriod - 1) % 1.5 * self.daysPerPeriod + 1)
 		else
-			self.currentDayInSeason = math.fmod(self.currentDay - 1, self.daysPerPeriod * 3) + 1
+			self.currentVisualDayInSeason = self.currentDayInSeason
 		end
 
 		local year = math.floor((self.currentDay - 1) / (self.daysPerPeriod * Environment.PERIODS_IN_YEAR)) + 1
@@ -706,7 +709,7 @@ function Environment:getJulianDay()
 		startDays = Environment.JULIAN_DAYS_SOUTH
 	end
 
-	local partInSeason = self.currentDayInSeason / (3 * self.daysPerPeriod)
+	local partInSeason = self.currentVisualDayInSeason / (3 * self.daysPerPeriod)
 
 	return math.fmod(math.floor(startDays[self.currentVisualSeason] + partInSeason * 91), 365)
 end
@@ -762,6 +765,7 @@ function Environment:setFixedPeriod(period)
 		self.currentVisualPeriod = self.currentPeriod
 		self.currentVisualSeason = self.currentSeason
 		self.currentDayInSeason = math.fmod(self.currentDay - 1, self.daysPerPeriod * 3) + 1
+		self.currentVisualDayInSeason = self.currentDayInSeason
 		self.mission.missionInfo.fixedSeasonalVisuals = nil
 
 		self:updateJulianDay()
@@ -771,7 +775,8 @@ function Environment:setFixedPeriod(period)
 		self.visualPeriodLocked = true
 		self.currentVisualPeriod = period
 		self.currentVisualSeason = math.floor((period - 1) / 3)
-		self.currentDayInSeason = math.floor((self.currentVisualPeriod - 1) % 1.5 * self.daysPerPeriod + 1)
+		self.currentDayInSeason = math.fmod(self.currentDay - 1, self.daysPerPeriod * 3) + 1
+		self.currentVisualDayInSeason = math.floor((self.currentVisualPeriod - 1) % 1.5 * self.daysPerPeriod + 1)
 		self.mission.missionInfo.fixedSeasonalVisuals = period
 
 		self:updateJulianDay()

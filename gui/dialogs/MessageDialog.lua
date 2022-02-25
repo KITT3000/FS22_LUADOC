@@ -34,7 +34,7 @@ function MessageDialog:onOpen()
 	if not self.disableOpenSound then
 		if self.dialogType == DialogElement.TYPE_WARNING then
 			self:playSample(GuiSoundPlayer.SOUND_SAMPLES.ERROR)
-		else
+		elseif self.dialogType ~= DialogElement.TYPE_LOADING then
 			self:playSample(GuiSoundPlayer.SOUND_SAMPLES.QUERY)
 		end
 	end

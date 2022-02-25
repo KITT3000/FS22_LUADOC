@@ -12,6 +12,7 @@ end
 function StartMissionInfo:reset()
 	self.difficulty = 1
 	self.mapId = "MapUS"
+	self.scenarioId = nil
 	self.isMultiplayer = false
 	self.createGame = false
 	self.canStart = false

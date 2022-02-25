@@ -455,12 +455,18 @@ function FSDensityMapUtil.updateGrassRollerArea(startWorldX, startWorldZ, widthW
 		local sprayTypeMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_TYPE)
 		local sprayLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
 		local grassDesc = g_fruitTypeManager:getFruitTypeByIndex(FruitType.GRASS)
+		local meadowDesc = g_fruitTypeManager:getFruitTypeByIndex(FruitType.MEADOW)
 		functionData = {
 			grassModifier = DensityMapModifier.new(grassDesc.terrainDataPlaneId, grassDesc.startStateChannel, grassDesc.numStateChannels, terrainRootNode),
 			grassFilter = DensityMapFilter.new(grassDesc.terrainDataPlaneId, grassDesc.startStateChannel, grassDesc.numStateChannels, terrainRootNode)
 		}
 
 		functionData.grassFilter:setValueCompareParams(DensityValueCompareType.GREATER, 1)
+
+		functionData.meadowModifier = DensityMapModifier.new(meadowDesc.terrainDataPlaneId, meadowDesc.startStateChannel, meadowDesc.numStateChannels, terrainRootNode)
+		functionData.meadowFilter = DensityMapFilter.new(meadowDesc.terrainDataPlaneId, meadowDesc.startStateChannel, meadowDesc.numStateChannels, terrainRootNode)
+
+		functionData.meadowFilter:setValueCompareParams(DensityValueCompareType.GREATER, 1)
 
 		functionData.sprayTypeModifier = DensityMapModifier.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode)
 		functionData.sprayLevelModifier = DensityMapModifier.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
@@ -471,6 +477,10 @@ function FSDensityMapUtil.updateGrassRollerArea(startWorldX, startWorldZ, widthW
 		functionData.noGrassVisibleFilter = DensityMapFilter.new(grassDesc.terrainDataPlaneId, grassDesc.startStateChannel, grassDesc.numStateChannels, terrainRootNode)
 
 		functionData.noGrassVisibleFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
+
+		functionData.noMeadowVisibleFilter = DensityMapFilter.new(meadowDesc.terrainDataPlaneId, meadowDesc.startStateChannel, meadowDesc.numStateChannels, terrainRootNode)
+
+		functionData.noMeadowVisibleFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
 
 		functionData.sprayTypeFilter = DensityMapFilter.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels)
 
@@ -511,12 +521,15 @@ function FSDensityMapUtil.updateGrassRollerArea(startWorldX, startWorldZ, widthW
 
 	local grassModifier = functionData.grassModifier
 	local grassFilter = functionData.grassFilter
+	local meadowModifier = functionData.meadowModifier
+	local meadowFilter = functionData.meadowFilter
 	local sprayLevelModifier = functionData.sprayLevelModifier
 	local sprayTypeModifier = functionData.sprayTypeModifier
 	local stoneModifier = functionData.stoneModifier
 	local stoneFilter = functionData.stoneFilter
 	local outsideFieldFilter = functionData.outsideFieldFilter
 	local noGrassVisibleFilter = functionData.noGrassVisibleFilter
+	local noMeadowVisibleFilter = functionData.noMeadowVisibleFilter
 	local sprayTypeFilter = functionData.sprayTypeFilter
 	local sprayTypeFilter2 = functionData.sprayTypeFilter2
 	local notMaxSprayLevelFilter = functionData.notMaxSprayLevelFilter
@@ -525,6 +538,7 @@ function FSDensityMapUtil.updateGrassRollerArea(startWorldX, startWorldZ, widthW
 	local maskValue = functionData.maskValue
 
 	grassModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+	meadowModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	sprayLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	sprayTypeModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
@@ -538,13 +552,20 @@ function FSDensityMapUtil.updateGrassRollerArea(startWorldX, startWorldZ, widthW
 		sprayTypeModifier:executeSet(maskValue, grassFilter, sprayTypeFilter2, notMaxSprayLevelFilter)
 	end
 
+	sprayTypeModifier:executeSet(maskValue, meadowFilter, sprayTypeFilter, notMaxSprayLevelFilter)
+
+	if sprayTypeFilter2 ~= nil then
+		sprayTypeModifier:executeSet(maskValue, meadowFilter, sprayTypeFilter2, notMaxSprayLevelFilter)
+	end
+
 	sprayTypeModifier:executeSet(0, areaMaskedFilter, outsideFieldFilter)
-	sprayTypeModifier:executeSet(0, areaMaskedFilter, noGrassVisibleFilter)
+	sprayTypeModifier:executeSet(0, areaMaskedFilter, noGrassVisibleFilter, noMeadowVisibleFilter)
 
 	local _, _, numPixels, totalNumPixels = sprayLevelModifier:executeAdd(1, areaMaskedFilter)
 
 	sprayTypeModifier:executeSet(sprayType, areaMaskedFilter)
 	grassModifier:executeSet(1, grassFilter)
+	meadowModifier:executeSet(1, meadowFilter)
 
 	if removeStones ~= false and stoneModifier ~= nil then
 		stoneModifier:executeAdd(-1, stoneFilter)
@@ -1030,7 +1051,6 @@ function FSDensityMapUtil.updateDiscHarrowArea(startWorldX, startWorldZ, widthWo
 	end
 
 	local _, areaBeforeSeedbed, _ = modifier:executeGet(seedbedTypeFilter)
-	local _, areaBeforeStubbleTillage, _ = modifier:executeGet(stubbleTillageFilter)
 	local _, _, totalArea = modifier:executeGet()
 
 	modifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
@@ -1038,6 +1058,9 @@ function FSDensityMapUtil.updateDiscHarrowArea(startWorldX, startWorldZ, widthWo
 	modifier:executeSet(seedbedType, notStubbleTillageFilter, fieldFilter, noFruitFilter)
 	modifierAngle:executeSet(angle, seedbedTypeFilter)
 	modifierAngle:executeSet(angle, stubbleTillageFilter)
+
+	local _, areaBeforeStubbleTillage, _ = modifier:executeGet(stubbleTillageFilter)
+
 	multiModifier:updateParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	multiModifier:execute(false)
 

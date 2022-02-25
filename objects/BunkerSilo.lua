@@ -143,8 +143,6 @@ function BunkerSilo:load(components, xmlFile, key, i3dMappings)
 end
 
 function BunkerSilo:delete()
-	g_currentMission:removeOnCreateLoadedObjectToSave(self)
-
 	if self.interactionTriggerNode ~= nil then
 		removeTrigger(self.interactionTriggerNode)
 	end
@@ -640,9 +638,9 @@ function BunkerSilo:getCanInteract(showInformationOnly)
 			return true
 		end
 
-		if not g_currentMission.controlPlayer then
+		if not g_currentMission.controlPlayer and g_currentMission.controlledVehicle ~= nil then
 			for vehicle in pairs(self.vehiclesInRange) do
-				if vehicle:getIsActiveForInput(true) then
+				if vehicle:getIsActiveForInput(true) and vehicle == g_currentMission.controlledVehicle then
 					return true
 				end
 			end
@@ -817,7 +815,7 @@ function BunkerSilo:onChangedFillLevelCallback(vehicle, fillDelta, fillType, x, 
 		local p1 = MathUtil.getProjectOnLineParameter(x, z, area.hx, area.hz, -area.dhx_norm, -area.dhz_norm)
 
 		if p1 > area.offsetBack - length then
-			local offset = self:getBunkerAreaOffset(true, area.offsetBack, self.fermentingFillType)
+			local offset = self:getBunkerAreaOffset(false, area.offsetBack, self.fermentingFillType)
 			local targetOffset = math.max(p1, offset) + length
 
 			self:switchFillTypeAtOffset(false, area.offsetBack, targetOffset - area.offsetBack)
@@ -877,6 +875,10 @@ function BunkerSiloActivatable:getIsActivatable()
 	end
 
 	return false
+end
+
+function BunkerSiloActivatable:getHasAccess(farmId)
+	return g_currentMission.accessHandler:canFarmAccessOtherId(farmId, self.bunkerSilo:getOwnerFarmId())
 end
 
 function BunkerSiloActivatable:run()

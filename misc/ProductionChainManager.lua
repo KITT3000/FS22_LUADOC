@@ -58,7 +58,7 @@ function ProductionChainManager:addProductionPoint(productionPoint)
 		return false
 	end
 
-	if #self.productionPoints == 0 then
+	if #self.productionPoints == 0 and self.isServer then
 		g_currentMission:addUpdateable(self)
 	end
 
@@ -110,7 +110,7 @@ function ProductionChainManager:removeProductionPoint(productionPoint)
 		end
 	end
 
-	if #self.productionPoints == 0 then
+	if #self.productionPoints == 0 and self.isServer then
 		g_currentMission:removeUpdateable(self)
 	end
 end
@@ -420,6 +420,22 @@ function ProductionChainManager:commandSetFillLevel(ppIdentifier, fillTypeIdenti
 	end
 
 	return string.format("Filled %i storage spaces", numStorageSpaces)
+end
+
+function ProductionChainManager:consoleCommandToggleProdPointDebug()
+	self.debugEnabled = not self.debugEnabled
+
+	if g_currentMission ~= nil then
+		for _, prodPoint in pairs(self.productionPoints) do
+			if self.debugEnabled then
+				g_currentMission:addDrawable(prodPoint)
+			else
+				g_currentMission:removeDrawable(prodPoint)
+			end
+		end
+	end
+
+	return "ProductionChainManager.debugEnabled=" .. tostring(self.debugEnabled)
 end
 
 function ProductionChainManager:getProductionPointsFromString(identificationString)

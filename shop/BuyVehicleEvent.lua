@@ -5,6 +5,7 @@ BuyVehicleEvent.STATE_FAILED_TO_LOAD = 1
 BuyVehicleEvent.STATE_NO_SPACE = 2
 BuyVehicleEvent.STATE_NO_PERMISSION = 3
 BuyVehicleEvent.STATE_NOT_ENOUGH_MONEY = 4
+BuyVehicleEvent.STATE_TOO_MANY_BALES = 5
 
 InitStaticEventClass(BuyVehicleEvent, "BuyVehicleEvent", EventIds.EVENT_BUY_VEHICLE)
 
@@ -107,46 +108,71 @@ function BuyVehicleEvent:writeStream(streamId, connection)
 end
 
 function BuyVehicleEvent:run(connection)
-	if not connection:getIsServer() then
-		if g_currentMission:getHasPlayerPermission(Farm.PERMISSION.BUY_VEHICLE, connection) then
-			self.filename = self.filename:lower()
-			local dataStoreItem = g_storeManager:getItemByXMLFilename(self.filename)
-
-			if dataStoreItem ~= nil then
-				local propertyState = Vehicle.PROPERTY_STATE_OWNED
-				local price, _ = g_currentMission.economyManager:getBuyPrice(dataStoreItem, self.configurations, self.saleItem)
-				local payedPrice = price
-
-				if self.leaseVehicle then
-					propertyState = Vehicle.PROPERTY_STATE_LEASED
-					payedPrice = g_currentMission.economyManager:getInitialLeasingPrice(price)
-				end
-
-				if payedPrice <= g_currentMission:getMoney(self.ownerFarmId) then
-					if not GS_IS_CONSOLE_VERSION or fileExists(dataStoreItem.xmlFilename) then
-						local asyncParams = {
-							targetOwner = self,
-							connection = connection,
-							leaseVehicle = self.leaseVehicle,
-							outsideBuy = self.outsideBuy,
-							price = payedPrice,
-							ownerFarmId = self.ownerFarmId,
-							filename = self.filename,
-							licensePlateData = self.licensePlateData
-						}
-
-						VehicleLoadingUtil.loadVehiclesAtPlace(dataStoreItem, g_currentMission.storeSpawnPlaces, g_currentMission.usedStorePlaces, self.configurations, price, propertyState, self.ownerFarmId, self.saleItem, self.onVehicleBoughtCallback, self, asyncParams)
-					end
-				else
-					connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_NOT_ENOUGH_MONEY, self.filename, self.leaseVehicle, payedPrice))
-				end
-			end
-		else
-			connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_NO_PERMISSION, self.filename, self.leaseVehicle, 0))
-		end
-	else
+	if connection:getIsServer() then
 		g_messageCenter:publish(BuyVehicleEvent, self.errorCode, self.leaseVehicle, self.price, self.licensePlateData)
+
+		return
 	end
+
+	if not g_currentMission:getHasPlayerPermission(Farm.PERMISSION.BUY_VEHICLE, connection) then
+		connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_NO_PERMISSION, self.filename, self.leaseVehicle, 0))
+
+		return
+	end
+
+	self.filename = self.filename:lower()
+	local dataStoreItem = g_storeManager:getItemByXMLFilename(self.filename)
+
+	if dataStoreItem == nil then
+		connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_FAILED_TO_LOAD, self.filename, self.leaseVehicle, 0))
+
+		return
+	end
+
+	local propertyState = Vehicle.PROPERTY_STATE_OWNED
+	local price, _ = g_currentMission.economyManager:getBuyPrice(dataStoreItem, self.configurations, self.saleItem)
+	local payedPrice = price
+
+	if self.leaseVehicle then
+		propertyState = Vehicle.PROPERTY_STATE_LEASED
+		payedPrice = g_currentMission.economyManager:getInitialLeasingPrice(price)
+	end
+
+	if g_currentMission:getMoney(self.ownerFarmId) < payedPrice then
+		connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_NOT_ENOUGH_MONEY, self.filename, self.leaseVehicle, payedPrice))
+
+		return
+	end
+
+	if GS_IS_CONSOLE_VERSION and not fileExists(dataStoreItem.xmlFilename) then
+		connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_FAILED_TO_LOAD, self.filename, self.leaseVehicle, 0))
+
+		return
+	end
+
+	local xmlFile = XMLFile.load("BaleXML", dataStoreItem.xmlFilename, nil)
+	local isBalePurchase = xmlFile:hasProperty("vehicle.multipleItemPurchase") and xmlFile:getBool("vehicle.multipleItemPurchase#isVehicle") == false
+
+	xmlFile:delete()
+
+	if isBalePurchase and not g_currentMission.slotSystem:getCanAddLimitedObjects(SlotSystem.LIMITED_OBJECT_BALE, 1) then
+		connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_TOO_MANY_BALES, self.filename, self.leaseVehicle, 0))
+
+		return
+	end
+
+	local asyncParams = {
+		targetOwner = self,
+		connection = connection,
+		leaseVehicle = self.leaseVehicle,
+		outsideBuy = self.outsideBuy,
+		price = payedPrice,
+		ownerFarmId = self.ownerFarmId,
+		filename = self.filename,
+		licensePlateData = self.licensePlateData
+	}
+
+	VehicleLoadingUtil.loadVehiclesAtPlace(dataStoreItem, g_currentMission.storeSpawnPlaces, g_currentMission.usedStorePlaces, self.configurations, price, propertyState, self.ownerFarmId, self.saleItem, self.onVehicleBoughtCallback, self, asyncParams)
 end
 
 function BuyVehicleEvent:onVehicleBoughtCallback(code, params)

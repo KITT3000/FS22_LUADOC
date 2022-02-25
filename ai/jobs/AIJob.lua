@@ -95,10 +95,18 @@ function AIJob:update(dt)
 		local currentTask = nil
 
 		if self.currentTaskIndex == 0 then
-			local taskIndex = self:getStartTaskIndex()
-			local task = self:getTaskByIndex(taskIndex)
+			local canStart, aiMessage = self:canStartWork()
 
-			self:startTask(task)
+			if canStart then
+				local taskIndex = self:getStartTaskIndex()
+				local task = self:getTaskByIndex(taskIndex)
+
+				self:startTask(task)
+			else
+				g_currentMission.aiSystem:stopJob(self, aiMessage)
+
+				return
+			end
 		else
 			currentTask = self:getTaskByIndex(self.currentTaskIndex)
 		end
@@ -127,7 +135,7 @@ function AIJob:update(dt)
 					end
 				end
 
-				self:stopTask(currentTask)
+				self:stopTask(currentTask, false)
 
 				local nextTask = self:getTaskByIndex(newTaskIndex)
 
@@ -138,6 +146,10 @@ function AIJob:update(dt)
 end
 
 function AIJob:canContinueWork()
+	return true, nil
+end
+
+function AIJob:canStartWork()
 	return true, nil
 end
 
@@ -170,11 +182,11 @@ function AIJob:startTask(task)
 	end
 end
 
-function AIJob:stopTask(task)
-	task:stop()
+function AIJob:stopTask(task, wasJobStopped)
+	task:stop(wasJobStopped)
 
 	if self.isServer then
-		g_server:broadcastEvent(AITaskStopEvent.new(self, task))
+		g_server:broadcastEvent(AITaskStopEvent.new(self, task, wasJobStopped))
 	end
 end
 
@@ -198,10 +210,10 @@ end
 function AIJob:stop(aiMessage)
 	self.isRunning = false
 
-	if self.isServer then
+	if self.isServer and self.currentTaskIndex ~= 0 then
 		local task = self:getTaskByIndex(self.currentTaskIndex)
 
-		self:stopTask(task)
+		self:stopTask(task, true)
 	end
 
 	self:showNotification(aiMessage)

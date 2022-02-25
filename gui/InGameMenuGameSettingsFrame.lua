@@ -123,7 +123,7 @@ function InGameMenuGameSettingsFrame:onFrameOpen(element)
 
 	if FocusManager:getFocusedElement() == nil then
 		self:setSoundSuppressed(true)
-		FocusManager:setFocus(self.buttonPauseGame)
+		FocusManager:setFocus(self.boxLayout)
 		self:setSoundSuppressed(false)
 	end
 end
@@ -325,14 +325,6 @@ function InGameMenuGameSettingsFrame:assignDynamicTexts()
 	end
 
 	self.checkHelperRefillSlurry:setTexts(textTable)
-end
-
-function InGameMenuGameSettingsFrame:getMainElementSize()
-	return self.settingsContainer.size
-end
-
-function InGameMenuGameSettingsFrame:getMainElementPosition()
-	return self.settingsContainer.absPosition
 end
 
 function InGameMenuGameSettingsFrame:onEnterPressedSavegameName()

@@ -198,7 +198,17 @@ function acceptedGameInvite(platformServerId, requestUserName)
 	g_gui:closeDialogByName("InfoDialog")
 
 	if g_currentMission ~= nil then
+		g_invitePlatformServerId = platformServerId
+		g_inviteRequestUserName = requestUserName
+
 		OnInGameMenuMenu()
+
+		if g_isRestarting then
+			return
+		end
+
+		g_invitePlatformServerId = nil
+		g_inviteRequestUserName = nil
 	end
 
 	if Platform.isXbox and (g_gui.currentGuiName == "GamepadSigninScreen" or not g_isSignedIn) then

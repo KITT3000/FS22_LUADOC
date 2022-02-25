@@ -321,7 +321,7 @@ function InputBinding:load()
 	self.mouseMotionScaleY = Utils.getNoNil(getXMLFloat(xmlFileInputBinding, "inputBinding#mouseSensitivityScaleY"), 1) * self.MOUSE_MOTION_SCALE_Y_DEFAULT
 
 	self:initializeGamepadMapping(xmlFileInputBinding)
-	self:loadActionBindingsFromXML(xmlFileInputBinding, false, nil)
+	self:loadActionBindingsFromXML(xmlFileInputBinding, false, nil, nil, nil, true)
 	self:upgradeBindingVersion(xmlFileInputBinding)
 	self:resolveBindingDevices()
 	self:migrateDevicesCategory()
@@ -344,8 +344,28 @@ function InputBinding:load()
 end
 
 function InputBinding:loadDefaultBindings()
+	if self.inputBindingPathTemplate ~= nil then
+		local xmlFile = loadXMLFile("DefaultKeyboardMouseBindings", self.inputBindingPathTemplate)
+
+		self:loadActionBindingsFromXML(xmlFile, true, nil, nil, true, false)
+		delete(xmlFile)
+	end
+
 	if self.numGamepads > 0 then
-		local requiredCategorySet = self:getRequiredDefaultBindingsCategories()
+		local categorySetsWithBindings = self:getBindingCategorySet(self:getAllDeviceIdsWithBindings())
+		local ignoredDevices = self:getAllDeviceIdsWithoutBindings()
+
+		for _, category in ipairs(InputBinding.DEVICE_CATEGORY_DEFAULT_LOAD_ORDER) do
+			if categorySetsWithBindings[category] then
+				local templatePath = InputBinding.DEVICE_CATEGORY_DEFAULTS_PATHS[category]
+				local xmlFileControllerTemplate = loadXMLFile("ControllerTemplate", templatePath)
+
+				self:loadActionBindingsFromXML(xmlFileControllerTemplate, true, nil, ignoredDevices, true, false)
+				delete(xmlFileControllerTemplate)
+			end
+		end
+
+		local requiredCategorySet = self:getBindingCategorySet(ignoredDevices)
 
 		for _, category in ipairs(InputBinding.DEVICE_CATEGORY_DEFAULT_LOAD_ORDER) do
 			if requiredCategorySet[category] then
@@ -353,7 +373,7 @@ function InputBinding:loadDefaultBindings()
 				local xmlFileControllerTemplate = loadXMLFile("ControllerTemplate", templatePath)
 				local usedDevices = self:getAllDevicesWithBindings()
 
-				self:loadActionBindingsFromXML(xmlFileControllerTemplate, true, nil, usedDevices)
+				self:loadActionBindingsFromXML(xmlFileControllerTemplate, true, nil, usedDevices, false, false)
 				delete(xmlFileControllerTemplate)
 			end
 		end
@@ -362,37 +382,31 @@ function InputBinding:loadDefaultBindings()
 	self:loadModBindingDefaults()
 end
 
-function InputBinding:getRequiredDefaultBindingsCategories()
-	local requiredCategorySet = {}
-	local deviceId = 0
-	local device = self.devicesByInternalId[deviceId]
+function InputBinding:getBindingCategorySet(deviceIds)
+	local categorySet = {}
 
-	while device ~= nil do
-		if not self:getDeviceHasAnyBindings(device) then
-			requiredCategorySet[device.category] = true
-		end
-
-		deviceId = deviceId + 1
-		device = self.devicesByInternalId[deviceId]
+	for deviceId, _ in pairs(deviceIds) do
+		local device = self.devicesByInternalId[deviceId]
+		categorySet[device.category] = true
 	end
 
-	local hasWheel = requiredCategorySet[InputDevice.CATEGORY.WHEEL] ~= nil
-	local hasFarmWheel = requiredCategorySet[InputDevice.CATEGORY.FARMWHEEL] ~= nil
-	local hasPanel = requiredCategorySet[InputDevice.CATEGORY.FARMPANEL] ~= nil
+	local hasWheel = categorySet[InputDevice.CATEGORY.WHEEL] ~= nil
+	local hasFarmWheel = categorySet[InputDevice.CATEGORY.FARMWHEEL] ~= nil
+	local hasPanel = categorySet[InputDevice.CATEGORY.FARMPANEL] ~= nil
 
 	if (hasWheel or hasFarmWheel) and hasPanel then
-		requiredCategorySet[InputDevice.CATEGORY.WHEEL] = nil
-		requiredCategorySet[InputDevice.CATEGORY.FARMWHEEL] = nil
-		requiredCategorySet[InputDevice.CATEGORY.FARMPANEL] = nil
+		categorySet[InputDevice.CATEGORY.WHEEL] = nil
+		categorySet[InputDevice.CATEGORY.FARMWHEEL] = nil
+		categorySet[InputDevice.CATEGORY.FARMPANEL] = nil
 
 		if hasFarmWheel then
-			requiredCategorySet[InputDevice.CATEGORY.FARMWHEEL_AND_PANEL] = true
+			categorySet[InputDevice.CATEGORY.FARMWHEEL_AND_PANEL] = true
 		else
-			requiredCategorySet[InputDevice.CATEGORY.WHEEL_AND_PANEL] = true
+			categorySet[InputDevice.CATEGORY.WHEEL_AND_PANEL] = true
 		end
 	end
 
-	return requiredCategorySet
+	return categorySet
 end
 
 function InputBinding:getDeviceHasAnyBindings(device)
@@ -423,9 +437,43 @@ function InputBinding:getAllDevicesWithBindings()
 	return usedDevices
 end
 
+function InputBinding:getAllDeviceIdsWithoutBindings()
+	local deviceIds = {}
+	local deviceId = 0
+	local device = self.devicesByInternalId[deviceId]
+
+	while device ~= nil do
+		if not self:getDeviceHasAnyBindings(device) then
+			deviceIds[deviceId] = true
+		end
+
+		deviceId = deviceId + 1
+		device = self.devicesByInternalId[deviceId]
+	end
+
+	return deviceIds
+end
+
+function InputBinding:getAllDeviceIdsWithBindings()
+	local deviceIds = {}
+	local deviceId = 0
+	local device = self.devicesByInternalId[deviceId]
+
+	while device ~= nil do
+		if self:getDeviceHasAnyBindings(device) then
+			deviceIds[deviceId] = true
+		end
+
+		deviceId = deviceId + 1
+		device = self.devicesByInternalId[deviceId]
+	end
+
+	return deviceIds
+end
+
 function InputBinding:loadModActions()
 	for _, modDesc in ipairs(self.modManager:getMods()) do
-		local xmlFile = loadXMLFile("ModFile", modDesc.modFile)
+		local xmlFile = loadXMLFile("InputBinding ModActions ModFile", modDesc.modFile)
 
 		self:loadActions(xmlFile, modDesc.modName)
 		delete(xmlFile)
@@ -434,9 +482,9 @@ end
 
 function InputBinding:loadModBindingDefaults()
 	for _, modDesc in ipairs(self.modManager:getMods()) do
-		local xmlFile = loadXMLFile("ModFile", modDesc.modFile)
+		local xmlFile = loadXMLFile("InputBinding BindingDefaults ModFile", modDesc.modFile)
 
-		self:loadActionBindingsFromXML(xmlFile, true, modDesc.modName, nil, true)
+		self:loadActionBindingsFromXML(xmlFile, true, modDesc.modName, nil, true, false)
 		delete(xmlFile)
 	end
 end
@@ -1754,7 +1802,7 @@ function InputBinding:validateAndRepairComboActionBindings()
 	end
 end
 
-function InputBinding:loadActionBindingsFromXML(xmlFile, silentIgnoreDuplicates, modName, disallowedDeviceIds, requireUnknownBindings)
+function InputBinding:loadActionBindingsFromXML(xmlFile, silentIgnoreDuplicates, modName, disallowedDeviceIds, requireUnknownBindings, markActionKnown)
 	local rootPath = "inputBinding"
 
 	if modName then
@@ -1776,7 +1824,9 @@ function InputBinding:loadActionBindingsFromXML(xmlFile, silentIgnoreDuplicates,
 			local action = self.nameActions[actionName]
 
 			if action and (not action.bindingsKnown or not requireUnknownBindings) then
-				action.bindingsKnown = true
+				if markActionKnown then
+					action.bindingsKnown = true
+				end
 
 				self:loadBindingsFromXML(xmlFile, actionPath, action, silentIgnoreDuplicates, disallowedDeviceIds)
 			end
@@ -2550,7 +2600,7 @@ function InputBinding:getGamepadAxisOrButtonValue(internalDeviceId, axisName, ne
 	return 0, false
 end
 
-function InputBinding:getGamepadAxisValue(internalDeviceId, axisId, axisName, neutralInput)
+function InputBinding:getGamepadAxisValue(internalDeviceId, axisId, axisName, neutralInput, overrideDeadzone)
 	local value = nil
 
 	if Input.isHalfAxis(axisId) then
@@ -2576,6 +2626,10 @@ function InputBinding:getGamepadAxisValue(internalDeviceId, axisId, axisName, ne
 
 		if GS_PLATFORM_PC then
 			local deadzone = device:getDeadzone(axisId)
+
+			if overrideDeadzone ~= nil then
+				deadzone = overrideDeadzone
+			end
 
 			if deadzone > 0.999 or math.abs(value) < deadzone then
 				value = 0

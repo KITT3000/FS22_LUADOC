@@ -36,7 +36,7 @@ function AITask:skip()
 	end
 end
 
-function AITask:stop()
+function AITask:stop(wasJobStopped)
 	self.isRunning = false
 	self.markAsFinished = false
 end

@@ -16,12 +16,17 @@ Mountable = {
 		schema:register(XMLValueType.BOOL, "vehicle.dynamicMount#jointLimitToRotY", "Local placed joint will only be adjusted on Y axis to the target mounter object. X and Z will be 0.", false)
 		schema:register(XMLValueType.FLOAT, "vehicle.dynamicMount#additionalMountDistance", "Distance from root node to the object laying on top (normally height of object). If defined the mass of this object has influence in mounting.", 0)
 		schema:register(XMLValueType.BOOL, "vehicle.dynamicMount#allowMassReduction", "Defines if mass can be reduced by the mount vehicle", true)
+		schema:register(XMLValueType.STRING, "vehicle.dynamicMount.lockPosition(?)#xmlFilename", "XML filename of vehicle to lock on (needs to match only the end of the filename)")
+		schema:register(XMLValueType.STRING, "vehicle.dynamicMount.lockPosition(?)#jointNode", "Joint node of other vehicle (path or i3dMapping name)", "vehicle root node")
+		schema:register(XMLValueType.VECTOR_TRANS, "vehicle.dynamicMount.lockPosition(?)#transOffset", "Translation offset from joint node", "0 0 0")
+		schema:register(XMLValueType.VECTOR_ROT, "vehicle.dynamicMount.lockPosition(?)#rotOffset", "Rotation offset from joint node", "0 0 0")
 		schema:setXMLSpecializationType()
 	end
 }
 
 function Mountable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getSupportsMountDynamic", Mountable.getSupportsMountDynamic)
+	SpecializationUtil.registerFunction(vehicleType, "getSupportsMountKinematic", Mountable.getSupportsMountKinematic)
 	SpecializationUtil.registerFunction(vehicleType, "onDynamicMountJointBreak", Mountable.onDynamicMountJointBreak)
 	SpecializationUtil.registerFunction(vehicleType, "mountableTriggerCallback", Mountable.mountableTriggerCallback)
 	SpecializationUtil.registerFunction(vehicleType, "mount", Mountable.mount)
@@ -37,6 +42,7 @@ function Mountable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getDynamicMountObject", Mountable.getDynamicMountObject)
 	SpecializationUtil.registerFunction(vehicleType, "setReducedComponentMass", Mountable.setReducedComponentMass)
 	SpecializationUtil.registerFunction(vehicleType, "getAllowComponentMassReduction", Mountable.getAllowComponentMassReduction)
+	SpecializationUtil.registerFunction(vehicleType, "getMountableLockPositions", Mountable.getMountableLockPositions)
 end
 
 function Mountable.registerOverwrittenFunctions(vehicleType)
@@ -92,6 +98,24 @@ function Mountable:onLoad(savegame)
 	spec.additionalMountDistance = self.xmlFile:getValue("vehicle.dynamicMount#additionalMountDistance", 0)
 	spec.allowMassReduction = self.xmlFile:getValue("vehicle.dynamicMount#allowMassReduction", true)
 	spec.reducedComponentMass = false
+	spec.lockPositions = {}
+
+	self.xmlFile:iterate("vehicle.dynamicMount.lockPosition", function (index, key)
+		local entry = {
+			xmlFilename = self.xmlFile:getValue(key .. "#xmlFilename"),
+			jointNode = self.xmlFile:getValue(key .. "#jointNode", "0>")
+		}
+
+		if entry.xmlFilename ~= nil and entry.jointNode ~= nil then
+			entry.xmlFilename = entry.xmlFilename:gsub("$data", "data")
+			entry.transOffset = self.xmlFile:getValue(key .. "#transOffset", "0 0 0", true)
+			entry.rotOffset = self.xmlFile:getValue(key .. "#rotOffset", "0 0 0", true)
+
+			table.insert(spec.lockPositions, entry)
+		else
+			Logging.xmlWarning(self.xmlFile, "Invalid lock position '%s'. Missing xmlFilename or jointNode!", key)
+		end
+	end)
 end
 
 function Mountable:onDelete()
@@ -115,6 +139,10 @@ function Mountable:getSupportsMountDynamic()
 	local spec = self.spec_mountable
 
 	return spec.dynamicMountForceLimitScale ~= nil
+end
+
+function Mountable:getSupportsMountKinematic()
+	return #self.components == 1
 end
 
 function Mountable:onDynamicMountJointBreak(jointIndex, breakingImpulse)
@@ -409,6 +437,10 @@ end
 
 function Mountable:getAllowComponentMassReduction()
 	return self.spec_mountable.allowMassReduction
+end
+
+function Mountable:getMountableLockPositions()
+	return self.spec_mountable.lockPositions
 end
 
 function Mountable:getOwner(superFunc)

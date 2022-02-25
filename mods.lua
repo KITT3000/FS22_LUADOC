@@ -608,6 +608,29 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 				textI = textI + 1
 			end
 
+			textI = 0
+
+			while true do
+				local key = string.format("l10n.elements.e(%d)", textI)
+
+				if not hasXMLProperty(l10nXmlFile, key) then
+					break
+				end
+
+				local name = getXMLString(l10nXmlFile, key .. "#k")
+				local text = getXMLString(l10nXmlFile, key .. "#v")
+
+				if name ~= nil and text ~= nil then
+					if modEnv.g_i18n:hasModText(name) then
+						print("Warning: Duplicate l10n entry '" .. name .. "' in '" .. l10nFilename .. "'. Ignoring this definition.")
+					else
+						modEnv.g_i18n:setText(name, text:gsub("\r\n", "\n"))
+					end
+				end
+
+				textI = textI + 1
+			end
+
 			delete(l10nXmlFile)
 		else
 			print("Warning: No l10n file found for '" .. l10nFilenamePrefix .. "' in mod '" .. modName .. "'")
@@ -658,7 +681,10 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	end
 
 	xmlFile:iterate("modDesc.maps.map", function (_, baseName)
-		g_mapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultiplayerSupported, isDLCFile)
+		g_mapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultiplayerSupported, isDLCFile, true)
+	end)
+	xmlFile:iterate("modDesc.scenarios.scenario", function (_, baseName)
+		g_scenarioManager:loadScenarioFromXML(xmlFile, baseName, modDir, modName, isDLCFile)
 	end)
 
 	local author = xmlFile:getI18NValue("modDesc.author", "", modName, true)

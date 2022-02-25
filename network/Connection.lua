@@ -1,18 +1,25 @@
 Connection = {}
 local Connection_mt = Class(Connection)
 Connection.SYNC_CREATING = 1
-Connection.SYNC_CREATED = 2
-Connection.SYNC_REMOVING = 3
-Connection.SYNC_MANUALLY_REGISTERED = 4
+Connection.SYNC_CREATING_DELAYED = 2
+Connection.SYNC_LOADED = 3
+Connection.SYNC_SYNCING = 4
+Connection.SYNC_CREATED = 5
+Connection.SYNC_REMOVING = 6
+Connection.SYNC_MANUALLY_REGISTERED = 7
 Connection.SYNC_HIST_CREATE = 0
-Connection.SYNC_HIST_UPDATE = 1
-Connection.SYNC_HIST_REMOVE = 2
+Connection.SYNC_HIST_SYNC = 1
+Connection.SYNC_HIST_UPDATE = 2
+Connection.SYNC_HIST_REMOVE = 3
+Connection.SEND_INFO_NUM_BITS = 3
+Connection.SEND_INFO_DELETE = 0
+Connection.SEND_INFO_CREATE = 1
+Connection.SEND_INFO_SYNC = 2
+Connection.SEND_INFO_UPDATE = 3
+Connection.SEND_INFO_REMOVE = 4
 
 function Connection.new(id, isServer, reverseConnection)
-	local self = {}
-
-	setmetatable(self, Connection_mt)
-
+	local self = setmetatable({}, Connection_mt)
 	self.streamId = id
 	self.isServer = isServer
 	self.isConnected = true
@@ -97,9 +104,9 @@ function Connection:sendEvent(event, deleteEvent, force)
 			netSendStream(self.streamId, "high", "reliable_ordered", channel, true)
 
 			if g_server ~= nil then
-				g_server:addPacketSize(NetworkNode.PACKET_EVENT, dataSent / 8)
+				g_server:addPacketSize(self, NetworkNode.PACKET_EVENT, dataSent / 8)
 			else
-				g_client:addPacketSize(NetworkNode.PACKET_EVENT, dataSent / 8)
+				g_client:addPacketSize(self, NetworkNode.PACKET_EVENT, dataSent / 8)
 			end
 		end
 	end
@@ -117,14 +124,18 @@ function Connection:queueSendEvent(event, force, ghostObject)
 	if self.isReadyForEvents or force then
 		local objectInfo = self.objectsInfo[ghostObject.id]
 
-		if objectInfo ~= nil and (objectInfo.sync == Connection.SYNC_CREATING or objectInfo.sync == Connection.SYNC_MANUALLY_REGISTERED) then
-			event.queueCount = event.queueCount + 1
+		if objectInfo ~= nil then
+			local isInQueueState = objectInfo.sync == Connection.SYNC_CREATING or objectInfo.sync == Connection.SYNC_CREATING_DELAYED or objectInfo.sync == Connection.SYNC_LOADED or objectInfo.sync == Connection.SYNC_SYNCING or objectInfo.sync == Connection.SYNC_MANUALLY_REGISTERED
 
-			if objectInfo.eventQueue == nil then
-				objectInfo.eventQueue = {}
+			if isInQueueState then
+				event.queueCount = event.queueCount + 1
+
+				if objectInfo.eventQueue == nil then
+					objectInfo.eventQueue = {}
+				end
+
+				table.insert(objectInfo.eventQueue, event)
 			end
-
-			table.insert(objectInfo.eventQueue, event)
 		end
 	end
 end
@@ -218,6 +229,12 @@ function Connection:onPacketSent(i)
 
 					self:sendObjectEventQueue(objectInfo)
 				end
+			elseif historyEntry.sync == Connection.SYNC_HIST_SYNC then
+				if objectInfo.sync == Connection.SYNC_SYNCING then
+					objectInfo.sync = Connection.SYNC_CREATED
+
+					self:sendObjectEventQueue(objectInfo)
+				end
 			elseif historyEntry.sync == Connection.SYNC_HIST_REMOVE and objectInfo.sync == Connection.SYNC_REMOVING then
 				self.objectsInfo[objectId] = nil
 			end
@@ -247,8 +264,16 @@ function Connection:onPacketLost(i)
 			objectInfo.history[i] = nil
 
 			if historyEntry.sync == Connection.SYNC_HIST_CREATE then
-				if objectInfo.sync == Connection.SYNC_CREATING then
-					self.objectsInfo[objectId] = nil
+				if objectInfo.sync == Connection.SYNC_CREATING or objectInfo.sync == Connection.SYNC_CREATING_DELAYED then
+					if objectInfo.manuallyReplicated then
+						objectInfo.sync = Connection.SYNC_MANUALLY_REGISTERED
+					else
+						self.objectsInfo[objectId] = nil
+					end
+				end
+			elseif historyEntry.sync == Connection.SYNC_HIST_SYNC then
+				if objectInfo.sync == Connection.SYNC_SYNCING then
+					objectInfo.sync = Connection.SYNC_LOADED
 				end
 			elseif historyEntry.sync == Connection.SYNC_HIST_REMOVE then
 				if objectInfo.sync == Connection.SYNC_REMOVING then

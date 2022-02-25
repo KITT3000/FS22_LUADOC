@@ -21,6 +21,7 @@ function PlaceableCartridgePlayer.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".cartridgePlayer#monitorLightNode", "")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".cartridgePlayer#connectorNode", "")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".cartridgePlayer#triggerNode", "")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".cartridgePlayer.sounds", "play")
 	schema:setXMLSpecializationType()
 end
 
@@ -47,6 +48,12 @@ function PlaceableCartridgePlayer:onLoad(savegame)
 
 	spec.currentItem = 0
 
+	if self.isClient then
+		spec.samples = {
+			play = g_soundManager:loadSampleFromXML(self.xmlFile, baseKey .. ".sounds", "play", self.baseDirectory, self.components, 1, AudioGroup.ENVIRONMENT, self.i3dMappings, nil)
+		}
+	end
+
 	return self
 end
 
@@ -57,6 +64,10 @@ function PlaceableCartridgePlayer:onDelete()
 
 	if spec.triggerNode ~= nil then
 		removeTrigger(spec.triggerNode)
+	end
+
+	if self.isClient then
+		g_soundManager:deleteSamples(spec.samples)
 	end
 end
 
@@ -98,6 +109,8 @@ function PlaceableCartridgePlayer:activatePlayer()
 		end
 	end
 
+	local currentVisible = spec.currentItem
+
 	if nextVisibleIndex ~= 0 then
 		spec.currentItem = nextVisibleIndex
 	elseif firstVisibleIndex ~= 0 then
@@ -112,6 +125,10 @@ function PlaceableCartridgePlayer:activatePlayer()
 		link(spec.connectorNode, getChildAt(getChildAt(spec.itemsNode, spec.currentItem - 1), 0))
 		setVisibility(spec.monitorLightNode, true)
 		setVisibility(getChildAt(spec.monitorNode, spec.currentItem - 1), true)
+	end
+
+	if currentVisible ~= spec.currentItem and self.isClient then
+		g_soundManager:playSample(spec.samples.play, 1)
 	end
 end
 

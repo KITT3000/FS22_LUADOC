@@ -14,8 +14,10 @@ function PhysicsObject.new(isServer, isClient, customMt)
 end
 
 function PhysicsObject:delete()
-	self:removeChildrenFromNodeObject(self.nodeId)
-	delete(self.nodeId)
+	if self.nodeId ~= 0 then
+		self:removeChildrenFromNodeObject(self.nodeId)
+		delete(self.nodeId)
+	end
 
 	self.nodeId = 0
 
@@ -183,7 +185,7 @@ function PhysicsObject:testScope(x, y, z, coeff)
 	end
 end
 
-function PhysicsObject:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+function PhysicsObject:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	local x1, y1, z1 = getWorldTranslation(self.nodeId)
 	local dist = math.sqrt((x1 - x) * (x1 - x) + (y1 - y) * (y1 - y) + (z1 - z) * (z1 - z))
 	local clipDist = math.min(getClipDistance(self.nodeId) * coeff, self.forcedClipDistance)

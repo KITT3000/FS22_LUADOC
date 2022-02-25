@@ -117,11 +117,10 @@ function FieldManager:loadMapData(xmlFile)
 	if not mission.missionInfo.isValid and g_server ~= nil then
 		g_asyncTaskManager:addSubtask(function ()
 			local index = 1
-			local randomOffset = math.random(1, 100)
 
 			for _, field in pairs(self.fields) do
 				if field:getIsAIActive() and field.fieldMissionAllowed and not field.farmland.isOwned then
-					local fruitIndex = self.availableFruitTypeIndices[(index * #self.fields * 3 - 1 + randomOffset) % #self.availableFruitTypeIndices + 1]
+					local fruitIndex = self.availableFruitTypeIndices[math.random(1, #self.availableFruitTypeIndices)]
 
 					if field.fieldGrassMission then
 						fruitIndex = FruitType.GRASS
@@ -200,6 +199,13 @@ function FieldManager:loadMapData(xmlFile)
 
 		if g_addCheatCommands then
 			addConsoleCommand("gsFieldToggleStatus", "Shows field status", "consoleCommandToggleDebugFieldStatus", self)
+		end
+	end)
+	g_asyncTaskManager:addSubtask(function ()
+		if not mission:getIsServer() then
+			for _, field in pairs(self.fields) do
+				self:setFieldGround(field, FieldGroundType.CULTIVATED, field.fieldAngle, 0, 0, 0, 0, 0, 0, false, false)
+			end
 		end
 	end)
 	g_messageCenter:subscribe(MessageType.FARM_PROPERTY_CHANGED, self.onFarmPropertyChanged, self)

@@ -1,4 +1,5 @@
 BeehiveSystem = {
+	COOLDOWN_DURATION = 603,
 	DEBUG_ENABLED = false
 }
 local BeehiveSystem_mt = Class(BeehiveSystem)
@@ -16,6 +17,8 @@ function BeehiveSystem.new(mission, customMt)
 		addConsoleCommand("gsBeehiveDebug", "Toggles beehive debug mode", "consoleCommandBeehiveDebug", self)
 	end
 
+	self.updateCooldown = BeehiveSystem.COOLDOWN_DURATION
+	self.currentSpawnerUpdateIndex = 0
 	self.lastTimeNoSpawnerWarningDisplayed = 0
 
 	return self
@@ -57,10 +60,29 @@ function BeehiveSystem:onHourChanged()
 	self:updateBeehivesState()
 end
 
+function BeehiveSystem:update()
+	if #self.beehivePalletSpawners == 0 then
+		return
+	end
+
+	if self.updateCooldown <= 0 then
+		local beehiveSpawner = self.beehivePalletSpawners[self.currentSpawnerUpdateIndex]
+
+		if beehiveSpawner ~= nil then
+			beehiveSpawner:updatePallets()
+
+			self.currentSpawnerUpdateIndex = self.currentSpawnerUpdateIndex + 1
+		else
+			self.currentSpawnerUpdateIndex = 1
+			self.updateCooldown = BeehiveSystem.COOLDOWN_DURATION
+		end
+	else
+		self.updateCooldown = self.updateCooldown - 1
+	end
+end
+
 function BeehiveSystem:updateBeehivesOutput(farmId)
 	if self.mission:getIsServer() then
-		local palletSpawnersToUpdate = {}
-
 		for i = 1, #self.beehivesSortedRadius do
 			local beehive = self.beehivesSortedRadius[i]
 			local beehiveOwner = beehive:getOwnerFarmId()
@@ -72,16 +94,10 @@ function BeehiveSystem:updateBeehivesOutput(farmId)
 					local honeyAmount = beehive:getHoneyAmountToSpawn()
 
 					if honeyAmount > 0 then
-						palletSpawnersToUpdate[palletSpawner] = true
-
 						palletSpawner:addFillLevel(honeyAmount)
 					end
 				end
 			end
-		end
-
-		for palletSpawner in pairs(palletSpawnersToUpdate) do
-			palletSpawner:updatePallets()
 		end
 	end
 end

@@ -160,7 +160,7 @@ end
 function LicensePlates:onPostLoad(savegame)
 	local spec = self.spec_licensePlates
 
-	if savegame ~= nil and not savegame.resetVehicles and self:getHasLicensePlates() then
+	if savegame ~= nil and self:getHasLicensePlates() then
 		local variation = savegame.xmlFile:getValue(savegame.key .. ".licensePlates#variation", 1)
 		local characters = savegame.xmlFile:getValue(savegame.key .. ".licensePlates#characters")
 		local colorIndex = savegame.xmlFile:getValue(savegame.key .. ".licensePlates#colorIndex", 1)

@@ -253,18 +253,21 @@ function MaterialManager:loadFontMaterialsXML(xmlFilename, customEnvironment, ba
 				}
 				xmlFile.references = xmlFile.references + 1
 				filename = Utils.getFilename(filename, baseDirectory)
-				font.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.fontMaterialLoaded, self, {
-					xmlFile,
-					key,
-					font
-				})
+				local arguments = {
+					xmlFile = xmlFile,
+					key = key,
+					font = font
+				}
+				font.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.fontMaterialLoaded, self, arguments)
 			end
 		end)
 	end
 end
 
 function MaterialManager:fontMaterialLoaded(i3dNode, failedReason, arguments, loadingId)
-	local xmlFile, key, font = unpack(arguments)
+	local xmlFile = arguments.xmlFile
+	local key = arguments.key
+	local font = arguments.font
 
 	if i3dNode ~= 0 then
 		local materialNode = I3DUtil.indexToObject(i3dNode, font.node)

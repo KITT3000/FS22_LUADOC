@@ -7,12 +7,15 @@ AbstractMission.STATUS_STOPPED = 0
 AbstractMission.STATUS_RUNNING = 1
 AbstractMission.STATUS_FINISHED = 2
 AbstractMission.SUCCESS_FACTOR = 0.95
+AbstractMission.NOTIFICATION_DELAY = 60000
 
 function AbstractMission.new(isServer, isClient, customMt)
 	local self = Object.new(isServer, isClient, customMt or AbstractMission_mt)
 	self.status = AbstractMission.STATUS_STOPPED
 	self.reward = 0
 	self.completion = 0
+	self.notificationTimer = 0
+	self.lastNotificationCompletion = 0
 	self.missionDirtyFlag = self:getNextDirtyFlag()
 
 	g_messageCenter:subscribe(MessageType.FARM_DELETED, self.farmDestroyed, self)
@@ -117,9 +120,26 @@ function AbstractMission:updateTick(dt)
 	end
 end
 
+function AbstractMission:updateCompletionNotification(dt)
+	self.notificationTimer = self.notificationTimer + dt
+
+	if self.completion > self.lastNotificationCompletion + 0.1 and AbstractMission.NOTIFICATION_DELAY < self.notificationTimer then
+		self.notificationTimer = 0
+		self.lastNotificationCompletion = self.completion
+
+		if self.farmId == g_currentMission:getFarmId() then
+			self:showCompletionNotification(self.completion)
+		end
+	end
+end
+
+function AbstractMission:showCompletionNotification()
+end
+
 function AbstractMission:update(dt)
 	if self.status == AbstractMission.STATUS_RUNNING then
 		self:raiseActive()
+		self:updateCompletionNotification(dt)
 	end
 end
 

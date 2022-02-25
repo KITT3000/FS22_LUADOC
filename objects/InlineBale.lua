@@ -699,6 +699,10 @@ function InlineBale:getInteractionPosition()
 		return
 	end
 
+	if #self.bales > 0 and not g_currentMission.accessHandler:canPlayerAccess(self.bales[1]) then
+		return
+	end
+
 	return getWorldTranslation(g_currentMission.player.rootNode)
 end
 

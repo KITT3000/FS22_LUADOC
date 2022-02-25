@@ -8,6 +8,7 @@ function UnloadTrigger.new(isServer, isClient, customMt)
 	self.fillTypes = {}
 	self.avoidFillTypes = {}
 	self.acceptedToolTypes = {}
+	self.fillTypeConversions = {}
 	self.notAllowedWarningText = nil
 	self.extraAttributes = nil
 
@@ -62,6 +63,22 @@ function UnloadTrigger:load(components, xmlFile, xmlNode, target, extraAttribute
 			priceScale = priceScale
 		}
 	end
+
+	xmlFile:iterate(xmlNode .. ".fillTypeConversion", function (index, fillTypeConversionPath)
+		local fillTypeIndexIncoming = g_fillTypeManager:getFillTypeIndexByName(xmlFile:getValue(fillTypeConversionPath .. "#incomingFillType"))
+
+		if fillTypeIndexIncoming ~= nil then
+			local fillTypeIndexOutgoing = g_fillTypeManager:getFillTypeIndexByName(xmlFile:getValue(fillTypeConversionPath .. "#outgoingFillType"))
+
+			if fillTypeIndexOutgoing ~= nil then
+				local ratio = MathUtil.clamp(xmlFile:getValue(fillTypeConversionPath .. "#ratio", 1), 0.01, 10000)
+				self.fillTypeConversions[fillTypeIndexIncoming] = {
+					outgoingFillType = fillTypeIndexOutgoing,
+					ratio = ratio
+				}
+			end
+		end
+	end)
 
 	if target ~= nil then
 		self:setTarget(target)
@@ -207,6 +224,16 @@ function UnloadTrigger:getFillUnitExactFillRootNode(fillUnitIndex)
 end
 
 function UnloadTrigger:addFillUnitFillLevel(farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData, extraAttributes)
+	local fillTypeConverison = self.fillTypeConversions[fillTypeIndex]
+
+	if fillTypeConverison ~= nil then
+		local convertedFillType = fillTypeConverison.outgoingFillType
+		local ratio = fillTypeConverison.ratio
+		local applied = self.target:addFillLevelFromTool(farmId, fillLevelDelta * ratio, convertedFillType, fillPositionData, toolType, extraAttributes or self.extraAttributes)
+
+		return applied / ratio
+	end
+
 	local applied = self.target:addFillLevelFromTool(farmId, fillLevelDelta, fillTypeIndex, fillPositionData, toolType, extraAttributes or self.extraAttributes)
 
 	return applied
@@ -239,8 +266,16 @@ function UnloadTrigger:getIsFillTypeSupported(fillType)
 		return false
 	end
 
-	if self.target ~= nil and not self.target:getIsFillTypeAllowed(fillType, self.extraAttributes) then
-		return false
+	if self.target ~= nil then
+		local conversion = self.fillTypeConversions[fillType]
+
+		if conversion ~= nil then
+			fillType = conversion.outgoingFillType
+		end
+
+		if not self.target:getIsFillTypeAllowed(fillType, self.extraAttributes) then
+			return false
+		end
 	end
 
 	return true
@@ -256,6 +291,12 @@ end
 
 function UnloadTrigger:getFillUnitFreeCapacity(fillUnitIndex, fillTypeIndex, farmId)
 	if self.target.getFreeCapacity ~= nil then
+		local conversion = self.fillTypeConversions[fillTypeIndex]
+
+		if conversion ~= nil then
+			return self.target:getFreeCapacity(conversion.outgoingFillType, farmId, self.extraAttributes) / conversion.ratio
+		end
+
 		return self.target:getFreeCapacity(fillTypeIndex, farmId, self.extraAttributes)
 	end
 
@@ -302,4 +343,7 @@ function UnloadTrigger.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. "#fillTypeCategories", "Supported fill type categories")
 	schema:register(XMLValueType.STRING, basePath .. "#fillTypes", "Supported fill types")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#aiNode", "AI target node, required for the station to support AI. AI drives to the node in positive Z direction. Height is not relevant.")
+	schema:register(XMLValueType.STRING, basePath .. ".fillTypeConversion(?)#incomingFillType", "Filltype to be converted")
+	schema:register(XMLValueType.STRING, basePath .. ".fillTypeConversion(?)#outgoingFillType", "Filltype to be converted to")
+	schema:register(XMLValueType.FLOAT, basePath .. ".fillTypeConversion(?)#ratio", "Conversion ratio between input- and output amount", 1)
 end

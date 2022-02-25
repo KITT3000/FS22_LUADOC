@@ -126,6 +126,13 @@ end
 function TextElement:loadFromXML(xmlFile, key)
 	TextElement:superClass().loadFromXML(self, xmlFile, key)
 
+	local xmlFilename = getXMLFilename(xmlFile)
+	local modName, _ = Utils.getModNameAndBaseDirectory(xmlFilename)
+
+	if modName ~= nil then
+		self.customEnvironment = modName
+	end
+
 	self.textColor = GuiUtils.getColorArray(getXMLString(xmlFile, key .. "#textColor"), self.textColor)
 	self.textSelectedColor = GuiUtils.getColorArray(getXMLString(xmlFile, key .. "#textSelectedColor"), self.textSelectedColor)
 	self.text2SelectedColor = GuiUtils.getColorArray(getXMLString(xmlFile, key .. "#text2SelectedColor"), self.text2SelectedColor)
@@ -228,7 +235,7 @@ function TextElement:loadFromXML(xmlFile, key)
 		end
 
 		if text:sub(1, 6) == "$l10n_" then
-			text = g_i18n:getText(text:sub(7))
+			text = g_i18n:getText(text:sub(7), self.customEnvironment)
 		end
 
 		if addColon and text ~= "" then
@@ -679,9 +686,9 @@ function TextElement:updateFormattedText()
 		local length = self.locaKey:len()
 
 		if self.locaKey:sub(length, length + 1) == ":" then
-			text = g_i18n:getText(self.locaKey:sub(1, length - 1)) .. ":"
+			text = g_i18n:getText(self.locaKey:sub(1, length - 1), self.customEnvironment) .. ":"
 		else
-			text = g_i18n:getText(self.locaKey)
+			text = g_i18n:getText(self.locaKey, self.customEnvironment)
 		end
 	end
 

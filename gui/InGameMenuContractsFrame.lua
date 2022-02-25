@@ -53,6 +53,7 @@ function InGameMenuContractsFrame.new(subclass_mt, messageCenter, i18n, missionM
 	self.contracts = {}
 	self.sectionContracts = {}
 	self.updateTime = 0
+	self.marqueeTime = 0
 
 	return self
 end
@@ -125,6 +126,8 @@ function InGameMenuContractsFrame:update(dt)
 
 		self:updateDetailContents(section, index)
 	end
+
+	self:updateMarqueeAnimation(dt)
 end
 
 function InGameMenuContractsFrame:onFrameOpen(element)
@@ -291,6 +294,7 @@ function InGameMenuContractsFrame:updateDetailContents(section, index)
 
 					self.useOwnEquipementText:setText(vehicleText)
 
+					local totalWidth = 0
 					local vehicles = mission.vehiclesToLoad
 
 					for i, v in ipairs(vehicles) do
@@ -304,22 +308,16 @@ function InGameMenuContractsFrame:updateDetailContents(section, index)
 
 						local element = self.vehicleTemplate:clone(self.vehiclesBox)
 
+						element:setImageFilename(storeItem.imageFilename)
+						element:setImageColor(nil, nil, nil, nil, 1)
+
+						totalWidth = totalWidth + element.absSize[1] + element.margin[1] + element.margin[3]
+
 						table.insert(self.vehicleElements, element)
-
-						if i == 4 and #vehicles > 4 then
-							local moreText = element:getDescendantByName("more")
-
-							moreText:setText("+" .. tostring(#vehicles - 3))
-							moreText:setVisible(true)
-							element:setImageColor(nil, nil, nil, nil, 0)
-
-							break
-						else
-							element:setImageFilename(storeItem.imageFilename)
-							element:setImageColor(nil, nil, nil, nil, 1)
-						end
 					end
 
+					self.vehiclesBox:setPosition(0)
+					self.vehiclesBox:setSize(totalWidth)
 					self.vehiclesBox:invalidateLayout()
 				end
 
@@ -502,6 +500,24 @@ function InGameMenuContractsFrame:sortList()
 	end
 end
 
+function InGameMenuContractsFrame:updateMarqueeAnimation(dt)
+	local contentWidth = self.vehiclesBox.absSize[1]
+	local visibleWidth = self.vehiclesBox.parent.absSize[1]
+	local scrollAmount = contentWidth - visibleWidth
+	local scrollLengthFactor = scrollAmount / visibleWidth
+	local scrollDuration = 9000 * scrollLengthFactor
+	self.marqueeTime = self.marqueeTime + dt
+
+	if scrollDuration <= self.marqueeTime then
+		self.marqueeTime = -scrollDuration
+	end
+
+	local alpha = MathUtil.smoothstep(0.2, 0.8, math.abs(self.marqueeTime) / scrollDuration)
+	local offset = scrollAmount * alpha
+
+	self.vehiclesBox:setPosition(-offset)
+end
+
 function InGameMenuContractsFrame:getNumberOfSections()
 	return #self.sectionContracts
 end
@@ -562,6 +578,9 @@ function InGameMenuContractsFrame:onListSelectionChanged(list, section, index)
 
 	if sectionContracts ~= nil and sectionContracts.contracts[index] ~= nil then
 		self:updateDetailContents(section, index)
+
+		self.marqueeTime = 0
+
 		self:playSample(GuiSoundPlayer.SOUND_SAMPLES.HOVER)
 	end
 end

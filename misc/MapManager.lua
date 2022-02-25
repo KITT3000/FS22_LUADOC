@@ -14,9 +14,9 @@ end
 
 function MapManager:addMapItem(id, scriptFilename, className, configFile, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, title, description, iconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, isModMap)
 	if self.idToMap[id] ~= nil then
-		print("Warning: Duplicate map id (" .. id .. "). Ignoring this map definition.")
+		Logging.warning("Duplicate map id '%s'. Ignoring this map definition.", id)
 
-		return
+		return false
 	end
 
 	local item = {
@@ -39,61 +39,118 @@ function MapManager:addMapItem(id, scriptFilename, className, configFile, defaul
 	table.insert(self.maps, item)
 
 	self.idToMap[id] = item
+
+	return true
 end
 
-function MapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultiplayerSupported, isDLCFile)
+function MapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultiplayerSupported, isDLCFile, isModMap)
 	local mapId = xmlFile:getString(baseName .. "#id", "")
+
+	if mapId == "" then
+		Logging.error("Failed to load map '%s'. Missing attribute '%s#id'.", modName or "Basemap", baseName)
+
+		return false
+	end
+
+	local name = nil
+
+	if modName ~= nil then
+		name = modName
+	end
+
 	local defaultVehiclesXMLFilename = xmlFile:getString(baseName .. "#defaultVehiclesXMLFilename", "")
 	local defaultPlaceablesXMLFilename = xmlFile:getString(baseName .. "#defaultPlaceablesXMLFilename", "")
 	local defaultItemsXMLFilename = xmlFile:getString(baseName .. "#defaultItemsXMLFilename", "")
-	local mapTitle = xmlFile:getI18NValue(baseName .. ".title", "", modName, true)
-	local mapDesc = xmlFile:getI18NValue(baseName .. ".description", "", modName, true)
+	local mapTitle = xmlFile:getI18NValue(baseName .. ".title", "", name, true)
+	local mapDesc = xmlFile:getI18NValue(baseName .. ".description", "", name, true)
 	local mapClassName = xmlFile:getString(baseName .. "#className", "Mission00")
 	local mapFilename = xmlFile:getString(baseName .. "#filename", "$dataS/scripts/missions/mission00.lua")
 	local configFilename = xmlFile:getString(baseName .. "#configFilename", "")
-	local mapIconFilename = xmlFile:getI18NValue(baseName .. ".iconFilename", "", modName, true)
+	local mapIconFilename = xmlFile:getI18NValue(baseName .. ".iconFilename", "", name, true)
+	local mapName = mapId
+
+	if modName ~= nil then
+		mapName = mapName .. " " .. mapId
+	end
 
 	if mapClassName:find("[^%w_]") ~= nil then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Invalid map class name: '" .. tostring(mapClassName) .. "'. No whitespaces allowed.")
-	elseif mapClassName == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#className'.")
-	elseif mapId == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#id'.")
-	elseif mapTitle == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing element: '" .. tostring(baseName) .. ".title'.")
-	elseif mapDesc == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing element: '" .. tostring(baseName) .. ".description'.")
-	elseif mapFilename == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#filename'.")
-	elseif defaultVehiclesXMLFilename == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#defaultVehiclesXMLFilename'.")
-	elseif defaultPlaceablesXMLFilename == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#defaultPlaceablesXMLFilename'.")
-	elseif defaultItemsXMLFilename == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#defaultItemsXMLFilename'.")
-	elseif mapIconFilename == "" then
-		print("Error: Failed to load mod map '" .. tostring(modName) .. "'. Missing element: '" .. tostring(baseName) .. ".iconFilename'.")
-	else
-		local customEnvironment, useModDirectory = nil
-		local baseDirectory = modDir
-		mapFilename, useModDirectory = Utils.getFilename(mapFilename, baseDirectory)
+		Logging.error("Failed to load map '%s'. Invalid map class name: '%s'. No whitespaces allowed.", mapName, mapClassName)
 
-		if useModDirectory then
-			customEnvironment = modName
-			mapClassName = modName .. "." .. mapClassName
-		end
+		return false
+	end
 
+	if mapClassName == "" then
+		Logging.error("Failed to load map '%s'. Missing attribute '%s#className'.", mapName, baseName)
+
+		return false
+	end
+
+	if mapTitle == "" then
+		Logging.error("Failed to load map '%s'. Missing element '%s.title'.", mapName, baseName)
+
+		return false
+	end
+
+	if mapDesc == "" then
+		Logging.error("Failed to load map '%s'. Missing element '%s.description'.", mapName, baseName)
+
+		return false
+	end
+
+	if mapFilename == "" then
+		Logging.error("Failed to load map '%s'. Missing attribute '%s#filename'.", mapName, baseName)
+
+		return false
+	end
+
+	if defaultVehiclesXMLFilename == "" then
+		Logging.error("Failed to load map '%s'. Missing attribute '%s#defaultVehiclesXMLFilename'.", mapName, baseName)
+
+		return false
+	end
+
+	if defaultPlaceablesXMLFilename == "" then
+		Logging.error("Failed to load map '%s'. Missing attribute '%s#defaultPlaceablesXMLFilename'.", mapName, baseName)
+
+		return false
+	end
+
+	if defaultItemsXMLFilename == "" then
+		Logging.error("Failed to load map '%s'. Missing attribute '%s#defaultItemsXMLFilename'.", mapName, baseName)
+
+		return false
+	end
+
+	if mapIconFilename == "" then
+		Logging.error("Failed to load map '%s'. Missing element '%s.iconFilename'.", mapName, baseName)
+
+		return false
+	end
+
+	local useModDirectory = nil
+	local baseDirectory = modDir
+	mapFilename, useModDirectory = Utils.getFilename(mapFilename, baseDirectory)
+
+	if useModDirectory then
+		mapClassName = modName .. "." .. mapClassName
+	end
+
+	local fullConfigFilename = Utils.getFilename(configFilename, baseDirectory)
+	local customEnvironment, _ = Utils.getModNameAndBaseDirectory(fullConfigFilename)
+
+	if modName ~= nil then
 		mapId = modName .. "." .. mapId
-		mapIconFilename = Utils.getFilename(mapIconFilename, baseDirectory)
-		defaultVehiclesXMLFilename = Utils.getFilename(defaultVehiclesXMLFilename, baseDirectory)
-		defaultPlaceablesXMLFilename = Utils.getFilename(defaultPlaceablesXMLFilename, baseDirectory)
-		defaultItemsXMLFilename = Utils.getFilename(defaultItemsXMLFilename, baseDirectory)
+	end
 
-		if not GS_IS_CONSOLE_VERSION or isDLCFile or customEnvironment == nil then
-			self:addMapItem(mapId, mapFilename, mapClassName, configFilename, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, mapTitle, mapDesc, mapIconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, true)
-		else
-			print("Error: Can't register map " .. mapId .. " with scripts on consoles.")
-		end
+	mapIconFilename = Utils.getFilename(mapIconFilename, baseDirectory)
+	defaultVehiclesXMLFilename = Utils.getFilename(defaultVehiclesXMLFilename, baseDirectory)
+	defaultPlaceablesXMLFilename = Utils.getFilename(defaultPlaceablesXMLFilename, baseDirectory)
+	defaultItemsXMLFilename = Utils.getFilename(defaultItemsXMLFilename, baseDirectory)
+
+	if not GS_IS_CONSOLE_VERSION or isDLCFile or not useModDirectory then
+		return self:addMapItem(mapId, mapFilename, mapClassName, configFilename, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, mapTitle, mapDesc, mapIconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, isModMap)
+	else
+		Logging.error("Can't register map '%s' with scripts on consoles.", mapId)
 	end
 end
 
@@ -127,6 +184,16 @@ end
 
 function MapManager:getMapDataByIndex(index)
 	return self.maps[index]
+end
+
+function MapManager:getMapByConfigFilename(xmlFilename)
+	for _, map in ipairs(self.maps) do
+		if map.mapXMLFilename == xmlFilename then
+			return map
+		end
+	end
+
+	return nil
 end
 
 g_mapManager = MapManager.new()

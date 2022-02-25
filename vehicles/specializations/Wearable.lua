@@ -262,6 +262,10 @@ function Wearable:getUsageCausesWear()
 end
 
 function Wearable:getUsageCausesDamage()
+	if self.spec_motorized == nil and getIsSleeping(self.rootNode) then
+		return false
+	end
+
 	return self.isActive and self.propertyState ~= Vehicle.PROPERTY_STATE_MISSION
 end
 
@@ -369,7 +373,7 @@ function Wearable:getRepaintPrice(superFunc)
 end
 
 function Wearable:showInfo(superFunc, box)
-	local damage = self:getVehicleDamage()
+	local damage = self.spec_wearable.damage
 
 	if damage > 0.01 then
 		box:addLine(g_i18n:getText("infohud_damage"), string.format("%d %%", damage * 100))

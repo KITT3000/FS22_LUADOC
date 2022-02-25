@@ -156,6 +156,7 @@ function Vehicle.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "createComponentJoint", Vehicle.createComponentJoint)
 	SpecializationUtil.registerFunction(vehicleType, "loadSchemaOverlay", Vehicle.loadSchemaOverlay)
 	SpecializationUtil.registerFunction(vehicleType, "getAdditionalSchemaText", Vehicle.getAdditionalSchemaText)
+	SpecializationUtil.registerFunction(vehicleType, "getUseTurnedOnSchema", Vehicle.getUseTurnedOnSchema)
 	SpecializationUtil.registerFunction(vehicleType, "dayChanged", Vehicle.dayChanged)
 	SpecializationUtil.registerFunction(vehicleType, "periodChanged", Vehicle.periodChanged)
 	SpecializationUtil.registerFunction(vehicleType, "raiseStateChange", Vehicle.raiseStateChange)
@@ -505,27 +506,27 @@ function Vehicle:load(vehicleData, asyncCallbackFunction, asyncCallbackObject, a
 	end
 
 	local data = {
-		{
+		position = {
 			posX = vehicleData.posX,
 			posY = vehicleData.posY,
 			posZ = vehicleData.posZ,
 			yOffset = vehicleData.yOffset,
 			isAbsolute = vehicleData.isAbsolute
 		},
-		{
+		rotation = {
 			rotX = vehicleData.rotX,
 			rotY = vehicleData.rotY,
 			rotZ = vehicleData.rotZ
 		},
-		vehicleData.isVehicleSaved,
-		vehicleData.propertyState,
-		vehicleData.ownerFarmId,
-		vehicleData.price,
-		vehicleData.savegame,
-		asyncCallbackFunction,
-		asyncCallbackObject,
-		asyncCallbackArguments,
-		vehicleData.componentPositions
+		isVehicleSaved = vehicleData.isVehicleSaved,
+		propertyState = vehicleData.propertyState,
+		ownerFarmId = vehicleData.ownerFarmId,
+		price = vehicleData.price,
+		savegame = vehicleData.savegame,
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackObject = asyncCallbackObject,
+		asyncCallbackArguments = asyncCallbackArguments,
+		componentPositions = vehicleData.componentPositions
 	}
 	local item = g_storeManager:getItemByXMLFilename(self.configFileName)
 
@@ -633,7 +634,16 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.components.component", "vehicle.base.components.component")
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.base.components.component1", "vehicle.base.components.component")
 
-	local position, rotation, _, propertyState, ownerFarmId, price, savegame, asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments, componentPositions = unpack(arguments)
+	local position = arguments.position
+	local rotation = arguments.rotation
+	local propertyState = arguments.propertyState
+	local ownerFarmId = arguments.ownerFarmId
+	local price = arguments.price
+	local savegame = arguments.savegame
+	local asyncCallbackFunction = arguments.asyncCallbackFunction
+	local asyncCallbackObject = arguments.asyncCallbackObject
+	local asyncCallbackArguments = arguments.asyncCallbackArguments
+	local componentPositions = arguments.componentPositions
 
 	if i3dNode == 0 then
 		self:setLoadingState(VehicleLoadingUtil.VEHICLE_LOAD_ERROR)
@@ -1016,7 +1026,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 					jointNode = jointDesc.jointNodeActor1
 				end
 
-				if self:getParentComponent(jointNode) ~= component2.node then
+				if self:getParentComponent(jointNode) ~= component2.node and getParent(component2.node) == jointNode then
 					local ox = 0
 					local oy = 0
 					local oz = 0
@@ -1460,7 +1470,6 @@ end
 
 function Vehicle:readStream(streamId, connection, objectId)
 	Vehicle:superClass().readStream(self, streamId, connection, objectId)
-	self:setConnectionSynchronized(connection, false)
 
 	local configFile = NetworkUtil.convertFromNetworkFilename(streamReadString(streamId))
 	local typeName = streamReadString(streamId)
@@ -1583,13 +1592,11 @@ function Vehicle:postReadStream(streamId, connection)
 		SpecializationUtil.raiseEvent(self, "onReadStream", streamId, connection)
 	end
 
-	self:setConnectionSynchronized(connection, true)
 	self:setLoadingStep(Vehicle.LOAD_STEP_SYNCHRONIZED)
 end
 
 function Vehicle:writeStream(streamId, connection)
 	Vehicle:superClass().writeStream(self, streamId, connection)
-	self:setConnectionSynchronized(connection, false)
 	streamWriteString(streamId, NetworkUtil.convertToNetworkFilename(self.configFileName))
 	streamWriteString(streamId, self.typeName)
 
@@ -1672,8 +1679,6 @@ function Vehicle:postWriteStream(streamId, connection)
 	else
 		SpecializationUtil.raiseEvent(self, "onWriteStream", streamId, connection)
 	end
-
-	self:setConnectionSynchronized(connection, true)
 end
 
 function Vehicle:readUpdateStream(streamId, timestamp, connection)
@@ -2201,7 +2206,7 @@ function Vehicle:setWorldPositionQuaternion(x, y, z, qx, qy, qz, qw, i, changeIn
 	end
 end
 
-function Vehicle:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+function Vehicle:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	if self:getOwner() == connection then
 		return 50
 	end
@@ -3425,6 +3430,10 @@ end
 
 function Vehicle:getAdditionalSchemaText()
 	return nil
+end
+
+function Vehicle:getUseTurnedOnSchema()
+	return false
 end
 
 function Vehicle:dayChanged()

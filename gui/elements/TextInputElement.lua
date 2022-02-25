@@ -572,6 +572,8 @@ function TextInputElement:update(dt)
 		local done, cancel = imeIsComplete()
 
 		if done then
+			self.imeActive = false
+
 			self:setForcePressed(false)
 
 			if not cancel then
@@ -584,8 +586,6 @@ function TextInputElement:update(dt)
 
 				self:raiseCallback("onEscPressedCallback", self)
 			end
-
-			self.imeActive = false
 		else
 			self:setText(imeGetLastString())
 			self:setCursorPosition(imeGetCursorPos() + 1)

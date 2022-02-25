@@ -4,18 +4,20 @@ InGameMenuGeneralSettingsFrame.CONTROLS = {
 	CHECKBOX_RESET_CAMERA = "checkResetCamera",
 	OPTION_HUD_SPEED_GAUGE = "multiHudSpeedGauge",
 	CHECKBOX_USE_EASY_ARM_CONTROLER = "checkUseEasyArmControl",
-	CHECKBOX_INVERT_Y_LOOK = "checkInvertYLook",
+	OPTION_REAL_BEACON_LIGHT = "multiRealBeaconLightBrightness",
+	CHECKBOX_AUTO_HELP = "checkAutoHelp",
+	CHECKBOX_SHOW_MULTIPLAYER_NAMES = "checkShowMultiplayerNames",
 	CHECKBOX_SHOW_FIELD_INFO = "checkShowFieldInfo",
-	OPTION_VEHICLE_ARM_SENSITIVITY = "multiVehicleArmSensitivity",
-	OPTION_MONEY_UNIT = "multiMoneyUnit",
-	OPTION_VOLUME_VOICE = "multiVolumeVoice",
+	CHECKBOX_INVERT_Y_LOOK = "checkInvertYLook",
 	OPTION_VOLUME_RADIO = "multiRadioVolume",
 	CHECKBOX_USE_MILES = "checkUseMiles",
-	OPTION_INPUT_HELP_MODE = "multiInputHelpMode",
-	CHECKBOX_AUTO_HELP = "checkAutoHelp",
+	OPTION_MONEY_UNIT = "multiMoneyUnit",
+	OPTION_VEHICLE_ARM_SENSITIVITY = "multiVehicleArmSensitivity",
+	OPTION_VOLUME_VOICE = "multiVolumeVoice",
 	OPTION_VOLUME_VEHICLE = "multiVehicleVolume",
 	CHECKBOX_SHOW_HELP_TRIGGER = "checkShowHelpTrigger",
 	OPTION_VOLUME_MASTER = "multiMasterVolume",
+	OPTION_INPUT_HELP_MODE = "multiInputHelpMode",
 	CHECKBOX_SHOW_TRIGGER_MARKER = "checkShowTriggerMarker",
 	CHECKBOX_IS_TRAIN_TABBABLE = "checkIsTrainTabbable",
 	OPTION_VOICE_MODE = "multiVoiceMode",
@@ -75,6 +77,7 @@ function InGameMenuGeneralSettingsFrame:initialize()
 	self.checkboxMapping[self.checkInvertYLook] = SettingsModel.SETTING.INVERT_Y_LOOK
 	self.checkboxMapping[self.checkUseEasyArmControl] = SettingsModel.SETTING.EASY_ARM_CONTROL
 	self.checkboxMapping[self.checkIsTrainTabbable] = SettingsModel.SETTING.IS_TRAIN_TABBABLE
+	self.checkboxMapping[self.checkShowMultiplayerNames] = SettingsModel.SETTING.SHOW_MULTIPLAYER_NAMES
 
 	self.checkUseMiles:setTexts(self.settingsModel:getDistanceUnitTexts())
 	self.checkUseFahrenheit:setTexts(self.settingsModel:getTemperatureUnitTexts())
@@ -98,6 +101,7 @@ function InGameMenuGeneralSettingsFrame:initialize()
 	self.optionMapping[self.multiVolumeVoice] = SettingsModel.SETTING.VOLUME_VOICE
 	self.optionMapping[self.multiVolumeVoiceInput] = SettingsModel.SETTING.VOLUME_VOICE_INPUT
 	self.optionMapping[self.multiVoiceMode] = SettingsModel.SETTING.VOICE_MODE
+	self.optionMapping[self.multiRealBeaconLightBrightness] = SettingsModel.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS
 
 	self.multiMoneyUnit:setTexts(self.settingsModel:getMoneyUnitTexts())
 	self.multiCameraSensitivity:setTexts(self.settingsModel:getCameraSensitivityTexts())
@@ -116,6 +120,10 @@ function InGameMenuGeneralSettingsFrame:initialize()
 	self.multiDirectionChangeMode:setTexts(self.settingsModel:getDirectionChangeModeTexts())
 	self.multiGearShiftMode:setTexts(self.settingsModel:getGearShiftModeTexts())
 	self.multiHudSpeedGauge:setTexts(self.settingsModel:getHudSpeedGaugeTexts())
+
+	if GS_PLATFORM_PC then
+		self.multiRealBeaconLightBrightness:setTexts(self.settingsModel:getRealBeaconLightBrightnessTexts())
+	end
 
 	if GS_IS_CONSOLE_VERSION then
 		self.multiInputHelpMode:setVisible(false)
@@ -137,6 +145,8 @@ function InGameMenuGeneralSettingsFrame:onFrameOpen(element)
 	self.multiVolumeVoice:setVisible(isMultiplayer and not VoiceChatUtil.getIsVoiceRestricted())
 	self.multiVoiceMode:setVisible(isMultiplayer)
 	self.multiVolumeVoiceInput:setVisible(isMultiplayer and VoiceChatUtil.getHasRecordingDevice() and not VoiceChatUtil.getIsVoiceRestricted())
+	self.checkShowMultiplayerNames:setVisible(isMultiplayer and not GS_IS_CONSOLE_VERSION)
+	self.multiRealBeaconLightBrightness:setVisible(GS_PLATFORM_PC)
 	self.checkCameraCheckCollision:setVisible(g_modIsLoaded.FS22_disableVehicleCameraCollision)
 	self.boxLayout:invalidateLayout()
 
@@ -162,14 +172,6 @@ function InGameMenuGeneralSettingsFrame:updateGeneralSettings()
 	for element, settingsKey in pairs(self.optionMapping) do
 		element:setState(self.settingsModel:getValue(settingsKey))
 	end
-end
-
-function InGameMenuGeneralSettingsFrame:getMainElementSize()
-	return self.settingsContainer.size
-end
-
-function InGameMenuGeneralSettingsFrame:getMainElementPosition()
-	return self.settingsContainer.absPosition
 end
 
 function InGameMenuGeneralSettingsFrame:onClickCheckbox(state, checkboxElement)
@@ -202,6 +204,10 @@ function InGameMenuGeneralSettingsFrame:onClickMultiOption(state, optionElement)
 		self.dirty = true
 	else
 		print("Warning: Invalid settings multi option event or key configuration for element " .. optionElement:toString())
+	end
+
+	if optionElement == self.multiRealBeaconLightBrightness then
+		g_beaconLightManager:updateBeaconLights()
 	end
 end
 

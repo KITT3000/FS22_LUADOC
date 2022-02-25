@@ -737,6 +737,25 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 		end
 	end
 
+	local anyToolLowered = false
+	local anyToolLifted = false
+
+	for i = 1, #attachedAIImplements do
+		local implement = attachedAIImplements[i]
+
+		if implement.aiStartLineCalled then
+			anyToolLowered = true
+		elseif implement.aiEndLineCalled then
+			anyToolLifted = true
+		end
+	end
+
+	if anyToolLowered and anyToolLifted then
+		maxSpeed = math.min(maxSpeed, 10)
+
+		self.vehicle:addAIDebugText(string.format("===> Tools only partly lowered, limit speed to 10kph"))
+	end
+
 	local canContinueWork, stopAI, stopReason = self.vehicle:getCanAIFieldWorkerContinueWork()
 
 	if not canContinueWork then
@@ -775,142 +794,147 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 		local fieldEndBits = ""
 
 		for _, implement in ipairs(attachedAIImplements) do
-			local hasNoFullCoverageArea, _ = implement.object:getAIHasNoFullCoverageArea()
-			local leftMarker, rightMarker, _, markersInverted = implement.object:getAIMarkers()
-			local markerDir = markersInverted and -1 or 1
-			local width = calcDistanceFrom(leftMarker, rightMarker) + 0.8
-			local divisions = 2.5
+			if implement.aiStartLineCalled then
+				local hasNoFullCoverageArea, _ = implement.object:getAIHasNoFullCoverageArea()
+				local leftMarker, rightMarker, _, markersInverted = implement.object:getAIMarkers()
+				local markerDir = markersInverted and -1 or 1
+				local width = calcDistanceFrom(leftMarker, rightMarker) + 0.8
+				local divisions = 2.5
 
-			if width < 8.5 then
-				divisions = 1.5
-			end
-
-			if width < 4.5 then
-				divisions = 1
-			end
-
-			local checkpoints = implement.object.aiImplementGabCheckpoints or MathUtil.round(width / divisions, 0) + 1
-
-			if implement.object.aiImplementGabCheckpoints == nil then
-				implement.object.aiImplementGabCheckpoints = checkpoints
-			end
-
-			if implement.object.aiImplementGabCheckpointValues == nil or implement.object.aiImplementFieldEndCheckpointValues == nil or self.resetGabDetection then
-				implement.object.aiImplementGabCheckpointValues = {}
-				implement.object.aiImplementFieldEndCheckpointValues = {}
-			end
-
-			local values = implement.object.aiImplementGabCheckpointValues
-			local valuesFieldEnd = implement.object.aiImplementFieldEndCheckpointValues
-			implement.object.aiImplementCurCheckpoint = (implement.object.aiImplementCurCheckpoint or -1) + 1
-
-			if checkpoints <= implement.object.aiImplementCurCheckpoint then
-				implement.object.aiImplementCurCheckpoint = 0
-			end
-
-			local currentCheckpoint = implement.object.aiImplementCurCheckpoint
-
-			if checkpoints > 2 then
-				local checkpointWidth = width / (checkpoints - 1)
-				local valueIndex = currentCheckpoint + 1
-				local x1, y1, z1 = localToWorld(leftMarker, 0.4 * markerDir, 0, 0)
-				local x2, y2, z2 = localToWorld(rightMarker, -0.4 * markerDir, 0, 0)
-				local x = x1 - (x1 - x2) * currentCheckpoint * checkpointWidth / width
-				local y = y1 - (y1 - y2) * currentCheckpoint * checkpointWidth / width
-				local z = z1 - (z1 - z2) * currentCheckpoint * checkpointWidth / width
-				local isOnField, _ = FSDensityMapUtil.getFieldDataAtWorldPosition(x, y, z)
-				local bit = values[valueIndex]
-				bit = bit or isOnField
-
-				if hasNoFullCoverageArea and valuesFieldEnd[valueIndex] == 2 and isOnField then
-					valuesFieldEnd[valueIndex] = 3
+				if width < 8.5 then
+					divisions = 1.5
 				end
 
-				if valuesFieldEnd[valueIndex] == 1 and not isOnField then
-					valuesFieldEnd[valueIndex] = 2
+				if width < 4.5 then
+					divisions = 1
 				end
 
-				if valuesFieldEnd[valueIndex] == nil and isOnField then
-					local allowed = true
+				local checkpoints = implement.object.aiImplementGabCheckpoints or MathUtil.round(width / divisions, 0) + 1
+
+				if implement.object.aiImplementGabCheckpoints == nil then
+					implement.object.aiImplementGabCheckpoints = checkpoints
+				end
+
+				if implement.object.aiImplementGabCheckpointValues == nil or implement.object.aiImplementFieldEndCheckpointValues == nil or self.resetGabDetection then
+					implement.object.aiImplementGabCheckpointValues = {}
+					implement.object.aiImplementFieldEndCheckpointValues = {}
+				end
+
+				local values = implement.object.aiImplementGabCheckpointValues
+				local valuesFieldEnd = implement.object.aiImplementFieldEndCheckpointValues
+				implement.object.aiImplementCurCheckpoint = (implement.object.aiImplementCurCheckpoint or -1) + 1
+
+				if checkpoints <= implement.object.aiImplementCurCheckpoint then
+					implement.object.aiImplementCurCheckpoint = 0
+				end
+
+				local currentCheckpoint = implement.object.aiImplementCurCheckpoint
+
+				if checkpoints > 2 then
+					local checkpointWidth = width / (checkpoints - 1)
+					local valueIndex = currentCheckpoint + 1
+					local x1, y1, z1 = localToWorld(leftMarker, 0.4 * markerDir, 0, 0)
+					local x2, y2, z2 = localToWorld(rightMarker, -0.4 * markerDir, 0, 0)
+					local x = x1 - (x1 - x2) * currentCheckpoint * checkpointWidth / width
+					local y = y1 - (y1 - y2) * currentCheckpoint * checkpointWidth / width
+					local z = z1 - (z1 - z2) * currentCheckpoint * checkpointWidth / width
+					local isOnField, _ = FSDensityMapUtil.getFieldDataAtWorldPosition(x, y, z)
+					local bit = values[valueIndex]
+					bit = bit or isOnField
+
+					if hasNoFullCoverageArea and valuesFieldEnd[valueIndex] == 2 and isOnField then
+						valuesFieldEnd[valueIndex] = 3
+					end
+
+					if valuesFieldEnd[valueIndex] == 1 and not isOnField then
+						valuesFieldEnd[valueIndex] = 2
+					end
+
+					if valuesFieldEnd[valueIndex] == nil and isOnField then
+						local allowed = true
+
+						for i = 1, checkpoints do
+							if valuesFieldEnd[i] ~= nil and valuesFieldEnd[i] >= 2 then
+								allowed = false
+
+								break
+							end
+						end
+
+						if allowed then
+							valuesFieldEnd[valueIndex] = 1
+						end
+					end
+
+					values[valueIndex] = bit
 
 					for i = 1, checkpoints do
-						if valuesFieldEnd[i] ~= nil and valuesFieldEnd[i] >= 2 then
-							allowed = false
+						if values[i] ~= lastBit then
+							changeCounter = changeCounter + 1
 
-							break
+							if changeCounter > 2 then
+								gabPos = (i - 1) / checkpoints
+							end
+
+							lastBit = values[i]
+						end
+
+						if VehicleDebug.state == VehicleDebug.DEBUG_AI then
+							gabBits = gabBits .. tostring(values[i] and 1 or 0)
+							fieldEndBits = fieldEndBits .. tostring(valuesFieldEnd[i] == 3 and "-" or valuesFieldEnd[i] == nil and "?" or valuesFieldEnd[i] == 1 and "O" or "_")
 						end
 					end
 
-					if allowed then
-						valuesFieldEnd[valueIndex] = 1
+					if self.isFirstRow then
+						local hasLeftGab = gabPos > 0 and gabPos < 0.5
+						local hasRightGab = gabPos >= 0.5
+						self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and not hasLeftGab
+						self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and not hasRightGab
+					else
+						self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and gabPos < 0
+						self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and gabPos < 0
 					end
 				end
 
-				values[valueIndex] = bit
+				local hasHadFieldContact = false
 
 				for i = 1, checkpoints do
-					if values[i] ~= lastBit then
-						changeCounter = changeCounter + 1
-
-						if changeCounter > 2 then
-							gabPos = (i - 1) / checkpoints
-						end
-
-						lastBit = values[i]
-					end
-
-					if VehicleDebug.state == VehicleDebug.DEBUG_AI then
-						gabBits = gabBits .. tostring(values[i] and 1 or 0)
-						fieldEndBits = fieldEndBits .. tostring(valuesFieldEnd[i] == 3 and "-" or valuesFieldEnd[i] == nil and "?" or valuesFieldEnd[i] == 1 and "O" or "_")
-					end
-				end
-
-				if self.isFirstRow then
-					local hasLeftGab = gabPos > 0 and gabPos < 0.5
-					local hasRightGab = gabPos >= 0.5
-					self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and not hasLeftGab
-					self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and not hasRightGab
-				else
-					self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and gabPos < 0
-					self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and gabPos < 0
-				end
-			end
-
-			local hasHadFieldContact = false
-
-			for i = 1, checkpoints do
-				if valuesFieldEnd[i] ~= nil then
-					hasHadFieldContact = true
-
-					break
-				end
-			end
-
-			local allOutOfField = true
-
-			for i = 1, checkpoints do
-				if valuesFieldEnd[i] == 1 then
-					allOutOfField = false
-
-					break
-				end
-			end
-
-			local reEnteringField = false
-
-			if hasNoFullCoverageArea then
-				for i = 1, checkpoints do
-					if valuesFieldEnd[i] == 3 then
-						reEnteringField = true
+					if valuesFieldEnd[i] ~= nil then
+						hasHadFieldContact = true
 
 						break
 					end
 				end
-			else
-				reEnteringField = true
-			end
 
-			self.fieldEndGabDetectedByBits = checkpoints > 0 and hasHadFieldContact and allOutOfField and reEnteringField
+				local allOutOfField = true
+
+				for i = 1, checkpoints do
+					if valuesFieldEnd[i] == 1 then
+						allOutOfField = false
+
+						break
+					end
+				end
+
+				local reEnteringField = false
+
+				if hasNoFullCoverageArea then
+					for i = 1, checkpoints do
+						if valuesFieldEnd[i] == 3 then
+							reEnteringField = true
+
+							break
+						end
+					end
+				else
+					reEnteringField = true
+				end
+
+				self.fieldEndGabDetectedByBits = checkpoints > 0 and hasHadFieldContact and allOutOfField and reEnteringField
+			elseif implement.object.aiImplementGabCheckpointValues == nil or implement.object.aiImplementFieldEndCheckpointValues == nil or self.resetGabDetection then
+				implement.object.aiImplementGabCheckpointValues = {}
+				implement.object.aiImplementFieldEndCheckpointValues = {}
+			end
 		end
 
 		if self.resetGabDetection then

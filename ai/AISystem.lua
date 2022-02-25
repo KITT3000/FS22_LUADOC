@@ -1,4 +1,5 @@
 AISystem = {
+	COSTMAP_MAX_VALUE = 16,
 	NEXT_JOB_ID = 0
 }
 local AISystem_mt = Class(AISystem)
@@ -430,7 +431,7 @@ function AISystem:draw()
 		local cellSizeHalf = self.cellSizeMeters * 0.5
 		x = math.floor(x / self.cellSizeMeters) * self.cellSizeMeters + cellSizeHalf
 		z = math.floor(z / self.cellSizeMeters) * self.cellSizeMeters + cellSizeHalf
-		local range = 10 * self.cellSizeMeters
+		local range = 15 * self.cellSizeMeters
 		local terrainSizeHalf = self.mission.terrainSize * 0.5
 		local minX = math.max(x - range, -terrainSizeHalf + cellSizeHalf)
 		local minZ = math.max(z - range, -terrainSizeHalf + cellSizeHalf)
@@ -448,13 +449,13 @@ function AISystem:draw()
 				if isBlocking then
 					color = self.debug.colors.blocking
 				else
-					local r, g, b = Utils.getGreenRedBlendedColor(cost / 255)
+					local r, g, b = Utils.getGreenRedBlendedColor(cost / AISystem.COSTMAP_MAX_VALUE)
 					color[1] = r
 					color[2] = g
 					color[3] = b
 				end
 
-				Utils.renderTextAtWorldPosition(worldPosX, worldPosY, worldPosZ, tostring(cost), getCorrectTextSize(0.015), 0, color)
+				Utils.renderTextAtWorldPosition(worldPosX, worldPosY, worldPosZ, string.format("%.1f", cost), getCorrectTextSize(0.015), 0, color)
 			end
 		end
 	end
@@ -749,7 +750,7 @@ function AISystem:consoleCommandAICostmapExport(imageFormatStr)
 					pixel[2] = colorBlocking[2]
 					pixel[1] = colorBlocking[1]
 				else
-					pixel[1], pixel[2], pixel[3] = Utils.getGreenRedBlendedColor(cost / 255)
+					pixel[1], pixel[2], pixel[3] = Utils.getGreenRedBlendedColor(cost / AISystem.COSTMAP_MAX_VALUE)
 				end
 
 				pixel[3] = pixel[3] * 255

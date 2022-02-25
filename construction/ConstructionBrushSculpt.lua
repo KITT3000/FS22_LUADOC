@@ -254,6 +254,12 @@ function ConstructionBrushSculpt:onButtonSecondary(isDown, isDrag, isUp)
 		return
 	end
 
+	local err = self:verifyAccess(x, y, z)
+
+	if err ~= nil then
+		return
+	end
+
 	if self.mode == ConstructionBrushSculpt.MODE.SHIFT then
 		self:shift(x, y, z, -1)
 		self:setActiveSound(ConstructionSound.ID.SCULPT, 1 - self.brushRadius / self.maxBrushRadius * 0.75 - self.brushStrength / self.maxBrushStrength * 0.25)

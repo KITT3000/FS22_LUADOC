@@ -25,6 +25,7 @@ function StoreManager:initDataStructures()
 	self.modStorePacks = {}
 	self.specTypes = {}
 	self.nameToSpecType = {}
+	self.vramUsageFunctions = {}
 	self.constructionCategoriesByName = {}
 	self.constructionCategories = {}
 end
@@ -91,7 +92,7 @@ function StoreManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 		storeItemsFilename = g_isPresentationVersionSpecialStorePath
 	end
 
-	self:loadItemsFromXML(storeItemsFilename, "")
+	self:loadItemsFromXML(storeItemsFilename, "", nil)
 
 	if xmlFile ~= nil then
 		local mapStoreItemsFilename = getXMLString(xmlFile, "map.storeItems#filename")
@@ -99,7 +100,7 @@ function StoreManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 		if mapStoreItemsFilename ~= nil then
 			mapStoreItemsFilename = Utils.getFilename(mapStoreItemsFilename, baseDirectory)
 
-			self:loadItemsFromXML(mapStoreItemsFilename, baseDirectory)
+			self:loadItemsFromXML(mapStoreItemsFilename, baseDirectory, missionInfo.customEnvironment)
 		end
 	end
 
@@ -119,7 +120,7 @@ function StoreManager:unloadMapData()
 	removeConsoleCommand("gsStoreItemsReload")
 end
 
-function StoreManager:loadItemsFromXML(filename, baseDirectory)
+function StoreManager:loadItemsFromXML(filename, baseDirectory, customEnvironment)
 	local xmlFile = XMLFile.load("storeItemsXML", filename)
 
 	xmlFile:iterate("storeItems.storeItem", function (_, key)
@@ -127,7 +128,7 @@ function StoreManager:loadItemsFromXML(filename, baseDirectory)
 		local extraContentId = xmlFile:getString(key .. "#extraContentId")
 
 		g_asyncTaskManager:addSubtask(function ()
-			self:loadItem(xmlFilename, baseDirectory, nil, false, false, "", extraContentId)
+			self:loadItem(xmlFilename, baseDirectory, customEnvironment, false, false, "", extraContentId)
 		end)
 	end)
 	xmlFile:delete()
@@ -293,6 +294,10 @@ end
 
 function StoreManager:getConstructionCategories()
 	return self.constructionCategories
+end
+
+function StoreManager:addVRamUsageFunction(func)
+	table.insert(self.vramUsageFunctions, func)
 end
 
 function StoreManager:addSpecType(name, profile, loadFunc, getValueFunc, species, relatedConfigurations, configDataFunc)
@@ -672,7 +677,17 @@ function StoreManager:loadItem(rawXMLFilename, baseDir, customEnvironment, isMod
 	storeItem.financeCategory = xmlFile:getValue(storeDataXMLKey .. ".financeCategory")
 	storeItem.shopFoldingState = xmlFile:getValue(storeDataXMLKey .. ".shopFoldingState", 0)
 	storeItem.shopFoldingTime = xmlFile:getValue(storeDataXMLKey .. ".shopFoldingTime")
-	storeItem.sharedVramUsage, storeItem.perInstanceVramUsage, storeItem.ignoreVramUsage = StoreItemUtil.getVRamUsageFromXML(xmlFile, storeDataXMLKey)
+	local sharedVramUsage, perInstanceVramUsage, ignoreVramUsage = StoreItemUtil.getVRamUsageFromXML(xmlFile, storeDataXMLKey)
+
+	for _, func in ipairs(self.vramUsageFunctions) do
+		local customSharedVramUsage, customPerInstanceVramUsage = func(xmlFile)
+		sharedVramUsage = sharedVramUsage + customSharedVramUsage
+		perInstanceVramUsage = perInstanceVramUsage + customPerInstanceVramUsage
+	end
+
+	storeItem.ignoreVramUsage = ignoreVramUsage
+	storeItem.perInstanceVramUsage = perInstanceVramUsage
+	storeItem.sharedVramUsage = sharedVramUsage
 	storeItem.dlcTitle = dlcTitle
 	storeItem.isMod = isMod
 	storeItem.customEnvironment = customEnvironment

@@ -99,7 +99,7 @@ function AIDischargeable:loadDischargeNode(superFunc, xmlFile, key, entry)
 		if not fillUnitAlreadyUsed then
 			table.insert(spec.aiDischargeNodes, entry)
 		else
-			Logging.xmlWarning(xmlFile, "Discharge node fill unit index already used. Discharge node will be ignored for '%s'", key)
+			Logging.xmlWarning(xmlFile, "Discharge node fill unit index already used for AI. Discharge node will be ignored for '%s'", key)
 		end
 	end
 

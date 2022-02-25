@@ -6,6 +6,7 @@ function Server.new()
 	self.clients = {}
 	self.clientConnections = {}
 	self.clientPositions = {}
+	self.clientGuiVisibility = {}
 	self.clientClipDistCoeffs = {}
 	self.objects = {}
 	self.tickRate = 30
@@ -14,6 +15,7 @@ function Server.new()
 	self.netIsRunning = false
 
 	addConsoleCommand("gsNetworkShowTraffic", "Toggle network traffic visualization", "consoleCommandToggleShowNetworkTraffic", self)
+	addConsoleCommand("gsNetworkShowTrafficClients", "Toggle client network traffic visualization", "consoleCommandToggleShowNetworkTrafficClients", self)
 	addConsoleCommand("gsNetworkDebug", "Toggle network debugging", "consoleCommandToggleNetworkDebug", self)
 	addConsoleCommand("gsNetworkShowObjects", "Toggle network show objects", "consoleCommandToggleNetworkShowObjects", self)
 
@@ -22,6 +24,7 @@ end
 
 function Server:delete()
 	removeConsoleCommand("gsNetworkShowTraffic")
+	removeConsoleCommand("gsNetworkShowTrafficClients")
 	removeConsoleCommand("gsNetworkDebug")
 	removeConsoleCommand("gsNetworkShowObjects")
 	Server:superClass().delete(self)
@@ -75,6 +78,7 @@ function Server:update(dt, isRunning)
 					local sendInfos = {}
 					local x, y, z = self:getClientPosition(streamId)
 					local coeff = self:getClientClipDistCoeff(streamId)
+					local isGuiVisible = self:getClientGuiVisibility(streamId)
 
 					for _, object in pairs(self.objects) do
 						local objectInfo = objectsInfo[object.id]
@@ -84,37 +88,45 @@ function Server:update(dt, isRunning)
 						end
 
 						if objectInfo == nil then
+							if object:testScope(x, y, z, coeff, isGuiVisible) then
+								local updatePriority = object:getUpdatePriority(2, x, y, z, coeff, connection, isGuiVisible)
+
+								table.insert(sendInfos, {
+									id = Connection.SEND_INFO_CREATE,
+									object = object,
+									prio = updatePriority
+								})
+							end
+						elseif objectInfo.sync == Connection.SYNC_LOADED then
 							if object:testScope(x, y, z, coeff) then
 								local updatePriority = object:getUpdatePriority(2, x, y, z, coeff, connection)
 
 								table.insert(sendInfos, {
-									id = 1,
+									id = Connection.SEND_INFO_SYNC,
 									object = object,
 									prio = updatePriority
 								})
 							end
 						elseif objectInfo.sync == Connection.SYNC_CREATED then
-							if object:testScope(x, y, z, coeff) then
-								if object.synchronizedConnections[connection] then
-									if objectInfo.dirtyMask ~= 0 then
-										objectInfo.skipCount = objectInfo.skipCount + 1
-										local updatePriority = object:getUpdatePriority(objectInfo.skipCount, x, y, z, coeff, connection)
+							if object:testScope(x, y, z, coeff, isGuiVisible) then
+								if objectInfo.dirtyMask ~= 0 then
+									objectInfo.skipCount = objectInfo.skipCount + 1
+									local updatePriority = object:getUpdatePriority(objectInfo.skipCount, x, y, z, coeff, connection, isGuiVisible)
 
-										table.insert(sendInfos, {
-											id = 2,
-											object = object,
-											prio = updatePriority
-										})
-									else
-										objectInfo.skipCount = 0
-									end
+									table.insert(sendInfos, {
+										id = Connection.SEND_INFO_UPDATE,
+										object = object,
+										prio = updatePriority
+									})
+								else
+									objectInfo.skipCount = 0
 								end
 							else
 								objectInfo.skipCount = objectInfo.skipCount + 1
-								local updatePriority = object:getUpdatePriority(objectInfo.skipCount, x, y, z, coeff, connection)
+								local updatePriority = object:getUpdatePriority(objectInfo.skipCount, x, y, z, coeff, connection, isGuiVisible)
 
 								table.insert(sendInfos, {
-									id = 3,
+									id = Connection.SEND_INFO_REMOVE,
 									object = object,
 									prio = updatePriority
 								})
@@ -124,8 +136,8 @@ function Server:update(dt, isRunning)
 
 					for objectId in pairs(pendingDeleteObjects) do
 						table.insert(sendInfos, {
-							id = 0,
 							prio = 100,
+							id = Connection.SEND_INFO_DELETE,
 							objectId = objectId
 						})
 					end
@@ -161,29 +173,46 @@ function Server:update(dt, isRunning)
 						local object = sendInfo.object
 						local infoId = sendInfo.id
 
-						streamWriteUIntN(streamId, infoId, 2)
+						streamWriteUIntN(streamId, infoId, Connection.SEND_INFO_NUM_BITS)
 
-						if infoId == 0 then
+						if infoId == Connection.SEND_INFO_DELETE then
 							NetworkUtil.writeNodeObjectId(streamId, sendInfo.objectId)
 
 							pendingDeleteObjects[sendInfo.objectId] = nil
 							pendingDeleteObjectPacketIds[sendInfo.objectId] = connection.lastSeqSent
-						elseif infoId == 1 then
+						elseif infoId == Connection.SEND_INFO_CREATE then
 							streamWriteUIntN(streamId, object.classId, ObjectIds.SEND_NUM_BITS)
 							NetworkUtil.writeNodeObjectId(streamId, object.id)
 							object:writeStream(streamId, connection)
 
+							local syncState = Connection.SYNC_CREATING
+
+							if object:getIsDelayedLoaded() then
+								syncState = Connection.SYNC_CREATING_DELAYED
+							end
+
 							objectsInfo[object.id] = {
 								dirtyMask = 0,
 								skipCount = 0,
-								sync = Connection.SYNC_CREATING,
+								sync = syncState,
 								history = {}
 							}
 							objectsInfo[object.id].history[connection.lastSeqSent] = {
 								mask = 0,
 								sync = Connection.SYNC_HIST_CREATE
 							}
-						elseif infoId == 2 then
+						elseif infoId == Connection.SEND_INFO_SYNC then
+							local objectInfo = objectsInfo[object.id]
+
+							NetworkUtil.writeNodeObjectId(streamId, object.id)
+							object:postWriteStream(streamId, connection)
+
+							objectsInfo[object.id].sync = Connection.SYNC_SYNCING
+							objectInfo.history[connection.lastSeqSent] = {
+								mask = 0,
+								sync = Connection.SYNC_HIST_SYNC
+							}
+						elseif infoId == Connection.SEND_INFO_UPDATE then
 							local objectInfo = objectsInfo[object.id]
 							local dirtyMask = objectInfo.dirtyMask
 
@@ -218,9 +247,9 @@ function Server:update(dt, isRunning)
 
 						local packetSize = streamGetWriteOffset(streamId)
 
-						self:addPacketSize(self:getObjectPacketType(object), (packetSize - oldPacketSize) / 8)
+						self:addPacketSize(connection, self:getObjectPacketType(object), (packetSize - oldPacketSize) / 8)
 
-						if g_networkDebugPrints and infoId == 2 then
+						if g_networkDebugPrints and infoId == Connection.SEND_INFO_UPDATE then
 							local extraInfo = ""
 
 							if object.configFileName ~= nil then
@@ -387,6 +416,21 @@ function Server:packetReceived(packetType, timestamp, streamId)
 					connection:sendObjectEventQueue(objectInfo)
 				end
 			end
+		elseif messageId == MessageIds.OBJECT_LOADED then
+			local connection = self.clientConnections[streamId]
+
+			if connection ~= nil then
+				local numObjects = streamReadUInt8(streamId)
+
+				for i = 1, numObjects do
+					local serverObjectId = NetworkUtil.readNodeObjectId(streamId)
+					local objectInfo = connection.objectsInfo[serverObjectId]
+
+					if objectInfo ~= nil and objectInfo.sync == Connection.SYNC_CREATING_DELAYED then
+						objectInfo.sync = Connection.SYNC_LOADED
+					end
+				end
+			end
 		elseif messageId == MessageIds.OBJECT_DELETED then
 			local connection = self.clientConnections[streamId]
 
@@ -410,11 +454,13 @@ function Server:packetReceived(packetType, timestamp, streamId)
 				connection:readUpdateAck(streamId)
 
 				local numObjects = streamReadUInt8(streamId)
+				local isGuiActive = streamReadBool(streamId)
 				local x = streamReadFloat32(streamId)
 				local y = streamReadFloat32(streamId)
 				local z = streamReadFloat32(streamId)
 
 				self:setClientPosition(streamId, x, y, z)
+				self:setClientGuiVisibility(streamId, isGuiActive)
 
 				for i = 1, numObjects do
 					local objectId = NetworkUtil.readNodeObjectId(streamId)
@@ -473,6 +519,7 @@ function Server:packetReceived(packetType, timestamp, streamId)
 					self.clientConnections[streamId].objectsInfo[object.id] = {
 						dirtyMask = 0,
 						skipCount = 0,
+						manuallyReplicated = true,
 						sync = Connection.SYNC_MANUALLY_REGISTERED,
 						history = {}
 					}
@@ -535,6 +582,7 @@ function Server:registerObject(object, alreadySent)
 					connection.objectsInfo[object.id] = {
 						dirtyMask = 0,
 						skipCount = 0,
+						manuallyReplicated = true,
 						sync = Connection.SYNC_MANUALLY_REGISTERED,
 						history = {}
 					}
@@ -642,7 +690,7 @@ function Server:sendObjects(connection, x, y, z, viewDistanceCoeff)
 	local numToSend = 0
 
 	for _, object in pairs(self.objects) do
-		if objectsInfo[object.id] == nil and not object.isManuallyReplicated and object:testScope(x, y, z, viewDistanceCoeff) then
+		if objectsInfo[object.id] == nil and not object.isManuallyReplicated and object:testScope(x, y, z, viewDistanceCoeff, true) then
 			numToSend = numToSend + 1
 			local startOffset = 0
 
@@ -656,10 +704,16 @@ function Server:sendObjects(connection, x, y, z, viewDistanceCoeff)
 			NetworkUtil.writeNodeObjectId(streamId, object.id)
 			object:writeStream(streamId, connection)
 
+			local syncState = Connection.SYNC_CREATED
+
+			if object:getIsDelayedLoaded() then
+				syncState = Connection.SYNC_CREATING_DELAYED
+			end
+
 			objectsInfo[object.id] = {
 				dirtyMask = 0,
 				skipCount = 0,
-				sync = Connection.SYNC_CREATED,
+				sync = syncState,
 				history = {}
 			}
 
@@ -701,6 +755,18 @@ function Server:getClientPosition(client)
 	return 0, 0, 0
 end
 
+function Server:setClientGuiVisibility(client, isGuiVisible)
+	self.clientGuiVisibility[client] = isGuiVisible
+end
+
+function Server:getClientGuiVisibility(client)
+	if self.clientGuiVisibility[client] ~= nil then
+		return self.clientGuiVisibility[client]
+	end
+
+	return false
+end
+
 function Server:setClientClipDistCoeff(client, coeff)
 	self.clientClipDistCoeffs[client] = coeff
 end
@@ -738,6 +804,12 @@ end
 function Server:registerObjectInStream(connection, object)
 	if self.currentWriteStreamConnection ~= connection and self.currentSendEventConnection ~= connection then
 		print("Error: Server:registerObjectInStream is only allowed in writeStream calls")
+
+		return
+	end
+
+	if object:getIsDelayedLoaded() then
+		print("Error: Server:registerObjectInStream is not allowed for delayed loaded objects")
 
 		return
 	end

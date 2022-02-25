@@ -18,6 +18,8 @@ Placeable.LOAD_STEP_FINISHED = 6
 Placeable.LOAD_STEP_SYNCHRONIZED = 7
 Placeable.LOADING_STATE_OK = 1
 Placeable.LOADING_STATE_ERROR = 2
+Placeable.SELL_AND_DELETE = 0
+Placeable.SELL_AND_SPECTATOR_FARM = 1
 Placeable.DESTRUCTION = {
 	PER_NODE = 2,
 	SELL = 1
@@ -103,6 +105,7 @@ function Placeable.init()
 	schema:register(XMLValueType.BOOL, basePath .. ".base.canBeRenamed", "Placeable can be renamed by player", false)
 	schema:register(XMLValueType.BOOL, basePath .. ".base.boughtWithFarmland", "Placeable is bough with farmland", false)
 	schema:register(XMLValueType.BOOL, basePath .. ".base.buysFarmland", "Placeable buys farmland it is placed on", false)
+	schema:register(XMLValueType.BOOL, basePath .. ".base.canBeDeleted", "Placeable can be deleted by the player, set to false if it should be set farm 0 on sell instead", true)
 	StoreManager.registerStoreDataXMLPaths(schema, basePath)
 	I3DUtil.registerI3dMappingXMLPaths(schema, basePath)
 
@@ -272,6 +275,13 @@ function Placeable:load(placeableData, asyncCallbackFunction, asyncCallbackObjec
 	self.canBeRenamed = self.xmlFile:getValue("placeable.base.canBeRenamed", false)
 	self.boughtWithFarmland = self.xmlFile:getValue("placeable.base.boughtWithFarmland", false)
 	self.buysFarmland = self.xmlFile:getValue("placeable.base.buysFarmland", false)
+	self.canBeDeleted = self.xmlFile:getValue("placeable.base.canBeDeleted", true)
+
+	if self.storeItem.showInStore and not self.canBeDeleted then
+		self:onLoadingError("Store item can be manually placed (showInStore.showInStore) but not deleted by the player (base.canBeDeleted=false)! Only use this option for preplaced placeables")
+
+		return
+	end
 
 	self:setLoadingStep(Placeable.LOAD_STEP_AWAIT_I3D)
 
@@ -447,7 +457,7 @@ function Placeable:finalizePlacement()
 
 	if self.boughtWithFarmland then
 		if self.isServer then
-			self:updateOwnership(true)
+			self:updateOwnership()
 		end
 
 		g_farmlandManager:addStateChangeListener(self)
@@ -529,7 +539,6 @@ end
 
 function Placeable:readStream(streamId, connection, objectId)
 	Placeable:superClass().readStream(self, streamId, connection, objectId)
-	self:setConnectionSynchronized(connection, false)
 
 	local configFileName = NetworkUtil.convertFromNetworkFilename(streamReadString(streamId))
 	local typeName = streamReadString(streamId)
@@ -573,7 +582,6 @@ end
 
 function Placeable:writeStream(streamId, connection)
 	Placeable:superClass().writeStream(self, streamId, connection)
-	self:setConnectionSynchronized(connection, false)
 	streamWriteString(streamId, NetworkUtil.convertToNetworkFilename(self.configFileName))
 	streamWriteString(streamId, self.typeName)
 
@@ -610,7 +618,6 @@ function Placeable:postReadStream(streamId, connection)
 		self:setName(streamReadString(streamId), true)
 	end
 
-	self:setConnectionSynchronized(connection, true)
 	self:setLoadingStep(Placeable.LOAD_STEP_SYNCHRONIZED)
 	self:raiseActive()
 end
@@ -634,8 +641,6 @@ function Placeable:postWriteStream(streamId, connection)
 	if streamWriteBool(streamId, self.name ~= nil) then
 		streamWriteString(streamId, self.name)
 	end
-
-	self:setConnectionSynchronized(connection, true)
 end
 
 function Placeable:readUpdateStream(streamId, timestamp, connection)
@@ -728,7 +733,7 @@ function Placeable:draw()
 end
 
 function Placeable:getName()
-	return self.name or self.storeItem.name
+	return self.name or self.storeItem and self.storeItem.name
 end
 
 function Placeable:getImageFilename()
@@ -750,6 +755,7 @@ function Placeable:setName(name, noEventSend)
 		self.name = name
 
 		g_messageCenter:publish(MessageType.UNLOADING_STATIONS_CHANGED)
+		g_messageCenter:publish(MessageType.LOADING_STATIONS_CHANGED)
 
 		return true
 	end
@@ -811,7 +817,7 @@ end
 
 function Placeable:onFarmlandStateChanged(farmlandId, farmId)
 	if self.boughtWithFarmland and farmlandId == self.farmlandId then
-		self:updateOwnership(true)
+		self:updateOwnership()
 	end
 end
 
@@ -824,9 +830,20 @@ function Placeable:setOwnerFarmId(farmId, noEventSend)
 	end
 
 	Placeable:superClass().setOwnerFarmId(self, farmId, noEventSend)
+
+	if Placeable.LOAD_STEP_LOAD < self.loadingStep then
+		SpecializationUtil.raiseEvent(self, "onOwnerChanged")
+	end
+
+	g_currentMission:removeOwnedItem(self)
+	g_currentMission:addOwnedItem(self)
 end
 
-function Placeable:updateOwnership(updateOwner)
+function Placeable:updateOwnership()
+	if not self.isServer then
+		return
+	end
+
 	local storeItem = g_storeManager:getItemByXMLFilename(self.configFileName)
 
 	if storeItem == nil then
@@ -841,13 +858,9 @@ function Placeable:updateOwnership(updateOwner)
 		farmId = AccessHandler.NOBODY
 	end
 
-	if self.isServer and updateOwner and self.ownerFarmId ~= farmId then
+	if self.ownerFarmId ~= farmId then
 		self:setOwnerFarmId(farmId)
-		SpecializationUtil.raiseEvent(self, "onOwnerChanged")
 	end
-
-	g_currentMission:removeOwnedItem(self)
-	g_currentMission:addOwnedItem(self)
 end
 
 function Placeable:setLoadingState(loadingState)
@@ -931,6 +944,16 @@ function Placeable:getSellPrice()
 	return math.floor(self.price * math.max(priceMultiplier, 0.05))
 end
 
+function Placeable:getSellAction()
+	local isOnPublicGround = g_farmlandManager:getFarmlandOwner(self.farmlandId) == FarmManager.SPECTATOR_FARM_ID
+
+	if self:isMapBound() and (isOnPublicGround or not self.canBeDeleted) then
+		return Placeable.SELL_AND_SPECTATOR_FARM
+	end
+
+	return Placeable.SELL_AND_DELETE
+end
+
 function Placeable:addToPhysics()
 	if self.rootNode ~= nil then
 		addToPhysics(self.rootNode)
@@ -990,5 +1013,5 @@ function Placeable.getSpecValueSlots(storeItem, realItem)
 	local numOwned = g_currentMission:getNumOfItems(storeItem)
 	local slotUsage = g_currentMission.slotSystem:getStoreItemSlotUsage(storeItem, numOwned == 0) * -1
 
-	return string.format("%0d (%0d / %0d)", slotUsage, g_currentMission.slotSystem.slotUsage, g_currentMission.slotSystem.slotLimit)
+	return string.format("%0d $SLOTS$", slotUsage)
 end

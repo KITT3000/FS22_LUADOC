@@ -33,6 +33,7 @@ function Foldable.initSpecialization()
 	schema:register(XMLValueType.BOOL, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#invertFoldAngleScale", "Invert fold angle scale", false)
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_TOOL_XML_KEY .. "#foldMinLimit", "Fold min. time", 0)
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_TOOL_XML_KEY .. "#foldMaxLimit", "Fold max. time", 1)
+	schema:register(XMLValueType.INT, Cylindered.MOVING_TOOL_XML_KEY .. "#foldingConfigurationIndex", "Index of folding configuration to activate the moving tool")
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_PART_XML_KEY .. "#foldMinLimit", "Fold min. time", 0)
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_PART_XML_KEY .. "#foldMaxLimit", "Fold max. time", 1)
 	schema:register(XMLValueType.FLOAT, GroundAdjustedNodes.GROUND_ADJUSTED_NODE_XML_KEY .. ".foldable#minLimit", "Fold min. time", 0)
@@ -68,6 +69,8 @@ function Foldable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, VinePrepruner.PRUNER_NODE_XML_KEY .. "#foldMaxLimit", "Fold max. time for pruner node update", 1)
 	schema:register(XMLValueType.FLOAT, Shovel.SHOVEL_NODE_XML_KEY .. "#foldMinLimit", "Fold min. time for shovel pickup", 0)
 	schema:register(XMLValueType.FLOAT, Shovel.SHOVEL_NODE_XML_KEY .. "#foldMaxLimit", "Fold max. time for shovel pickup", 1)
+	schema:register(XMLValueType.FLOAT, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#foldMinLimit", "Fold min. time for steering angle nodes to update", 0)
+	schema:register(XMLValueType.FLOAT, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#foldMaxLimit", "Fold max. time for steering angle nodes to update", 1)
 	schema:setXMLSpecializationType()
 
 	local schemaSavegame = Vehicle.xmlSchemaSavegame
@@ -199,6 +202,8 @@ function Foldable.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsPreprunerNodeActive", Foldable.getIsPreprunerNodeActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadShovelNode", Foldable.loadShovelNode)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getShovelNodeIsActive", Foldable.getShovelNodeIsActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadSteeringAngleNodeFromXML", Foldable.loadSteeringAngleNodeFromXML)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateSteeringAngleNode", Foldable.updateSteeringAngleNode)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleCrabSteering", Foldable.getCanToggleCrabSteering)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getBrakeForce", Foldable.getBrakeForce)
 end
@@ -1009,6 +1014,7 @@ function Foldable:loadMovingToolFromXML(superFunc, xmlFile, key, entry)
 
 	entry.foldMinLimit = xmlFile:getValue(key .. "#foldMinLimit", 0)
 	entry.foldMaxLimit = xmlFile:getValue(key .. "#foldMaxLimit", 1)
+	entry.foldingConfigurationIndex = xmlFile:getValue(key .. "#foldingConfigurationIndex")
 
 	return true
 end
@@ -1017,6 +1023,10 @@ function Foldable:getIsMovingToolActive(superFunc, movingTool)
 	local foldAnimTime = self:getFoldAnimTime()
 
 	if movingTool.foldMaxLimit < foldAnimTime or foldAnimTime < movingTool.foldMinLimit then
+		return false
+	end
+
+	if movingTool.foldingConfigurationIndex ~= nil and self.configurations.folding ~= nil and self.configurations.folding ~= movingTool.foldingConfigurationIndex then
 		return false
 	end
 
@@ -1462,6 +1472,27 @@ function Foldable:getShovelNodeIsActive(superFunc, shovelNode)
 	end
 
 	return superFunc(self, shovelNode)
+end
+
+function Foldable:loadSteeringAngleNodeFromXML(superFunc, entry, xmlFile, key)
+	if not superFunc(self, entry, xmlFile, key) then
+		return false
+	end
+
+	entry.foldMinLimit = xmlFile:getValue(key .. "#foldMinLimit", 0)
+	entry.foldMaxLimit = xmlFile:getValue(key .. "#foldMaxLimit", 1)
+
+	return true
+end
+
+function Foldable:updateSteeringAngleNode(superFunc, steeringAngleNode, angle, dt)
+	local foldAnimTime = self:getFoldAnimTime()
+
+	if foldAnimTime < steeringAngleNode.foldMinLimit or steeringAngleNode.foldMaxLimit < foldAnimTime then
+		return
+	end
+
+	return superFunc(self, steeringAngleNode, angle, dt)
 end
 
 function Foldable:getCanToggleCrabSteering(superFunc)

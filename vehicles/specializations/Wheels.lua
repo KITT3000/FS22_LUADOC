@@ -1,4 +1,5 @@
 Wheels = {
+	VRAM_PER_WHEEL = 524288,
 	WHEEL_NO_CONTACT = 0,
 	WHEEL_OBJ_CONTACT = 1,
 	WHEEL_GROUND_CONTACT = 2,
@@ -127,6 +128,7 @@ function Wheels.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "validateWashableNode", Wheels.validateWashableNode)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAIDirectionNode", Wheels.getAIDirectionNode)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAIRootNode", Wheels.getAIRootNode)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getSupportsMountKinematic", Wheels.getSupportsMountKinematic)
 end
 
 function Wheels.registerEventListeners(vehicleType)
@@ -152,6 +154,7 @@ function Wheels.initSpecialization()
 	g_configurationManager:addConfigurationType("wheel", g_i18n:getText("configuration_wheelSetup"), "wheels", nil, Wheels.loadBrandName, Wheels.loadedBrandNames, ConfigurationUtil.SELECTOR_MULTIOPTION, g_i18n:getText("configuration_wheelBrand"), Wheels.getBrands, Wheels.getWheelsByBrand)
 	g_configurationManager:addConfigurationType("rimColor", g_i18n:getText("configuration_rimColor"), nil, nil, ConfigurationUtil.getConfigColorSingleItemLoad, ConfigurationUtil.getConfigColorPostLoad, ConfigurationUtil.SELECTOR_COLOR)
 	g_storeManager:addSpecType("wheels", "shopListAttributeIconWheels", Wheels.loadSpecValueWheels, Wheels.getSpecValueWheels, "vehicle")
+	g_storeManager:addVRamUsageFunction(Wheels.getVRamUsageFromXML)
 
 	local schema = Vehicle.xmlSchema
 
@@ -373,7 +376,7 @@ function Wheels.registerWheelPhysicsDataXMLPaths(schema, key)
 	schema:register(XMLValueType.ANGLE, key .. ".physics#rotSpeedNeg", "Rotation speed in negative direction")
 	schema:register(XMLValueType.ANGLE, key .. ".physics#rotMax", "Max. rotation")
 	schema:register(XMLValueType.ANGLE, key .. ".physics#rotMin", "Min. rotation")
-	schema:register(XMLValueType.ANGLE, key .. ".physics#rotSpeedLimit", "Rotation speed limit")
+	schema:register(XMLValueType.FLOAT, key .. ".physics#rotSpeedLimit", "Rotation speed limit")
 end
 
 function Wheels.registerWheelSteeringDataXMLPaths(schema, key)
@@ -1802,13 +1805,14 @@ function Wheels:loadWheelChocksFromXML(xmlFile, configKey, wheelKey, wheel)
 
 		local filename = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, chockKey .. "#filename", "$data/shared/assets/wheelChocks/wheelChock01.i3d")
 		filename = Utils.getFilename(filename, self.baseDirectory)
-		local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.onWheelChockI3DLoaded, self, {
-			wheel,
-			filename,
-			xmlFile,
-			configKey,
-			chockKey
-		})
+		local arguments = {
+			wheel = wheel,
+			filename = filename,
+			xmlFile = xmlFile,
+			configKey = configKey,
+			chockKey = chockKey
+		}
+		local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.onWheelChockI3DLoaded, self, arguments)
 
 		table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 
@@ -1819,10 +1823,14 @@ function Wheels:loadWheelChocksFromXML(xmlFile, configKey, wheelKey, wheel)
 end
 
 function Wheels:onWheelChockI3DLoaded(i3dNode, failedReason, args)
-	local _ = nil
-	local wheel, filename, xmlFile, configKey, chockKey = unpack(args)
+	local wheel = args.wheel
+	local filename = args.filename
+	local xmlFile = args.xmlFile
+	local configKey = args.configKey
+	local chockKey = args.chockKey
 
 	if i3dNode ~= 0 then
+		local _ = nil
 		local chockNode = getChildAt(i3dNode, 0)
 		local posRefNode = I3DUtil.indexToObject(chockNode, getUserAttribute(chockNode, "posRefNode"), self.i3dMappings)
 
@@ -1886,14 +1894,14 @@ function Wheels:loadWheelParticleSystem(xmlFile, configKey, wheelKey, wheel)
 
 		if sourceParticleSystem ~= nil then
 			local args = {
-				xmlFile,
-				configKey,
-				wheelKey,
-				wheel,
-				wheel,
-				sourceParticleSystem,
-				name,
-				i3dFilename
+				xmlFile = xmlFile,
+				configKey = configKey,
+				wheelKey = wheelKey,
+				wheel = wheel,
+				wheelData = wheel,
+				sourceParticleSystem = sourceParticleSystem,
+				name = name,
+				i3dFilename = i3dFilename
 			}
 			local sharedLoadRequestId = self:loadSubSharedI3DFile(i3dFilename, false, false, self.onWheelParticleSystemI3DLoaded, self, args)
 
@@ -1907,14 +1915,14 @@ function Wheels:loadWheelParticleSystem(xmlFile, configKey, wheelKey, wheel)
 						end
 
 						local argsAdditional = {
-							xmlFile,
-							configKey,
-							additionalWheel.singleKey,
-							wheel,
-							additionalWheel,
-							sourceParticleSystem,
-							name,
-							i3dFilename
+							xmlFile = xmlFile,
+							configKey = configKey,
+							wheelKey = additionalWheel.singleKey,
+							wheel = wheel,
+							wheelData = additionalWheel,
+							sourceParticleSystem = sourceParticleSystem,
+							name = name,
+							i3dFilename = i3dFilename
 						}
 						local sharedLoadRequestIdAdditional = self:loadSubSharedI3DFile(i3dFilename, false, false, self.onWheelParticleSystemI3DLoaded, self, argsAdditional)
 
@@ -1927,16 +1935,19 @@ function Wheels:loadWheelParticleSystem(xmlFile, configKey, wheelKey, wheel)
 end
 
 function Wheels:onWheelParticleSystemI3DLoaded(i3dNode, failedReason, args)
-	local xmlFile, configKey, wheelKey, wheel, wheelData, sourceParticleSystem, name, i3dFilename = unpack(args)
-
 	if i3dNode ~= 0 then
+		local xmlFile = args.xmlFile
+		local configKey = args.configKey
+		local wheelKey = args.wheelKey
+		local wheel = args.wheel
+		local wheelData = args.wheelData
 		local emitterShape = getChildAt(i3dNode, 0)
 
 		link(wheel.node, emitterShape)
 		delete(i3dNode)
 
-		local particleSystem = ParticleUtil.copyParticleSystem(xmlFile, nil, sourceParticleSystem, emitterShape)
-		particleSystem.i3dFilename = i3dFilename
+		local particleSystem = ParticleUtil.copyParticleSystem(xmlFile, nil, args.sourceParticleSystem, emitterShape)
+		particleSystem.i3dFilename = args.i3dFilename
 		particleSystem.particleSpeed = ParticleUtil.getParticleSystemSpeed(particleSystem)
 		particleSystem.particleRandomSpeed = ParticleUtil.getParticleSystemSpeedRandom(particleSystem)
 		particleSystem.isTintable = Utils.getNoNil(getUserAttribute(particleSystem.shape, "tintable"), true)
@@ -1954,7 +1965,7 @@ function Wheels:onWheelParticleSystemI3DLoaded(i3dNode, failedReason, args)
 		particleSystem.maxScale = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".wheelParticleSystem#maxScale", 1)
 		particleSystem.direction = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".wheelParticleSystem#direction", 0)
 		particleSystem.onlyActiveOnGroundContact = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".wheelParticleSystem#onlyActiveOnGroundContact", true)
-		wheelData.driveGroundParticleSystems[name] = {
+		wheelData.driveGroundParticleSystems[args.name] = {
 			particleSystem
 		}
 	end
@@ -2039,12 +2050,13 @@ function Wheels:loadHubFromXML(xmlFile, key)
 		end
 
 		hub.nodeStr = xmlFileHub:getValue("hub.nodes#" .. (hub.isLeft and "left" or "right"))
-		local sharedLoadRequestId = self:loadSubSharedI3DFile(hub.i3dFilename, false, false, self.onWheelHubI3DLoaded, self, {
-			hub,
-			linkNode,
-			xmlFile,
-			key
-		})
+		local arguments = {
+			hub = hub,
+			linkNode = linkNode,
+			xmlFile = xmlFile,
+			key = key
+		}
+		local sharedLoadRequestId = self:loadSubSharedI3DFile(hub.i3dFilename, false, false, self.onWheelHubI3DLoaded, self, arguments)
 
 		table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 		xmlFileHub:delete()
@@ -2055,7 +2067,10 @@ end
 
 function Wheels:onWheelHubI3DLoaded(i3dNode, failedReason, args)
 	local spec = self.spec_wheels
-	local hub, linkNode, xmlFile, key = unpack(args)
+	local hub = args.hub
+	local linkNode = args.linkNode
+	local xmlFile = args.xmlFile
+	local key = args.key
 
 	if i3dNode ~= 0 then
 		hub.node = I3DUtil.indexToObject(i3dNode, hub.nodeStr, self.i3dMappings)
@@ -2537,16 +2552,17 @@ function Wheels:finalizeWheel(wheel, parentWheel)
 			if additionalWheel.connector ~= nil then
 				local filename = Utils.getFilename(additionalWheel.connector.filename, self.baseDirectory)
 				additionalWheel.connector.filename = nil
-				local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.onAdditionalWheelConnectorI3DLoaded, self, {
-					wheel,
-					additionalWheel.connector,
-					diameter,
-					baseWheelWidth,
-					wheelOffset,
-					offsetDir,
-					dualWheelWidth,
-					filename
-				})
+				local arguments = {
+					wheel = wheel,
+					connector = additionalWheel.connector,
+					diameter = diameter,
+					baseWheelWidth = baseWheelWidth,
+					wheelDistance = wheelOffset,
+					offsetDir = offsetDir,
+					dualWheelWidth = dualWheelWidth,
+					filename = filename
+				}
+				local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.onAdditionalWheelConnectorI3DLoaded, self, arguments)
 
 				table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 			end
@@ -2695,9 +2711,15 @@ function Wheels:onWheelPartI3DLoaded(i3dNode, failedReason, args)
 end
 
 function Wheels:onAdditionalWheelConnectorI3DLoaded(i3dNode, failedReason, args)
-	local wheel, connector, diameter, baseWheelWidth, wheelDistance, offsetDir, dualWheelWidth, filename = unpack(args)
-
 	if i3dNode ~= 0 then
+		local wheel = args.wheel
+		local connector = args.connector
+		local diameter = args.diameter
+		local baseWheelWidth = args.baseWheelWidth
+		local wheelDistance = args.wheelDistance
+		local offsetDir = args.offsetDir
+		local dualWheelWidth = args.dualWheelWidth
+		local filename = args.filename
 		local node = I3DUtil.indexToObject(i3dNode, connector.nodeStr, self.i3dMappings)
 
 		if node ~= nil then
@@ -2992,6 +3014,10 @@ end
 
 function Wheels:getAIRootNode(superFunc)
 	return self.spec_wheels.steeringCenterNode or superFunc(self)
+end
+
+function Wheels:getSupportsMountKinematic(superFunc)
+	return #self.spec_wheels.wheels == 0 and superFunc(self)
 end
 
 function Wheels:updateWheelDirtAmount(nodeData, dt, allowsWashingByRain, rainScale, timeSinceLastRain, temperature)
@@ -4098,4 +4124,35 @@ function Wheels.getSpecValueWheels(storeItem, realItem)
 	end
 
 	return table.concat(Wheels.getTireNames(realItem), " / ")
+end
+
+function Wheels.getVRamUsageFromXML(xmlFile)
+	if not xmlFile:hasProperty("vehicle.wheels") then
+		return 0, 0
+	end
+
+	local defaultConfigIndex = 0
+
+	xmlFile:iterate("vehicle.wheels.wheelConfigurations.wheelConfiguration", function (configIndex, wheelConfigKey)
+		if xmlFile:getValue(wheelConfigKey .. "#isDefault") then
+			defaultConfigIndex = configIndex
+
+			return false
+		end
+	end)
+
+	local defaultConfigKey = string.format("vehicle.wheels.wheelConfigurations.wheelConfiguration(%d)", defaultConfigIndex)
+	local visualWheelCount = 0
+	local usedWheels = {}
+
+	xmlFile:iterate(defaultConfigKey .. ".wheels.wheel", function (index, key)
+		local filename = xmlFile:getString(key .. "#filename")
+
+		if filename ~= nil and usedWheels[filename] == nil then
+			visualWheelCount = visualWheelCount + 1
+			usedWheels[filename] = true
+		end
+	end)
+
+	return visualWheelCount * Wheels.VRAM_PER_WHEEL, 0
 end

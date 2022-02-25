@@ -325,6 +325,12 @@ end
 function AbstractFieldMission:completeField()
 end
 
+function AbstractFieldMission:showCompletionNotification()
+	local text = string.format(g_i18n:getText("fieldJob_fieldCompletionNotification"), self.field.fieldId, self.completion * 100)
+
+	g_currentMission:addIngameNotification(FSBaseMission.INGAME_NOTIFICATION_INFO, text)
+end
+
 function AbstractFieldMission:getCompletion()
 	local fieldCompletion = self:getFieldCompletion()
 
@@ -561,6 +567,10 @@ function AbstractFieldMission:getNPC()
 end
 
 function AbstractFieldMission:createMapMarkerAtSellingStation(sellingStation)
+	if sellingStation.owningPlaceable.rootNode == nil then
+		return nil
+	end
+
 	local x, _, z = getWorldTranslation(sellingStation.owningPlaceable.rootNode)
 	local hotspot = sellingStation.mapHotspot
 

@@ -7,11 +7,13 @@ Dischargeable = {
 	DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED = 1,
 	DISCHARGE_REASON_TOOLTYPE_NOT_SUPPORTED = 2,
 	DISCHARGE_REASON_NO_FREE_CAPACITY = 3,
+	DISCHARGE_REASON_NO_ACCESS = 4,
 	DISCHARGE_WARNINGS = {}
 }
 Dischargeable.DISCHARGE_WARNINGS[Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED] = "warning_notAcceptedHere"
 Dischargeable.DISCHARGE_WARNINGS[Dischargeable.DISCHARGE_REASON_TOOLTYPE_NOT_SUPPORTED] = "warning_notAcceptedTool"
 Dischargeable.DISCHARGE_WARNINGS[Dischargeable.DISCHARGE_REASON_NO_FREE_CAPACITY] = "warning_noMoreFreeCapacity"
+Dischargeable.DISCHARGE_WARNINGS[Dischargeable.DISCHARGE_REASON_NO_ACCESS] = "warning_youDontHaveAccessToThis"
 Dischargeable.DISCHARGE_NODE_XML_PATH = "vehicle.dischargeable.dischargeNode(?)"
 Dischargeable.DISCHARGE_NODE_CONFIG_XML_PATH = "vehicle.dischargeable.dischargeableConfigurations.dischargeableConfiguration(?).dischargeNode(?)"
 
@@ -400,6 +402,7 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 						local allowFillType = object:getFillUnitAllowsFillType(data.fillUnitIndex, fillType)
 						local allowToolType = object:getFillUnitSupportsToolType(data.fillUnitIndex, ToolType.TRIGGER)
 						local freeSpace = object:getFillUnitFreeCapacity(data.fillUnitIndex, fillType, self:getActiveFarm()) > 0
+						local accessible = object:getIsFillAllowedFromFarm(self:getActiveFarm())
 
 						if allowFillType and allowToolType and freeSpace then
 							local exactFillRootNode = object:getFillUnitExactFillRootNode(data.fillUnitIndex)
@@ -424,6 +427,8 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED
 						elseif not allowToolType then
 							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_TOOLTYPE_NOT_SUPPORTED
+						elseif not accessible then
+							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_NO_ACCESS
 						elseif not freeSpace then
 							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_NO_FREE_CAPACITY
 						end
@@ -434,7 +439,7 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 						dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED
 					end
 
-					if (dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED or dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_NO_FREE_CAPACITY) and (object.isa == nil or not object:isa(Vehicle)) then
+					if (dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED or dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_NO_FREE_CAPACITY or dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_NO_ACCESS) and (object.isa == nil or not object:isa(Vehicle)) then
 						dischargeNode.dischargeFailedReasonShowAuto = true
 					end
 
@@ -1157,6 +1162,7 @@ function Dischargeable:raycastCallbackDischargeNode(hitActorId, x, y, z, distanc
 						local allowFillType = object:getFillUnitAllowsFillType(fillUnitIndex, fillType)
 						local allowToolType = object:getFillUnitSupportsToolType(fillUnitIndex, dischargeNode.toolType)
 						local freeSpace = object:getFillUnitFreeCapacity(fillUnitIndex, fillType, self:getActiveFarm()) > 0
+						local accessible = object:getIsFillAllowedFromFarm(self:getActiveFarm())
 
 						if allowFillType and allowToolType and freeSpace then
 							dischargeNode.dischargeObject = object
@@ -1171,6 +1177,8 @@ function Dischargeable:raycastCallbackDischargeNode(hitActorId, x, y, z, distanc
 							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED
 						elseif not allowToolType then
 							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_TOOLTYPE_NOT_SUPPORTED
+						elseif not accessible then
+							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_NO_ACCESS
 						elseif not freeSpace then
 							dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_NO_FREE_CAPACITY
 						end
@@ -1178,7 +1186,7 @@ function Dischargeable:raycastCallbackDischargeNode(hitActorId, x, y, z, distanc
 						dischargeNode.dischargeFailedReason = Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED
 					end
 
-					if (dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED or dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_NO_FREE_CAPACITY) and (object.isa == nil or not object:isa(Vehicle)) then
+					if (dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED or dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_NO_FREE_CAPACITY or dischargeNode.dischargeFailedReason == Dischargeable.DISCHARGE_REASON_NO_ACCESS) and (object.isa == nil or not object:isa(Vehicle)) then
 						dischargeNode.dischargeFailedReasonShowAuto = true
 					end
 
@@ -1327,7 +1335,7 @@ function Dischargeable:updateDischargeSound(dischargeNode, dt)
 		local effectsStillActive = dischargeNode.lastEffect ~= nil and dischargeNode.lastEffect:getIsVisible()
 
 		if (isInDischargeState and isEffectActive or effectsStillActive) and lastEffectVisible then
-			if dischargeNode.playSound then
+			if dischargeNode.playSound and fillType ~= FillType.UNKNOWN then
 				local sharedSample = g_fillTypeManager:getSampleByFillType(fillType)
 
 				if sharedSample ~= nil then

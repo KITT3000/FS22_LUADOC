@@ -570,15 +570,17 @@ function I18N:consoleCommandVerifyAll(ignoreTodos)
 	local function formatsFromString(str)
 		local result = ""
 
-		for formatIdentifier, _ in str:gmatch("%%%a") do
+		for formatIdentifier, _ in str:gmatch("%%%.?%d*%a") do
 			result = result .. formatIdentifier
 		end
 
 		if result == "" then
 			return nil
-		end
+		else
+			local _, count = str:gsub("%%", "")
 
-		return result
+			return result, count % 2
+		end
 	end
 
 	local langToKeys = {}
@@ -633,22 +635,55 @@ function I18N:consoleCommandVerifyAll(ignoreTodos)
 	local enFormatStrings = {}
 
 	for key, text in pairs(langToKeys[masterLang]) do
-		local formatString = formatsFromString(text)
+		local formatString, count = formatsFromString(text)
 
 		if formatString ~= nil then
-			enFormatStrings[key] = formatString
+			enFormatStrings[key] = {
+				formatString,
+				count
+			}
 		end
 	end
 
 	for lang, keys in pairs(langToKeys) do
 		if lang ~= masterLang then
 			for key, text in pairs(keys) do
-				if text:upper() ~= "TODO" and formatsFromString(text) ~= enFormatStrings[key] then
-					local enText = langToKeys[masterLang][key]
+				local formatStringText, countText = formatsFromString(text)
+				local formatStringEn = enFormatStrings[key] and enFormatStrings[key][1]
+				local countEn = enFormatStrings[key] and enFormatStrings[key][2]
 
-					print(string.format("Error: Mismatching format strings for key '%s' in %s: '%s' <-> '%s'", key, lang, enFormatStrings[key] or "no placeholder", formatsFromString(text) or "no placeholder"))
-					print(string.format("    %s: %s", masterLang, enText))
-					print(string.format("    %s: %s", lang, text))
+				if formatStringText then
+					if text:upper() ~= "TODO" then
+						local enText = langToKeys[masterLang][key]
+
+						if formatStringText ~= formatStringEn then
+							print(string.format("Error: Mismatching format strings for key '%s' in %s: '%s' <-> '%s'", key, lang, formatStringEn or "no placeholder", formatStringText or "no placeholder"))
+							print(string.format("    %s: %s", masterLang, enText))
+							print(string.format("    %s: %s", lang, text))
+						end
+
+						if countText ~= countEn then
+							print(string.format("Error: Mismatching '%%' characters (possible unescaped '%%') for key '%s' in %s", key, lang))
+							print(string.format("    %s: %s", masterLang, enText))
+							print(string.format("    %s: %s", lang, text))
+						end
+					end
+
+					if enFormatStrings[key] then
+						local function tryStringFormat()
+							string.format(text, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+						end
+
+						if not pcall(tryStringFormat) then
+							local enText = langToKeys[masterLang][key]
+
+							print(string.format([[
+Error: String format cannot be applied on string '%s' in %s:
+    en: '%s'
+<->
+    %s: '%s']], key, lang, enText, lang, text))
+						end
+					end
 				end
 			end
 		end

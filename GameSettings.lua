@@ -1,11 +1,44 @@
 GameSettings = {}
 local GameSettings_mt = Class(GameSettings)
 GameSettings.SETTING = {
-	VOLUME_VEHICLE = "vehicleVolume",
-	USE_COLORBLIND_MODE = "useColorblindMode",
-	GAMEPAD_ENABLED_SET_BY_USER = "gamepadEnabledSetByUser",
-	MONEY_UNIT = "moneyUnit",
+	RADIO_IS_ACTIVE = "radioIsActive",
+	RESET_CAMERA = "resetCamera",
+	CAMERA_SENSITIVITY = "cameraSensitivity",
+	LIGHTS_PROFILE = "lightsProfile",
+	GEAR_SHIFT_MODE = "gearShiftMode",
+	SHOW_HELP_TRIGGER = "showHelpTrigger",
+	HORSE_ABANDON_TIMER_DURATION = "horseAbandonTimerDuration",
+	USE_ACRE = "useAcre",
 	MAX_NUM_MIRRORS = "maxNumMirrors",
+	IS_GAMEPAD_ENABLED = "isGamepadEnabled",
+	VOICE_MODE = "voiceMode",
+	MONEY_UNIT = "moneyUnit",
+	CAMERA_CHECK_COLLISION = "cameraCheckCollision",
+	VOLUME_GUI = "volumeGUI",
+	INGAME_MAP_GROWTH_FILTER = "ingameMapGrowthFilter",
+	INGAME_MAP_SOIL_FILTER = "ingameMapSoilFilter",
+	USE_MILES = "useMiles",
+	INVERT_Y_LOOK = "invertYLook",
+	EASY_ARM_CONTROL = "easyArmControl",
+	SHOW_MULTIPLAYER_NAMES = "showMultiplayerNames",
+	USE_WORLD_CAMERA = "useWorldCamera",
+	INGAME_MAP_FILTER = "ingameMapFilter",
+	RADIO_VEHICLE_ONLY = "radioVehicleOnly",
+	INGAME_MAP_STATE = "ingameMapState",
+	FOV_Y = "fovY",
+	VOLUME_VOICE_INPUT = "volumeVoiceInput",
+	IS_TRAIN_TABBABLE = "isTrainTabbable",
+	UI_SCALE = "uiScale",
+	ACTIVE_SUSPENSION_CAMERA = "activeSuspensionCamera",
+	LAST_PLAYER_STYLE_MALE = "lastPlayerStyleMale",
+	DEFAULT_SERVER_PORT = "defaultServerPort",
+	IS_HEAD_TRACKING_ENABLED = "isHeadTrackingEnabled",
+	STEERING_SENSITIVITY = "steeringSensitivity",
+	MOTOR_STOP_TIMER_DURATION = "motorStopTimerDuration",
+	GYROSCOPE_STEERING = "gyroscopeSteering",
+	USE_COLORBLIND_MODE = "useColorblindMode",
+	VOLUME_VEHICLE = "vehicleVolume",
+	VOLUME_MUSIC = "musicVolume",
 	VOLUME_RADIO = "radioVolume",
 	SHOW_HELP_MENU = "showHelpMenu",
 	CAMERA_BOBBING = "cameraBobbing",
@@ -13,55 +46,27 @@ GameSettings.SETTING = {
 	SHOW_TRIGGER_MARKER = "showTriggerMarker",
 	ONLINE_PRESENCE_NAME = "onlinePresenceName",
 	HINTS = "hints",
-	CAMERA_CHECK_COLLISION = "cameraCheckCollision",
-	USE_ACRE = "useAcre",
+	GAMEPAD_ENABLED_SET_BY_USER = "gamepadEnabledSetByUser",
 	VOLUME_ENVIRONMENT = "environmentVolume",
-	HORSE_ABANDON_TIMER_DURATION = "horseAbandonTimerDuration",
-	USE_MILES = "useMiles",
-	IS_GAMEPAD_ENABLED = "isGamepadEnabled",
-	INVERT_Y_LOOK = "invertYLook",
-	SHOW_HELP_TRIGGER = "showHelpTrigger",
-	EASY_ARM_CONTROL = "easyArmControl",
+	INGAME_MAP_FRUIT_FILTER = "ingameMapFruitFilter",
+	JOYSTICK_VIBRATION_ENABLED = "joystickVibrationEnabled",
+	VEHICLE_ARM_SENSITIVITY = "vehicleArmSensitivity",
 	HEAD_TRACKING_ENABLED_SET_BY_USER = "headTrackingEnabledSetByUser",
 	INPUT_HELP_MODE = "inputHelpMode",
-	USE_WORLD_CAMERA = "useWorldCamera",
 	DIRECTION_CHANGE_MODE = "directionChangeMode",
 	USE_FAHRENHEIT = "useFahrenheit",
-	GEAR_SHIFT_MODE = "gearShiftMode",
 	REAL_BEACON_LIGHTS = "realBeaconLights",
-	RADIO_VEHICLE_ONLY = "radioVehicleOnly",
-	VOLUME_GUI = "volumeGUI",
-	VOLUME_VOICE = "volumeVoice",
-	LIGHTS_PROFILE = "lightsProfile",
-	FOV_Y = "fovY",
-	VOLUME_VOICE_INPUT = "volumeVoiceInput",
-	IS_TRAIN_TABBABLE = "isTrainTabbable",
-	UI_SCALE = "uiScale",
-	ACTIVE_SUSPENSION_CAMERA = "activeSuspensionCamera",
-	LAST_PLAYER_STYLE_MALE = "lastPlayerStyleMale",
-	VOICE_MODE = "voiceMode",
-	CAMERA_SENSITIVITY = "cameraSensitivity",
-	DEFAULT_SERVER_PORT = "defaultServerPort",
-	VEHICLE_ARM_SENSITIVITY = "vehicleArmSensitivity",
 	STEERING_BACK_SPEED = "steeringBackSpeed",
-	INGAME_MAP_STATE = "ingameMapState",
-	INGAME_MAP_FILTER = "ingameMapFilter",
-	RESET_CAMERA = "resetCamera",
-	STEERING_SENSITIVITY = "steeringSensitivity",
-	SHOWN_FREEMODE_WARNING = "shownFreemodeWarning",
-	VOLUME_MUSIC = "musicVolume",
-	MOTOR_STOP_TIMER_DURATION = "motorStopTimerDuration",
-	VOLUME_MASTER = "masterVolume",
-	JOYSTICK_VIBRATION_ENABLED = "joystickVibrationEnabled",
-	SHOW_HELP_ICONS = "showHelpIcons",
-	GYROSCOPE_STEERING = "gyroscopeSteering",
+	FORCE_FEEDBACK = "forceFeedback",
+	VOLUME_VOICE = "volumeVoice",
 	CAMERA_TILTING = "cameraTilting",
+	REAL_BEACON_LIGHT_BRIGHTNESS = "realBeaconLightBrightness",
+	SHOWN_FREEMODE_WARNING = "shownFreemodeWarning",
+	VOLUME_MASTER = "masterVolume",
+	SHOW_HELP_ICONS = "showHelpIcons",
 	SHOW_FIELD_INFO = "showFieldInfo",
 	HUD_SPEED_GAUGE = "hudSpeedGauge",
 	MP_LANGUAGE = "mpLanguage",
-	IS_HEAD_TRACKING_ENABLED = "isHeadTrackingEnabled",
-	FORCE_FEEDBACK = "forceFeedback",
-	RADIO_IS_ACTIVE = "radioIsActive",
 	IS_SOUND_PLAYER_STREAM_ACCESS_ALLOWED = "isSoundPlayerStreamAccessAllowed"
 }
 GameSettings.PERFORMANCE_CLASS_PRESETS = {
@@ -175,14 +180,19 @@ function GameSettings.new(customMt, messageCenter)
 	self[GameSettings.SETTING.IS_TRAIN_TABBABLE] = true
 	self[GameSettings.SETTING.CAMERA_SENSITIVITY] = 1
 	self[GameSettings.SETTING.VEHICLE_ARM_SENSITIVITY] = 1
+	self[GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS] = 1
 	self[GameSettings.SETTING.STEERING_BACK_SPEED] = 5
 	self[GameSettings.SETTING.STEERING_SENSITIVITY] = GS_IS_MOBILE_VERSION and 0.8 or 1
 	self[GameSettings.SETTING.DIRECTION_CHANGE_MODE] = VehicleMotor.DIRECTION_CHANGE_MODE_AUTOMATIC
 	self[GameSettings.SETTING.GEAR_SHIFT_MODE] = VehicleMotor.SHIFT_MODE_AUTOMATIC
 	self[GameSettings.SETTING.HUD_SPEED_GAUGE] = SpeedMeterDisplay.GAUGE_MODE_RPM
 	self[GameSettings.SETTING.INGAME_MAP_FILTER] = 0
+	self[GameSettings.SETTING.INGAME_MAP_SOIL_FILTER] = bitNOT(0)
+	self[GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER] = bitNOT(0)
+	self[GameSettings.SETTING.INGAME_MAP_FRUIT_FILTER] = ""
 	self[GameSettings.SETTING.INGAME_MAP_STATE] = IngameMap.STATE_MINIMAP_ROUND
 	self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING] = false
+	self[GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES] = true
 
 	if GS_IS_CONSOLE_VERSION then
 		self[GameSettings.SETTING.IS_GAMEPAD_ENABLED] = true
@@ -463,8 +473,10 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.VOICE_MODE, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.voice#mode"), self[GameSettings.SETTING.VOICE_MODE]))
 		self:setValue(GameSettings.SETTING.FORCE_FEEDBACK, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.forceFeedback"), self[GameSettings.SETTING.FORCE_FEEDBACK]))
 		self:setValue(GameSettings.SETTING.SHOWN_FREEMODE_WARNING, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.shownFreemodeWarning"), self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING]))
+		self:setValue(GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.showMultiplayerNames"), self[GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES]))
 		self:setValue(GameSettings.SETTING.CAMERA_SENSITIVITY, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.cameraSensitivity"), self[GameSettings.SETTING.CAMERA_SENSITIVITY]))
 		self:setValue(GameSettings.SETTING.VEHICLE_ARM_SENSITIVITY, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.vehicleArmSensitivity"), self[GameSettings.SETTING.VEHICLE_ARM_SENSITIVITY]))
+		self:setValue(GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.realBeaconLightBrightness"), self[GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS]))
 		self:setValue(GameSettings.SETTING.STEERING_BACK_SPEED, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.steeringBackSpeed"), self[GameSettings.SETTING.STEERING_BACK_SPEED]))
 		self:setValue(GameSettings.SETTING.STEERING_SENSITIVITY, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.steeringSensitivity"), self[GameSettings.SETTING.STEERING_SENSITIVITY]))
 		self:setValue(GameSettings.SETTING.DIRECTION_CHANGE_MODE, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.directionChangeMode"), self[GameSettings.SETTING.DIRECTION_CHANGE_MODE]))
@@ -472,6 +484,9 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.HUD_SPEED_GAUGE, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.hudSpeedGauge"), self[GameSettings.SETTING.HUD_SPEED_GAUGE]))
 		self:setValue(GameSettings.SETTING.INGAME_MAP_STATE, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.ingameMapState"), IngameMap.STATE_MINIMAP_ROUND))
 		self:setValue(GameSettings.SETTING.INGAME_MAP_FILTER, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.ingameMapFilters"), self[GameSettings.SETTING.INGAME_MAP_FILTER]))
+		self:setValue(GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.ingameMapGrowthFilter"), self[GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER]))
+		self:setValue(GameSettings.SETTING.INGAME_MAP_SOIL_FILTER, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.ingameMapSoilFilter"), self[GameSettings.SETTING.INGAME_MAP_SOIL_FILTER]))
+		self:setValue(GameSettings.SETTING.INGAME_MAP_FRUIT_FILTER, Utils.getNoNil(getXMLString(xmlFile, "gameSettings.ingameMapFruitFilter"), self[GameSettings.SETTING.INGAME_MAP_FRUIT_FILTER]))
 		self:setValue(GameSettings.SETTING.MONEY_UNIT, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.units.money"), self[GameSettings.SETTING.MONEY_UNIT]))
 		self:setValue(GameSettings.SETTING.USE_MILES, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.units.miles"), self[GameSettings.SETTING.USE_MILES]))
 		self:setValue(GameSettings.SETTING.USE_FAHRENHEIT, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.units.fahrenheit"), self[GameSettings.SETTING.USE_FAHRENHEIT]))
@@ -512,6 +527,7 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLBool(xmlFile, "gameSettings.isGamepadEnabled", self[GameSettings.SETTING.IS_GAMEPAD_ENABLED])
 		setXMLFloat(xmlFile, "gameSettings.cameraSensitivity", self[GameSettings.SETTING.CAMERA_SENSITIVITY])
 		setXMLFloat(xmlFile, "gameSettings.vehicleArmSensitivity", self[GameSettings.SETTING.VEHICLE_ARM_SENSITIVITY])
+		setXMLFloat(xmlFile, "gameSettings.realBeaconLightBrightness", self[GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS])
 		setXMLFloat(xmlFile, "gameSettings.steeringBackSpeed", self[GameSettings.SETTING.STEERING_BACK_SPEED])
 		setXMLFloat(xmlFile, "gameSettings.steeringSensitivity", self[GameSettings.SETTING.STEERING_SENSITIVITY])
 		setXMLInt(xmlFile, "gameSettings.inputHelpMode", self[GameSettings.SETTING.INPUT_HELP_MODE])
@@ -574,6 +590,10 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLInt(xmlFile, "gameSettings.gearShiftMode", self[GameSettings.SETTING.GEAR_SHIFT_MODE])
 		setXMLInt(xmlFile, "gameSettings.hudSpeedGauge", self[GameSettings.SETTING.HUD_SPEED_GAUGE])
 		setXMLBool(xmlFile, "gameSettings.shownFreemodeWarning", self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING])
+		setXMLBool(xmlFile, "gameSettings.showMultiplayerNames", self[GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES])
+		setXMLInt(xmlFile, "gameSettings.ingameMapGrowthFilter", self[GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER])
+		setXMLInt(xmlFile, "gameSettings.ingameMapSoilFilter", self[GameSettings.SETTING.INGAME_MAP_SOIL_FILTER])
+		setXMLString(xmlFile, "gameSettings.ingameMapFruitFilter", self[GameSettings.SETTING.INGAME_MAP_FRUIT_FILTER])
 		setXMLBool(xmlFile, "gameSettings.useColorblindMode", self[GameSettings.SETTING.USE_COLORBLIND_MODE])
 		setXMLInt(xmlFile, "gameSettings.maxNumMirrors", self[GameSettings.SETTING.MAX_NUM_MIRRORS])
 		setXMLInt(xmlFile, "gameSettings.lightsProfile", self[GameSettings.SETTING.LIGHTS_PROFILE])

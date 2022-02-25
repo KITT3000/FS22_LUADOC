@@ -1,4 +1,5 @@
 Crawlers = {
+	VRAM_PER_CRAWLER = 1572864,
 	xmlSchema = nil,
 	prerequisitesPresent = function (specializations)
 		return SpecializationUtil.hasSpecialization(Wheels, specializations)
@@ -6,6 +7,8 @@ Crawlers = {
 }
 
 function Crawlers.initSpecialization()
+	g_storeManager:addVRamUsageFunction(Crawlers.getVRamUsageFromXML)
+
 	local schema = Vehicle.xmlSchema
 
 	schema:setXMLSpecializationType("Crawlers")
@@ -279,10 +282,11 @@ function Crawlers:loadCrawlerFromConfigFile(crawler, xmlFilename, linkNode)
 			local spec = self.spec_crawlers
 			spec.xmlLoadingHandles[xmlFile] = true
 			crawler.filename = Utils.getFilename(filename, self.baseDirectory)
-			local sharedLoadRequestId = self:loadSubSharedI3DFile(crawler.filename, false, false, self.onCrawlerI3DLoaded, self, {
-				xmlFile,
-				crawler
-			})
+			local arguments = {
+				xmlFile = xmlFile,
+				crawler = crawler
+			}
+			local sharedLoadRequestId = self:loadSubSharedI3DFile(crawler.filename, false, false, self.onCrawlerI3DLoaded, self, arguments)
 
 			table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 		else
@@ -295,7 +299,8 @@ function Crawlers:loadCrawlerFromConfigFile(crawler, xmlFilename, linkNode)
 end
 
 function Crawlers:onCrawlerI3DLoaded(i3dNode, failedReason, args)
-	local xmlFile, crawler = unpack(args)
+	local xmlFile = args.xmlFile
+	local crawler = args.crawler
 	local spec = self.spec_crawlers
 
 	if i3dNode ~= 0 then
@@ -567,4 +572,40 @@ function Crawlers:validateWashableNode(superFunc, node)
 	end
 
 	return superFunc(self, node)
+end
+
+function Crawlers.getVRamUsageFromXML(xmlFile)
+	if not xmlFile:hasProperty("vehicle.wheels") then
+		return 0, 0
+	end
+
+	local defaultConfigKey = nil
+
+	xmlFile:iterate("vehicle.wheels.wheelConfigurations.wheelConfiguration", function (configIndex, wheelConfigKey)
+		local crawlerKey = wheelConfigKey .. ".crawlers"
+
+		if xmlFile:hasProperty(crawlerKey) then
+			defaultConfigKey = crawlerKey
+
+			return false
+		end
+	end)
+
+	if defaultConfigKey == nil then
+		return 0, 0
+	end
+
+	local visualCrawlerCount = 0
+	local usedCrawlers = {}
+
+	xmlFile:iterate(defaultConfigKey .. ".crawler", function (index, key)
+		local filename = xmlFile:getString(key .. "#filename")
+
+		if filename ~= nil and usedCrawlers[filename] == nil then
+			visualCrawlerCount = visualCrawlerCount + 1
+			usedCrawlers[filename] = true
+		end
+	end)
+
+	return visualCrawlerCount * Crawlers.VRAM_PER_CRAWLER, 0
 end

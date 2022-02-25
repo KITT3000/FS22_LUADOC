@@ -120,10 +120,11 @@ function HelpLineManager:onIconTrigger(triggerId, otherId, onEnter, onLeave, onS
 end
 
 function HelpLineManager:loadFromXML(filename, missionInfo)
+	local customEnvironment, baseDirectory = Utils.getModNameAndBaseDirectory(filename)
 	local xmlFile = XMLFile.load("helpLineViewContentXML", filename)
 
 	xmlFile:iterate("helpLines.category", function (index, key)
-		local category = self:loadCategory(xmlFile, key, missionInfo)
+		local category = self:loadCategory(xmlFile, key, missionInfo, customEnvironment, baseDirectory)
 
 		if category ~= nil then
 			table.insert(self.categories, category)
@@ -132,14 +133,15 @@ function HelpLineManager:loadFromXML(filename, missionInfo)
 	xmlFile:delete()
 end
 
-function HelpLineManager:loadCategory(xmlFile, key, missionInfo)
+function HelpLineManager:loadCategory(xmlFile, key, missionInfo, customEnvironment, baseDirectory)
 	local category = {
 		title = xmlFile:getString(key .. "#title"),
+		customEnvironment = customEnvironment,
 		pages = {}
 	}
 
-	xmlFile:iterate(key .. ".page", function (index, key)
-		local page = self:loadPage(xmlFile, key, missionInfo)
+	xmlFile:iterate(key .. ".page", function (index, pageKey)
+		local page = self:loadPage(xmlFile, pageKey, missionInfo, customEnvironment, baseDirectory)
 
 		table.insert(category.pages, page)
 	end)
@@ -147,26 +149,29 @@ function HelpLineManager:loadCategory(xmlFile, key, missionInfo)
 	return category
 end
 
-function HelpLineManager:loadPage(xmlFile, key, missionInfo)
+function HelpLineManager:loadPage(xmlFile, key, missionInfo, customEnvironment, baseDirectory)
 	local page = {
 		title = xmlFile:getString(key .. "#title"),
+		customEnvironment = customEnvironment,
 		paragraphs = {}
 	}
 
-	xmlFile:iterate(key .. ".paragraph", function (index, key)
+	xmlFile:iterate(key .. ".paragraph", function (index, paragraphKey)
 		local paragraph = {
-			text = xmlFile:getString(key .. ".text#text")
+			text = xmlFile:getString(paragraphKey .. ".text#text"),
+			customEnvironment = customEnvironment,
+			baseDirectory = baseDirectory
 		}
-		local filename = xmlFile:getString(key .. ".image#filename")
+		local filename = xmlFile:getString(paragraphKey .. ".image#filename")
 
 		if filename ~= nil then
-			local heightScale = xmlFile:getFloat(key .. ".image#heightScale", 1)
-			local aspectRatio = xmlFile:getFloat(key .. ".image#aspectRatio", 1)
-			local size = GuiUtils.get2DArray(xmlFile:getString(key .. ".image#size"), {
+			local heightScale = xmlFile:getFloat(paragraphKey .. ".image#heightScale", 1)
+			local aspectRatio = xmlFile:getFloat(paragraphKey .. ".image#aspectRatio", 1)
+			local size = GuiUtils.get2DArray(xmlFile:getString(paragraphKey .. ".image#size"), {
 				1024,
 				1024
 			})
-			local uvs = GuiUtils.getUVs(xmlFile:getString(key .. ".image#uvs", "0 0 1 1"), size)
+			local uvs = GuiUtils.getUVs(xmlFile:getString(paragraphKey .. ".image#uvs", "0 0 1 1"), size)
 			paragraph.image = {
 				filename = filename,
 				uvs = uvs,
@@ -182,8 +187,8 @@ function HelpLineManager:loadPage(xmlFile, key, missionInfo)
 	return page
 end
 
-function HelpLineManager:convertText(text)
-	local translated = g_i18n:convertText(text)
+function HelpLineManager:convertText(text, customEnv)
+	local translated = g_i18n:convertText(text, customEnv)
 
 	return string.gsub(translated, "$CURRENCY_SYMBOL", g_i18n:getCurrencySymbol(true))
 end

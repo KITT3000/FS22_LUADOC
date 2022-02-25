@@ -19,6 +19,7 @@ function AILoadable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "aiFinishLoading", AILoadable.aiFinishLoading)
 	SpecializationUtil.registerFunction(vehicleType, "aiStartLoadingFromTrigger", AILoadable.aiStartLoadingFromTrigger)
 	SpecializationUtil.registerFunction(vehicleType, "aiStoppedLoadingFromTrigger", AILoadable.aiStoppedLoadingFromTrigger)
+	SpecializationUtil.registerFunction(vehicleType, "aiCancelLoadingFromTrigger", AILoadable.aiCancelLoadingFromTrigger)
 	SpecializationUtil.registerFunction(vehicleType, "aiFinishedLoadingFromTrigger", AILoadable.aiFinishedLoadingFromTrigger)
 	SpecializationUtil.registerFunction(vehicleType, "getAIHasFinishedLoading", AILoadable.getAIHasFinishedLoading)
 end
@@ -152,6 +153,10 @@ function AILoadable:aiStartLoadingFromTrigger(loadTrigger, fillUnitIndex, fillTy
 	spec.currentFillUnitIndex = fillUnitIndex
 
 	loadTrigger:setIsLoading(true, self, fillUnitIndex, fillType, false)
+end
+
+function AILoadable:aiCancelLoadingFromTrigger(loadTrigger, fillUnitIndex, fillType, task)
+	loadTrigger:setIsLoading(false, self, fillUnitIndex, fillType, false)
 end
 
 function AILoadable:aiStoppedLoadingFromTrigger()

@@ -103,6 +103,10 @@ function Roller:onLoad(savegame)
 		end
 	end
 
+	spec.grassFruitTypes = {
+		FruitType.GRASS,
+		FruitType.MEADOW
+	}
 	spec.usingAIRequirements = self.xmlFile:getValue(configKey .. "#usingAIRequirements", true)
 	spec.onlyActiveWhenLowered = self.xmlFile:getValue(configKey .. "#onlyActiveWhenLowered", true)
 	spec.startActivationTimeout = 2000
@@ -165,10 +169,12 @@ function Roller:updateRollerAIRequirements()
 			if spec.isGrassRoller and not spec.isSoilRoller then
 				self:addAIGroundTypeRequirements(Roller.AI_REQUIRED_GROUND_TYPES_GRASS)
 
-				local fruitTypeDesc = g_fruitTypeManager:getFruitTypeByIndex(FruitType.GRASS)
+				for i = 1, #spec.grassFruitTypes do
+					local fruitTypeDesc = g_fruitTypeManager:getFruitTypeByIndex(spec.grassFruitTypes[i])
 
-				if fruitTypeDesc.terrainDataPlaneId ~= nil then
-					self:setAIFruitRequirements(fruitTypeDesc.index, 2, fruitTypeDesc.cutState + 1)
+					if fruitTypeDesc.terrainDataPlaneId ~= nil then
+						self:addAIFruitRequirement(fruitTypeDesc.index, 2, fruitTypeDesc.cutState + 1)
+					end
 				end
 			end
 
@@ -184,10 +190,12 @@ function Roller:updateRollerAIRequirements()
 				if spec.isGrassRoller then
 					self:addAIGroundTypeRequirements(Roller.AI_REQUIRED_GROUND_TYPES_GRASS)
 
-					local fruitTypeDesc = g_fruitTypeManager:getFruitTypeByIndex(FruitType.GRASS)
+					for i = 1, #spec.grassFruitTypes do
+						local fruitTypeDesc = g_fruitTypeManager:getFruitTypeByIndex(spec.grassFruitTypes[i])
 
-					if fruitTypeDesc.terrainDataPlaneId ~= nil then
-						self:addAIFruitProhibitions(fruitTypeDesc.index, 1, 1)
+						if fruitTypeDesc.terrainDataPlaneId ~= nil then
+							self:addAIFruitProhibitions(fruitTypeDesc.index, 1, 1)
+						end
 					end
 				end
 			end

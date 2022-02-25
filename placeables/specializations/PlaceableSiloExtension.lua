@@ -131,7 +131,7 @@ function PlaceableSiloExtension:getCanBePlacedAt(superFunc, x, y, z, farmId)
 	spec.lastFoundUnloadingStations = storageSystem:getExtendableUnloadingStationsInRange(spec.storage, farmId, x, y, z)
 	spec.lastFoundLoadingStations = storageSystem:getExtendableLoadingStationsInRange(spec.storage, farmId, x, y, z)
 
-	if table.getn(spec.lastFoundUnloadingStations) == 0 and table.getn(spec.lastFoundLoadingStations) == 0 then
+	if #spec.lastFoundUnloadingStations == 0 and #spec.lastFoundLoadingStations == 0 then
 		return false, spec.nearSiloWarning
 	end
 

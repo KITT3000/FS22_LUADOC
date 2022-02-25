@@ -26,8 +26,9 @@ end
 function AnimalSystem:delete()
 end
 
-function AnimalSystem:loadMapData(xmlFile)
-	local filename = Utils.getFilename(getXMLString(xmlFile, "map.animals#filename"), self.mission.baseDirectory)
+function AnimalSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
+	self.customEnvironment = missionInfo.customEnvironment
+	local filename = Utils.getFilename(getXMLString(xmlFile, "map.animals#filename"), baseDirectory)
 
 	if filename == nil then
 		Logging.xmlError(XMLFile.wrap(xmlFile), "Missing animals configuration file")
@@ -41,7 +42,7 @@ function AnimalSystem:loadMapData(xmlFile)
 		return false
 	end
 
-	self:loadAnimals(xmlFileAnimals, self.mission.baseDirectory)
+	self:loadAnimals(xmlFileAnimals, baseDirectory)
 	xmlFileAnimals:delete()
 
 	return #self.types > 0
@@ -354,7 +355,7 @@ function AnimalSystem:loadVisualData(animalType, xmlFile, key, baseDirectory)
 		local descItem = xmlFile:getString(descKey)
 
 		if descItem ~= nil then
-			table.insert(descriptions, g_i18n:convertText(descItem))
+			table.insert(descriptions, g_i18n:convertText(descItem, self.customEnvironment))
 		end
 	end)
 
@@ -365,7 +366,7 @@ function AnimalSystem:loadVisualData(animalType, xmlFile, key, baseDirectory)
 	end
 
 	local store = {
-		name = g_i18n:convertText(storeName),
+		name = g_i18n:convertText(storeName, self.customEnvironment),
 		imageFilename = Utils.getFilename(image, baseDirectory),
 		canBeBought = xmlFile:getBool(key .. "#canBeBought", false),
 		description = table.concat(descriptions, " ")

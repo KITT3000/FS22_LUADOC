@@ -10,7 +10,9 @@ InGameMenuPricesFrame.CONTROLS = {
 	"fluctuationCurrentPrice",
 	"noFluctuationsText",
 	"fluctuationsLayout",
-	"fluctuationMonthHeader"
+	"fluctuationMonthHeader",
+	"fluctuationHigh",
+	"fluctuationLow"
 }
 InGameMenuPricesFrame.MODE_PRICES = 1
 InGameMenuPricesFrame.MODE_FLUCTUATIONS = 2
@@ -187,6 +189,8 @@ function InGameMenuPricesFrame:updateFluctuations()
 		max = math.max(max, prices[i])
 	end
 
+	local minPrice = min * 1000 * EconomyManager.getPriceMultiplier()
+	local maxPrice = max * 1000 * EconomyManager.getPriceMultiplier()
 	local range = max - min
 	min = math.max(min - range * 0.2, 0)
 	max = max + range * 0.2
@@ -195,6 +199,10 @@ function InGameMenuPricesFrame:updateFluctuations()
 	self.noFluctuationsText:setVisible(not hasAnyFluctuations)
 	self.fluctuationsLayout:setVisible(hasAnyFluctuations)
 	self.fluctuationCurrentPrice:setVisible(hasAnyFluctuations)
+	self.fluctuationHigh:setVisible(hasAnyFluctuations)
+	self.fluctuationHigh:setValue(maxPrice)
+	self.fluctuationLow:setVisible(hasAnyFluctuations)
+	self.fluctuationLow:setValue(minPrice)
 
 	if not hasAnyFluctuations then
 		return
@@ -263,13 +271,14 @@ function InGameMenuPricesFrame:getSelectedHotspot()
 	return nil
 end
 
-function InGameMenuPricesFrame:getStorageFillLevel(fillType, farmSilo)
+function InGameMenuPricesFrame:getStorageFillLevel(fillType, farmSilo, usedStorages)
 	local totalCapacity = 0
 	local usedCapacity = 0
 	local farmId = g_currentMission:getFarmId()
 
 	for _, storage in pairs(g_currentMission.storageSystem:getStorages()) do
-		if storage:getOwnerFarmId() == farmId and storage.foreignSilo ~= farmSilo and storage:getIsFillTypeSupported(fillType.index) then
+		if usedStorages[storage] == nil and storage:getOwnerFarmId() == farmId and storage.foreignSilo ~= farmSilo and storage:getIsFillTypeSupported(fillType.index) then
+			usedStorages[storage] = true
 			usedCapacity = usedCapacity + storage:getFillLevel(fillType.index)
 			totalCapacity = totalCapacity + storage:getCapacity(fillType.index)
 		end
@@ -297,8 +306,9 @@ function InGameMenuPricesFrame:populateCellForItemInSection(list, section, index
 		cell:getAttribute("icon"):setImageFilename(fillTypeDesc.hudOverlayFilename)
 		cell:getAttribute("title"):setText(fillTypeDesc.title)
 
-		local localLiters = self:getStorageFillLevel(fillTypeDesc, true)
-		local foreignLiters = self:getStorageFillLevel(fillTypeDesc, false)
+		local usedStorages = {}
+		local localLiters = self:getStorageFillLevel(fillTypeDesc, true, usedStorages)
+		local foreignLiters = self:getStorageFillLevel(fillTypeDesc, false, usedStorages)
 
 		if localLiters < 0 and foreignLiters < 0 then
 			cell:getAttribute("storage"):setText("-")

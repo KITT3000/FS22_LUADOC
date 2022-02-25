@@ -116,7 +116,7 @@ function FSBaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.snowSystem = SnowSystem.new(self, self:getIsServer())
 	self.growthSystem = GrowthSystem.new(self, self:getIsServer())
 	self.foliageSystem = FoliageSystem.new()
-	self.slotSystem = SlotSystem.new(self)
+	self.slotSystem = SlotSystem.new(self, self:getIsServer())
 	self.economyManager = EconomyManager.new()
 	self.playerUserId = -1
 	self.playerNickname = g_gameSettings:getValue(GameSettings.SETTING.ONLINE_PRESENCE_NAME)
@@ -232,6 +232,10 @@ function FSBaseMission:delete()
 
 	if self.accessHandler ~= nil then
 		self.accessHandler:delete()
+	end
+
+	if self.storageSystem ~= nil then
+		self.storageSystem:delete()
 	end
 
 	if self.playerInfoStorage ~= nil then
@@ -589,7 +593,6 @@ function FSBaseMission:createPlayer(connection, isOwner, farmId, userId)
 	if g_server ~= nil then
 		local uniqueUserId = self.userManager:getUniqueUserIdByUserId(userId)
 		local playerStyle = nil
-		local nickname = self.userManager:getUserByUserId(userId):getNickname()
 
 		if self.playerInfoStorage:hasPlayerWithUniqueUserId(uniqueUserId) then
 			playerStyle = self.playerInfoStorage:getPlayerStyle(userId)
@@ -605,6 +608,10 @@ end
 
 function FSBaseMission:getClientPosition()
 	return getWorldTranslation(getCamera())
+end
+
+function FSBaseMission:getClientGuiVisibility()
+	return g_gui:getIsGuiVisible()
 end
 
 function FSBaseMission:setLoadingScreen(loadingScreen)
@@ -1296,76 +1303,75 @@ function FSBaseMission:onConnectionWriteUpdateStream(connection, maxPacketSize, 
 		local treePacketPercentage = 0.3
 		local densityPacketPercentage = 0.2
 		local terrainDeformPacketPercentage = 0.2
-		local startSplitShapesOffset = nil
+		local maxTreePacketSize = maxPacketSize * treePacketPercentage
+		local densityMaxPacketSize = maxPacketSize * densityPacketPercentage
+		local terrainDeformMaxPacketSize = maxPacketSize * terrainDeformPacketPercentage
+		local x, y, z = g_server:getClientPosition(connection.streamId)
+		local viewCoeff = g_server:getClientClipDistCoeff(connection.streamId)
+		local splitShapeStreamOffsetStart = streamGetWriteOffset(connection.streamId)
 
 		if networkDebug then
-			startSplitShapesOffset = streamGetWriteOffset(connection.streamId)
-
 			streamWriteInt32(connection.streamId, 0)
 		end
 
-		local x, y, z = g_server:getClientPosition(connection.streamId)
-		local viewCoeff = g_server:getClientClipDistCoeff(connection.streamId)
-		local oldPacketSize = streamGetWriteOffset(connection.streamId)
+		writeSplitShapesServerUpdateToStream(connection.streamId, connection.streamId, x, y, z, viewCoeff, maxTreePacketSize)
 
-		writeSplitShapesServerUpdateToStream(connection.streamId, connection.streamId, x, y, z, viewCoeff, maxPacketSize * treePacketPercentage)
-		g_server:addPacketSize(NetworkNode.PACKET_SPLITSHAPES, (streamGetWriteOffset(connection.streamId) - oldPacketSize) / 8)
+		local splitShapeStreamOffsetEnd = streamGetWriteOffset(connection.streamId)
+		local splitShapePacketSize = splitShapeStreamOffsetEnd - splitShapeStreamOffsetStart
+		local remainingPacketSize = math.max(maxTreePacketSize - splitShapePacketSize, 0)
+
+		g_server:addPacketSize(connection, NetworkNode.PACKET_SPLITSHAPES, splitShapePacketSize / 8)
 
 		if networkDebug then
-			local endSplitShapesOffset = streamGetWriteOffset(connection.streamId)
-
-			streamSetWriteOffset(connection.streamId, startSplitShapesOffset)
-			streamWriteInt32(connection.streamId, endSplitShapesOffset - (startSplitShapesOffset + 32))
-			streamSetWriteOffset(connection.streamId, endSplitShapesOffset)
+			streamSetWriteOffset(connection.streamId, splitShapeStreamOffsetStart)
+			streamWriteInt32(connection.streamId, splitShapeStreamOffsetEnd - (splitShapeStreamOffsetStart + 32))
+			streamSetWriteOffset(connection.streamId, splitShapeStreamOffsetEnd)
 		end
 
 		if self.densityMapSyncer ~= nil then
-			local syncerMaxPacketSize = maxPacketSize * densityPacketPercentage
-
-			self.densityMapSyncer:writeUpdateStream(connection, syncerMaxPacketSize, x, y, z, viewCoeff, networkDebug)
+			densityMaxPacketSize = densityMaxPacketSize + remainingPacketSize
+			local densityPacketSize = self.densityMapSyncer:writeUpdateStream(connection, densityMaxPacketSize, x, y, z, viewCoeff, networkDebug)
+			remainingPacketSize = math.max(densityMaxPacketSize - densityPacketSize, 0)
 		end
 
-		local startTerrainOffset = nil
+		local terrainStreamOffsetStart = streamGetWriteOffset(connection.streamId)
 
 		if networkDebug then
-			startTerrainOffset = streamGetWriteOffset(connection.streamId)
-
 			streamWriteInt32(connection.streamId, 0)
 		end
 
-		local syncerMaxPacketSize = maxPacketSize * terrainDeformPacketPercentage
-		oldPacketSize = streamGetWriteOffset(connection.streamId)
+		terrainDeformMaxPacketSize = terrainDeformMaxPacketSize + remainingPacketSize
 
-		writeTerrainUpdateStream(self.terrainRootNode, connection.streamId, connection.streamId, syncerMaxPacketSize, x, y, z)
-		g_server:addPacketSize(NetworkNode.PACKET_TERRAIN_DEFORM, (streamGetWriteOffset(connection.streamId) - oldPacketSize) / 8)
+		writeTerrainUpdateStream(self.terrainRootNode, connection.streamId, connection.streamId, terrainDeformMaxPacketSize, x, y, z)
+
+		local terrainStreamOffsetEnd = streamGetWriteOffset(connection.streamId)
+		local terrainPacketSize = terrainStreamOffsetEnd - terrainStreamOffsetStart
+
+		g_server:addPacketSize(connection, NetworkNode.PACKET_TERRAIN_DEFORM, terrainPacketSize / 8)
 
 		if networkDebug then
-			local endTerrainOffset = streamGetWriteOffset(connection.streamId)
-
-			streamSetWriteOffset(connection.streamId, startTerrainOffset)
-			streamWriteInt32(connection.streamId, endTerrainOffset - (startTerrainOffset + 32))
-			streamSetWriteOffset(connection.streamId, endTerrainOffset)
+			streamSetWriteOffset(connection.streamId, terrainStreamOffsetStart)
+			streamWriteInt32(connection.streamId, terrainStreamOffsetEnd - (terrainStreamOffsetStart + 32))
+			streamSetWriteOffset(connection.streamId, terrainStreamOffsetEnd)
 		end
 
-		local startVoiceChat = nil
+		local voiceChatStreamOffsetStart = streamGetWriteOffset(connection.streamId)
 
 		if networkDebug then
-			startVoiceChat = streamGetWriteOffset(connection.streamId)
-
 			streamWriteInt32(connection.streamId, 0)
 		end
-
-		oldPacketSize = streamGetWriteOffset(connection.streamId)
 
 		voiceChatWriteServerUpdateToStream(connection.streamId, connection.streamId, connection.lastSeqSent)
-		g_server:addPacketSize(NetworkNode.PACKET_VOICE_CHAT, (streamGetWriteOffset(connection.streamId) - oldPacketSize) / 8)
+
+		local voiceChatStreamOffsetEnd = streamGetWriteOffset(connection.streamId)
+		local voiceChatPacketSize = voiceChatStreamOffsetEnd - voiceChatStreamOffsetStart
+
+		g_server:addPacketSize(connection, NetworkNode.PACKET_VOICE_CHAT, voiceChatPacketSize / 8)
 
 		if networkDebug then
-			local endVoiceChat = streamGetWriteOffset(connection.streamId)
-
-			streamSetWriteOffset(connection.streamId, startVoiceChat)
-			streamWriteInt32(connection.streamId, endVoiceChat - (startVoiceChat + 32))
-			streamSetWriteOffset(connection.streamId, endVoiceChat)
+			streamSetWriteOffset(connection.streamId, voiceChatStreamOffsetStart)
+			streamWriteInt32(connection.streamId, voiceChatStreamOffsetEnd - (voiceChatStreamOffsetStart + 32))
+			streamSetWriteOffset(connection.streamId, voiceChatStreamOffsetEnd)
 		end
 	end
 end
@@ -1644,7 +1650,9 @@ function FSBaseMission:loadMapFinished(node, failedReason, arguments, callAsyncC
 
 	FSBaseMission:superClass().loadMapFinished(self, node, failedReason, arguments, false)
 
-	local filename, asyncCallbackFunction, asyncCallbackObject, asyncCallbackArguments = unpack(arguments)
+	local asyncCallbackFunction = arguments.asyncCallbackFunction
+	local asyncCallbackObject = arguments.asyncCallbackObject
+	local asyncCallbackArguments = arguments.asyncCallbackArguments
 
 	if self.trafficSystem ~= nil and self.trafficSystem.trafficSystemId ~= nil and self.pedestrianSystem ~= nil and self.pedestrianSystem.pedestrianSystemId ~= nil then
 		setPedestrianSystemTrafficSystem(self.pedestrianSystem.pedestrianSystemId, self.trafficSystem.trafficSystemId)
@@ -1665,7 +1673,7 @@ function FSBaseMission:loadMapFinished(node, failedReason, arguments, callAsyncC
 		end
 
 		if terrainNode ~= 0 then
-			self:initTerrain(terrainNode, filename)
+			self:initTerrain(terrainNode, arguments.filename)
 		end
 	end
 
@@ -1864,17 +1872,6 @@ function FSBaseMission:initTerrain(terrainId, filename)
 	g_mpLoadingScreen:hitLoadingTarget(MPLoadingScreen.LOAD_TARGETS.TERRAIN)
 end
 
-function FSBaseMission:addOnCreateLoadedObject(object)
-	if self.userManager:getNumberOfUsers() > 1 then
-		print("Error: addOnCreateLoadedObject is only allowed during map loading when no client is connected")
-		printCallstack()
-
-		return
-	end
-
-	return FSBaseMission:superClass().addOnCreateLoadedObject(self, object)
-end
-
 function FSBaseMission:addTrainSystem(trainSystem)
 	self.trainSystems[trainSystem] = trainSystem
 end
@@ -1890,47 +1887,13 @@ function FSBaseMission:setTrainSystemTabbable(isTabbable)
 end
 
 function FSBaseMission:addLimitedObject(objectType, object)
-	if GS_IS_CONSOLE_VERSION then
-		if self.limitedObjects[objectType].maxNumObjects > 0 then
-			local numObjects = table.getn(self.limitedObjects[objectType])
-			local i = 1
-
-			while self.limitedObjects[objectType].maxNumObjects <= numObjects and i <= numObjects do
-				local object_i = self.limitedObjects[i]
-
-				if object_i:getAllowsAutoDelete() then
-					table.remove(self.limitedObjects, i)
-					object_i:delete()
-
-					numObjects = numObjects - 1
-				else
-					i = i + 1
-				end
-			end
-		end
-
-		table.insert(self.limitedObjects[objectType].objects, object)
-	end
 end
 
 function FSBaseMission:removeLimitedObject(objectType, object)
-	if GS_IS_CONSOLE_VERSION then
-		for i, object_i in pairs(self.limitedObjects[objectType].objects) do
-			if object_i == object then
-				table.remove(self.limitedObjects[objectType].objects, i)
-
-				break
-			end
-		end
-	end
 end
 
 function FSBaseMission:getCanAddLimitedObject(objectType)
-	if not GS_IS_CONSOLE_VERSION then
-		return true
-	else
-		return #self.limitedObjects[objectType].objects + 1 <= self.limitedObjects[objectType].maxNumObjects
-	end
+	return true
 end
 
 function FSBaseMission:mouseEvent(posX, posY, isDown, isUp, button)
@@ -4526,7 +4489,7 @@ function FSBaseMission:onToggleRadio()
 end
 
 function FSBaseMission:onChangeTimescale(_, _, indexStep)
-	if (self:getIsServer() or self.isMasterUser) and not g_sleepManager:getIsSleeping() and not g_currentMission.guidedTour:getIsRunning() then
+	if (self:getIsServer() or self.isMasterUser) and not g_sleepManager:getIsSleeping() and not g_currentMission.guidedTour:getBlocksTimeChange() then
 		local timeScaleIndex = Utils.getTimeScaleIndex(self.missionInfo.timeScale)
 		local newTimeScale = Utils.getTimeScaleFromIndex(timeScaleIndex + indexStep)
 

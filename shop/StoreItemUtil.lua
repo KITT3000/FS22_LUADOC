@@ -110,6 +110,42 @@ function StoreItemUtil.getCosts(storeItem, configurations, costType)
 	return 0
 end
 
+function StoreItemUtil.getPriceWithBoughtConfigurations(storeItem, boughtConfigurations, costType)
+	if storeItem ~= nil then
+		local costs = storeItem[costType]
+
+		if costs == nil then
+			costs = 0
+		end
+
+		if storeItem.configurations ~= nil then
+			for name, values in pairs(boughtConfigurations) do
+				for value, check in pairs(values) do
+					if check then
+						local nameConfig = storeItem.configurations[name]
+
+						if nameConfig ~= nil then
+							local valueConfig = nameConfig[value]
+
+							if valueConfig ~= nil then
+								local costTypeConfig = valueConfig[costType]
+
+								if costTypeConfig ~= nil then
+									costs = costs + tonumber(costTypeConfig)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+
+		return costs
+	end
+
+	return 0
+end
+
 function StoreItemUtil.renameDuplicatedConfigurationNames(configurationItems, configItem)
 	local name = configItem.name
 

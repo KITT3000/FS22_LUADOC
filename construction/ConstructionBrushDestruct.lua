@@ -32,6 +32,7 @@ end
 function ConstructionBrushDestruct:deactivate()
 	self.cursor:setSelectionMode(false)
 	self:resetColoredNodes()
+	g_messageCenter:unsubscribeAll(self)
 	ConstructionBrushDestruct:superClass().deactivate(self)
 end
 
@@ -60,18 +61,13 @@ function ConstructionBrushDestruct:visualizeMouseOver()
 	local placeable = self.cursor:getHitPlaceable()
 
 	if placeable ~= self.lastPlaceable or self.perNodeMode then
-		if self.lastPlaceable ~= nil then
-			self:resetColoredNodes()
-
-			if self.lastPlaceable.rootNode ~= nil and not self.perNodeMode then
-				self.lastPlaceable:setOverlayColor(1, 1, 1, 0)
-			end
-
-			self.lastPlaceable = nil
-		end
+		self:resetPlaceableSelection()
 
 		if placeable ~= nil and g_currentMission.player.farmId == placeable.ownerFarmId then
 			self.lastPlaceable = placeable
+
+			g_messageCenter:subscribe(SellPlaceableEvent, self.onPlaceableDestroyed, self)
+
 			local color = ConstructionBrushDestruct.OVERLAY_COLOR
 			local r = color[1]
 			local g = color[2]
@@ -158,6 +154,27 @@ function ConstructionBrushDestruct:onButtonPrimary(isDown, isDrag, isUp)
 				})
 			end
 		end
+	end
+end
+
+function ConstructionBrushDestruct:resetPlaceableSelection()
+	self:resetColoredNodes()
+
+	if self.lastPlaceable ~= nil then
+		if self.lastPlaceable.rootNode ~= nil and not self.perNodeMode then
+			self.lastPlaceable:setOverlayColor(1, 1, 1, 0)
+		end
+
+		self.lastPlaceable = nil
+
+		g_messageCenter:unsubscribeAll(self)
+	end
+end
+
+function ConstructionBrushDestruct:onPlaceableDestroyed(state, sellPrice)
+	if self.lastPlaceable ~= nil then
+		g_currentMission.shopController:onPlaceableSellEvent(state, sellPrice)
+		self:resetPlaceableSelection()
 	end
 end
 

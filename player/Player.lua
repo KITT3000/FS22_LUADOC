@@ -458,6 +458,8 @@ function Player:getParentComponent(node)
 end
 
 function Player:delete()
+	self.isDeleting = true
+
 	if self.isOwner then
 		g_messageCenter:unsubscribeAll(self)
 		self:removeActionEvents()
@@ -980,7 +982,7 @@ function Player:updateTick(dt)
 		local heightOffset = 0.5 * self.model.capsuleHeight
 
 		if py < dy + heightOffset - 0.1 then
-			py = dy + heightOffset
+			py = dy + heightOffset + 0.05
 
 			setTranslation(self.rootNode, px, py, pz)
 		end
@@ -1375,7 +1377,7 @@ function Player:moveToAbsoluteInternal(x, y, z)
 end
 
 function Player:drawUIInfo()
-	if self.isClient and self.isControlled and not self.isEntered and not g_gui:getIsGuiVisible() and not g_noHudModeEnabled then
+	if self.isClient and self.isControlled and not self.isEntered and not g_gui:getIsGuiVisible() and not g_noHudModeEnabled and g_gameSettings:getValue(GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES) then
 		local x, y, z = getTranslation(self.graphicsRootNode)
 		local x1, y1, z1 = getWorldTranslation(getCamera())
 		local diffX = x - x1
@@ -1544,7 +1546,7 @@ end
 function Player:onGhostAdd()
 end
 
-function Player:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+function Player:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	if self.owner == connection then
 		return 50
 	end
@@ -1722,6 +1724,10 @@ function Player:rebuildCCT()
 end
 
 function Player:setCustomWorkStylePreset(presetName)
+	if self.isDeleting then
+		return
+	end
+
 	self.model:applyCustomWorkStyle(presetName)
 end
 
@@ -1823,6 +1829,11 @@ function Player:equipHandtool(handtoolFilename, force, noEventSend, equippedCall
 
 	PlayerSetHandToolEvent.sendEvent(self, handtoolFilename, force, noEventSend)
 
+	local arguments = {
+		equippedCallbackFunction = equippedCallbackFunction,
+		equippedCallbackTarget = equippedCallbackTarget
+	}
+
 	if self:hasHandtoolEquipped() then
 		if self.baseInformation.currentHandtool.configFileName:lower() ~= handtoolFilename:lower() or handtoolFilename == "" or force then
 			self.baseInformation.currentHandtool:onDeactivate()
@@ -1832,16 +1843,10 @@ function Player:equipHandtool(handtoolFilename, force, noEventSend, equippedCall
 		end
 
 		if handtoolFilename ~= "" then
-			self:loadHandTool(handtoolFilename, self.handToolLoaded, {
-				equippedCallbackFunction,
-				equippedCallbackTarget
-			})
+			self:loadHandTool(handtoolFilename, self.handToolLoaded, arguments)
 		end
 	elseif handtoolFilename ~= "" then
-		self:loadHandTool(handtoolFilename, self.handToolLoaded, {
-			equippedCallbackFunction,
-			equippedCallbackTarget
-		})
+		self:loadHandTool(handtoolFilename, self.handToolLoaded, arguments)
 	end
 end
 
@@ -1868,7 +1873,8 @@ function Player:handToolLoaded(handTool, arguments)
 		self:setIKDirty()
 	end
 
-	local equippedCallbackFunction, equippedCallbackTarget = unpack(arguments)
+	local equippedCallbackFunction = arguments.equippedCallbackFunction
+	local equippedCallbackTarget = arguments.equippedCallbackTarget
 
 	if equippedCallbackFunction ~= nil then
 		equippedCallbackFunction(equippedCallbackTarget, handTool)

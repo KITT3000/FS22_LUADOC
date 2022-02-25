@@ -175,7 +175,7 @@ function VehicleSchemaDisplay:collectVehicleSchemaDisplayOverlays(overlays, dept
 
 		if object ~= nil and object.schemaOverlay ~= nil then
 			local selected = object:getIsSelected()
-			local turnedOn = object.getIsTurnedOn ~= nil and object:getIsTurnedOn()
+			local turnedOn = object:getUseTurnedOnSchema()
 			local jointDesc = vehicle.schemaOverlay.attacherJoints[implement.jointDescIndex]
 
 			if jointDesc ~= nil then
@@ -249,7 +249,7 @@ function VehicleSchemaDisplay:getVehicleSchemaOverlays(vehicle)
 		additionalText = additionalText,
 		invisibleBorderRight = vehicle.schemaOverlay.invisibleBorderRight,
 		invisibleBorderLeft = vehicle.schemaOverlay.invisibleBorderLeft,
-		turnedOn = vehicle.getIsTurnedOn ~= nil and vehicle:getIsTurnedOn(),
+		turnedOn = vehicle:getUseTurnedOnSchema(),
 		selected = vehicle:getIsSelected()
 	})
 	self:collectVehicleSchemaDisplayOverlays(overlays, 1, vehicle, vehicle, overlay, 0, 0, 0, false)

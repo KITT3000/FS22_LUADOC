@@ -22,6 +22,7 @@ function ManureHeap:load(components, xmlFile, key, customEnv, i3dMappings, rootN
 		return false
 	end
 
+	self.isExtension = xmlFile:getValue(key .. "#isExtension", true)
 	local areaStart = xmlFile:getValue(key .. ".area#startNode", nil, components, i3dMappings)
 	local areaWidth = xmlFile:getValue(key .. ".area#widthNode", nil, components, i3dMappings)
 	local areaHeight = xmlFile:getValue(key .. ".area#heightNode", nil, components, i3dMappings)

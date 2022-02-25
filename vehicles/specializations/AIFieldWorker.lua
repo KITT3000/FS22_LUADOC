@@ -6,6 +6,7 @@ source("dataS/scripts/vehicles/ai/AIDriveStrategyCollision.lua")
 source("dataS/scripts/vehicles/ai/AIDriveStrategyCombine.lua")
 source("dataS/scripts/vehicles/ai/AIDriveStrategyStraight.lua")
 source("dataS/scripts/vehicles/ai/AIDriveStrategyConveyor.lua")
+source("dataS/scripts/vehicles/ai/AIDriveStrategyStonePicker.lua")
 source("dataS/scripts/vehicles/ai/AITurnStrategy.lua")
 source("dataS/scripts/vehicles/ai/AITurnStrategyDefault.lua")
 source("dataS/scripts/vehicles/ai/AITurnStrategyBulb1.lua")
@@ -461,6 +462,7 @@ function AIFieldWorker:updateAIFieldWorkerDriveStrategies()
 
 		local foundCombine = false
 		local foundBaler = false
+		local foundStonePicker = false
 
 		for _, childVehicle in pairs(self.rootVehicle.childVehicles) do
 			if SpecializationUtil.hasSpecialization(Combine, childVehicle.specializations) then
@@ -469,6 +471,10 @@ function AIFieldWorker:updateAIFieldWorkerDriveStrategies()
 
 			if SpecializationUtil.hasSpecialization(Baler, childVehicle.specializations) then
 				foundBaler = true
+			end
+
+			if SpecializationUtil.hasSpecialization(StonePicker, childVehicle.specializations) then
+				foundStonePicker = true
 			end
 		end
 
@@ -484,10 +490,19 @@ function AIFieldWorker:updateAIFieldWorkerDriveStrategies()
 		foundBaler = foundBaler or SpecializationUtil.hasSpecialization(Baler, spec.specializations)
 
 		if foundBaler then
-			local driveStrategyCombine = AIDriveStrategyBaler.new()
+			local driveStrategyBaler = AIDriveStrategyBaler.new()
 
-			driveStrategyCombine:setAIVehicle(self)
-			table.insert(spec.driveStrategies, driveStrategyCombine)
+			driveStrategyBaler:setAIVehicle(self)
+			table.insert(spec.driveStrategies, driveStrategyBaler)
+		end
+
+		foundStonePicker = foundStonePicker or SpecializationUtil.hasSpecialization(StonePicker, spec.specializations)
+
+		if foundStonePicker then
+			local driveStrategyStonePicker = AIDriveStrategyStonePicker.new()
+
+			driveStrategyStonePicker:setAIVehicle(self)
+			table.insert(spec.driveStrategies, driveStrategyStonePicker)
 		end
 
 		local driveStrategyStraight = AIDriveStrategyStraight.new()
@@ -616,12 +631,22 @@ end
 
 function AIFieldWorker:aiBlock(superFunc)
 	superFunc(self)
-	self:raiseAIEvent("onAIFieldWorkerBlock", "onAIImplementBlock")
+
+	local spec = self.spec_aiFieldWorker
+
+	if spec.isActive and not spec.isTurning then
+		self:raiseAIEvent("onAIFieldWorkerBlock", "onAIImplementBlock")
+	end
 end
 
 function AIFieldWorker:aiContinue(superFunc)
 	superFunc(self)
-	self:raiseAIEvent("onAIFieldWorkerContinue", "onAIImplementContinue")
+
+	local spec = self.spec_aiFieldWorker
+
+	if spec.isActive and not spec.isTurning then
+		self:raiseAIEvent("onAIFieldWorkerContinue", "onAIImplementContinue")
+	end
 end
 
 function AIFieldWorker:getCanAIFieldWorkerContinueWork()

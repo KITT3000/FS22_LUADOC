@@ -21,16 +21,6 @@ ProductionPoint.PROD_STATUS_TO_L10N = {
 	[ProductionPoint.PROD_STATUS.MISSING_INPUTS] = "ui_production_status_materialsMissing",
 	[ProductionPoint.PROD_STATUS.NO_OUTPUT_SPACE] = "ui_production_status_outOfSpace"
 }
-ProductionPoint.debugEnabled = false
-
-function ProductionPoint.consoleCommandToggleProdPointDebug()
-	ProductionPoint.debugEnabled = not ProductionPoint.debugEnabled
-
-	return "ProductionPoint.debugEnabled=" .. tostring(ProductionPoint.debugEnabled)
-end
-
-addConsoleCommand("gsProductionPointToggleDebug", "Toggle production point debugging", "consoleCommandToggleProdPointDebug", ProductionPoint)
-
 local ProductionPoint_mt = Class(ProductionPoint, Object)
 
 function ProductionPoint.registerXMLPaths(schema, basePath)
@@ -76,8 +66,9 @@ end
 
 InitStaticObjectClass(ProductionPoint, "ProductionPoint", ObjectIds.OBJECT_PRODUCTION_POINT)
 
-function ProductionPoint.new(isServer, isClient, customMt)
+function ProductionPoint.new(isServer, isClient, baseDirectory, customMt)
 	local self = Object.new(isServer, isClient, customMt or ProductionPoint_mt)
+	self.baseDirectory = baseDirectory
 	self.owningPlaceable = nil
 	self.isOwned = false
 	self.mission = g_currentMission
@@ -117,7 +108,7 @@ end
 function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 	self.node = components[1].node
 	local name = xmlFile:getValue(key .. "#name")
-	self.name = name and g_i18n:convertText(name)
+	self.name = name and g_i18n:convertText(name, customEnv)
 	self.productions = {}
 	self.productionsIdToObj = {}
 	self.inputFillTypeIds = {}
@@ -133,7 +124,7 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 	xmlFile:iterate(key .. ".productions.production", function (index, productionKey)
 		local production = {
 			id = xmlFile:getValue(productionKey .. "#id"),
-			name = xmlFile:getValue(productionKey .. "#name")
+			name = xmlFile:getValue(productionKey .. "#name", nil, customEnv, false)
 		}
 		local params = xmlFile:getValue(productionKey .. "#params")
 
@@ -141,7 +132,7 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 			params = params:split("|")
 
 			for i = 1, #params do
-				params[i] = g_i18n:convertText(params[i])
+				params[i] = g_i18n:convertText(params[i], customEnv)
 			end
 
 			production.name = string.format(production.name, unpack(params))
@@ -319,7 +310,7 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 	local palletSpawnerKey = key .. ".palletSpawner"
 
 	if xmlFile:hasProperty(palletSpawnerKey) then
-		self.palletSpawner = PalletSpawner.new()
+		self.palletSpawner = PalletSpawner.new(self.baseDirectory)
 
 		if not self.palletSpawner:load(components, xmlFile, key .. ".palletSpawner", self.customEnvironment, i3dMappings) then
 			Logging.xmlError(xmlFile, "Unable to load pallet spawner %s", palletSpawnerKey)
@@ -348,7 +339,10 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 	self.storage:register(true)
 
 	if self.loadingStation ~= nil then
-		self.loadingStation:addSourceStorage(self.storage)
+		if not self.loadingStation:addSourceStorage(self.storage) then
+			Logging.xmlWarning(xmlFile, "Unable to add source storage ")
+		end
+
 		g_currentMission.storageSystem:addLoadingStation(self.loadingStation, self.owningPlaceable)
 	end
 
@@ -406,6 +400,34 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 	end
 
 	return true
+end
+
+function ProductionPoint:findStorageExtensions()
+	local storageSystem = g_currentMission.storageSystem
+
+	if self.unloadingStation ~= nil then
+		local storagesInRange = storageSystem:getStorageExtensionsInRange(self.unloadingStation, self:getOwnerFarmId())
+
+		if storagesInRange ~= nil then
+			for _, storage in ipairs(storagesInRange) do
+				if self.unloadingStation.targetStorages[storage] == nil then
+					storageSystem:addStorageToUnloadingStation(storage, self.unloadingStation)
+				end
+			end
+		end
+	end
+
+	if self.loadingStation ~= nil then
+		local storagesInRange = storageSystem:getStorageExtensionsInRange(self.loadingStation, self:getOwnerFarmId())
+
+		if storagesInRange ~= nil then
+			for _, storage in ipairs(storagesInRange) do
+				if self.loadingStation.sourceStorages[storage] == nil then
+					storageSystem:addStorageToLoadingStation(storage, self.loadingStation)
+				end
+			end
+		end
+	end
 end
 
 function ProductionPoint:delete()
@@ -640,7 +662,7 @@ function ProductionPoint:updateProduction()
 
 			for x = 1, #production.inputs do
 				local input = production.inputs[x]
-				local fillLevel = self.storage:getFillLevel(input.type)
+				local fillLevel = self:getFillLevel(input.type)
 				self.inputFillLevels[input] = fillLevel
 
 				if self.isOwned and fillLevel < input.amount * cyclesPerMinuteFactorNoTimescale then
@@ -688,10 +710,15 @@ function ProductionPoint:updateProduction()
 
 				for y = 1, #production.inputs do
 					local input = production.inputs[y]
-					local fillLevel = self.inputFillLevels[input]
 
-					if fillLevel and fillLevel > 0 then
-						self.storage:setFillLevel(fillLevel - input.amount * factor, input.type)
+					if self.loadingStation ~= nil then
+						self.loadingStation:removeFillLevel(input.type, input.amount * factor, self.ownerFarmId)
+					else
+						local fillLevel = self.inputFillLevels[input]
+
+						if fillLevel and fillLevel > 0 then
+							self.storage:setFillLevel(fillLevel - input.amount * factor, input.type)
+						end
 					end
 				end
 
@@ -743,7 +770,7 @@ end
 function ProductionPoint:updateTick(dt)
 end
 
-function ProductionPoint:renderDebugTexts()
+function ProductionPoint:draw()
 	local playerNode = (self.mission.controlledVehicle or {}).rootNode or (self.mission.player or {}).rootNode
 	local px, py, pz = getWorldTranslation(playerNode)
 	local ppx, ppy, ppz = getWorldTranslation(self.node)
@@ -773,7 +800,6 @@ function ProductionPoint:renderDebugTexts()
 		end
 
 		table.insert(text, string.format("productionCostsToClaim : %.1f", self.productionCostsToClaim))
-		table.insert(text, string.format("avg updateDuration (%i ms Buffer): %.4f ms", self.valueBuffer.duration, self.valueBuffer:getAverage()))
 		table.insert(text, string.format("waitingForPalletToSpawn: %s", self.waitingForPalletToSpawn))
 
 		if g_time < self.palletSpawnCooldown then
@@ -784,7 +810,7 @@ function ProductionPoint:renderDebugTexts()
 
 		self.debugTextElem:update()
 		g_debugManager:addFrameElement(self.debugTextElem)
-		self.storage:renderDebugInformation()
+		self.storage:draw()
 	end
 end
 
@@ -976,7 +1002,7 @@ function ProductionPoint:updateInfo(superFunc, infoTable)
 
 		for i = 1, #self.activeProductions do
 			activeProduction = self.activeProductions[i]
-			local productionName = activeProduction.name or g_fillTypeManager:getFillTypeByIndex(activeProduction.primaryProductFillType).title
+			local productionName = activeProduction.name or g_fillTypeManager:getFillTypeTitleByIndex(activeProduction.primaryProductFillType)
 
 			table.insert(infoTable, {
 				title = productionName,
@@ -994,13 +1020,13 @@ function ProductionPoint:updateInfo(superFunc, infoTable)
 
 	for i = 1, #self.inputFillTypeIdsArray do
 		fillType = self.inputFillTypeIdsArray[i]
-		fillLevel = self.storage:getFillLevel(fillType)
+		fillLevel = self:getFillLevel(fillType)
 
 		if fillLevel > 1 then
 			fillTypesDisplayed = true
 
 			table.insert(infoTable, {
-				title = g_fillTypeManager:getFillTypeByIndex(fillType).title,
+				title = g_fillTypeManager:getFillTypeTitleByIndex(fillType),
 				text = g_i18n:formatVolume(fillLevel, 0)
 			})
 		end
@@ -1008,13 +1034,13 @@ function ProductionPoint:updateInfo(superFunc, infoTable)
 
 	for i = 1, #self.outputFillTypeIdsArray do
 		fillType = self.outputFillTypeIdsArray[i]
-		fillLevel = self.storage:getFillLevel(fillType)
+		fillLevel = self:getFillLevel(fillType)
 
 		if fillLevel > 1 then
 			fillTypesDisplayed = true
 
 			table.insert(infoTable, {
-				title = g_fillTypeManager:getFillTypeByIndex(fillType).title,
+				title = g_fillTypeManager:getFillTypeTitleByIndex(fillType),
 				text = g_i18n:formatVolume(fillLevel, 0)
 			})
 		end
@@ -1079,6 +1105,26 @@ function ProductionPoint:toggleOutputDistributionMode(outputFillTypeId)
 		else
 			self:setOutputDistributionMode(outputFillTypeId, 0)
 		end
+	end
+end
+
+function ProductionPoint:getFillLevel(fillTypeId)
+	if self.outputFillTypeIds[fillTypeId] ~= nil then
+		if self.loadingStation ~= nil then
+			return self.loadingStation:getFillLevel(fillTypeId, self.ownerFarmId)
+		end
+
+		return self.storage:getFillLevel(fillTypeId)
+	elseif self.inputFillTypeIds[fillTypeId] ~= nil then
+		return self.unloadingStation:getFillLevel(fillTypeId, self.ownerFarmId)
+	end
+end
+
+function ProductionPoint:getCapacity(fillTypeId)
+	if self.outputFillTypeIds[fillTypeId] ~= nil then
+		return self.storage:getCapacity(fillTypeId)
+	elseif self.inputFillTypeIds[fillTypeId] ~= nil then
+		return self.unloadingStation:getCapacity(fillTypeId, self.ownerFarmId)
 	end
 end
 

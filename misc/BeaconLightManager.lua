@@ -17,38 +17,70 @@ function BeaconLightManager.new(customMt)
 	self.nextBeaconLightId = 1
 	self.beaconLights = {}
 	self.maxNumBeaconLights = 1
+	self.lastBrightnessScale = nil
 
 	return self
 end
 
 function BeaconLightManager:activateBeaconLight(mode, numLEDs, rpm, brightness)
-	local id = nil
-
 	if #self.beaconLights < self.maxNumBeaconLights then
 		local mask = BeaconLightManager.MASK_ALL
+		local brightnessScale = g_gameSettings:getValue(GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS)
 
-		setBeaconLights(mask, mode, numLEDs, rpm, brightness)
+		if brightnessScale > 0 then
+			setBeaconLights(mask, mode, numLEDs, rpm, brightness * brightnessScale)
+		end
 
-		id = self.nextBeaconLightId
+		local id = self.nextBeaconLightId
 		self.nextBeaconLightId = self.nextBeaconLightId + 1
 
 		table.insert(self.beaconLights, {
 			id = id,
-			mask = mask
+			mask = mask,
+			mode = mode,
+			numLEDs = numLEDs,
+			rpm = rpm,
+			brightness = brightness,
+			brightnessScale = brightnessScale
 		})
+
+		return id
 	end
 
-	return id
+	return nil
 end
 
 function BeaconLightManager:deactivateBeaconLight(id)
 	if id ~= nil then
+		local brightnessScale = g_gameSettings:getValue(GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS)
+
 		for k, beaconLight in ipairs(self.beaconLights) do
 			if beaconLight.id == id then
-				setBeaconLights(beaconLight.mask, 0, 0, 100, 0)
+				if brightnessScale > 0 then
+					setBeaconLights(beaconLight.mask, 0, 0, 100, 0)
+				end
+
 				table.remove(self.beaconLights, k)
 
 				break
+			end
+		end
+	end
+end
+
+function BeaconLightManager:updateBeaconLights()
+	if #self.beaconLights > 0 then
+		local brightnessScale = g_gameSettings:getValue(GameSettings.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS)
+
+		for k, beaconLight in ipairs(self.beaconLights) do
+			if brightnessScale > 0 then
+				setBeaconLights(beaconLight.mask, beaconLight.mode, beaconLight.numLEDs, beaconLight.rpm, beaconLight.brightness * brightnessScale)
+
+				beaconLight.brightnessScale = brightnessScale
+			elseif brightnessScale == 0 and beaconLight.brightnessScale > 0 then
+				setBeaconLights(beaconLight.mask, 0, 0, 100, 0)
+
+				beaconLight.brightnessScale = 0
 			end
 		end
 	end

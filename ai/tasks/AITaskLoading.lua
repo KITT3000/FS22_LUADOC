@@ -59,8 +59,18 @@ function AITaskLoading:start()
 	AITaskLoading:superClass().start(self)
 end
 
+function AITaskLoading:stop(wasJobStopped)
+	if wasJobStopped and not self.isFinished and self.state == AITaskLoading.STATE_LOADING then
+		self.loadVehicle:aiCancelLoadingFromTrigger(self.loadTrigger, self.fillUnitIndex, self.fillType, self)
+	end
+
+	AITaskLoading:superClass().start(self, wasJobStopped)
+end
+
 function AITaskLoading:finishedLoading()
-	self.loadVehicle:aiFinishLoading(self.fillUnitIndex, self)
+	if self.loadVehicle ~= nil then
+		self.loadVehicle:aiFinishLoading(self.fillUnitIndex, self)
+	end
 
 	self.isFinished = true
 end

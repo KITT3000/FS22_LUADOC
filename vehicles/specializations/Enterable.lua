@@ -458,7 +458,9 @@ function Enterable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 
 					character.characterNode = node
 
-					link(node, character.playerModel.rootNode)
+					if character.playerModel.rootNode ~= nil then
+						link(node, character.playerModel.rootNode)
+					end
 				end
 			end
 
@@ -511,8 +513,9 @@ end
 
 function Enterable:onDrawUIInfo()
 	local spec = self.spec_enterable
+	local visible = not g_gui:getIsGuiVisible() and not g_noHudModeEnabled and g_gameSettings:getValue(GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES)
 
-	if not spec.isEntered and self.isClient and self:getIsActive() and spec.isControlled and not g_gui:getIsGuiVisible() and not g_noHudModeEnabled then
+	if not spec.isEntered and self.isClient and self:getIsActive() and spec.isControlled and visible then
 		local x, y, z = getWorldTranslation(spec.nicknameRendering.node)
 		local x1, y1, z1 = getWorldTranslation(getCamera())
 		local distSq = MathUtil.vector3LengthSq(x - x1, y - y1, z - z1)
@@ -1260,6 +1263,10 @@ function Enterable:getControllerName()
 		user = g_currentMission.userManager:getUserByConnection(self:getOwner())
 	else
 		user = g_currentMission.userManager:getUserByUserId(self.spec_enterable.controllerUserId)
+	end
+
+	if user == nil then
+		return ""
 	end
 
 	return user:getNickname()

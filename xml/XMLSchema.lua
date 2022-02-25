@@ -365,7 +365,17 @@ function XMLSchema:generateSchema()
 		return true
 	end
 
-	local function createAttribute(data)
+	local function generateDescription(data)
+		local description = ""
+
+		if data.description ~= nil then
+			description = tostring(data.description):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub("\"", "&quot;"):gsub("'", "&apos;")
+		end
+
+		return description
+	end
+
+	local function addAttribute(data, line, indent)
 		local valueType = XMLValueType.TYPES[data.data.valueTypeId]
 		local valueTypeName = formatTypeName(valueType.name)
 		local additional = ""
@@ -400,7 +410,11 @@ function XMLSchema:generateSchema()
 			end
 		end
 
-		return string.format("<xs:attribute name=\"%s\" type=\"%s\"%s/>", data.tag, valueTypeName, additional)
+		line = add(string.format("<xs:attribute name=\"%s\" type=\"%s\"%s>", data.tag, valueTypeName, additional), line, indent) + 1
+		line = add(string.format("<xs:annotation><xs:documentation xml:lang=\"en\">%s</xs:documentation></xs:annotation>", generateDescription(data.data)), line, indent .. TAB) + 1
+		line = add(string.format("</xs:attribute>"), line, indent) + 1
+
+		return line
 	end
 
 	function self.addElement(line, indent, name, data, isRoot, onlyChildren, additionalAttributes, printSharedAttributes)
@@ -444,7 +458,9 @@ function XMLSchema:generateSchema()
 						additional = additional .. "use=\"required\""
 					end
 
-					line = add(string.format("<xs:element name=\"%s\" type=\"%s\" %s/>", name, valueTypeName, additional), line, indent) + 1
+					line = add(string.format("<xs:element name=\"%s\" type=\"%s\" %s>", name, valueTypeName, additional), line, indent) + 1
+					line = add(string.format("<xs:annotation><xs:documentation xml:lang=\"en\">%s</xs:documentation></xs:annotation>", generateDescription(data.data)), line, indent .. TAB) + 1
+					line = add(string.format("</xs:element>"), line, indent) + 1
 				end
 			else
 				local maxOccurs = " maxOccurs=\"1\""
@@ -497,7 +513,9 @@ function XMLSchema:generateSchema()
 					end
 
 					if #subData.children == 0 then
-						line = add(string.format("<xs:element name=\"%s\" type=\"%s\" minOccurs=\"%d\"/>", subData.tag, valueTypeName, minOccurs), line, indent .. TAB .. TAB .. TAB) + 1
+						line = add(string.format("<xs:element name=\"%s\" type=\"%s\" minOccurs=\"%d\">", subData.tag, valueTypeName, minOccurs), line, indent .. TAB .. TAB .. TAB) + 1
+						line = add(string.format("<xs:annotation><xs:documentation xml:lang=\"en\">%s</xs:documentation></xs:annotation>", generateDescription(subData.data)), line, indent .. TAB .. TAB .. TAB .. TAB) + 1
+						line = add(string.format("</xs:element>"), line, indent .. TAB .. TAB .. TAB) + 1
 					else
 						local baseIndent = indent .. TAB .. TAB .. TAB
 						line = add(string.format("<xs:element name=\"%s\" minOccurs=\"%d\">", subData.tag, minOccurs), line, baseIndent) + 1
@@ -507,7 +525,7 @@ function XMLSchema:generateSchema()
 
 						for _, attData in ipairs(subData.children) do
 							if attData.data ~= nil and attData.data.path:find("#") ~= nil then
-								line = add(createAttribute(attData), line, baseIndent .. TAB .. TAB .. TAB .. TAB) + 1
+								line = addAttribute(attData, line, baseIndent .. TAB .. TAB .. TAB .. TAB)
 							end
 						end
 
@@ -524,7 +542,7 @@ function XMLSchema:generateSchema()
 
 		for _, subData in ipairs(data.children) do
 			if subData.data ~= nil and subData.data.path:find("#") ~= nil then
-				line = add(createAttribute(subData), line, indent .. TAB .. TAB) + 1
+				line = addAttribute(subData, line, indent .. TAB .. TAB)
 			end
 		end
 

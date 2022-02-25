@@ -150,14 +150,14 @@ function Dog:updateTick(dt)
 	Dog:superClass().updateTick(self, dt)
 end
 
-function Dog:testScope(x, y, z, coeff)
+function Dog:testScope(x, y, z, coeff, isGuiVisible)
 	local distance, clipDistance = getCompanionClosestDistance(self.dogInstance, x, y, z)
 	local clipDist = math.min(clipDistance * coeff, self.forcedClipDistance)
 
 	return distance < clipDist
 end
 
-function Dog:getUpdatePriority(skipCount, x, y, z, coeff, connection)
+function Dog:getUpdatePriority(skipCount, x, y, z, coeff, connection, isGuiVisible)
 	local distance, clipDistance = getCompanionClosestDistance(self.dogInstance, x, y, z)
 	local clipDist = math.min(clipDistance * coeff, self.forcedClipDistance)
 	local result = (1 - distance / clipDist) * 0.8 + 0.5 * skipCount * 0.2

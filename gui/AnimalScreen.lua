@@ -25,7 +25,8 @@ AnimalScreen = {
 		LIST_SOURCE = "listSource",
 		INFO_TITLES = "infoTitle",
 		INFO_FEE = "infoFee"
-	}
+	},
+	INPUT_CONTEXT = "AnimalScreen"
 }
 local AnimalScreen_mt = Class(AnimalScreen, ScreenElement)
 
@@ -104,6 +105,9 @@ function AnimalScreen:onOpen()
 	elseif self.listTarget:getItemCount() > 0 then
 		FocusManager:setFocus(self.listTarget)
 	end
+
+	self:toggleCustomInputContext(true, AnimalScreen.INPUT_CONTEXT)
+	self:registerActionEvents()
 end
 
 function AnimalScreen:onClose(element)
@@ -112,6 +116,8 @@ function AnimalScreen:onClose(element)
 
 	self.isOpen = false
 
+	self:removeActionEvents()
+	self:toggleCustomInputContext(false, AnimalScreen.INPUT_CONTEXT)
 	g_currentMission:resetGameState()
 	g_currentMission:showMoneyChange(MoneyType.NEW_ANIMALS_COST)
 	g_currentMission:showMoneyChange(MoneyType.SOLD_ANIMALS)
@@ -421,6 +427,21 @@ function AnimalScreen:onYesNoTarget(yes)
 		local numAnimals = self.numAnimalsElement:getState()
 
 		self.controller:applyTarget(animalIndex, numAnimals)
+	end
+end
+
+function AnimalScreen:registerActionEvents()
+	g_inputBinding:registerActionEvent(InputAction.AXIS_MTO_SCROLL, self, self.onInputScrollMTO, false, false, true, true)
+end
+
+function AnimalScreen:removeActionEvents()
+	g_inputBinding:removeActionEventsByTarget(self)
+end
+
+function AnimalScreen:onInputScrollMTO(_, inputValue)
+	if self.selectionState ~= AnimalScreen.SELECTION_NONE and inputValue ~= 0 then
+		self.numAnimalsElement:setState(self.numAnimalsElement:getState() + inputValue)
+		self:updatePrice()
 	end
 end
 

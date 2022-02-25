@@ -48,19 +48,24 @@ function ParticleUtil.loadParticleSystemFromData(data, particleSystem, linkNodes
 
 	psFile = Utils.getFilename(psFile, baseDir)
 	particleSystem.isValid = false
-	particleSystem.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(psFile, true, true, ParticleUtil.particleI3DFileLoaded, ParticleUtil, {
-		data,
-		particleSystem,
-		linkNode,
-		psFile,
-		defaultEmittingState
-	})
+	local arguments = {
+		data = data,
+		particleSystem = particleSystem,
+		linkNode = linkNode,
+		psFile = psFile,
+		defaultEmittingState = defaultEmittingState
+	}
+	particleSystem.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(psFile, true, true, ParticleUtil.particleI3DFileLoaded, ParticleUtil, arguments)
 
 	return true
 end
 
 function ParticleUtil.particleI3DFileLoaded(_, i3dNode, failedReason, args)
-	local data, particleSystem, linkNode, psFile, defaultEmittingState = unpack(args)
+	local data = args.data
+	local particleSystem = args.particleSystem
+	local linkNode = args.linkNode
+	local psFile = args.psFile
+	local defaultEmittingState = args.defaultEmittingState
 	local rootNode = i3dNode
 
 	if rootNode == 0 then

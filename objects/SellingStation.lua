@@ -576,8 +576,12 @@ function SellingStation:getCurrentPricingTrend(fillType)
 	return self.fillTypePriceInfo[fillType]
 end
 
-function SellingStation:getFreeCapacity(fillTypeIndex)
-	return math.huge
+function SellingStation:getFreeCapacity(fillTypeIndex, farmId)
+	if self.storeSoldGoods then
+		return SellingStation:superClass().getFreeCapacity(self, fillTypeIndex, farmId)
+	else
+		return math.huge
+	end
 end
 
 function SellingStation:getIsFillAllowedFromFarm(farmId)

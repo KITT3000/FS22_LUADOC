@@ -70,7 +70,6 @@ function SellPlaceableEvent:run(connection)
 			if g_currentMission:getHasPlayerPermission("sellPlaceable", connection) then
 				if self.placeable:canBeSold() then
 					self.placeable:onSell()
-					g_currentMission:addPlaceableToDelete(self.placeable)
 
 					if not self.forFree then
 						if self.forFullPrice then
@@ -83,6 +82,12 @@ function SellPlaceableEvent:run(connection)
 					state = SellPlaceableEvent.STATE_SUCCESS
 
 					g_currentMission:addMoney(sellPrice, self.placeable:getOwnerFarmId(), MoneyType.SHOP_PROPERTY_SELL, true)
+
+					if self.placeable:getSellAction() == Placeable.SELL_AND_SPECTATOR_FARM then
+						self.placeable:setOwnerFarmId(FarmManager.SPECTATOR_FARM_ID)
+					else
+						g_currentMission:addPlaceableToDelete(self.placeable)
+					end
 				else
 					state = SellPlaceableEvent.STATE_IN_USE
 				end
@@ -91,6 +96,7 @@ function SellPlaceableEvent:run(connection)
 			end
 		end
 
+		g_messageCenter:publish(SellPlaceableEvent, state, sellPrice)
 		connection:sendEvent(SellPlaceableEvent.newServerToClient(state, sellPrice))
 	else
 		g_messageCenter:publish(SellPlaceableEvent, self.state, self.sellPrice)

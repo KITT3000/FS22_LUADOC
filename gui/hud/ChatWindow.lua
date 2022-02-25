@@ -105,7 +105,6 @@ function ChatWindow:draw()
 
 		local posX = baseX + self.messageOffsetX
 		local posY = baseY + self.messageOffsetY
-		local lineHeight = self.textSize + self.lineOffset
 
 		setTextWrapWidth(self:getWidth() - self.messageOffsetX * 2)
 		setTextAlignment(RenderText.ALIGN_LEFT)
@@ -115,7 +114,7 @@ function ChatWindow:draw()
 		for i = #self.messages, 1, -1 do
 			local sender = self.messages[i].sender .. ":"
 			local text = self.messages[i].msg
-			local textHeight, numLines = getTextHeight(self.textSize, text)
+			local textHeight, _ = getTextHeight(self.textSize, text)
 			currentY = currentY + textHeight
 
 			setTextBold(false)
@@ -130,12 +129,17 @@ function ChatWindow:draw()
 			setTextColor(unpack(ChatWindow.COLOR.MESSAGE_SHADOW))
 			renderText(posX + self.shadowOffset, currentY - self.shadowOffset, self.textSize, sender)
 
+			local color = ChatWindow.COLOR.MESSAGE
+
 			if self.messages[i].farmId ~= 0 then
-				setTextColor(unpack(g_farmManager:getFarmById(self.messages[i].farmId):getColor()))
-			else
-				setTextColor(unpack(ChatWindow.COLOR.MESSAGE))
+				local farm = g_farmManager:getFarmById(self.messages[i].farmId)
+
+				if farm ~= nil then
+					color = farm:getColor()
+				end
 			end
 
+			setTextColor(unpack(color))
 			renderText(posX, currentY, self.textSize, sender)
 
 			currentY = currentY + self.textSize * 0.5

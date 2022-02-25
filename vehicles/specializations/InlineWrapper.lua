@@ -1021,6 +1021,10 @@ function InlineWrapper:getCanInteract()
 		return false
 	end
 
+	if not g_currentMission.accessHandler:canPlayerAccess(self) then
+		return false
+	end
+
 	local x1, y1, z1 = getWorldTranslation(g_currentMission.player.rootNode)
 	local x2, y2, z2 = getWorldTranslation(self.components[1].node)
 	local distance = MathUtil.vector3Length(x1 - x2, y1 - y2, z1 - z2)

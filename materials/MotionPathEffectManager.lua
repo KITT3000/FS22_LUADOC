@@ -129,12 +129,13 @@ function MotionPathEffectManager:loadMotionPathEffectsXML(filename, baseDirector
 					if motionPathEffect.filename ~= nil then
 						xmlFile.xmlReferences = xmlFile.xmlReferences + 1
 						motionPathEffect.filename = Utils.getFilename(motionPathEffect.filename, baseDirectory)
-						local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(motionPathEffect.filename, false, false, self.motionPathEffectI3DFileLoaded, self, {
-							motionPathEffect,
-							xmlFile,
-							motionPathEffectKey,
-							baseDirectory
-						})
+						local arguments = {
+							motionPathEffect = motionPathEffect,
+							xmlFile = xmlFile,
+							motionPathEffectKey = motionPathEffectKey,
+							baseDirectory = baseDirectory
+						}
+						local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(motionPathEffect.filename, false, false, self.motionPathEffectI3DFileLoaded, self, arguments)
 
 						table.insert(self.sharedLoadRequestIds, sharedLoadRequestId)
 					else
@@ -157,7 +158,10 @@ function MotionPathEffectManager:loadMotionPathEffectsXML(filename, baseDirector
 end
 
 function MotionPathEffectManager:motionPathEffectI3DFileLoaded(i3dNode, failedReason, args)
-	local motionPathEffect, xmlFile, motionPathEffectKey, baseDirectory = unpack(args)
+	local motionPathEffect = args.motionPathEffect
+	local xmlFile = args.xmlFile
+	local motionPathEffectKey = args.motionPathEffectKey
+	local baseDirectory = args.baseDirector
 
 	if i3dNode ~= nil and i3dNode ~= 0 then
 		local loadedMeshes = {}

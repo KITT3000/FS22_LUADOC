@@ -172,6 +172,10 @@ function EnvironmentAreaSystem:getAreaWeights()
 end
 
 function EnvironmentAreaSystem:update(dt)
+	if not entityExists(self.referenceNode) then
+		self.referenceNode = getCamera(0)
+	end
+
 	if self.currentCell ~= nil then
 		self:updateCellType(self.currentCell)
 		self:updateWeights()

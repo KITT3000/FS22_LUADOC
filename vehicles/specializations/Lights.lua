@@ -203,8 +203,8 @@ function Lights.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onAIDriveableActive", Lights)
 	SpecializationUtil.registerEventListener(vehicleType, "onAIDriveableEnd", Lights)
 	SpecializationUtil.registerEventListener(vehicleType, "onAIFieldWorkerActive", Lights)
-	SpecializationUtil.registerEventListener(vehicleType, "onAIFieldWorkerBlock", Lights)
-	SpecializationUtil.registerEventListener(vehicleType, "onAIFieldWorkerContinue", Lights)
+	SpecializationUtil.registerEventListener(vehicleType, "onAIJobVehicleBlock", Lights)
+	SpecializationUtil.registerEventListener(vehicleType, "onAIJobVehicleContinue", Lights)
 	SpecializationUtil.registerEventListener(vehicleType, "onAIFieldWorkerEnd", Lights)
 	SpecializationUtil.registerEventListener(vehicleType, "onVehiclePhysicsUpdate", Lights)
 	SpecializationUtil.registerEventListener(vehicleType, "onDeactivate", Lights)
@@ -507,7 +507,7 @@ function Lights:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, 
 				end
 
 				if beaconLight.realLightNode ~= nil and spec.hasRealBeaconLights and beaconLight.multiBlink then
-					local x, y, z, _ = getShaderParameter(spec.beaconLights[1].lightShaderNode, "blinkOffset")
+					local x, y, z, _ = getShaderParameter(beaconLight.lightShaderNode or spec.beaconLights[1].lightShaderNode, "blinkOffset")
 					local cTime_s = getShaderTimeSec()
 					local alpha = MathUtil.clamp(math.sin(cTime_s * z) - math.max(cTime_s * z % ((x * 2 + y * 2) * math.pi) - (x * 2 - 1) * math.pi, 0) + 0.2, 0, 1)
 					local r = beaconLight.defaultColor[1]
@@ -1161,14 +1161,15 @@ function Lights:loadSharedLight(xmlFile, key, targetTable)
 			filename = Utils.getFilename(filename, self.baseDirectory)
 			sharedLight.filename = filename
 			spec.xmlLoadingHandles[lightXMLFile] = true
-			local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.loadSharedLightI3DLoaded, self, {
-				xmlFile,
-				key,
-				lightXMLFile,
-				sharedLight,
-				targetTable,
-				rotations
-			})
+			local arguments = {
+				xmlFile = xmlFile,
+				key = key,
+				lightXMLFile = lightXMLFile,
+				sharedLight = sharedLight,
+				targetTable = targetTable,
+				rotations = rotations
+			}
+			local sharedLoadRequestId = self:loadSubSharedI3DFile(filename, false, false, self.loadSharedLightI3DLoaded, self, arguments)
 
 			table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 		else
@@ -1255,7 +1256,12 @@ end
 
 function Lights:loadSharedLightI3DLoaded(i3dNode, failedReason, args)
 	local spec = self.spec_lights
-	local xmlFile, key, lightXMLFile, sharedLight, targetTable, rotations = unpack(args)
+	local xmlFile = args.xmlFile
+	local key = args.key
+	local lightXMLFile = args.lightXMLFile
+	local sharedLight = args.sharedLight
+	local targetTable = args.targetTable
+	local rotations = args.rotations
 
 	if i3dNode ~= 0 then
 		sharedLight.node = lightXMLFile:getValue("light.rootNode#node", "0", i3dNode)
@@ -1425,11 +1431,11 @@ function Lights:onAIFieldWorkerActive()
 	self:updateAILights(true)
 end
 
-function Lights:onAIFieldWorkerBlock()
+function Lights:onAIJobVehicleBlock()
 	self:setBeaconLightsVisibility(true, true, true)
 end
 
-function Lights:onAIFieldWorkerContinue()
+function Lights:onAIJobVehicleContinue()
 	self:setBeaconLightsVisibility(false, true, true)
 end
 

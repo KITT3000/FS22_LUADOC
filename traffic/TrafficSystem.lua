@@ -14,7 +14,7 @@ function TrafficSystem:onCreate(transformId)
 
 		if trafficSystem:load(xmlFilename, transformId, useHighProfile, g_server ~= nil, g_client ~= nil) then
 			trafficSystem:register(true)
-			g_currentMission:addOnCreateLoadedObject(trafficSystem)
+			g_currentMission.onCreateObjectSystem:add(trafficSystem)
 			trafficSystem:setEnabled(g_currentMission.missionInfo.trafficEnabled)
 		else
 			trafficSystem:delete()

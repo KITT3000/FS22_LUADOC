@@ -47,7 +47,7 @@ end
 
 function PlaceableProductionPoint:onLoad(savegame)
 	local spec = self.spec_productionPoint
-	local productionPoint = ProductionPoint.new(self.isServer, self.isClient)
+	local productionPoint = ProductionPoint.new(self.isServer, self.isClient, self.baseDirectory)
 	productionPoint.owningPlaceable = self
 
 	if productionPoint:load(self.components, self.xmlFile, "placeable.productionPoint", self.customEnvironment, self.i3dMappings) then
@@ -74,6 +74,7 @@ function PlaceableProductionPoint:onFinalizePlacement()
 	if spec.productionPoint ~= nil then
 		spec.productionPoint:register(true)
 		spec.productionPoint:setOwnerFarmId(self:getOwnerFarmId())
+		spec.productionPoint:findStorageExtensions()
 		spec.productionPoint:updateFxState()
 	end
 end
@@ -163,7 +164,7 @@ end
 
 function PlaceableProductionPoint:canBuy(superFunc)
 	if not g_currentMission.productionChainManager:getHasFreeSlots() then
-		return false, "maximum number of production points reached"
+		return false, g_i18n:getText("warning_maxNumOfProdPointsReached")
 	end
 
 	return superFunc(self)

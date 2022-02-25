@@ -57,6 +57,8 @@ Trailer = {
 			cSchema:register(XMLValueType.FLOAT, cKey .. "#startTipSideEmptyFactor", "Start tip side empty factor")
 			cSchema:register(XMLValueType.FLOAT, cKey .. "#endTipSideEmptyFactor", "End tip side empty factor")
 		end)
+		schema:register(XMLValueType.BOOL, Pickup.PICKUP_XML_KEY .. "#allowWhileTipping", "Allow pickup movement while tipping", true)
+		schema:register(XMLValueType.BOOL, TurnOnVehicle.TURNED_ON_ANIMATION_XML_PATH .. "#playWhileTipping", "Animation is active while tipping", false)
 		schema:setXMLSpecializationType()
 
 		local schemaSavegame = Vehicle.xmlSchemaSavegame
@@ -96,6 +98,12 @@ function Trailer.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeSelected", Trailer.getCanBeSelected)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAIHasFinishedDischarge", Trailer.getAIHasFinishedDischarge)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "startAIDischarge", Trailer.startAIDischarge)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadPickupFromXML", Trailer.loadPickupFromXML)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanChangePickupState", Trailer.getCanChangePickupState)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanDischargeToGround", Trailer.getCanDischargeToGround)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanDischargeToObject", Trailer.getCanDischargeToObject)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsTurnedOnAnimationActive", Trailer.getIsTurnedOnAnimationActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadTurnedOnAnimationFromXML", Trailer.loadTurnedOnAnimationFromXML)
 end
 
 function Trailer.registerEventListeners(vehicleType)
@@ -832,6 +840,62 @@ function Trailer:startAIDischarge(superFunc, dischargeNode, task)
 	end
 
 	superFunc(self, dischargeNode, task)
+end
+
+function Trailer:loadPickupFromXML(superFunc, xmlFile, key, spec)
+	spec.allowWhileTipping = xmlFile:getValue(key .. "#allowWhileTipping", true)
+
+	return superFunc(self, xmlFile, key, spec)
+end
+
+function Trailer:getCanChangePickupState(superFunc, spec, newState)
+	if not superFunc(self, spec, newState) then
+		return false
+	end
+
+	if not spec.allowWhileTipping then
+		return self:getTipState() == Trailer.TIPSTATE_CLOSED
+	end
+
+	return true
+end
+
+function Trailer:getCanDischargeToGround(superFunc, dischargeNode)
+	if not superFunc(self, dischargeNode) then
+		return false
+	end
+
+	if self.spec_pickup ~= nil and not self.spec_pickup.allowWhileTipping then
+		return not self.spec_pickup.isLowered
+	end
+
+	return true
+end
+
+function Trailer:getCanDischargeToObject(superFunc, dischargeNode)
+	if not superFunc(self, dischargeNode) then
+		return false
+	end
+
+	if self.spec_pickup ~= nil and not self.spec_pickup.allowWhileTipping then
+		return not self.spec_pickup.isLowered
+	end
+
+	return true
+end
+
+function Trailer:loadTurnedOnAnimationFromXML(superFunc, xmlFile, key, turnedOnAnimation)
+	turnedOnAnimation.playWhileTipping = xmlFile:getValue(key .. "#playWhileTipping", false)
+
+	return superFunc(self, xmlFile, key, turnedOnAnimation)
+end
+
+function Trailer:getIsTurnedOnAnimationActive(superFunc, turnedOnAnimation)
+	if turnedOnAnimation.playWhileTipping then
+		return superFunc(self, turnedOnAnimation) or self:getTipState() ~= Trailer.TIPSTATE_CLOSED and self:getDischargeNodeEmptyFactor(self:getCurrentDischargeNode()) > 0
+	end
+
+	return superFunc(self, turnedOnAnimation)
 end
 
 function Trailer:onRegisterAnimationValueTypes()

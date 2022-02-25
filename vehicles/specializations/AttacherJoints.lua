@@ -51,6 +51,7 @@ function AttacherJoints.registerAttacherJointXMLPaths(schema, baseName)
 	schema:register(XMLValueType.STRING, baseName .. ".subType#name", "If defined this type needs to match with the sub type in the tool")
 	schema:register(XMLValueType.STRING, baseName .. ".subType#brandRestriction", "If defined it's only possible to attach tools from these brands (can be multiple separated by ' ')")
 	schema:register(XMLValueType.STRING, baseName .. ".subType#vehicleRestriction", "If defined it's only possible to attach tools containing these strings in there xml path (can be multiple separated by ' ')")
+	schema:register(XMLValueType.BOOL, baseName .. ".subType#subTypeShowWarning", "Show warning if sub type does not match", true)
 	schema:register(XMLValueType.BOOL, baseName .. "#allowsJointLimitMovement", "Allows joint limit movement", true)
 	schema:register(XMLValueType.BOOL, baseName .. "#allowsLowering", "Allows lowering", true)
 	schema:register(XMLValueType.BOOL, baseName .. "#isDefaultLowered", "Default lowered state", false)
@@ -91,6 +92,7 @@ function AttacherJoints.registerAttacherJointXMLPaths(schema, baseName)
 	schema:register(XMLValueType.VECTOR_3, baseName .. "#transLimitDamping", "Translation limit damping", "1 1 1")
 	schema:register(XMLValueType.VECTOR_3, baseName .. "#transLimitForceLimit", "Translation limit force limit", "-1 -1 -1")
 	schema:register(XMLValueType.FLOAT, baseName .. "#moveTime", "Move time", 0.5)
+	schema:register(XMLValueType.VECTOR_N, baseName .. "#disabledByAttacherJoints", "This attacher becomes unavailable after attaching something to these attacher joint indices")
 	schema:register(XMLValueType.BOOL, baseName .. "#enableCollision", "Collision between vehicle is enabled", false)
 	schema:register(XMLValueType.STRING, baseName .. ".topArm#filename", "Path to top arm i3d file")
 	schema:register(XMLValueType.NODE_INDEX, baseName .. ".topArm#baseNode", "Link node for upper link")
@@ -1508,8 +1510,12 @@ function AttacherJoints:attachImplementFromInfo(info)
 		local attacherJoints = info.attacherVehicle.spec_attacherJoints.attacherJoints
 
 		if attacherJoints[info.attacherVehicleJointDescIndex].jointIndex == 0 and info.attachable.isAddedToMission then
-			if info.attachable:getActiveInputAttacherJointDescIndex() ~= nil and info.attachable:getAllowMultipleAttachments() then
-				info.attachable:resolveMultipleAttachments()
+			if info.attachable:getActiveInputAttacherJointDescIndex() ~= nil then
+				if info.attachable:getAllowMultipleAttachments() then
+					info.attachable:resolveMultipleAttachments()
+				else
+					return false
+				end
 			end
 
 			if GS_IS_MOBILE_VERSION then
@@ -2397,7 +2403,21 @@ function AttacherJoints:startAttacherJointCombo(force)
 end
 
 function AttacherJoints:getIsAttachingAllowed(attacherJoint)
-	return attacherJoint.jointIndex == 0
+	if attacherJoint.jointIndex ~= 0 then
+		return false
+	end
+
+	if attacherJoint.disabledByAttacherJoints ~= nil and #attacherJoint.disabledByAttacherJoints > 0 then
+		for i = 1, #attacherJoint.disabledByAttacherJoints do
+			local jointIndex = attacherJoint.disabledByAttacherJoints[i]
+
+			if self:getImplementByJointDescIndex(jointIndex) ~= nil then
+				return false
+			end
+		end
+	end
+
+	return true
 end
 
 function AttacherJoints:getCanSteerAttachable(attachable)
@@ -2779,6 +2799,7 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 		attacherJoint.vehicleRestrictions = nil
 	end
 
+	attacherJoint.subTypeShowWarning = xmlFile:getValue(baseName .. ".subType#subTypeShowWarning", true)
 	attacherJoint.allowsJointLimitMovement = xmlFile:getValue(baseName .. "#allowsJointLimitMovement", true)
 	attacherJoint.allowsLowering = xmlFile:getValue(baseName .. "#allowsLowering", true)
 	attacherJoint.isDefaultLowered = xmlFile:getValue(baseName .. "#isDefaultLowered", false)
@@ -2930,6 +2951,7 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 	attacherJoint.transLimitForceLimit = xmlFile:getValue(baseName .. "#transLimitForceLimit", "-1 -1 -1", true)
 	attacherJoint.moveDefaultTime = xmlFile:getValue(baseName .. "#moveTime", 0.5) * 1000
 	attacherJoint.moveTime = attacherJoint.moveDefaultTime
+	attacherJoint.disabledByAttacherJoints = xmlFile:getValue(baseName .. "#disabledByAttacherJoints", nil, true)
 	attacherJoint.enableCollision = xmlFile:getValue(baseName .. "#enableCollision", false)
 	local topArmFilename = xmlFile:getValue(baseName .. ".topArm#filename")
 
@@ -2938,23 +2960,24 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 
 		if baseNode ~= nil then
 			topArmFilename = Utils.getFilename(topArmFilename, self.baseDirectory)
-			attacherJoint.sharedLoadRequestIdTopArm = self:loadSubSharedI3DFile(topArmFilename, false, false, self.onTopArmI3DLoaded, self, {
-				xmlFile,
-				baseName,
-				attacherJoint,
-				baseNode
-			})
+			local arguments = {
+				xmlFile = xmlFile,
+				baseName = baseName,
+				attacherJoint = attacherJoint,
+				baseNode = baseNode
+			}
+			attacherJoint.sharedLoadRequestIdTopArm = self:loadSubSharedI3DFile(topArmFilename, false, false, self.onTopArmI3DLoaded, self, arguments)
 		end
 	else
-		local rotationNode = xmlFile:getValue(baseName .. ".topArm#rotationNode", nil, self.components, self.i3dMappings)
+		local topArmRotationNode = xmlFile:getValue(baseName .. ".topArm#rotationNode", nil, self.components, self.i3dMappings)
 		local translationNode = xmlFile:getValue(baseName .. ".topArm#translationNode", nil, self.components, self.i3dMappings)
 		local referenceNode = xmlFile:getValue(baseName .. ".topArm#referenceNode", nil, self.components, self.i3dMappings)
 
-		if rotationNode ~= nil then
+		if topArmRotationNode ~= nil then
 			local topArm = {
-				rotationNode = rotationNode
+				rotationNode = topArmRotationNode
 			}
-			topArm.rotX, topArm.rotY, topArm.rotZ = getRotation(rotationNode)
+			topArm.rotX, topArm.rotY, topArm.rotZ = getRotation(topArmRotationNode)
 
 			if translationNode ~= nil and referenceNode ~= nil then
 				topArm.translationNode = translationNode
@@ -2978,19 +3001,19 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 		end
 	end
 
-	local rotationNode = xmlFile:getValue(baseName .. ".bottomArm#rotationNode", nil, self.components, self.i3dMappings)
+	local bottomArmRotationNode = xmlFile:getValue(baseName .. ".bottomArm#rotationNode", nil, self.components, self.i3dMappings)
 	local translationNode = xmlFile:getValue(baseName .. ".bottomArm#translationNode", nil, self.components, self.i3dMappings)
 	local referenceNode = xmlFile:getValue(baseName .. ".bottomArm#referenceNode", nil, self.components, self.i3dMappings)
 
-	if rotationNode ~= nil then
+	if bottomArmRotationNode ~= nil then
 		local bottomArm = {
-			rotationNode = rotationNode,
+			rotationNode = bottomArmRotationNode,
 			rotationNodeDir = createTransformGroup("rotationNodeDirTemp")
 		}
 
-		link(getParent(rotationNode), bottomArm.rotationNodeDir)
-		setTranslation(bottomArm.rotationNodeDir, getTranslation(rotationNode))
-		setRotation(bottomArm.rotationNodeDir, getRotation(rotationNode))
+		link(getParent(bottomArmRotationNode), bottomArm.rotationNodeDir)
+		setTranslation(bottomArm.rotationNodeDir, getTranslation(bottomArmRotationNode))
+		setRotation(bottomArm.rotationNodeDir, getRotation(bottomArmRotationNode))
 
 		bottomArm.lastDirection = {
 			0,
@@ -2998,7 +3021,7 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 			0
 		}
 		bottomArm.rotX, bottomArm.rotY, bottomArm.rotZ = xmlFile:getValue(baseName .. ".bottomArm#startRotation", {
-			getRotation(rotationNode)
+			getRotation(bottomArmRotationNode)
 		})
 
 		function bottomArm.interpolatorGet()
@@ -3017,7 +3040,7 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 			bottomArm.bottomArmInterpolating = false
 		end
 
-		bottomArm.interpolatorKey = rotationNode .. "rotation"
+		bottomArm.interpolatorKey = bottomArmRotationNode .. "rotation"
 		bottomArm.bottomArmInterpolating = false
 
 		if translationNode ~= nil and referenceNode ~= nil then
@@ -3042,10 +3065,11 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 
 		if jointType == AttacherJoints.JOINTTYPE_IMPLEMENT then
 			local toolbarI3dFilename = Utils.getFilename(xmlFile:getValue(baseName .. ".toolbar#filename", "$data/shared/assets/toolbar.i3d"), self.baseDirectory)
-			bottomArm.sharedLoadRequestIdToolbar = self:loadSubSharedI3DFile(toolbarI3dFilename, false, false, self.onBottomArmToolbarI3DLoaded, self, {
-				bottomArm,
-				referenceNode
-			})
+			local arguments = {
+				bottomArm = bottomArm,
+				referenceNode = referenceNode
+			}
+			bottomArm.sharedLoadRequestIdToolbar = self:loadSubSharedI3DFile(toolbarI3dFilename, false, false, self.onBottomArmToolbarI3DLoaded, self, arguments)
 		end
 
 		attacherJoint.bottomArm = bottomArm
@@ -3120,9 +3144,11 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 end
 
 function AttacherJoints:onTopArmI3DLoaded(i3dNode, failedReason, args)
-	local xmlFile, baseName, attacherJoint, baseNode = unpack(args)
-
 	if i3dNode ~= 0 then
+		local xmlFile = args.xmlFile
+		local baseName = args.baseName
+		local attacherJoint = args.attacherJoint
+		local baseNode = args.baseNode
 		local rootNode = getChildAt(i3dNode, 0)
 
 		link(baseNode, rootNode)
@@ -3232,7 +3258,8 @@ function AttacherJoints:onTopArmI3DLoaded(i3dNode, failedReason, args)
 end
 
 function AttacherJoints:onBottomArmToolbarI3DLoaded(i3dNode, failedReason, args)
-	local bottomArm, referenceNode = unpack(args)
+	local bottomArm = args.bottomArm
+	local referenceNode = args.referenceNode
 
 	if i3dNode ~= 0 then
 		local rootNode = getChildAt(i3dNode, 0)
@@ -3913,7 +3940,11 @@ function AttacherJoints.getAttacherJointCompatibility(vehicle, attacherJoint, in
 		end
 
 		if not found then
-			return false, vehicle.spec_attacherJoints.texts.warningToolNotCompatible
+			if attacherJoint.subTypeShowWarning then
+				return false, vehicle.spec_attacherJoints.texts.warningToolNotCompatible
+			end
+
+			return false
 		end
 	elseif inputAttacherJoint.subTypes ~= nil then
 		if inputAttacherJoint.subTypeShowWarning then

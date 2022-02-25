@@ -90,30 +90,30 @@ function HandTool:load(xmlFilename, player, asyncCallbackFunction, asyncCallback
 
 	g_i3DManager:pinSharedI3DFileInCache(self.i3dFilename)
 
+	local arguments = {
+		xmlFile = xmlFile,
+		asyncCallbackFunction = asyncCallbackFunction,
+		asyncCallbackArguments = asyncCallbackArguments
+	}
+
 	if asyncCallbackFunction ~= nil then
-		self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(self.i3dFilename, false, false, self.handToolI3DLoaded, self, {
-			xmlFile,
-			asyncCallbackFunction,
-			asyncCallbackArguments
-		})
+		self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(self.i3dFilename, false, false, self.handToolI3DLoaded, self, arguments)
 	else
 		local i3dNode, sharedLoadRequestId, failedReason = g_i3DManager:loadSharedI3DFile(self.i3dFilename, false, false)
 		self.sharedLoadRequestId = sharedLoadRequestId
 
-		self:handToolI3DLoaded(i3dNode, failedReason, {
-			xmlFile,
-			asyncCallbackFunction,
-			asyncCallbackArguments
-		})
+		self:handToolI3DLoaded(i3dNode, failedReason, arguments)
 	end
 
 	return true
 end
 
 function HandTool:handToolI3DLoaded(i3dNode, failedReason, args)
-	local xmlFile, asyncCallbackFunction, asyncCallbackArguments = unpack(args)
-
 	if i3dNode ~= 0 then
+		local xmlFile = args.xmlFile
+		local asyncCallbackFunction = args.asyncCallbackFunction
+		local asyncCallbackArguments = args.asyncCallbackArguments
+
 		if not self.isDeleted then
 			self.rootNode = getChildAt(i3dNode, 0)
 			local numChildren = getNumOfChildren(i3dNode)

@@ -108,10 +108,11 @@ function ConnectionHoseManager:loadConnectionHosesFromXML(xmlFilename, customEnv
 			if filename ~= nil then
 				xmlFile.references = xmlFile.references + 1
 				filename = Utils.getFilename(filename, baseDirectory)
-				local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.basicHoseI3DFileLoaded, self, {
-					xmlFile,
-					hoseKey
-				})
+				local arguments = {
+					xmlFile = xmlFile,
+					hoseKey = hoseKey
+				}
+				local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.basicHoseI3DFileLoaded, self, arguments)
 
 				table.insert(self.sharedLoadRequestIds, sharedLoadRequestId)
 			end
@@ -168,12 +169,13 @@ function ConnectionHoseManager:loadConnectionHosesFromXML(xmlFilename, customEnv
 					if filename ~= nil then
 						xmlFile.references = xmlFile.references + 1
 						filename = Utils.getFilename(filename, baseDirectory)
-						local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.adapterI3DFileLoaded, self, {
-							hoseType,
-							adapterName,
-							xmlFile,
-							adapterKey
-						})
+						local arguments = {
+							hoseType = hoseType,
+							adapterName = adapterName,
+							xmlFile = xmlFile,
+							adapterKey = adapterKey
+						}
+						local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.adapterI3DFileLoaded, self, arguments)
 
 						table.insert(self.sharedLoadRequestIds, sharedLoadRequestId)
 					end
@@ -202,12 +204,13 @@ function ConnectionHoseManager:loadConnectionHosesFromXML(xmlFilename, customEnv
 					if filename ~= nil then
 						xmlFile.references = xmlFile.references + 1
 						filename = Utils.getFilename(filename, baseDirectory)
-						local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.materialI3DFileLoaded, self, {
-							hoseType,
-							hoseName,
-							xmlFile,
-							hoseKey
-						})
+						local arguments = {
+							hoseType = hoseType,
+							hoseName = hoseName,
+							xmlFile = xmlFile,
+							hoseKey = hoseKey
+						}
+						local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.materialI3DFileLoaded, self, arguments)
 
 						table.insert(self.sharedLoadRequestIds, sharedLoadRequestId)
 					end
@@ -239,11 +242,12 @@ function ConnectionHoseManager:loadConnectionHosesFromXML(xmlFilename, customEnv
 			if name ~= nil and filename ~= nil then
 				xmlFile.references = xmlFile.references + 1
 				filename = Utils.getFilename(filename, baseDirectory)
-				local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.socketI3DFileLoaded, self, {
-					name,
-					xmlFile,
-					socketKey
-				})
+				local arguments = {
+					name = name,
+					xmlFile = xmlFile,
+					socketKey = socketKey
+				}
+				local sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.socketI3DFileLoaded, self, arguments)
 
 				table.insert(self.sharedLoadRequestIds, sharedLoadRequestId)
 			end
@@ -262,7 +266,8 @@ function ConnectionHoseManager:loadConnectionHosesFromXML(xmlFilename, customEnv
 end
 
 function ConnectionHoseManager:basicHoseI3DFileLoaded(i3dNode, failedReason, args)
-	local xmlFile, hoseKey = unpack(args)
+	local xmlFile = args.xmlFile
+	local hoseKey = args.hoseKey
 
 	if i3dNode ~= nil and i3dNode ~= 0 then
 		local node = xmlFile:getValue(hoseKey .. "#node", nil, i3dNode)
@@ -316,7 +321,10 @@ function ConnectionHoseManager:basicHoseI3DFileLoaded(i3dNode, failedReason, arg
 end
 
 function ConnectionHoseManager:adapterI3DFileLoaded(i3dNode, failedReason, args)
-	local hoseType, adapterName, xmlFile, adapterKey = unpack(args)
+	local hoseType = args.hoseType
+	local adapterName = args.adapterName
+	local xmlFile = args.xmlFile
+	local adapterKey = args.adapterKey
 
 	if i3dNode ~= nil and i3dNode ~= 0 then
 		local node = xmlFile:getValue(adapterKey .. "#node", nil, i3dNode)
@@ -354,7 +362,10 @@ function ConnectionHoseManager:adapterI3DFileLoaded(i3dNode, failedReason, args)
 end
 
 function ConnectionHoseManager:materialI3DFileLoaded(i3dNode, failedReason, args)
-	local hoseType, hoseName, xmlFile, hoseKey = unpack(args)
+	local hoseType = args.hoseType
+	local hoseName = args.hoseName
+	local xmlFile = args.xmlFile
+	local hoseKey = args.hoseKey
 
 	if i3dNode ~= nil and i3dNode ~= 0 then
 		local materialNode = xmlFile:getValue(hoseKey .. "#materialNode", nil, i3dNode)
@@ -384,7 +395,9 @@ function ConnectionHoseManager:materialI3DFileLoaded(i3dNode, failedReason, args
 end
 
 function ConnectionHoseManager:socketI3DFileLoaded(i3dNode, failedReason, args)
-	local name, xmlFile, socketKey = unpack(args)
+	local name = args.name
+	local xmlFile = args.xmlFile
+	local socketKey = args.socketKey
 
 	if i3dNode ~= nil and i3dNode ~= 0 then
 		local node = xmlFile:getValue(socketKey .. "#node", nil, i3dNode)

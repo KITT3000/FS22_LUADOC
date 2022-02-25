@@ -97,6 +97,7 @@ function ConstructionScreen:onOpen()
 	self:rebuildData()
 	self:resetMenuState()
 	self:updateMenuState()
+	self.messageCenter:subscribe(MessageType.SLOT_USAGE_CHANGED, self.onSlotUsageChanged, self)
 end
 
 function ConstructionScreen:onClose(element)
@@ -316,6 +317,8 @@ end
 
 function ConstructionScreen:onButtonMenuAccept()
 	if self.isMouseMode or self.brush == self.selectorBrush then
+		self.dragIsLocked = true
+
 		g_gui:notifyControls("MENU_ACCEPT")
 	else
 		self:onButtonPrimary()
@@ -486,14 +489,20 @@ function ConstructionScreen:onButtonPrimary(_, inputValue, _, isAnalog, isMouse)
 	end
 end
 
-function ConstructionScreen:onButtonPrimaryDrag(a, inputValue, b, isAnalog, isMouse)
+function ConstructionScreen:onButtonPrimaryDrag(_, inputValue, _, isAnalog, isMouse)
 	if not self.isMouseInMenu then
 		local isDown = inputValue == 1 and self.previousPrimaryDragValue ~= 1
 		local isDrag = inputValue == 1 and self.previousPrimaryDragValue == 1
 		local isUp = inputValue == 0
 		self.previousPrimaryDragValue = inputValue
 
-		self.brush:onButtonPrimary(isDown, isDrag, isUp)
+		if self.dragIsLocked then
+			if isUp then
+				self.dragIsLocked = false
+			end
+		else
+			self.brush:onButtonPrimary(isDown, isDrag, isUp)
+		end
 	end
 end
 
@@ -503,7 +512,7 @@ function ConstructionScreen:onButtonSecondary(_, inputValue, _, isAnalog, isMous
 	end
 end
 
-function ConstructionScreen:onButtonSecondaryDrag(a, inputValue, b, isAnalog, isMouse)
+function ConstructionScreen:onButtonSecondaryDrag(_, inputValue, _, isAnalog, isMouse)
 	if not self.isMouseInMenu then
 		local isDown = inputValue == 1 and self.previousSecondaryDragValue ~= 1
 		local isDrag = inputValue == 1 and self.previousSecondaryDragValue == 1
@@ -618,6 +627,10 @@ function ConstructionScreen:onClickItem()
 	self.itemList:reloadData()
 end
 
+function ConstructionScreen:refreshDetails()
+	self:onListSelectionChanged(self.itemList, 1, self.itemList.selectedIndex)
+end
+
 function ConstructionScreen:assignItemFillTypesData(baseIconProfile, iconFilenames, attributeIndex)
 	local parentBox = self.attrIconsLayout[attributeIndex]
 
@@ -670,10 +683,13 @@ function ConstructionScreen:assignItemTextData(storeItem, displayItem)
 		local attributeVisible = false
 
 		if displayItem ~= nil and i <= #displayItem.attributeValues then
-			local value = displayItem.attributeValues[i]
+			local value = tostring(displayItem.attributeValues[i])
 			local profile = displayItem.attributeIconProfiles[i]
 
 			if profile ~= nil and profile ~= "" then
+				local slotCount = string.format("(%0d / %0d)", g_currentMission.slotSystem.slotUsage, g_currentMission.slotSystem.slotLimit)
+				value = value:gsub("%$SLOTS%$", slotCount)
+
 				self.attrValue[i]:setText(value)
 				self.attrValue[i]:updateAbsolutePosition()
 
@@ -744,6 +760,10 @@ function ConstructionScreen:updateMarqueeAnimation(dt)
 
 		self.marqueeBoxes[box] = time
 	end
+end
+
+function ConstructionScreen:onSlotUsageChanged()
+	self:refreshDetails()
 end
 
 function ConstructionScreen:rebuildData()
