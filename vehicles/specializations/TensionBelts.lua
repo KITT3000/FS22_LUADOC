@@ -757,10 +757,16 @@ function TensionBelts:lockTensionBeltObject(objectId, objectsToJointTable, isDyn
 				object = object
 			}
 		elseif useKinematicMount then
+			local parentNode = getParent(objectId)
 			local x, y, z = localToLocal(objectId, jointNode, 0, 0, 0)
 			local rx, ry, rz = localRotationToLocal(objectId, jointNode, 0, 0, 0)
 
 			object:mountKinematic(self, jointNode, x, y, z, rx, ry, rz)
+
+			objectsToJointTable[objectId] = {
+				parent = parentNode,
+				object = object
+			}
 		elseif useSplitShapeMount then
 			local parentNode = getParent(objectId)
 			local x, y, z = localToLocal(objectId, jointNode, 0, 0, 0)

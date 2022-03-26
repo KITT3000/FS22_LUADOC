@@ -87,8 +87,6 @@ function onWaitForPendingGameSession()
 		else
 			g_startupScreen:onStartupEnd()
 		end
-	else
-		OnInGameMenuMenu()
 	end
 
 	g_gui:showInfoDialog({

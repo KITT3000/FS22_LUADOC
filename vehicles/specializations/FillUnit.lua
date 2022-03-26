@@ -2356,7 +2356,7 @@ function FillUnit:showInfo(superFunc, box)
 end
 
 function FillUnit:loadLevelerNodeFromXML(superFunc, levelerNode, xmlFile, key)
-	levelerNode.fillUnitIndex = xmlFile:getValue(key .. "#fillUnitIndex", 1)
+	levelerNode.limitFillUnitIndex = xmlFile:getValue(key .. "#fillUnitIndex", 1)
 	levelerNode.minFillLevel = xmlFile:getValue(key .. "#minFillLevel", 0)
 	levelerNode.maxFillLevel = xmlFile:getValue(key .. "#maxFillLevel", 1)
 
@@ -2364,7 +2364,7 @@ function FillUnit:loadLevelerNodeFromXML(superFunc, levelerNode, xmlFile, key)
 end
 
 function FillUnit:getIsLevelerPickupNodeActive(superFunc, levelerNode)
-	local fillLevelPct = self:getFillUnitFillLevelPercentage(levelerNode.fillUnitIndex)
+	local fillLevelPct = self:getFillUnitFillLevelPercentage(levelerNode.limitFillUnitIndex)
 
 	if fillLevelPct < levelerNode.minFillLevel or levelerNode.maxFillLevel < fillLevelPct then
 		return false

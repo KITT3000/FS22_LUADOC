@@ -55,6 +55,12 @@ function RenderElement:createScene()
 end
 
 function RenderElement:destroyScene()
+	if self.loadingRequestId ~= nil then
+		g_i3DManager:cancelStreamI3DFile(self.loadingRequestId)
+
+		self.loadingRequestId = nil
+	end
+
 	if self.overlay ~= 0 then
 		delete(self.overlay)
 
@@ -75,24 +81,32 @@ function RenderElement:setScene(filename)
 		self.scene = nil
 	end
 
+	if self.loadingRequestId ~= nil then
+		g_i3DManager:cancelStreamI3DFile(self.loadingRequestId)
+
+		self.loadingRequestId = nil
+	end
+
 	self.isLoading = true
 	self.filename = filename
-
-	g_i3DManager:loadI3DFileAsync(filename, false, false, RenderElement.setSceneFinished, self, nil)
+	self.loadingRequestId = g_i3DManager:loadI3DFileAsync(filename, false, false, RenderElement.setSceneFinished, self, nil)
 end
 
 function RenderElement:setSceneFinished(node, failedReason, args)
 	self.isLoading = false
+	self.loadingRequestId = nil
 
 	if failedReason == LoadI3DFailedReason.FILE_NOT_FOUND or failedReason == LoadI3DFailedReason.UNKNOWN then
 		Logging.error("Failed to load character creation scene from '%s'", self.filename)
 	end
 
-	if node ~= 0 then
+	if failedReason == LoadI3DFailedReason.NONE then
 		self.scene = node
 
 		link(getRootNode(), node)
 		self:createOverlay()
+	elseif node ~= 0 then
+		delete(node)
 	end
 end
 

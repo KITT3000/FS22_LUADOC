@@ -1137,7 +1137,7 @@ function SettingsModel:getLanguageTexts()
 end
 
 function SettingsModel:getIsLanguageDisabled()
-	return #g_availableLanguagesTable <= 1 or GS_IS_STEAM_VERSION
+	return #g_availableLanguagesTable <= 1 or GS_IS_STEAM_VERSION or GS_PLATFORM_GGP
 end
 
 function SettingsModel:getPerformanceClassTexts()

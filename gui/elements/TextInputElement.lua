@@ -35,7 +35,6 @@ function TextInputElement.new(target, custom_mt)
 	self.backDotsText = "..."
 	self.text = ""
 	self.useIme = imeIsSupported()
-	self.useImeForMouse = GS_PLATFORM_GGP and self.useIme
 	self.preImeText = ""
 	self.imeActive = false
 	self.blockTime = 0
@@ -319,7 +318,7 @@ function TextInputElement:mouseEvent(posX, posY, isDown, isUp, button, eventUsed
 				if isDown and button == Input.MOUSE_BUTTON_LEFT then
 					self.textInputMouseDown = true
 
-					if not self.useImeForMouse then
+					if not self.useIme then
 						self:setOverlayState(GuiOverlay.STATE_PRESSED)
 					end
 				end
@@ -330,7 +329,7 @@ function TextInputElement:mouseEvent(posX, posY, isDown, isUp, button, eventUsed
 					self:setOverlayState(GuiOverlay.STATE_PRESSED)
 					self:setForcePressed(true)
 
-					if self.useImeForMouse then
+					if self.useIme then
 						self:openIme()
 					end
 				end
@@ -507,25 +506,21 @@ function TextInputElement:keyEvent(unicode, sym, modifier, isDown, eventUsed)
 end
 
 function TextInputElement:inputEvent(action, value, eventUsed)
-	if self.blockTime <= 0 and not self.useIme and self:getIsActive() and self:getOverlayState() == GuiOverlay.STATE_PRESSED then
+	if self.blockTime <= 0 and not self.imeActive and self:getIsActive() and self:getOverlayState() == GuiOverlay.STATE_PRESSED then
 		if action == InputAction.MENU_ACCEPT then
 			if self.forcePressed then
-				self:abortIme()
 				self:setForcePressed(false)
 			else
-				self:openIme()
 				self:setForcePressed(true)
 			end
 
 			self:raiseCallback("onEnterPressedCallback", self)
 
 			eventUsed = true
-		elseif action == InputAction.MENU_CANCEL or action == InputAction.MENU_BACK and g_inputBinding:getInputHelpMode() == GS_INPUT_HELP_MODE_GAMEPAD then
+		elseif action == InputAction.MENU_CANCEL or action == InputAction.MENU_BACK then
 			if self.forcePressed then
-				self:abortIme()
 				self:setForcePressed(false)
 			else
-				self:openIme()
 				self:setForcePressed(true)
 			end
 

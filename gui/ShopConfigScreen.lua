@@ -1697,6 +1697,8 @@ function ShopConfigScreen:getOrCreateConfigItem(type)
 		self.configurationLayout:addElement(item)
 	end
 
+	item:setVisible(true)
+
 	item.focusId = nil
 
 	FocusManager:loadElementFromCustomValues(item)
@@ -1743,6 +1745,8 @@ function ShopConfigScreen:getOrCreateLargeConfigItem(type)
 
 		self.configurationLayout:addElement(item)
 	end
+
+	item:setVisible(true)
 
 	item.focusId = nil
 
@@ -1893,14 +1897,27 @@ function ShopConfigScreen:updateSubConfigOptionElement(configElementIndex, optio
 end
 
 function ShopConfigScreen:updateConfigOptionsData(storeItem, vehicle, saleItem)
+	if self.licensePlate ~= nil then
+		self.licensePlate:delete()
+
+		self.licensePlate = nil
+	end
+
+	if self.licensePlateRender ~= nil then
+		self.licensePlateRender:destroyScene()
+
+		self.licensePlateRender = nil
+	end
+
 	local displayableOptionCount = 0
 	local count = 0
 
 	for i = #self.configurationLayout.elements, 1, -1 do
 		local item = self.configurationLayout.elements[i]
 
-		item:unlinkElement()
+		item:setVisible(false)
 		FocusManager:removeElement(item)
+		item:unlinkElement()
 
 		if item.profile == "shopConfigConfigurationItem" then
 			table.insert(self.configItemCache, item)
@@ -2025,25 +2042,11 @@ function ShopConfigScreen:updateConfigOptionsData(storeItem, vehicle, saleItem)
 
 		listElement:getDescendantByName("title"):setText(self.l10n:getText("ui_licensePlate"))
 
-		if self.licensePlate ~= nil then
-			self.licensePlate:delete()
-
-			self.licensePlate = nil
-		end
-
 		self.licensePlateRender = listElement:getDescendantByName("plate")
 
 		self.licensePlateRender:createScene()
 
 		count = count + 1
-	else
-		if self.licensePlateRender ~= nil then
-			self.licensePlateRender:destroyScene()
-
-			self.licensePlate = nil
-		end
-
-		self.licensePlateRender = nil
 	end
 
 	self.displayableOptionCount = displayableOptionCount
@@ -2175,6 +2178,10 @@ function ShopConfigScreen:onRenderLoad(scene, overlay)
 		setTranslation(licensePlate.node, 0, 0, 0)
 		setRotation(licensePlate.node, 0, 0, 0)
 
+		if self.licensePlate ~= nil then
+			self.licensePlate:delete()
+		end
+
 		self.licensePlate = licensePlate
 
 		self:updateLicensePlateGraphics()
@@ -2243,7 +2250,12 @@ function ShopConfigScreen:onClose()
 	setVisibility(self.workshopRootNode, false)
 	self:deletePreviewVehicles()
 
-	self.licensePlate = nil
+	if self.licensePlate ~= nil then
+		self.licensePlate:delete()
+
+		self.licensePlate = nil
+	end
+
 	self.vehicle = nil
 	self.loadingDelayFrames = 0
 	self.loadingDelayTime = 0
@@ -2255,7 +2267,7 @@ function ShopConfigScreen:onClose()
 	if self.licensePlateRender ~= nil then
 		self.licensePlateRender:destroyScene()
 
-		self.licensePlate = nil
+		self.licensePlateRender = nil
 	end
 
 	self:toggleCustomInputContext(false)

@@ -100,7 +100,7 @@ end
 
 function SettingsGeneralFrame:onFrameOpen()
 	self.isHeadTrackingEnabledElement:setVisible(not GS_PLATFORM_GGP)
-	self.languageElement:setVisible(not GS_PLATFORM_GGP)
+	self.languageElement:setVisible(not self.settingsModel:getIsLanguageDisabled())
 	self.isGamepadEnabledElement:setVisible(not GS_PLATFORM_GGP)
 	self.inputHelpModeElement:setVisible(not GS_PLATFORM_GGP)
 	self.forceFeedbackElement:setVisible(not GS_PLATFORM_GGP)
@@ -110,7 +110,6 @@ end
 
 function SettingsGeneralFrame:onCreateLanguage(element)
 	element:setTexts(self.settingsModel:getLanguageTexts())
-	element:setDisabled(self.settingsModel:getIsLanguageDisabled())
 end
 
 function SettingsGeneralFrame:onCreateMPLanguage(element)
