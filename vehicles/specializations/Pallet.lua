@@ -71,6 +71,8 @@ function Pallet:onLoad(savegame)
 			unload = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.pallet.sounds", "unload", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self)
 		}
 	end
+
+	g_currentMission.slotSystem:addLimitedObject(SlotSystem.LIMITED_OBJECT_PALLET, self)
 end
 
 function Pallet:onDelete()
@@ -79,6 +81,8 @@ function Pallet:onDelete()
 
 		g_soundManager:deleteSamples(spec.samples)
 	end
+
+	g_currentMission.slotSystem:removeLimitedObject(SlotSystem.LIMITED_OBJECT_PALLET, self)
 end
 
 function Pallet:onFillUnitFillLevelChanged(fillUnitIndex, fillLevelDelta, fillType, toolType, fillPositionData, appliedDelta)

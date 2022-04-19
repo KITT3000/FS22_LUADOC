@@ -285,6 +285,21 @@ function XMLSchema:generateSchema()
 				}
 
 				table.insert(parentElement, addedElement)
+			elseif data.sharedName ~= XMLSchema.XML_SHARED_NONE and addedElement.sharedName == XMLSchema.XML_SHARED_NONE then
+				local readdSharedName = true
+				local parts = data.sharedBase:split(".")
+
+				for j = 1, #parts do
+					if parts[j]:gsub("%(%?%)", "") == tag then
+						readdSharedName = false
+
+						break
+					end
+				end
+
+				if readdSharedName then
+					addedElement.sharedName = data.sharedName
+				end
 			end
 
 			if i == #pathParts then
@@ -357,6 +372,10 @@ function XMLSchema:generateSchema()
 		if (data.sharedName ~= XMLSchema.XML_SHARED_NONE or isSub) and #data.children > 0 then
 			for _, subData in ipairs(data.children) do
 				if subData.sharedName == XMLSchema.XML_SHARED_NONE or not self.checkForSharedNames(subData, true) then
+					return false
+				end
+
+				if subData.data ~= nil and subData.data.sharedName == XMLSchema.XML_SHARED_NONE then
 					return false
 				end
 			end

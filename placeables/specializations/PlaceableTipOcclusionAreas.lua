@@ -139,7 +139,7 @@ function PlaceableTipOcclusionAreas:updateTipOcclusionAreas()
 			local minZ = math.min(z1, z2, z3, z4)
 			local maxZ = math.max(z1, z2, z3, z4)
 
-			g_densityMapHeightManager:setCollisionMapAreaDirty(minX, minZ, maxX, maxZ)
+			g_densityMapHeightManager:setCollisionMapAreaDirty(minX, minZ, maxX, maxZ, true)
 		end
 	end
 end

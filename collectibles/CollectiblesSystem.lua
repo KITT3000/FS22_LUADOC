@@ -194,7 +194,9 @@ function CollectiblesSystem:saveToXMLFile(xmlFilename)
 end
 
 function CollectiblesSystem:onClientJoined(connection)
-	connection:sendEvent(CollectibleStateEvent.new(self.collected))
+	if next(self.collected) ~= nil then
+		connection:sendEvent(CollectibleStateEvent.new(self.collected))
+	end
 end
 
 function CollectiblesSystem:onTriggerEvent(index, player)
@@ -307,11 +309,13 @@ function CollectiblesSystem:isCompleted()
 end
 
 function CollectiblesSystem:updateHotspotState()
-	local visible = self.hotspotThreshold <= self:getTotalCollected()
+	if self.hotspotThreshold ~= nil then
+		local visible = self.hotspotThreshold <= self:getTotalCollected()
 
-	for _, info in pairs(self.collectibles) do
-		if info.object ~= nil then
-			info.object:setHotspotVisible(visible)
+		for _, info in pairs(self.collectibles) do
+			if info.object ~= nil then
+				info.object:setHotspotVisible(visible)
+			end
 		end
 	end
 end

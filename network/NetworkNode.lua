@@ -246,9 +246,9 @@ function NetworkNode:drawConnectionNetworkStats(connection, posX, posY, textSize
 	renderText(posX, posY, textSize, string.format("%dms", ping))
 	renderText(posX + 0.016 * textSize / refTextSize, posY, textSize, string.format("w:%2d", connection.lastSeqSent - connection.highestAckedSeq))
 	renderText(posX + 0.029 * textSize / refTextSize, posY, textSize, string.format("d:%4.2fkb/s", download / 1024))
-	renderText(posX + 0.059 * textSize / refTextSize, posY, textSize, string.format("u:%4.2fkb/s", upload / 1024))
-	renderText(posX + 0.092 * textSize / refTextSize, posY, textSize, string.format("l:%4.2f%%", packetLoss * 100))
-	renderText(posX + 0.117 * textSize / refTextSize, posY, textSize, string.format("comp:%.2f%%", 1 / connection.compressionRatio * 100))
+	renderText(posX + 0.061 * textSize / refTextSize, posY, textSize, string.format("u:%4.2fkb/s", upload / 1024))
+	renderText(posX + 0.093 * textSize / refTextSize, posY, textSize, string.format("loss:%4.2f%%", packetLoss * 100))
+	renderText(posX + 0.126 * textSize / refTextSize, posY, textSize, string.format("comp:%.2f%%", 1 / connection.compressionRatio * 100))
 
 	return true
 end
@@ -375,6 +375,9 @@ function NetworkNode:draw()
 		local smoothAlpha = 0.8
 		self.lastUploadedKBsSmooth = self.lastUploadedKBsSmooth * smoothAlpha + self.lastUploadedKBs * (1 - smoothAlpha)
 
+		setTextColor(1, 1, 1, 1)
+		setTextBold(false)
+		setTextAlignment(RenderText.ALIGN_LEFT)
 		renderText(0.01, 0.8, getCorrectTextSize(0.015), string.format("Game Data Upload %.2fkb/s ", self.lastUploadedKBsSmooth))
 
 		local x = self.packetGraphs[1].left - 0.15
@@ -386,7 +389,7 @@ function NetworkNode:draw()
 			self.packetGraphs[i]:draw()
 		end
 
-		local textSize = getCorrectTextSize(0.015)
+		local textSize = getCorrectTextSize(0.014)
 
 		if self.clientConnections ~= nil then
 			local i = 1
@@ -398,14 +401,14 @@ function NetworkNode:draw()
 					local user = g_currentMission.userManager:getUserByConnection(connection)
 
 					if user ~= nil then
-						renderText(0.25, posY, textSize, user:getNickname())
+						renderText(0.255, posY, textSize, user:getNickname())
 					end
 
 					i = i + 1
 				end
 			end
 		elseif self.serverConnection ~= nil then
-			self:drawConnectionNetworkStats(self.serverConnection, 0.01, 0.8, textSize)
+			self:drawConnectionNetworkStats(self.serverConnection, 0.01, 0.8 - textSize * 1.1, textSize)
 		end
 	end
 

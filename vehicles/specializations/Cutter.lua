@@ -1080,7 +1080,7 @@ function Cutter:getCutterTiltIsAvailable()
 end
 
 function Cutter:getCutterTiltIsActive(automaticTilt)
-	if not automaticTilt.isAvailable or not self:getIsActive() then
+	if not automaticTilt.isAvailable or not self.isActive then
 		return false, false
 	end
 
@@ -1093,8 +1093,9 @@ end
 
 function Cutter:getCutterTiltDelta()
 	local spec = self.spec_cutter
+	local isActive = self:getCutterTiltIsActive(spec.automaticTilt)
 
-	return spec.automaticTilt.currentDelta, self:getCutterTiltIsActive(spec.automaticTilt)
+	return isActive and spec.automaticTilt.currentDelta or 0, isActive
 end
 
 function Cutter:tiltRaycastDetectionCallback(hitObjectId, x, y, z, distance)

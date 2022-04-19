@@ -8,12 +8,16 @@ function ShopDisplayItem.new(storeItem, concreteItem, attributeIconProfiles, att
 	self.concreteItem = concreteItem or ShopDisplayItem.NO_CONCRETE_ITEM
 	self.attributeIconProfiles = attributeIconProfiles or {}
 	self.attributeValues = attributeValues or {}
-	self.fillTypeIconFilenames = iconFilenames.fillTypeIconFilenames or {}
-	self.seedTypeIconFilenames = iconFilenames.seedTypeIconFilenames or {}
-	self.foodFillTypeIconFilenames = iconFilenames.foodFillTypeIconFilenames or {}
-	self.prodPointInputFillTypeIconFilenames = iconFilenames.prodPointInputFillTypeIconFilenames or {}
-	self.prodPointOutputFillTypeIconFilenames = iconFilenames.prodPointOutputFillTypeIconFilenames or {}
-	self.sellingStationFillTypesIconFilenames = iconFilenames.sellingStationFillTypesIconFilenames or {}
+
+	if iconFilenames ~= nil then
+		self.fillTypeIconFilenames = iconFilenames.fillTypeIconFilenames or {}
+		self.seedTypeIconFilenames = iconFilenames.seedTypeIconFilenames or {}
+		self.foodFillTypeIconFilenames = iconFilenames.foodFillTypeIconFilenames or {}
+		self.prodPointInputFillTypeIconFilenames = iconFilenames.prodPointInputFillTypeIconFilenames or {}
+		self.prodPointOutputFillTypeIconFilenames = iconFilenames.prodPointOutputFillTypeIconFilenames or {}
+		self.sellingStationFillTypesIconFilenames = iconFilenames.sellingStationFillTypesIconFilenames or {}
+	end
+
 	self.functionText = functionText
 	self.orderValue = orderValue
 	self.numOwned = numOwned

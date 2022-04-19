@@ -23,6 +23,11 @@ end
 function FertilizerMotionPathEffect:update(dt)
 	if (self.state == MotionPathEffect.STATE_TURNING_ON or self.state == MotionPathEffect.STATE_ON) and self.parent.getVariableWorkWidth ~= nil then
 		local currentWidth, maxWidth, isValid = self.parent:getVariableWorkWidth(self.isLeft)
+
+		if self.textureRealWidth ~= nil then
+			maxWidth = self.textureRealWidth * MathUtil.sign(maxWidth)
+		end
+
 		self.fadeVisibilityMax = 1 - currentWidth / maxWidth
 
 		if not isValid then

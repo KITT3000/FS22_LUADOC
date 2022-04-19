@@ -319,7 +319,7 @@ function UnloadingStation:hasFarmAccessToStorage(farmId, storage)
 	if self.hasStoragePerFarm then
 		return farmId == storage:getOwnerFarmId()
 	else
-		return g_currentMission.accessHandler:canFarmAccess(farmId, storage)
+		return g_currentMission.accessHandler:canFarmAccess(farmId, storage, true)
 	end
 end
 

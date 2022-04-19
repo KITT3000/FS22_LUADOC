@@ -25,7 +25,9 @@ ShopItemsFrame.CONTROLS = {
 	"shopListAttributeInfo",
 	"detailBox",
 	"attrVehicleValue",
-	"priceBox"
+	"attrVehicleValueIcon",
+	"priceBox",
+	"moneySlotBox"
 }
 ShopItemsFrame.SLOTS_USAGE_CRITICAL_THRESHOLD = 0.9
 
@@ -49,6 +51,16 @@ function ShopItemsFrame.new(subclass_mt, shopController, l10n, brandManager)
 	return self
 end
 
+function ShopItemsFrame.createFromExistingGui(gui, guiName)
+	local newGui = ShopItemsFrame.new(nil, gui.shopController, gui.l10n, gui.brandManager)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function ShopItemsFrame:copyAttributes(src)
 	ShopItemsFrame:superClass().copyAttributes(self, src)
 
@@ -68,6 +80,10 @@ function ShopItemsFrame:initialize()
 
 	self.shopSlotsIcon:setVisible(slotsVisible)
 	self.shopSlotsText:setVisible(slotsVisible)
+
+	if self.moneySlotBox ~= nil then
+		self.moneySlotBox:invalidateLayout()
+	end
 end
 
 function ShopItemsFrame:onFrameOpen()
@@ -94,11 +110,9 @@ function ShopItemsFrame:setItemSelectCallback(itemSelectedCallback)
 end
 
 function ShopItemsFrame:setHeader(headerIconUVs, headerText)
-	if not GS_IS_MOBILE_VERSION then
-		self.itemsHeaderIcon:setImageUVs(nil, unpack(headerIconUVs))
-		self.itemsHeaderText:setText(headerText)
-		self.itemsHeaderText:updateAbsolutePosition()
-	end
+	self.itemsHeaderIcon:setImageUVs(nil, unpack(headerIconUVs))
+	self.itemsHeaderText:setText(headerText)
+	self.itemsHeaderText:updateAbsolutePosition()
 end
 
 function ShopItemsFrame:setCategory(categoryIconUVs, rootName, categoryName, isSpecial, secondaryCategoryName, headerTitleOverride)
@@ -168,6 +182,10 @@ function ShopItemsFrame:setSlotsUsage(slotsUsage, maxSlots)
 
 	self.shopSlotsIcon:setVisible(slotsVisible)
 	self.shopSlotsText:setVisible(slotsVisible)
+
+	if self.moneySlotBox ~= nil then
+		self.moneySlotBox:invalidateLayout()
+	end
 end
 
 function ShopItemsFrame:setDisplayItems(displayItems, areItemsOwned)
@@ -212,7 +230,7 @@ function ShopItemsFrame:assignItemFillTypesData(baseIconProfile, iconFilenames, 
 		return attributeIndex
 	end
 
-	if attributeIndex > #self.attrValue or #iconFilenames == 0 then
+	if attributeIndex > #self.attrValue or iconFilenames == nil or #iconFilenames == 0 then
 		parentBox.parent:setVisible(false)
 
 		return attributeIndex
@@ -255,7 +273,7 @@ function ShopItemsFrame:assignItemFillTypesData(baseIconProfile, iconFilenames, 
 end
 
 function ShopItemsFrame:assignItemTextData(displayItem)
-	if self.attrVehicleValue ~= nil then
+	if Platform.isMobile and self.attrVehicleValue ~= nil then
 		local storeItem = displayItem.storeItem
 		local concreteItem = nil
 
@@ -264,7 +282,8 @@ function ShopItemsFrame:assignItemTextData(displayItem)
 		end
 
 		self.attrVehicleValue:setText(self:getStoreItemDisplayPrice(storeItem, concreteItem, self.areItemsOwned))
-		self.priceBox:setVisible(not storeItem.isInAppPurchase)
+		self.attrVehicleValue:setVisible(not storeItem.isInAppPurchase)
+		self.attrVehicleValueIcon:setVisible(not storeItem.isInAppPurchase)
 	end
 
 	local numAttributesUsed = 0
@@ -313,7 +332,7 @@ function ShopItemsFrame:assignItemAttributeData(displayItem)
 	nextAttributeIndex = self:assignItemFillTypesData(ShopItemsFrame.PROFILE.ICON_FILL_TYPES, displayItem.foodFillTypeIconFilenames, nextAttributeIndex)
 	nextAttributeIndex = self:assignItemFillTypesData(ShopItemsFrame.PROFILE.ICON_SEED_FILL_TYPES, displayItem.seedTypeIconFilenames, nextAttributeIndex)
 
-	self.detailSeparator:setVisible(nextAttributeIndex ~= 1)
+	self.detailSeparator:setVisible(not GS_IS_MOBILE_VERSION and nextAttributeIndex ~= 1)
 
 	local visible = not GS_IS_MOBILE_VERSION or displayItem.storeItem.isInAppPurchase
 
@@ -339,10 +358,12 @@ function ShopItemsFrame:assignItemAttributeData(displayItem)
 
 	self.itemDetailName:setText(name)
 
-	if displayItem.numLeased == nil then
-		self.itemDetailOwned:setText(string.format(g_i18n:getText("ui_shop_numOwnedFormat"), displayItem.numOwned))
-	else
-		self.itemDetailOwned:setText(string.format(g_i18n:getText("ui_shop_numOwnedLeasedFormat"), displayItem.numOwned, displayItem.numLeased))
+	if displayItem.numOwned ~= nil then
+		if displayItem.numLeased == nil then
+			self.itemDetailOwned:setText(string.format(g_i18n:getText("ui_shop_numOwnedFormat"), displayItem.numOwned))
+		else
+			self.itemDetailOwned:setText(string.format(g_i18n:getText("ui_shop_numOwnedLeasedFormat"), displayItem.numOwned, displayItem.numLeased))
+		end
 	end
 
 	self.attributesLayout:invalidateLayout()

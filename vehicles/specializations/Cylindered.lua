@@ -57,6 +57,7 @@ function Cylindered.initSpecialization()
 	schema:register(XMLValueType.BOOL, partKey .. "#doLineAlignment", "Do line alignment (line as ref point)", false)
 	schema:register(XMLValueType.BOOL, partKey .. "#doInversedLineAlignment", "Do inversed line alignment (line inside part and fixed ref point)", false)
 	schema:register(XMLValueType.FLOAT, partKey .. ".orientationLine#partLength", "Part length (Distance from part to line)", 0.5)
+	schema:register(XMLValueType.NODE_INDEX, partKey .. ".orientationLine#partLengthNode", "Node to measure the part length dynamically")
 	schema:register(XMLValueType.NODE_INDEX, partKey .. ".orientationLine.lineNode(?)#node", "Line node")
 	schema:register(XMLValueType.BOOL, partKey .. "#doDirectionAlignment", "Do direction alignment", true)
 	schema:register(XMLValueType.BOOL, partKey .. "#doRotationAlignment", "Do rotation alignment", false)
@@ -82,9 +83,10 @@ function Cylindered.initSpecialization()
 	schema:register(XMLValueType.STRING, partKey .. ".dependentPart(?)#maxUpdateDistance", "Max. distance to vehicle root to update dependent part ('-' means unlimited)", "-")
 	schema:register(XMLValueType.BOOL, partKey .. "#divideTranslatingDistance", "If true all translating parts will move at the same time. If false they start to move in the order from the xml", true)
 	schema:register(XMLValueType.NODE_INDEX, partKey .. ".translatingPart(?)#node", "Translating part")
-	schema:register(XMLValueType.NODE_INDEX, partKey .. ".translatingPart(?)#referenceDistancePoint", "Reference distance point")
+	schema:register(XMLValueType.FLOAT, partKey .. ".translatingPart(?)#referenceDistance", "Reference distance")
 	schema:register(XMLValueType.FLOAT, partKey .. ".translatingPart(?)#minZTrans", "Min. Z Translation")
 	schema:register(XMLValueType.FLOAT, partKey .. ".translatingPart(?)#maxZTrans", "Max. Z Translation")
+	schema:register(XMLValueType.BOOL, partKey .. ".translatingPart(?)#divideTranslatingDistance", "Define individual division per translating part. E.g. one part is extending without division and two other parts extend afterwards at the same speed.", "movingPart#divideTranslatingDistance")
 	schema:register(XMLValueType.VECTOR_N, partKey .. "#wheelIndices", "List of wheel indices to update")
 	schema:register(XMLValueType.STRING, partKey .. "#wheelNodes", "List of wheel nodes to update")
 	schema:register(XMLValueType.BOOL, partKey .. ".inputAttacherJoint#value", "Update input attacher joint")
@@ -2067,6 +2069,7 @@ function Cylindered:loadMovingPartFromXML(xmlFile, key, entry)
 		entry.doLineAlignment = xmlFile:getValue(key .. "#doLineAlignment", false)
 		entry.doInversedLineAlignment = xmlFile:getValue(key .. "#doInversedLineAlignment", false)
 		entry.partLength = xmlFile:getValue(key .. ".orientationLine#partLength", 0.5)
+		entry.partLengthNode = xmlFile:getValue(key .. ".orientationLine#partLengthNode", nil, self.components, self.i3dMappings)
 		entry.orientationLineNodes = {}
 		local i = 0
 
@@ -2658,6 +2661,7 @@ function Cylindered:loadDependentTranslatingParts(xmlFile, baseName, entry)
 
 	if entry.referencePoint ~= nil then
 		entry.divideTranslatingDistance = xmlFile:getValue(baseName .. "#divideTranslatingDistance", true)
+		entry.translatingPartsDivider = 0
 		local j = 0
 
 		while true do
@@ -2683,10 +2687,14 @@ function Cylindered:loadDependentTranslatingParts(xmlFile, baseName, entry)
 				}
 				transEntry.lastZ = z
 				local _, _, refZ = worldToLocal(node, getWorldTranslation(entry.referencePoint))
-				transEntry.referenceDistance = refZ
-				transEntry.referenceDistancePoint = xmlFile:getValue(refBaseName .. "#referenceDistancePoint", nil, self.components, self.i3dMappings)
+				transEntry.referenceDistance = xmlFile:getValue(refBaseName .. "#referenceDistance", refZ)
 				transEntry.minZTrans = xmlFile:getValue(refBaseName .. "#minZTrans")
 				transEntry.maxZTrans = xmlFile:getValue(refBaseName .. "#maxZTrans")
+				transEntry.divideTranslatingDistance = xmlFile:getValue(refBaseName .. "#divideTranslatingDistance", entry.divideTranslatingDistance)
+
+				if transEntry.divideTranslatingDistance then
+					entry.translatingPartsDivider = entry.translatingPartsDivider + 1
+				end
 
 				table.insert(entry.translatingParts, transEntry)
 			end
@@ -3675,7 +3683,13 @@ function Cylindered:updateMovingPart(part, placeComponents, updateDependentParts
 				local _, sy, sz = localToLocal(startNode, part.referenceFrame, 0, 0, 0)
 				local _, ey, ez = localToLocal(endNode, part.referenceFrame, 0, 0, 0)
 				local _, cy, cz = localToLocal(part.node, part.referenceFrame, 0, 0, 0)
-				local hasIntersection, i1y, i1z, i2y, i2z = MathUtil.getCircleLineIntersection(cy, cz, part.partLength, sy, sz, ey, ez)
+				local partLength = part.partLength
+
+				if part.partLengthNode ~= nil then
+					partLength = calcDistanceFrom(part.node, part.partLengthNode)
+				end
+
+				local hasIntersection, i1y, i1z, i2y, i2z = MathUtil.getCircleLineIntersection(cy, cz, partLength, sy, sz, ey, ez)
 
 				if hasIntersection then
 					local targetY, targetZ = nil
@@ -3787,14 +3801,14 @@ function Cylindered:updateMovingPart(part, placeComponents, updateDependentParts
 
 	if part.referencePoint ~= nil then
 		local numTranslatingParts = #part.translatingParts
-		local distanceDivider = part.divideTranslatingDistance and numTranslatingParts or 1
+		local distanceDivider = math.max(part.translatingPartsDivider, 1)
 
 		if numTranslatingParts > 0 then
 			local _, _, dist = worldToLocal(part.node, refX, refY, refZ)
 
 			for i = 1, numTranslatingParts do
 				local translatingPart = part.translatingParts[i]
-				local newZ = (dist - translatingPart.referenceDistance) / distanceDivider
+				local newZ = (dist - translatingPart.referenceDistance) / (translatingPart.divideTranslatingDistance and distanceDivider or 1)
 
 				if translatingPart.minZTrans ~= nil then
 					newZ = math.max(translatingPart.minZTrans, newZ)
@@ -3804,7 +3818,7 @@ function Cylindered:updateMovingPart(part, placeComponents, updateDependentParts
 					newZ = math.min(translatingPart.maxZTrans, newZ)
 				end
 
-				if not part.divideTranslatingDistance then
+				if not translatingPart.divideTranslatingDistance then
 					dist = dist - (newZ - translatingPart.startPos[3])
 				end
 

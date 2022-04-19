@@ -96,6 +96,15 @@ function Utils.removeModDirectory(filename)
 			filename = filename:sub(modsDirLen + 1)
 			isMod = true
 		end
+
+		if not isMod then
+			local internalModsDirLen = g_internalModsDirectory:len()
+
+			if filenameLower:sub(1, internalModsDirLen) == g_internalModsDirectory:lower() then
+				filename = filename:sub(internalModsDirLen + 1)
+				isMod = true
+			end
+		end
 	end
 
 	if not isMod then
@@ -134,7 +143,7 @@ function Utils.getModNameAndBaseDirectory(filename)
 					modName = g_uniqueDlcNamePrefix .. modName
 				end
 			else
-				baseDirectory = g_modsDirectory .. modName .. "/"
+				baseDirectory = g_modNameToDirectory[modName] or g_modsDirectory .. modName .. "/"
 			end
 		end
 	end
@@ -271,14 +280,15 @@ function Utils.getValueIndex(targetValue, values)
 end
 
 function Utils.getNumTimeScales()
-	local timeScaleDevSettings = Platform.gameplay.timeScaleDevSettings
 	local timeScaleSettings = Platform.gameplay.timeScaleSettings
+	local numSettings = #timeScaleSettings
 
-	if g_addTestCommands and not g_isPresentationVersion then
-		return #timeScaleSettings + #timeScaleDevSettings
-	else
-		return #timeScaleSettings
+	if g_addTestCommands then
+		local timeScaleDevSettings = Platform.gameplay.timeScaleDevSettings
+		numSettings = numSettings + #timeScaleDevSettings
 	end
+
+	return numSettings
 end
 
 function Utils.getTimeScaleString(timeScaleIndex)
@@ -297,10 +307,11 @@ function Utils.getTimeScaleString(timeScaleIndex)
 end
 
 function Utils.getTimeScaleIndex(timeScale)
-	local timeScaleDevSettings = Platform.gameplay.timeScaleDevSettings
 	local timeScaleSettings = Platform.gameplay.timeScaleSettings
 
-	if g_addTestCommands and not g_isPresentationVersion then
+	if g_addTestCommands then
+		local timeScaleDevSettings = Platform.gameplay.timeScaleDevSettings
+
 		for i = #timeScaleDevSettings, 1, -1 do
 			if timeScaleDevSettings[i] <= timeScale then
 				return i + #timeScaleSettings
@@ -318,11 +329,12 @@ function Utils.getTimeScaleIndex(timeScale)
 end
 
 function Utils.getTimeScaleFromIndex(timeScaleIndex)
-	local timeScaleDevSettings = Platform.gameplay.timeScaleDevSettings
 	local timeScaleSettings = Platform.gameplay.timeScaleSettings
 	timeScaleIndex = math.max(timeScaleIndex, 1)
 
-	if g_addTestCommands and not g_isPresentationVersion and timeScaleIndex > #timeScaleSettings then
+	if g_addTestCommands and timeScaleIndex > #timeScaleSettings then
+		local timeScaleDevSettings = Platform.gameplay.timeScaleDevSettings
+
 		return timeScaleDevSettings[timeScaleIndex - #timeScaleSettings]
 	end
 
@@ -478,6 +490,17 @@ function Utils.getFilenameFromPath(path)
 	local elems = path:split("/")
 
 	return elems[#elems]
+end
+
+function Utils.getDirectory(path)
+	path = path:gsub("\\", "/")
+	local elems = path:split("/")
+
+	if #elems > 0 then
+		return table.concat(elems, "/", 1, #elems - 1) .. "/"
+	end
+
+	return path
 end
 
 function Utils.getMaxJointForceLimit(forceLimit1, forceLimit2)
@@ -719,21 +742,25 @@ end
 
 function Utils.renderTextAtWorldPosition(x, y, z, text, textSize, textOffset, color)
 	local sx, sy, sz = project(x, y, z)
-	color = color or {
-		0.5,
-		1,
-		0.5,
-		1
-	}
+	textOffset = textOffset or 0
+	local r = 0.5
+	local g = 1
+	local b = 0.5
+	local a = 1
+
+	if color then
+		a = color[4] or 1
+		b = color[3]
+		g = color[2]
+		r = color[1]
+	end
 
 	if sx > -1 and sx < 2 and sy > -1 and sy < 2 and sz <= 1 then
-		local r, g, b, a = unpack(color)
-
 		setTextAlignment(RenderText.ALIGN_CENTER)
 		setTextBold(false)
 		setTextColor(0, 0, 0, 0.75)
 		renderText(sx, sy - 0.0015 + textOffset, textSize, text)
-		setTextColor(r, g, b, a or 1)
+		setTextColor(r, g, b, a)
 		renderText(sx, sy + textOffset, textSize, text)
 		setTextAlignment(RenderText.ALIGN_LEFT)
 		setTextColor(1, 1, 1, 1)

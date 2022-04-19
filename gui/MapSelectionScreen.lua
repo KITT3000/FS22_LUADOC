@@ -35,7 +35,7 @@ function MapSelectionScreen:onOpen()
 		self.mapList:setSelectedIndex(missionMapIndex)
 	end
 
-	if Platform.isMobile then
+	if not Platform.hasMapSelection then
 		self:onClickOk()
 	end
 end

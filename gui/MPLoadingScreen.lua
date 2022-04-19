@@ -152,9 +152,8 @@ function MPLoadingScreen:onClickOk(element)
 		g_gui:showGui("")
 		g_inputBinding:setShowMouseCursor(false)
 
-		if (g_currentMission:getIsServer() and not self.missionInfo.isValid or not g_currentMission:getIsServer() and self.knownPlayerOnServer == false) and (not g_isPresentationVersion or g_isPresentationVersionWardrobeEnabled) then
-			g_wardrobeScreen:setNextOpenIsNewCharacter()
-			g_gui:changeScreen(nil, WardrobeScreen)
+		if Platform.hasWardrobe and (g_currentMission:getIsServer() and not self.missionInfo.isValid or not g_currentMission:getIsServer() and self.knownPlayerOnServer == false) then
+			self:openWardrobe()
 		end
 
 		g_currentMission.pressStartPaused = false
@@ -297,6 +296,11 @@ function MPLoadingScreen:update(dt)
 			self.loadingDialog.target:setCallback(self.onCancelSavegameLoading, self)
 		end
 	end
+end
+
+function MPLoadingScreen:openWardrobe()
+	g_wardrobeScreen:setNextOpenIsNewCharacter()
+	g_gui:changeScreen(nil, WardrobeScreen)
 end
 
 function MPLoadingScreen:dlcProblemOnQuitOk()
@@ -741,7 +745,7 @@ function MPLoadingScreen:initializeLoading()
 			masterServerRequestConnectionToServer = nil
 			netConnect = nil
 
-			if #self.missionDynamicInfo.mods > 0 and (not g_isPresentationVersion or g_isPresentationVersionDlcEnabled) then
+			if #self.missionDynamicInfo.mods > 0 then
 				table.sort(self.missionDynamicInfo.mods, MPLoadingScreen.modSortFunc)
 
 				for _, modItem in ipairs(self.missionDynamicInfo.mods) do
@@ -842,13 +846,9 @@ function MPLoadingScreen:onServerInfoDetails(id, name, language, capacity, numPl
 		end
 
 		if numMissingsMods > 0 then
-			local text = g_i18n:getText("ui_failedToConnectToGame")
-
-			if g_deepLinkingInfo ~= nil then
-				text = g_i18n:getText("ui_notAllModsAvailable")
-				text = text .. "\n" .. missingMods
-				g_deepLinkingInfo = nil
-			end
+			local text = g_i18n:getText("ui_notAllModsAvailable")
+			text = text .. "\n" .. missingMods
+			g_deepLinkingInfo = nil
 
 			self:showFailedToConnectDialog(text)
 

@@ -831,15 +831,15 @@ function SavegameController:getIsSavegameConflicted(index)
 end
 
 function SavegameController:getCanDeleteGame(index)
-	if not g_isPresentationVersion and index > 0 and self.savegames[index] ~= nil then
+	if index > 0 and self.savegames[index] ~= nil then
 		local isValidSavegame = self.savegames[index].isValid
 		local isInvalidUser = self.savegames[index].isInvalidUser
 		local isCorruptSavegame = self.savegames[index].isCorruptFile
 
 		return isValidSavegame or isInvalidUser or isCorruptSavegame
-	else
-		return false
 	end
+
+	return false
 end
 
 function SavegameController:getSavegame(index)

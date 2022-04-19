@@ -18,6 +18,9 @@ Placeable.LOAD_STEP_FINISHED = 6
 Placeable.LOAD_STEP_SYNCHRONIZED = 7
 Placeable.LOADING_STATE_OK = 1
 Placeable.LOADING_STATE_ERROR = 2
+Placeable.PROPERTY_STATE_NONE = 0
+Placeable.PROPERTY_STATE_OWNED = 1
+Placeable.PROPERTY_STATE_CONSTRUCTION_PREVIEW = 2
 Placeable.SELL_AND_DELETE = 0
 Placeable.SELL_AND_SPECTATOR_FARM = 1
 Placeable.DESTRUCTION = {
@@ -91,6 +94,8 @@ function Placeable.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getDailyUpkeep", Placeable.getDailyUpkeep)
 	SpecializationUtil.registerFunction(placeableType, "getSellPrice", Placeable.getSellPrice)
 	SpecializationUtil.registerFunction(placeableType, "setPreviewPosition", Placeable.setPreviewPosition)
+	SpecializationUtil.registerFunction(placeableType, "setPropertyState", Placeable.setPropertyState)
+	SpecializationUtil.registerFunction(placeableType, "getPropertyState", Placeable.getPropertyState)
 	SpecializationUtil.registerFunction(placeableType, "setVisibility", Placeable.setVisibility)
 	SpecializationUtil.registerFunction(placeableType, "getIsSynchronized", Placeable.getIsSynchronized)
 end
@@ -130,12 +135,14 @@ function Placeable.init()
 	for name, spec in pairs(g_placeableSpecializationManager:getSpecializations()) do
 		local classObj = ClassUtil.getClassObject(spec.className)
 
-		if rawget(classObj, "registerXMLPaths") then
-			classObj.registerXMLPaths(schema, basePath)
-		end
+		if classObj ~= nil then
+			if rawget(classObj, "registerXMLPaths") then
+				classObj.registerXMLPaths(schema, basePath)
+			end
 
-		if rawget(classObj, "registerSavegameXMLPaths") then
-			classObj.registerSavegameXMLPaths(savegameSchema, basePathSavegame .. "." .. name)
+			if rawget(classObj, "registerSavegameXMLPaths") then
+				classObj.registerSavegameXMLPaths(savegameSchema, basePathSavegame .. "." .. name)
+			end
 		end
 	end
 
@@ -158,6 +165,7 @@ function Placeable.new(isServer, isClient, customMt)
 	self.isLoadedFromSavegame = false
 	self.loadingTasks = {}
 	self.readyForFinishLoading = false
+	self.propertyState = Placeable.PROPERTY_STATE_OWNED
 	self.age = 0
 	self.price = 0
 	self.farmlandId = 0
@@ -488,7 +496,7 @@ end
 
 function Placeable:delete()
 	if self.isDeleted then
-		Logging.devError("Trying to delete a already deleted vehicle")
+		Logging.devError("Trying to delete a already deleted placeable")
 		printCallstack()
 
 		return
@@ -706,6 +714,14 @@ function Placeable:saveToXMLFile(xmlFile, key, usedModNames)
 	end
 end
 
+function Placeable:setPropertyState(state)
+	self.propertyState = state
+end
+
+function Placeable:getPropertyState()
+	return self.propertyState
+end
+
 function Placeable:setVisibility(state)
 	for _, component in pairs(self.components) do
 		setVisibility(component.node, state)
@@ -835,8 +851,10 @@ function Placeable:setOwnerFarmId(farmId, noEventSend)
 		SpecializationUtil.raiseEvent(self, "onOwnerChanged")
 	end
 
-	g_currentMission:removeOwnedItem(self)
-	g_currentMission:addOwnedItem(self)
+	if self.propertyState ~= Placeable.PROPERTY_STATE_CONSTRUCTION_PREVIEW then
+		g_currentMission:removeOwnedItem(self)
+		g_currentMission:addOwnedItem(self)
+	end
 end
 
 function Placeable:updateOwnership()

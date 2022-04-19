@@ -54,6 +54,7 @@ function ConstructionBrushFence:deactivate()
 	self.doFindPlaceable = false
 
 	self.cursor:setColorMode(GuiTopDownCursor.SHAPES_COLORS.SELECT, nil)
+	self:resetErrorOverlays()
 	g_messageCenter:unsubscribeAll(self)
 	ConstructionBrushFence:superClass().deactivate(self)
 end

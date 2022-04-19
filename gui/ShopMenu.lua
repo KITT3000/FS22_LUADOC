@@ -12,7 +12,12 @@ ShopMenu.CONTROLS = {
 	"pageShopOthers",
 	"pageUsedSale",
 	"pageShopItemDetails",
-	"pageShopItemCombinations"
+	"pageShopItemCombinations",
+	"subPageSelector"
+}
+ShopMenu.DETAILS = {
+	VEHICLE = 2,
+	BRAND = 1
 }
 ShopMenu.FILTER = {
 	OWNED = 1,
@@ -64,6 +69,39 @@ function ShopMenu.new(target, customMt, messageCenter, l10n, inputManager, fruit
 	messageCenter:subscribe(MessageType.VEHICLE_SALES_CHANGED, self.onVehicleSaleChanged, self)
 
 	return self
+end
+
+function ShopMenu.createFromExistingGui(gui, guiName)
+	ShopCategoriesFrame.createFromExistingGui(g_gui.frames.shopCategories.target, "ShopCategoriesFrame")
+	ShopItemsFrame.createFromExistingGui(g_gui.frames.shopItems.target, "ShopItemsFrame")
+	ShopOthersFrame.createFromExistingGui(g_gui.frames.shopOthers.target, "ShopOthersFrame")
+
+	local messageCenter = gui.messageCenter
+	local l10n = gui.l10n
+	local inputManager = gui.inputManager
+	local fruitTypeManager = gui.fruitTypeManager
+	local fillTypeManager = gui.fillTypeManager
+	local storeManager = gui.storeManager
+	local shopController = gui.shopController
+	local shopConfigScreen = gui.shopConfigScreen
+	local isConsoleVersion = gui.isConsoleVersion
+	local inAppPurchaseController = gui.inAppPurchaseController
+	local newGui = ShopMenu.new(nil, nil, messageCenter, l10n, inputManager, fruitTypeManager, fillTypeManager, storeManager, shopController, shopConfigScreen, isConsoleVersion, inAppPurchaseController)
+
+	g_gui.guis.ShopMenu:delete()
+	g_gui.guis.ShopMenu.target:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui)
+
+	newGui.client = gui.client
+	newGui.server = gui.server
+
+	newGui:onLoadMapFinished()
+	newGui:setPlayerFarm(gui.playerFarm)
+	newGui:setCurrentUserId(gui.currentUserId)
+
+	g_currentMission.shop = newGui
+
+	return newGui
 end
 
 function ShopMenu:setClient(client)
@@ -118,7 +156,7 @@ function ShopMenu:initializePages()
 
 	local selectCategoryCallback = self:makeSelfCallback(self.onSelectCategory)
 
-	self.pageShopBrands:setUseSections(true)
+	self.pageShopBrands:setUseSections(not GS_IS_MOBILE_VERSION)
 	self.pageShopBrands:initialize(self.shopController:getBrands(), self:makeSelfCallback(self.onClickBrand), selectCategoryCallback, GuiUtils.getUVs(ShopMenu.TAB_UV.BRANDS), self.l10n:getText(ShopMenu.L10N_SYMBOL.HEADER_BRANDS), ShopMenu.BRAND_IMAGE_HEIGHT_WIDTH_RATIO)
 
 	local clickItemCategoryCallback = self:makeSelfCallback(self.onClickItemCategory)
@@ -154,48 +192,45 @@ function ShopMenu:setDetailButtons()
 end
 
 function ShopMenu:setupMenuPages()
-	local shopEnabledPredicate = self:makeIsShopEnabledPredicate()
-	local shopDetailsEnabledPredicate = self:makeIsShopItemsEnabledPredicate()
-	local shopCombinationsEnabledPredicate = self:makeIsShopCombinationsEnabledPredicate()
 	local orderedDefaultPages = {
 		{
 			self.pageShopBrands,
-			shopEnabledPredicate,
+			self:makeIsShopBrandsEnabledPredicate(),
 			ShopMenu.TAB_UV.BRANDS
 		},
 		{
 			self.pageShopVehicles,
-			shopEnabledPredicate,
+			self:makeIsShopVehiclesEnabledPredicate(),
 			ShopMenu.TAB_UV.VEHICLES
 		},
 		{
 			self.pageShopTools,
-			shopEnabledPredicate,
+			self:makeIsShopToolsEnabledPredicate(),
 			ShopMenu.TAB_UV.TOOLS
 		},
 		{
 			self.pageShopObjects,
-			shopEnabledPredicate,
+			self:makeIsShopObjectsEnabledPredicate(),
 			ShopMenu.TAB_UV.OBJECTS
 		},
 		{
 			self.pageShopPacks,
-			shopEnabledPredicate,
+			self:makeIsShopPacksEnabledPredicate(),
 			ShopMenu.TAB_UV.PACKS
 		},
 		{
 			self.pageUsedSale,
-			shopEnabledPredicate,
+			self:makeIsShopUsedEnabledPredicate(),
 			ShopMenu.TAB_UV.SALE
 		},
 		{
 			self.pageShopGarageOwned,
-			shopEnabledPredicate,
+			self:makeIsShopGarageEnabledPredicate(),
 			ShopMenu.TAB_UV.OWNED
 		},
 		{
 			self.pageShopGarageLeased,
-			shopEnabledPredicate,
+			self:makeIsShopLeasedEnabledPredicate(),
 			ShopMenu.TAB_UV.LEASED
 		},
 		{
@@ -205,17 +240,17 @@ function ShopMenu:setupMenuPages()
 		},
 		{
 			self.pageShopOthers,
-			shopEnabledPredicate,
+			self:makeIsShopOthersEnabledPredicate(),
 			ShopMenu.TAB_UV.OTHERS
 		},
 		{
 			self.pageShopItemDetails,
-			shopDetailsEnabledPredicate,
+			self:makeIsShopItemsEnabledPredicate(),
 			ShopMenu.TAB_UV.VEHICLES
 		},
 		{
 			self.pageShopItemCombinations,
-			shopCombinationsEnabledPredicate,
+			self:makeIsShopCombinationsEnabledPredicate(),
 			ShopMenu.TAB_UV.SALE
 		}
 	}
@@ -256,20 +291,8 @@ function ShopMenu:setupMenuButtonInfo()
 	local onButtonInfoFunction = self:makeSelfCallback(self.onButtonInfo)
 
 	if Platform.isMobile then
-		local function onBrandSwitchFunction()
-			error("Not implemented")
-		end
-
-		self.brandsSwitchButton = {
-			profile = "buttonSwitchGarage",
-			inputAction = InputAction.MENU_ACTIVATE,
-			text = self.l10n:getText(ShopMenu.L10N_SYMBOL.BUTTON_BRANDS),
-			callback = onBrandSwitchFunction,
-			clickSound = GuiSoundPlayer.SOUND_SAMPLES.PAGING
-		}
 		self.shopMenuButtonInfo = {
-			self.backButtonInfo,
-			self.brandsSwitchButton
+			self.backButtonInfo
 		}
 	else
 		self.shopMenuButtonInfo = {
@@ -305,6 +328,7 @@ function ShopMenu:setupMenuButtonInfo()
 	end
 
 	self.sellButtonInfo = {
+		profile = "buttonSell",
 		inputAction = InputAction.MENU_ACCEPT,
 		text = self.l10n:getText(ShopMenu.L10N_SYMBOL.BUTTON_SELL),
 		callback = self:makeSelfCallback(self.onButtonAcceptItem)
@@ -320,10 +344,17 @@ function ShopMenu:setupMenuButtonInfo()
 		text = self.l10n:getText(ShopMenu.L10N_SYMBOL.BUTTON_HOTSPOT),
 		callback = self:makeSelfCallback(self.onButtonToggleHotspot)
 	}
-	self.garageMenuButtonInfo = {
-		self.backButtonInfo,
-		self.hotspotButtonInfo
-	}
+
+	if Platform.isMobile then
+		self.garageMenuButtonInfo = {
+			self.backButtonInfo
+		}
+	else
+		self.garageMenuButtonInfo = {
+			self.backButtonInfo,
+			self.hotspotButtonInfo
+		}
+	end
 
 	self.pageShopGarageOwned:setMenuButtonInfo(self.garageMenuButtonInfo)
 	self.pageShopGarageLeased:setMenuButtonInfo(self.garageMenuButtonInfo)
@@ -388,6 +419,7 @@ function ShopMenu:onOpen()
 	g_currentMission.hud:onMenuVisibilityChange(true, false)
 	self:updateGarageItems()
 	self:onVehicleSaleChanged()
+	self:updateSubPageSelector()
 end
 
 function ShopMenu:onClose(element)
@@ -423,6 +455,7 @@ end
 function ShopMenu:onButtonSelect()
 	if self.selectedCategory ~= nil and not self:getIsDetailMode() then
 		self:getTopFrame():onOpenCategory()
+		self:updateSubPageSelector()
 	end
 end
 
@@ -538,6 +571,52 @@ function ShopMenu:onStoreItemsReloaded()
 	self:updateCurrentDisplayItems()
 end
 
+function ShopMenu:updateSubPageSelector()
+	if self.subPageSelector ~= nil then
+		local isVisible = false
+
+		if GS_IS_MOBILE_VERSION and self.currentPage == self.pageShopItemDetails then
+			local texts, state = nil
+
+			if self.currentItemDetailsType == ShopMenu.DETAILS.BRAND then
+				local brands = self.shopController:getBrands()
+
+				for k, brand in ipairs(brands) do
+					texts = texts or {}
+
+					table.insert(texts, brand.label)
+
+					if brand.id == self.currentBrandId then
+						state = k
+					end
+				end
+			elseif self.currentItemDetailsType == ShopMenu.DETAILS.VEHICLE then
+				local categories = self.shopController:getVehicleCategories()
+
+				for k, category in ipairs(categories) do
+					texts = texts or {}
+
+					table.insert(texts, category.label)
+
+					if category.id == self.currentCategoryName then
+						state = k
+					end
+				end
+			end
+
+			if texts ~= nil then
+				self.subPageSelector:setTexts(texts)
+				self.subPageSelector:setState(state)
+
+				isVisible = true
+			end
+		end
+
+		self.subPageSelector:setVisible(isVisible)
+		self.pageSelector:setVisible(not isVisible)
+	end
+end
+
 function ShopMenu:inputEvent(action, value, eventUsed)
 	eventUsed = ShopMenu:superClass().inputEvent(self, action, value, eventUsed)
 
@@ -576,9 +655,17 @@ function ShopMenu:onMoneyChanged(farmId, newMoneyValue)
 end
 
 function ShopMenu:onSlotUsageChanged(currentSlotUsage, maxSlotUsage)
-	self.pageShopItemDetails:setSlotsUsage(currentSlotUsage, maxSlotUsage)
-	self.pageShopItemCombinations:setSlotsUsage(currentSlotUsage, maxSlotUsage)
-	self.pageUsedSale:setSlotsUsage(currentSlotUsage, maxSlotUsage)
+	if self.pageShopItemDetails ~= nil then
+		self.pageShopItemDetails:setSlotsUsage(currentSlotUsage, maxSlotUsage)
+	end
+
+	if self.pageShopItemCombinations ~= nil then
+		self.pageShopItemCombinations:setSlotsUsage(currentSlotUsage, maxSlotUsage)
+	end
+
+	if self.pageUsedSale ~= nil then
+		self.pageUsedSale:setSlotsUsage(currentSlotUsage, maxSlotUsage)
+	end
 end
 
 function ShopMenu:onSelectCategory(category, selectedElement)
@@ -618,7 +705,7 @@ function ShopMenu:onSelectItemBuyDetail(displayItem, selectedElementIndex)
 	table.insert(buttons, self.backButtonInfo)
 	table.insert(buttons, self.buyButtonInfo)
 
-	if displayItem:hasCombinationInfo() and self:getTopFrame() ~= self.pageShopItemCombinations then
+	if not GS_IS_MOBILE_VERSION and displayItem:hasCombinationInfo() and self:getTopFrame() ~= self.pageShopItemCombinations then
 		table.insert(buttons, self.combinationsButtonInfo)
 	end
 
@@ -653,7 +740,7 @@ function ShopMenu:updateGarageButtonInfo(isOwned, numItems, hasCombinations)
 		end
 	end
 
-	if self.selectedDisplayElement ~= nil and self.selectedDisplayElement.concreteItem.getMapHotspot ~= nil then
+	if not Platform.isMobile and self.selectedDisplayElement ~= nil and self.selectedDisplayElement.concreteItem.getMapHotspot ~= nil then
 		table.insert(buttons, self.hotspotButtonInfo)
 	end
 
@@ -690,8 +777,13 @@ function ShopMenu:onClickBrand(brandId, _, _, categoryDisplayName)
 
 	self.pageShopItemDetails:setDisplayItems(brandItems, false)
 	self.pageShopItemDetails:setCategory(GuiUtils.getUVs(ShopMenu.TAB_UV.BRANDS), self.l10n:getText(ShopMenu.L10N_SYMBOL.HEADER_BRANDS), categoryDisplayName)
+
+	self.currentItemDetailsType = ShopMenu.DETAILS.BRAND
+	self.currentBrandId = brandId
+
 	self:setDetailButtons()
 	self:pushDetail(self.pageShopItemDetails)
+	self:updateSubPageSelector()
 end
 
 function ShopMenu:onClickPack(packName, _, _, categoryDisplayName)
@@ -706,9 +798,6 @@ function ShopMenu:onClickPack(packName, _, _, categoryDisplayName)
 	self:pushDetail(self.pageShopItemDetails)
 end
 
-function ShopMenu:onClickOtherStore(storeName, _, _, categoryDisplayName)
-end
-
 function ShopMenu:onClickDLC(dlcId, _, _, categoryDisplayName)
 	self.isShowingOwnedPage = false
 	self.isShowingLeasedPage = false
@@ -721,6 +810,24 @@ function ShopMenu:onClickDLC(dlcId, _, _, categoryDisplayName)
 	self:pushDetail(self.pageShopItemDetails)
 end
 
+function ShopMenu:onClickSubPageSelection(state)
+	if self.currentPage == self.pageShopItemDetails then
+		if self.currentItemDetailsType == ShopMenu.DETAILS.BRAND then
+			local brands = self.shopController:getBrands()
+			local brand = brands[state]
+
+			self:popDetail()
+			self:onClickBrand(brand.id, nil, nil, brand.label)
+		elseif self.currentItemDetailsType == ShopMenu.DETAILS.VEHICLE then
+			local categories = self.shopController:getVehicleCategories()
+			local category = categories[state]
+
+			self:popDetail()
+			self:onClickItemCategory(category.id, GuiUtils.getUVs(ShopMenu.TAB_UV.VEHICLES), self.l10n:getText(ShopMenu.L10N_SYMBOL.HEADER_VEHICLES), category.label, self.currentCategoryFilter)
+		end
+	end
+end
+
 function ShopMenu:onClickItemCategory(categoryName, baseCategoryIconUVs, baseCategoryDisplayName, categoryDisplayName, filter)
 	self.isShowingOwnedPage = filter ~= nil
 	self.isShowingLeasedPage = filter == ShopMenu.FILTER.LEASED
@@ -728,9 +835,12 @@ function ShopMenu:onClickItemCategory(categoryName, baseCategoryIconUVs, baseCat
 	categoryItems = (not self.isShowingOwnedPage or self.shopController:getItemsByCategoryOwnedOrLeased(categoryName, filter == ShopMenu.FILTER.OWNED, filter == ShopMenu.FILTER.LEASED)) and self.shopController:getItemsByCategory(categoryName)
 	self.currentCategoryName = categoryName
 	self.currentDisplayItems = categoryItems
+	self.currentCategoryFilter = filter
+	self.currentItemDetailsType = ShopMenu.DETAILS.VEHICLE
 
 	self.pageShopItemDetails:setDisplayItems(categoryItems, self.isShowingOwnedPage)
 	self:setDetailButtons()
+	self:updateSubPageSelector()
 
 	local isSpecial = false
 
@@ -761,6 +871,7 @@ function ShopMenu:onClickItemCategory(categoryName, baseCategoryIconUVs, baseCat
 
 	self.pageShopItemDetails:setCategory(baseCategoryIconUVs, baseCategoryDisplayName, categoryDisplayName, isSpecial)
 	self:pushDetail(self.pageShopItemDetails)
+	self:updateSubPageSelector()
 end
 
 function ShopMenu:buyItem(displayItem)
@@ -889,9 +1000,57 @@ function ShopMenu:getIsDetailMode()
 	return ShopMenu:superClass().getIsDetailMode(self) or self.currentPage == self.pageUsedSale
 end
 
-function ShopMenu:makeIsShopEnabledPredicate()
+function ShopMenu:makeIsShopBrandsEnabledPredicate()
 	return function ()
 		return not self:getIsDetailMode() or self.currentPage == self.pageUsedSale
+	end
+end
+
+function ShopMenu:makeIsShopVehiclesEnabledPredicate()
+	return function ()
+		return not self:getIsDetailMode() or self.currentPage == self.pageUsedSale
+	end
+end
+
+function ShopMenu:makeIsShopToolsEnabledPredicate()
+	return function ()
+		return (not self:getIsDetailMode() or self.currentPage == self.pageUsedSale) and not GS_IS_MOBILE_VERSION
+	end
+end
+
+function ShopMenu:makeIsShopObjectsEnabledPredicate()
+	return function ()
+		return (not self:getIsDetailMode() or self.currentPage == self.pageUsedSale) and not GS_IS_MOBILE_VERSION
+	end
+end
+
+function ShopMenu:makeIsShopPacksEnabledPredicate()
+	return function ()
+		return (not self:getIsDetailMode() or self.currentPage == self.pageUsedSale) and not GS_IS_MOBILE_VERSION
+	end
+end
+
+function ShopMenu:makeIsShopUsedEnabledPredicate()
+	return function ()
+		return (not self:getIsDetailMode() or self.currentPage == self.pageUsedSale) and not GS_IS_MOBILE_VERSION
+	end
+end
+
+function ShopMenu:makeIsShopGarageEnabledPredicate()
+	return function ()
+		return not self:getIsDetailMode() or self.currentPage == self.pageUsedSale
+	end
+end
+
+function ShopMenu:makeIsShopLeasedEnabledPredicate()
+	return function ()
+		return (not self:getIsDetailMode() or self.currentPage == self.pageUsedSale) and not GS_IS_MOBILE_VERSION
+	end
+end
+
+function ShopMenu:makeIsShopOthersEnabledPredicate()
+	return function ()
+		return (not self:getIsDetailMode() or self.currentPage == self.pageUsedSale) and not GS_IS_MOBILE_VERSION
 	end
 end
 
@@ -903,7 +1062,7 @@ end
 
 function ShopMenu:makeIsShopCombinationsEnabledPredicate()
 	return function ()
-		return self:getIsDetailMode() and self:getTopFrame() == self.pageShopItemCombinations
+		return self:getIsDetailMode() and self:getTopFrame() == self.pageShopItemCombinations and not GS_IS_MOBILE_VERSION
 	end
 end
 

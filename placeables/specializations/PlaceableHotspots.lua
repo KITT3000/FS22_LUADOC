@@ -125,5 +125,5 @@ end
 function PlaceableHotspots:getHotspot(index)
 	local spec = self.spec_hotspots
 
-	return spec.mapHotspots[index]
+	return spec.mapHotspots[index or 1]
 end

@@ -17,6 +17,7 @@ end
 function PlaceableHusbandryPallets.registerOverwrittenFunctions(placeableType)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "getConditionInfos", PlaceableHusbandryPallets.getConditionInfos)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "updateOutput", PlaceableHusbandryPallets.updateOutput)
+	SpecializationUtil.registerOverwrittenFunction(placeableType, "updateInfo", PlaceableHusbandryPallets.updateInfo)
 end
 
 function PlaceableHusbandryPallets.registerEventListeners(placeableType)
@@ -99,6 +100,11 @@ function PlaceableHusbandryPallets:onLoad(savegame)
 	spec.fillType = nil
 	spec.pallets = {}
 	spec.spawnPending = false
+	spec.palletLimitReached = false
+	spec.infoHudTooManyPallets = {
+		accentuate = true,
+		title = g_i18n:getText("infohud_tooManyPallets")
+	}
 	spec.dirtyFlag = self:getNextDirtyFlag()
 end
 
@@ -130,6 +136,7 @@ function PlaceableHusbandryPallets:onReadStream(streamId, connection)
 	local spec = self.spec_husbandryPallets
 	spec.fillLevel = streamReadFloat32(streamId)
 	spec.capacity = streamReadFloat32(streamId)
+	spec.palletLimitReached = streamReadBool(streamId)
 end
 
 function PlaceableHusbandryPallets:onWriteStream(streamId, connection)
@@ -137,6 +144,7 @@ function PlaceableHusbandryPallets:onWriteStream(streamId, connection)
 
 	streamWriteFloat32(streamId, spec.fillLevelSent)
 	streamWriteFloat32(streamId, spec.capacitySent)
+	streamWriteBool(streamId, spec.palletLimitReached)
 end
 
 function PlaceableHusbandryPallets:onReadUpdateStream(streamId, timestamp, connection)
@@ -144,6 +152,7 @@ function PlaceableHusbandryPallets:onReadUpdateStream(streamId, timestamp, conne
 		local spec = self.spec_husbandryPallets
 		spec.fillLevel = streamReadFloat32(streamId)
 		spec.capacity = streamReadFloat32(streamId)
+		spec.palletLimitReached = streamReadBool(streamId)
 	end
 end
 
@@ -154,6 +163,7 @@ function PlaceableHusbandryPallets:onWriteUpdateStream(streamId, connection, dir
 		if streamWriteBool(streamId, bitAND(dirtyMask, spec.dirtyFlag) ~= 0) then
 			streamWriteFloat32(streamId, spec.fillLevelSent)
 			streamWriteFloat32(streamId, spec.capacitySent)
+			streamWriteBool(streamId, spec.palletLimitReached)
 		end
 	end
 end
@@ -280,6 +290,12 @@ function PlaceableHusbandryPallets:getPalletCallback(pallet, result, fillTypeInd
 	spec.currentPallet = pallet
 
 	if pallet ~= nil then
+		if spec.palletLimitReached then
+			spec.palletLimitReached = false
+
+			self:raiseDirtyFlags(spec.dirtyFlag)
+		end
+
 		if result == PalletSpawner.RESULT_SUCCESS then
 			pallet:emptyAllFillUnits(true)
 		end
@@ -291,8 +307,12 @@ function PlaceableHusbandryPallets:getPalletCallback(pallet, result, fillTypeInd
 		if spec.pendingLiters > 5 then
 			self:updatePallets()
 		end
-	else
+	elseif result == PalletSpawner.RESULT_NO_SPACE then
 		self:showSpawnerBlockedWarning()
+	elseif result == PalletSpawner.PALLET_LIMITED_REACHED and not spec.palletLimitReached then
+		spec.palletLimitReached = true
+
+		self:raiseDirtyFlags(spec.dirtyFlag)
 	end
 
 	self:updatePalletInfo()
@@ -323,6 +343,16 @@ function PlaceableHusbandryPallets:showPalletBlockedWarning()
 
 			g_currentMission:addIngameNotification(FSBaseMission.INGAME_NOTIFICATION_CRITICAL, text)
 		end
+	end
+end
+
+function PlaceableHusbandryPallets:updateInfo(superFunc, infoTable)
+	superFunc(self, infoTable)
+
+	local spec = self.spec_husbandryPallets
+
+	if spec.palletLimitReached then
+		table.insert(infoTable, spec.infoHudTooManyPallets)
 	end
 end
 

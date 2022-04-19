@@ -55,11 +55,7 @@ function InGameMenuGameSettingsFrame:copyAttributes(src)
 	self.l10n = src.l10n
 end
 
-function InGameMenuGameSettingsFrame:initialize(pageMapOverview, onClickBackCallback)
-	self.pageMapOverview = pageMapOverview
-
-	self:assignStaticTexts()
-
+function InGameMenuGameSettingsFrame:initializeButtons()
 	self.backButtonInfo = {
 		inputAction = InputAction.MENU_BACK
 	}
@@ -79,11 +75,13 @@ function InGameMenuGameSettingsFrame:initialize(pageMapOverview, onClickBackCall
 			self:onButtonOpenServerSettings()
 		end
 	}
+end
 
-	if g_isPresentationVersion then
-		self.saveButton = nil
-	end
+function InGameMenuGameSettingsFrame:initialize(pageMapOverview, onClickBackCallback)
+	self.pageMapOverview = pageMapOverview
 
+	self:assignStaticTexts()
+	self:initializeButtons()
 	self:updateButtons()
 
 	self.boxLayout.wrapAround = false

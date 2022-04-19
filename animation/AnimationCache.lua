@@ -84,7 +84,7 @@ function AnimationCache:delete()
 
 	self.nameToFilename = {}
 
-	for pendingLoadRequestId, _ in ipairs(self.pendingLoadRequestIds) do
+	for pendingLoadRequestId, _ in pairs(self.pendingLoadRequestIds) do
 		g_i3DManager:cancelStreamI3DFile(pendingLoadRequestId)
 	end
 end

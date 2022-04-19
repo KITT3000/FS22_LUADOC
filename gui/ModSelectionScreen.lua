@@ -340,7 +340,7 @@ function ModSelectionScreen:shouldShowModInList(mod)
 	end
 
 	if not mod.isDLC and self.crossplayOnly and self.missionDynamicInfo.isMultiplayer and showMod then
-		if mod.hasScripts then
+		if mod.hasScripts and not mod.isInternalScriptMod then
 			showMod = false
 		else
 			local modId = getModIdByFilename(mod.modName)

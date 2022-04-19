@@ -982,7 +982,7 @@ function AIDriveStrategyStraight:updateTurnData()
 	self.turnData.aiAreaMinX = math.huge
 	local lastTypeName = nil
 	local allImplementsOfSameType = true
-	local maxOverlap = 0
+	local maxOverlap = -math.huge
 
 	for _, implement in pairs(attachedAIImplements) do
 		if lastTypeName == nil then
@@ -1007,7 +1007,7 @@ function AIDriveStrategyStraight:updateTurnData()
 		self.turnData.aiAreaMaxX = math.max(self.turnData.aiAreaMaxX, xL, xR, xB)
 		self.turnData.maxZOffset = math.max(self.turnData.maxZOffset, zL, zR)
 		self.turnData.minZOffset = math.min(self.turnData.minZOffset, zL, zR)
-		maxOverlap = math.max(maxOverlap, math.min(lrDistance * 0.02, implement.object:getAIAreaOverlap()))
+		maxOverlap = math.max(maxOverlap, math.min(lrDistance * 0.02, implement.object:getAIAreaOverlap() or AIVehicleUtil.AREA_OVERLAP))
 	end
 
 	self.turnData.allImplementsOfSameType = allImplementsOfSameType

@@ -1,5 +1,5 @@
 AIVehicleUtil = {
-	VALID_AREA_THRESHOLD = 0.03,
+	VALID_AREA_THRESHOLD = 0.02,
 	AREA_OVERLAP = 0.26,
 	driveToPoint = function (self, dt, acceleration, allowedToDrive, moveForwards, tX, tZ, maxSpeed, doNotSteer)
 		if self.finishedFirstUpdate then

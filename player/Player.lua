@@ -415,7 +415,7 @@ function Player:load(creatorConnection, isOwner)
 
 	self.brushOverlay:setAlignment(Overlay.ALIGN_VERTICAL_MIDDLE, Overlay.ALIGN_HORIZONTAL_CENTER)
 	self.brushOverlay:setUVs(GuiUtils.getUVs({
-		304,
+		307,
 		494,
 		75,
 		75
@@ -427,7 +427,7 @@ function Player:load(creatorConnection, isOwner)
 
 	self.petOverlay:setAlignment(Overlay.ALIGN_VERTICAL_MIDDLE, Overlay.ALIGN_HORIZONTAL_CENTER)
 	self.petOverlay:setUVs(GuiUtils.getUVs({
-		304,
+		307,
 		419,
 		75,
 		75
@@ -1937,11 +1937,13 @@ end
 
 function Player:pickUpObjectRaycastCallback(hitObjectId, x, y, z, distance)
 	if hitObjectId ~= g_currentMission.terrainRootNode and Player.PICKED_UP_OBJECTS[hitObjectId] ~= true then
-		if getRigidBodyType(hitObjectId) == RigidBodyType.DYNAMIC or getRigidBodyType(hitObjectId) == RigidBodyType.KINEMATIC then
+		local rigidBodyType = getRigidBodyType(hitObjectId)
+
+		if rigidBodyType == RigidBodyType.DYNAMIC or rigidBodyType == RigidBodyType.KINEMATIC then
 			self.lastFoundAnyObject = hitObjectId
 		end
 
-		if self.isServer and getRigidBodyType(hitObjectId) == RigidBodyType.DYNAMIC then
+		if self.isServer and rigidBodyType == RigidBodyType.DYNAMIC then
 			local canBePickedUp = true
 			local object = g_currentMission:getNodeObject(hitObjectId)
 
@@ -1984,7 +1986,7 @@ function Player:pickUpObject(state, noEventSend)
 	PlayerPickUpObjectEvent.sendEvent(self, state, noEventSend)
 
 	if self.isServer then
-		if state and self.isObjectInRange and self.lastFoundObject ~= nil and not self.isCarryingObject then
+		if state and self.isObjectInRange and self.lastFoundObject ~= nil and entityExists(self.lastFoundObject) and not self.isCarryingObject then
 			local constr = JointConstructor.new()
 			self.pickedUpObjectCollisionMask = getCollisionMask(self.lastFoundObject)
 			local newPickedUpObjectCollisionFlag = bitXOR(bitAND(self.pickedUpObjectCollisionMask, CollisionMask.PLAYER_MOVEMENT), self.pickedUpObjectCollisionMask)
@@ -2415,9 +2417,9 @@ function Player:getDesiredSpeed()
 		if inputRun > 0 and not isSwimming and not isCrouching and not isUsingHandtool then
 			local runningSpeed = self.motionInformation.maxRunningSpeed
 
-			if g_addTestCommands and not g_isPresentationVersion then
+			if g_addTestCommands then
 				runningSpeed = self.motionInformation.maxPresentationRunningSpeed
-			elseif g_addCheatCommands and not g_isPresentationVersion and (g_currentMission.isMasterUser or g_currentMission:getIsServer()) then
+			elseif g_addCheatCommands and (g_currentMission.isMasterUser or g_currentMission:getIsServer()) then
 				runningSpeed = self.motionInformation.maxCheatRunningSpeed
 			end
 

@@ -29,6 +29,7 @@ function TireTrackSystem:load(id)
 
 	if g_addTestCommands then
 		addConsoleCommand("gsTireTracksRemoveAll", "Remove all tire tracks from terrain", "TireTrackSystem.consoleCommandRemoveAllTireTracks", nil)
+		addConsoleCommand("gsTireTracksDebug", "Toggle tire track debug mode with permanently active and colored tracks", "TireTrackSystem.consoleCommandTireTrackDebug", nil)
 	end
 
 	if self.systemId ~= 0 then
@@ -44,6 +45,7 @@ function TireTrackSystem:delete()
 	end
 
 	removeConsoleCommand("gsTireTracksRemoveAll")
+	removeConsoleCommand("gsTireTracksDebug")
 end
 
 function TireTrackSystem:createTrack(width, atlasIndex)
@@ -73,6 +75,29 @@ function TireTrackSystem:consoleCommandRemoveAllTireTracks()
 		g_currentMission.tireTrackSystem:eraseParallelogram(-halfSize, -halfSize, halfSize, -halfSize, -halfSize, halfSize)
 
 		return "Removed all tiretracks!"
+	end
+
+	return "Error: no tireTrackSystem found!"
+end
+
+function TireTrackSystem:consoleCommandTireTrackDebug()
+	if g_currentMission.tireTrackSystem ~= nil then
+		if self.addTrackPointFuncBackup == nil then
+			self.addTrackPointFuncBackup = addTrackPoint
+
+			function addTrackPoint(systemId, id, x, y, z, ux, uy, uz, r, g, b, a, uw, dtheta)
+				r, g, b = unpack(DebugUtil.getDebugColor(id))
+
+				return self.addTrackPointFuncBackup(systemId, id, x, y, z, ux, uy, uz, r, g, b, 1, 1, dtheta)
+			end
+
+			return "Enabled TireTrack debug"
+		else
+			addTrackPoint = self.addTrackPointFuncBackup
+			self.addTrackPointFuncBackup = nil
+
+			return "Disabled TireTrack debug"
+		end
 	end
 
 	return "Error: no tireTrackSystem found!"

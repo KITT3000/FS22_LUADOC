@@ -79,6 +79,7 @@ function Foldable.initSpecialization()
 end
 
 function Foldable.registerFoldingXMLPaths(schema, basePath)
+	schema:register(XMLValueType.L10N_STRING, basePath .. "#objectText", "override OBJECT text inserted in folding action string", "vehicle typeDesc")
 	schema:register(XMLValueType.L10N_STRING, basePath .. "#posDirectionText", "Positive direction text", "$l10n_action_foldOBJECT")
 	schema:register(XMLValueType.L10N_STRING, basePath .. "#negDirectionText", "Negative direction text", "$l10n_action_unfoldOBJECT")
 	schema:register(XMLValueType.L10N_STRING, basePath .. "#middlePosDirectionText", "Positive middle direction text", "$l10n_action_liftOBJECT")
@@ -236,10 +237,11 @@ function Foldable:onLoad(savegame)
 
 	ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.foldable.foldingConfigurations.foldingConfiguration", foldingConfigurationId, self.components, self)
 
-	spec.posDirectionText = string.format(self.xmlFile:getValue(configKey .. "#posDirectionText", "action_foldOBJECT", self.customEnvironment, false), self.typeDesc)
-	spec.negDirectionText = string.format(self.xmlFile:getValue(configKey .. "#negDirectionText", "action_unfoldOBJECT", self.customEnvironment, false), self.typeDesc)
-	spec.middlePosDirectionText = string.format(self.xmlFile:getValue(configKey .. "#middlePosDirectionText", "action_liftOBJECT", self.customEnvironment, false), self.typeDesc)
-	spec.middleNegDirectionText = string.format(self.xmlFile:getValue(configKey .. "#middleNegDirectionText", "action_lowerOBJECT", self.customEnvironment, false), self.typeDesc)
+	spec.objectText = self.xmlFile:getValue(configKey .. "#objectText", self.typeDesc, self.customEnvironment, false)
+	spec.posDirectionText = string.format(self.xmlFile:getValue(configKey .. "#posDirectionText", "action_foldOBJECT", self.customEnvironment, false), spec.objectText)
+	spec.negDirectionText = string.format(self.xmlFile:getValue(configKey .. "#negDirectionText", "action_unfoldOBJECT", self.customEnvironment, false), spec.objectText)
+	spec.middlePosDirectionText = string.format(self.xmlFile:getValue(configKey .. "#middlePosDirectionText", "action_liftOBJECT", self.customEnvironment, false), spec.objectText)
+	spec.middleNegDirectionText = string.format(self.xmlFile:getValue(configKey .. "#middleNegDirectionText", "action_lowerOBJECT", self.customEnvironment, false), spec.objectText)
 	spec.startAnimTime = self.xmlFile:getValue(configKey .. "#startAnimTime")
 	spec.foldMoveDirection = 0
 	spec.moveToMiddle = false
@@ -300,8 +302,8 @@ function Foldable:onLoad(savegame)
 	spec.dynamicMountMaxLimit = self.xmlFile:getValue(configKey .. "#dynamicMountMaxLimit", 1)
 	spec.crabSteeringMinLimit = self.xmlFile:getValue(configKey .. "#crabSteeringMinLimit", 0)
 	spec.crabSteeringMaxLimit = self.xmlFile:getValue(configKey .. "#crabSteeringMaxLimit", 1)
-	spec.unfoldWarning = string.format(self.xmlFile:getValue(configKey .. "#unfoldWarning", "warning_firstUnfoldTheTool", self.customEnvironment, false), self.typeDesc)
-	spec.detachWarning = string.format(self.xmlFile:getValue(configKey .. "#detachWarning", "warning_doNotDetachWhileFolding", self.customEnvironment, false), self.typeDesc)
+	spec.unfoldWarning = string.format(self.xmlFile:getValue(configKey .. "#unfoldWarning", "warning_firstUnfoldTheTool", self.customEnvironment, false), spec.objectText)
+	spec.detachWarning = string.format(self.xmlFile:getValue(configKey .. "#detachWarning", "warning_doNotDetachWhileFolding", self.customEnvironment, false), spec.objectText)
 	spec.useParentFoldingState = self.xmlFile:getValue(configKey .. "#useParentFoldingState", false)
 	spec.subFoldingStateVehicles = {}
 	spec.ignoreFoldMiddleWhileFolded = self.xmlFile:getValue(configKey .. "#ignoreFoldMiddleWhileFolded", false)
@@ -1555,7 +1557,7 @@ function Foldable:getCanAIImplementContinueWork(superFunc)
 	local spec = self.spec_foldable
 
 	if #spec.foldingParts > 0 and spec.allowUnfoldingByAI then
-		canContinue = spec.foldMiddleAnimTime == nil or math.abs(spec.foldAnimTime - spec.foldMiddleAnimTime) < 0.001 or spec.foldAnimTime == 0 or spec.foldAnimTime == 1
+		canContinue = spec.foldMiddleAnimTime ~= nil and math.abs(spec.foldAnimTime - spec.foldMiddleAnimTime) < 0.001 or spec.foldAnimTime == 0 or spec.foldAnimTime == 1
 	end
 
 	return canContinue

@@ -81,7 +81,7 @@ function InputGlyphElementUI:draw(clipX1, clipY1, clipX2, clipY2)
 	InputGlyphElementUI:superClass().draw(self, clipX1, clipY1, clipX2, clipY2)
 
 	if self.glyphElement ~= nil then
-		self.glyphElement:draw()
+		self.glyphElement:draw(clipX1, clipY1, clipX2, clipY2)
 	end
 end
 
@@ -93,8 +93,8 @@ function InputGlyphElementUI:setActions(actions, ...)
 			self:updateAbsolutePosition()
 		end
 
-		if self.originalWidth == nil then
-			self.originalWidth = self.absSize[1]
+		if self.absSize[1] > 0 then
+			self.originalWidth = self.originalWidth or self.absSize[1]
 		end
 
 		self.absSize[1] = self.glyphElement:getGlyphWidth()

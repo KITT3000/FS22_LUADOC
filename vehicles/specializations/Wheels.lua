@@ -82,6 +82,7 @@ function Wheels.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "onWheelHubI3DLoaded", Wheels.onWheelHubI3DLoaded)
 	SpecializationUtil.registerFunction(vehicleType, "loadAckermannSteeringFromXML", Wheels.loadAckermannSteeringFromXML)
 	SpecializationUtil.registerFunction(vehicleType, "loadNonPhysicalWheelFromXML", Wheels.loadNonPhysicalWheelFromXML)
+	SpecializationUtil.registerFunction(vehicleType, "loadWheelsFromXML", Wheels.loadWheelsFromXML)
 	SpecializationUtil.registerFunction(vehicleType, "finalizeWheel", Wheels.finalizeWheel)
 	SpecializationUtil.registerFunction(vehicleType, "onWheelPartI3DLoaded", Wheels.onWheelPartI3DLoaded)
 	SpecializationUtil.registerFunction(vehicleType, "onAdditionalWheelConnectorI3DLoaded", Wheels.onAdditionalWheelConnectorI3DLoaded)
@@ -376,6 +377,7 @@ function Wheels.registerWheelPhysicsDataXMLPaths(schema, key)
 	schema:register(XMLValueType.ANGLE, key .. ".physics#rotSpeedNeg", "Rotation speed in negative direction")
 	schema:register(XMLValueType.ANGLE, key .. ".physics#rotMax", "Max. rotation")
 	schema:register(XMLValueType.ANGLE, key .. ".physics#rotMin", "Min. rotation")
+	schema:register(XMLValueType.BOOL, key .. ".physics#invertRotLimit", "Invert the rotation limits")
 	schema:register(XMLValueType.FLOAT, key .. ".physics#rotSpeedLimit", "Rotation speed limit")
 end
 
@@ -538,31 +540,8 @@ function Wheels:onLoad(savegame)
 	spec.wheelsByNode = {}
 	spec.wheelChocks = {}
 	spec.tireTrackNodes = {}
-	local i = 0
 
-	while true do
-		local wheelKey = string.format(".wheels.wheel(%d)", i)
-
-		if not self.xmlFile:hasProperty(configKey .. wheelKey) then
-			break
-		end
-
-		local wheel = {
-			xmlIndex = i,
-			updateIndex = i % 4 + 1,
-			configIndex = wheelConfigurationId
-		}
-
-		if self:loadWheelFromXML(self.xmlFile, configKey, wheelKey, wheel) then
-			self:finalizeWheel(wheel)
-
-			spec.maxUpdateIndex = math.max(spec.maxUpdateIndex, wheel.updateIndex)
-
-			table.insert(spec.wheels, wheel)
-		end
-
-		i = i + 1
-	end
+	self:loadWheelsFromXML(self.xmlFile, configKey, wheelConfigurationId)
 
 	if self.xmlFile:getValue(wheelsKey .. "#hasSurfaceSounds", true) then
 		local surfaceSoundLinkNode = self.xmlFile:getValue(wheelsKey .. "#surfaceSoundLinkNode", self.components[1].node, self.components, self.i3dMappings)
@@ -608,7 +587,7 @@ function Wheels:onLoad(savegame)
 	end
 
 	spec.dynamicallyLoadedWheels = {}
-	i = 0
+	local i = 0
 
 	while true do
 		local baseName = string.format("vehicle.wheels.dynamicallyLoadedWheels.dynamicallyLoadedWheel(%d)", i)
@@ -1634,6 +1613,7 @@ function Wheels:loadWheelPhysicsData(xmlFile, configKey, wheelKey, wheel)
 		wheel.rotSpeedNeg = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".physics#rotSpeedNeg", 0)
 		wheel.rotMax = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".physics#rotMax", 0)
 		wheel.rotMin = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".physics#rotMin", 0)
+		wheel.invertRotLimit = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".physics#invertRotLimit", false)
 		wheel.rotSpeedLimit = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".physics#rotSpeedLimit")
 	else
 		Logging.xmlWarning(xmlFile, "Invalid repr for wheel '%s'. Needs to be a child of a collision!", configKey .. wheelKey)
@@ -2236,6 +2216,10 @@ function Wheels:loadAckermannSteeringFromXML(xmlFile, ackermannSteeringIndex)
 							wheel.steeringAxleRotMin = rotMinI
 						end
 
+						if wheel.invertRotLimit then
+							switchMaxMin = not switchMaxMin
+						end
+
 						if switchMaxMin then
 							wheel.rotSpeedNeg = -wheel.rotSpeed
 							wheel.rotSpeed = -wheel.rotSpeedNeg
@@ -2307,6 +2291,35 @@ function Wheels:loadNonPhysicalWheelFromXML(dynamicallyLoadedWheel, xmlFile, key
 	end
 
 	return false
+end
+
+function Wheels:loadWheelsFromXML(xmlFile, key, wheelConfigurationId)
+	local spec = self.spec_wheels
+	local i = 0
+
+	while true do
+		local wheelKey = string.format(".wheels.wheel(%d)", i)
+
+		if not xmlFile:hasProperty(key .. wheelKey) then
+			break
+		end
+
+		local wheel = {
+			xmlIndex = i,
+			updateIndex = i % 4 + 1,
+			configIndex = wheelConfigurationId
+		}
+
+		if self:loadWheelFromXML(xmlFile, key, wheelKey, wheel) then
+			self:finalizeWheel(wheel)
+
+			spec.maxUpdateIndex = math.max(spec.maxUpdateIndex, wheel.updateIndex)
+
+			table.insert(spec.wheels, wheel)
+		end
+
+		i = i + 1
+	end
 end
 
 function Wheels:finalizeWheel(wheel, parentWheel)
@@ -3540,7 +3553,8 @@ function Wheels:updateWheelSink(wheel, dt, groundWetness)
 			sinkTarget = math.min(0.2 * wheel.radiusOriginal, math.min(maxSink, wheel.maxWheelSink) * noiseValue)
 		elseif wheel.contact == Wheels.WHEEL_NO_CONTACT then
 			sinkTarget = 0
-			interpolationFactor = 0.05
+			lastSpeed = 10
+			interpolationFactor = 0.075
 		end
 
 		if wheel.sinkTarget < sinkTarget then

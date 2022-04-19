@@ -36,7 +36,6 @@ end
 
 function WardrobeScreen:onOpen()
 	WardrobeScreen:superClass().onOpen(self)
-	g_messageCenter:publish(MessageType.GUI_CHARACTER_CREATION_SCREEN_OPEN)
 
 	if g_currentMission.controlPlayer then
 		self.didControlPlayer = true

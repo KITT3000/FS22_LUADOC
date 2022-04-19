@@ -64,6 +64,9 @@ function IngameMap.new(hud, hudAtlasPath, inputDisplayManager, customMt)
 
 	self.hotspots = {}
 	self.selectedHotspot = nil
+	self.mapExtensionOffsetX = 0.25
+	self.mapExtensionOffsetZ = 0.25
+	self.mapExtensionScaleFactor = 0.5
 	self.allowToggle = true
 	self.topDownCamera = nil
 
@@ -381,9 +384,9 @@ end
 function IngameMap:setHotspotFilter(category, isActive)
 	if category ~= nil then
 		if isActive then
-			g_gameSettings:setValue("ingameMapFilter", Utils.clearBit(g_gameSettings:getValue("ingameMapFilter"), category), true)
+			g_gameSettings:setValue("ingameMapFilter", Utils.clearBit(g_gameSettings:getValue("ingameMapFilter"), category))
 		else
-			g_gameSettings:setValue("ingameMapFilter", Utils.setBit(g_gameSettings:getValue("ingameMapFilter"), category), true)
+			g_gameSettings:setValue("ingameMapFilter", Utils.setBit(g_gameSettings:getValue("ingameMapFilter"), category))
 		end
 
 		self.filter[category] = isActive
@@ -479,14 +482,14 @@ function IngameMap:drawFields()
 		local px, py = self.layout:getMapPivot()
 		px = px + x
 		py = py + y
-		x = x + width * 0.25
-		y = y + height * 0.25
+		x = x + width * self.mapExtensionOffsetX
+		y = y + height * self.mapExtensionOffsetZ
 		px = px - x
 		py = py - y
 
 		setOverlayRotation(self.fieldStateOverlay, self.layout:getMapRotation(), px, py)
 		setOverlayColor(self.fieldStateOverlay, 1, 1, 1, math.sqrt(self.layout:getMapAlpha()))
-		renderOverlay(self.fieldStateOverlay, x, y, width * 0.5, height * 0.5)
+		renderOverlay(self.fieldStateOverlay, x, y, width * self.mapExtensionScaleFactor, height * self.mapExtensionScaleFactor)
 	end
 end
 
@@ -570,8 +573,8 @@ function IngameMap:drawHotspot(hotspot, smallVersion)
 
 	local worldX, worldZ = hotspot:getWorldPosition()
 	local rotation = hotspot:getWorldRotation()
-	local objectX = (worldX + self.worldCenterOffsetX) / self.worldSizeX * 0.5 + 0.25
-	local objectZ = (worldZ + self.worldCenterOffsetZ) / self.worldSizeZ * 0.5 + 0.25
+	local objectX = (worldX + self.worldCenterOffsetX) / self.worldSizeX * self.mapExtensionScaleFactor + self.mapExtensionOffsetX
+	local objectZ = (worldZ + self.worldCenterOffsetZ) / self.worldSizeZ * self.mapExtensionScaleFactor + self.mapExtensionOffsetZ
 	local zoom = self.layout:getIconZoom()
 
 	hotspot:setScale(self.uiScale * zoom)

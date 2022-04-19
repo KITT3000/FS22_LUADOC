@@ -76,6 +76,8 @@ function ProductionPoint.new(isServer, isClient, baseDirectory, customMt)
 	self.minuteFactorTimescaled = self.mission:getEffectiveTimeScale() / 1000 / 60
 	self.waitingForPalletToSpawn = false
 	self.palletSpawnCooldown = 0
+	self.palletLimitReached = false
+	self.dirtyFlag = self:getNextDirtyFlag()
 	self.inputFillLevels = {}
 	self.productionCostsToClaim = 0
 	self.soldFillTypesToPayOut = {}
@@ -99,6 +101,10 @@ function ProductionPoint.new(isServer, isClient, baseDirectory, customMt)
 		storageEmpty = {
 			title = "-",
 			text = g_i18n:getText("infohud_storageIsEmpty")
+		},
+		palletLimitReached = {
+			accentuate = true,
+			title = g_i18n:getText("infohud_tooManyPallets")
 		}
 	}
 
@@ -247,6 +253,8 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 		self.productionsIdToObj[production.id] = production
 
 		table.insert(self.productions, production)
+
+		return true
 	end)
 
 	if #self.productions == 0 then
@@ -446,6 +454,8 @@ function ProductionPoint:delete()
 
 	if self.samples ~= nil then
 		g_soundManager:deleteSamples(self.samples)
+
+		self.samples = nil
 	end
 
 	if self.animationNodes ~= nil then
@@ -479,6 +489,9 @@ function ProductionPoint:delete()
 		local production = self.productions[i]
 
 		g_soundManager:deleteSamples(production.samples)
+
+		production.samples = nil
+
 		g_animationManager:deleteAnimations(production.animationNodes)
 		g_effectManager:deleteEffects(production.effects)
 	end
@@ -521,6 +534,8 @@ function ProductionPoint:readStream(streamId, connection)
 			self:setProductionState(productionId, true)
 			self:setProductionStatus(productionId, streamReadUIntN(streamId, ProductionPoint.PROD_STATUS_NUM_BITS))
 		end
+
+		self.palletLimitReached = streamReadBool(streamId)
 	end
 end
 
@@ -561,6 +576,20 @@ function ProductionPoint:writeStream(streamId, connection)
 			streamWriteString(streamId, production.id)
 			streamWriteUIntN(streamId, production.status, ProductionPoint.PROD_STATUS_NUM_BITS)
 		end
+
+		streamWriteBool(streamId, self.palletLimitReached)
+	end
+end
+
+function ProductionPoint:readUpdateStream(streamId, timestamp, connection)
+	if connection:getIsServer() then
+		self.palletLimitReached = streamReadBool(streamId)
+	end
+end
+
+function ProductionPoint:writeUpdateStream(streamId, connection, dirtyMask)
+	if not connection:getIsServer() then
+		streamWriteBool(streamId, self.palletLimitReached)
 	end
 end
 
@@ -601,6 +630,12 @@ function ProductionPoint:palletSpawnRequestCallback(pallet, status, fillType)
 	self.waitingForPalletToSpawn = false
 
 	if pallet ~= nil and pallet.addFillUnitFillLevel and fillType ~= nil then
+		if self.palletLimitReached then
+			self.palletLimitReached = false
+
+			self:raiseDirtyFlags(self.dirtyFlag)
+		end
+
 		local fillUnitIndex = pallet:getFirstValidFillUnitToFill(fillType)
 
 		if fillUnitIndex then
@@ -612,10 +647,14 @@ function ProductionPoint:palletSpawnRequestCallback(pallet, status, fillType)
 		else
 			printf("Error: No fillUnitIndex for fillType %s found, pallet:", g_fillTypeManager:getFillTypeNameByIndex(fillType), pallet.xmlFile.filename)
 		end
-	end
-
-	if status == PalletSpawner.RESULT_NO_SPACE then
+	else
 		self.palletSpawnCooldown = g_time + ProductionPoint.NO_PALLET_SPACE_COOLDOWN
+
+		if status == PalletSpawner.PALLET_LIMITED_REACHED and not self.palletLimitReached then
+			self.palletLimitReached = true
+
+			self:raiseDirtyFlags(self.dirtyFlag)
+		end
 	end
 end
 
@@ -1049,6 +1088,10 @@ function ProductionPoint:updateInfo(superFunc, infoTable)
 	if not fillTypesDisplayed then
 		table.insert(infoTable, self.infoTables.storageEmpty)
 	end
+
+	if self.palletLimitReached then
+		table.insert(infoTable, self.infoTables.palletLimitReached)
+	end
 end
 
 function ProductionPoint:getProductionStatus(productionId)
@@ -1118,6 +1161,8 @@ function ProductionPoint:getFillLevel(fillTypeId)
 	elseif self.inputFillTypeIds[fillTypeId] ~= nil then
 		return self.unloadingStation:getFillLevel(fillTypeId, self.ownerFarmId)
 	end
+
+	return 0
 end
 
 function ProductionPoint:getCapacity(fillTypeId)
@@ -1126,6 +1171,8 @@ function ProductionPoint:getCapacity(fillTypeId)
 	elseif self.inputFillTypeIds[fillTypeId] ~= nil then
 		return self.unloadingStation:getCapacity(fillTypeId, self.ownerFarmId)
 	end
+
+	return 0
 end
 
 function ProductionPoint:tableId()

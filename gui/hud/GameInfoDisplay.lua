@@ -175,10 +175,9 @@ end
 
 function GameInfoDisplay:updateBackground()
 	local width = self:getVisibleWidth()
-	local posX, _ = GameInfoDisplay.getBackgroundPosition(1)
 
 	self.backgroundOverlay:setDimension(width + g_safeFrameOffsetX)
-	self.backgroundOverlay:setPosition(posX - self:getVisibleWidth())
+	self.backgroundOverlay:setPosition(self.backgroundBaseX - self:getVisibleWidth())
 end
 
 function GameInfoDisplay:updateTime()
@@ -195,7 +194,7 @@ function GameInfoDisplay:updateTime()
 
 	self.monthText = g_i18n:formatDayInPeriod(nil, nil, true)
 
-	self.seasonOverlay:setUVs(GuiUtils.getUVs(GameInfoDisplay.UV.SEASON[self.environment.currentSeason]))
+	self.seasonOverlay:setUVs(self.seasonOverlayUVs[self.environment.currentSeason])
 
 	local hourRotation = -(currentTime % 12 / 12) * math.pi * 2
 	local minutesRotation = -(currentTime - timeHours) * math.pi * 2
@@ -590,6 +589,7 @@ function GameInfoDisplay:createComponents(hudAtlasPath)
 	local bottomY = topRightY - self:getHeight()
 	local marginWidth, _ = self:scalePixelToScreenVector(GameInfoDisplay.SIZE.BOX_MARGIN)
 	self.backgroundOverlay = self:createBackgroundOverlay()
+	self.backgroundBaseX = topRightX
 	local rightX = self:createMoneyBox(hudAtlasPath, topRightX, bottomY) - marginWidth
 	self.moneyBox.separator = {
 		setVisible = function ()
@@ -732,9 +732,15 @@ function GameInfoDisplay:createDateBox(hudAtlasPath, rightX, bottomY)
 	local seasonWidth, seasonHeight = self:scalePixelToScreenVector(GameInfoDisplay.SIZE.SEASON_ICON)
 	local _, seasonOffsetY = self:scalePixelToScreenVector(GameInfoDisplay.POSITION.SEASON_ICON)
 	local posY = bottomY + (boxHeight - seasonHeight) * 0.5
+	self.seasonOverlayUVs = {}
+
+	for i, uvs in pairs(GameInfoDisplay.UV.SEASON) do
+		self.seasonOverlayUVs[i] = GuiUtils.getUVs(uvs)
+	end
+
 	self.seasonOverlay = Overlay.new(hudAtlasPath, posX, posY + seasonOffsetY, seasonWidth, seasonHeight)
 
-	self.seasonOverlay:setUVs(GuiUtils.getUVs(GameInfoDisplay.UV.SEASON[0]))
+	self.seasonOverlay:setUVs(self.seasonOverlayUVs[0])
 	self.seasonOverlay:setColor(unpack(GameInfoDisplay.COLOR.ICON))
 
 	self.seasonElement = HUDElement.new(self.seasonOverlay)
@@ -1228,9 +1234,9 @@ GameInfoDisplay.COLOR = {
 		0.8
 	},
 	TUTORIAL_PROGRESS_BAR = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		1
 	},
 	TUTORIAL_PROGRESS_BAR_HIGHLIGHT = {

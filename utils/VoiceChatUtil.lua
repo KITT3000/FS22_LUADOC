@@ -73,3 +73,24 @@ end
 function VoiceChatUtil.showVoiceRestrictedPopup()
 	getAllowVoiceCommunication(true)
 end
+
+function VoiceChatUtil.getInputSensitivity()
+	local raw = voiceChatGetAutoActivationSensitivity()
+	local value = -1
+
+	if raw < 0 then
+		return -1
+	else
+		return 1 - raw
+	end
+end
+
+function VoiceChatUtil.setInputSensitivity(value)
+	local raw = -1
+
+	if value >= 0 then
+		raw = 1 - value
+	end
+
+	voiceChatSetAutoActivationSensitivity(raw)
+end

@@ -360,10 +360,12 @@ function PlaceableFence:getPoleNear(x, y, z, maxDistance)
 	overlapSphere(x, y, z, maxDistance, "getPoleNearOverlapCallback", self, CollisionFlag.STATIC_OBJECTS, false, true, true, false)
 
 	if spec.getPoleNearResult ~= nil then
-		local x, y, z = getWorldTranslation(spec.getPoleNearResult)
+		local pole_x, pole_y, pole_z = getWorldTranslation(spec.getPoleNearResult)
 
-		return x, y, z, spec.getPoleNearResult, spec.getPoleNearResultSegment
+		return pole_x, pole_y, pole_z, spec.getPoleNearResult, spec.getPoleNearResultSegment
 	end
+
+	return nil
 end
 
 function PlaceableFence:getPoleNearOverlapCallback(hitObjectId)
@@ -540,7 +542,7 @@ function PlaceableFence:updateDirtyAreas(segment)
 	local minZ = math.min(segment.z1, segment.z2)
 	local maxZ = math.max(segment.z1, segment.z2)
 
-	g_densityMapHeightManager:setCollisionMapAreaDirty(minX, minZ, maxX, maxZ)
+	g_densityMapHeightManager:setCollisionMapAreaDirty(minX, minZ, maxX, maxZ, true)
 	g_currentMission.aiSystem:setAreaDirty(minX, maxX, minZ, maxZ)
 end
 
@@ -769,7 +771,7 @@ function PlaceableFence:findRaycastInfo(node)
 	if segment == nil then
 		collision = node
 		pole = getParent(collision)
-		local sGroup = getParent(pole)
+		sGroup = getParent(pole)
 
 		for si = 1, #spec.segments do
 			local seg = spec.segments[si]
@@ -1041,9 +1043,9 @@ function PlaceableFence:updateSegmentShapes(segment)
 
 		link(segment.group, gate)
 
-		local y1 = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, segment.x1, 0, segment.z1)
+		local segementTerrainY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, segment.x1, 0, segment.z1)
 
-		setWorldTranslation(gate, segment.x1, y1, segment.z1)
+		setWorldTranslation(gate, segment.x1, segementTerrainY, segment.z1)
 
 		local dx = segment.x1 - segment.x2
 		local dz = segment.z1 - segment.z2

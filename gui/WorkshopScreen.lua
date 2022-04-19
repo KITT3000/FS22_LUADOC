@@ -62,6 +62,8 @@ end
 function WorkshopScreen:setConfigurations(vehicle, buyItem, storeItem, configs, price, licensePlateData)
 	self.vehicle = vehicle
 
+	self.shopConfigScreen:onClickBack()
+
 	if not buyItem and storeItem ~= nil and configs ~= nil then
 		local areChangesMade = false
 		local newConfigs = {}

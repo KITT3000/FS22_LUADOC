@@ -75,6 +75,8 @@ function PlaceableHusbandryFence:onLoad(savegame)
 			end
 
 			table.insert(fence.nodes, node)
+
+			return true
 		end)
 
 		if #fence.nodes > 0 then

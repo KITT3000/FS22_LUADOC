@@ -225,6 +225,7 @@ function Dischargeable:onLoad(savegame)
 	spec.currentDischargeState = Dischargeable.DISCHARGE_STATE_OFF
 	spec.currentRaycast = nil
 	spec.forcedFillTypeIndex = nil
+	spec.raycastCollisionMask = CollisionFlag.FILLABLE + CollisionFlag.VEHICLE + CollisionFlag.TERRAIN
 	spec.isAsyncRaycastActive = false
 	spec.currentRaycast = {}
 
@@ -1116,7 +1117,7 @@ function Dischargeable:updateRaycast(dischargeNode)
 	spec.currentRaycast = raycast
 	spec.isAsyncRaycastActive = true
 
-	raycastAll(x, y, z, dx, dy, dz, "raycastCallbackDischargeNode", dischargeNode.maxDistance, self, nil, false)
+	raycastAll(x, y, z, dx, dy, dz, "raycastCallbackDischargeNode", dischargeNode.maxDistance, self, spec.raycastCollisionMask, false, false)
 	self:raycastCallbackDischargeNode(nil)
 end
 

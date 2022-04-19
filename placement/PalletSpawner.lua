@@ -3,7 +3,8 @@ PalletSpawner = {
 	RESULT_SUCCESS = 1,
 	RESULT_ERROR_LOADING_PALLET = 2,
 	PALLET_ALREADY_PRESENT = 3,
-	NO_PALLET_FOR_FILLTYPE = 4
+	NO_PALLET_FOR_FILLTYPE = 4,
+	PALLET_LIMITED_REACHED = 5
 }
 local PalletSpawner_mt = Class(PalletSpawner)
 
@@ -98,6 +99,12 @@ function PalletSpawner:getSupportedFillTypes()
 end
 
 function PalletSpawner:spawnPallet(farmId, fillTypeId, callback, callbackTarget)
+	if not g_currentMission.slotSystem:getCanAddLimitedObjects(SlotSystem.LIMITED_OBJECT_PALLET, 1) then
+		callback(callbackTarget, nil, PalletSpawner.PALLET_LIMITED_REACHED)
+
+		return
+	end
+
 	local pallet = self.fillTypeIdToPallet[fillTypeId]
 
 	if pallet ~= nil then

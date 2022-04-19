@@ -732,12 +732,7 @@ function FocusManager:drawDebug()
 		local element = self.currentFocusData.focusElement
 
 		if element.focusActive then
-			local overlay = Overlay.new(g_baseUIFilename, element.absPosition[1], element.absPosition[2], element.size[1], element.size[2])
-
-			overlay:setColor(1, 0, 0, 0.5)
-			overlay:setUVs(g_colorBgUVs)
-			overlay:setAlignment(Overlay.ALIGN_VERTICAL_BOTTOM, Overlay.ALIGN_HORIZONTAL_LEFT)
-			overlay:render()
+			drawFilledRect(element.absPosition[1], element.absPosition[2], element.size[1], element.size[2], 1, 0, 0, 0.5, nil, nil, nil, nil)
 		end
 	end
 end

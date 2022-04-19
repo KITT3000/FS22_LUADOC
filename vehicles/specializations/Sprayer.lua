@@ -464,13 +464,13 @@ function Sprayer:getExternalFill(fillType, dt)
 				usage = self:getSprayerUsage(FillType.LIQUIDMANURE, dt)
 				local used = loadingStation:removeFillLevel(FillType.LIQUIDMANURE, usage, farmId or self:getOwnerFarmId())
 
-				if math.abs(used - usage) > 1 then
+				if math.abs(used - usage) > 1e-06 then
 					found = true
 					fillType = FillType.LIQUIDMANURE
 				else
 					used = loadingStation:removeFillLevel(FillType.DIGESTATE, usage, farmId or self:getOwnerFarmId())
 
-					if math.abs(used - usage) > 0.1 then
+					if math.abs(used - usage) > 1e-06 then
 						found = true
 						fillType = FillType.DIGESTATE
 					end
@@ -496,7 +496,7 @@ function Sprayer:getExternalFill(fillType, dt)
 				usage = self:getSprayerUsage(FillType.MANURE, dt)
 				local used = loadingStation:removeFillLevel(FillType.MANURE, usage, farmId or self:getOwnerFarmId())
 
-				if math.abs(used - usage) > 0.1 then
+				if math.abs(used - usage) > 1e-06 then
 					found = true
 					fillType = FillType.MANURE
 				end

@@ -68,23 +68,25 @@ function SoundMixer.new(customMt)
 
 			i = i + 1
 		end
+
+		delete(xmlFile)
 	else
 		print("Error: SoundMixer could not load configuration file!")
 	end
 
-	delete(xmlFile)
-
 	self.volumes = {}
 	local gameState = self.gameStates[GameState.LOADING]
 
-	for _, groupIndex in ipairs(AudioGroup.groups) do
-		local volume = gameState.audioGroups[groupIndex].volume or 1
-		self.volumes[groupIndex] = {
-			volume = volume,
-			listeners = {}
-		}
+	if gameState ~= nil then
+		for _, groupIndex in ipairs(AudioGroup.groups) do
+			local volume = gameState.audioGroups[groupIndex].volume or 1
+			self.volumes[groupIndex] = {
+				volume = volume,
+				listeners = {}
+			}
 
-		setAudioGroupVolume(groupIndex, volume)
+			setAudioGroupVolume(groupIndex, volume)
+		end
 	end
 
 	return self

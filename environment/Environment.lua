@@ -199,10 +199,6 @@ function Environment:load(filename)
 
 	self.dayNightCycle = xmlFile:getBool(baseKey .. "#dayNightCycle", true)
 
-	if g_isPresentationVersion and g_isPresentationVersionAlwaysDay then
-		self.dayNightCycle = false
-	end
-
 	self.lighting:load(xmlFile, baseKey .. ".lighting")
 	self.weather:setIsRainAllowed(true)
 	self.weather:load(xmlFile, baseKey)

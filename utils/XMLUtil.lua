@@ -166,6 +166,10 @@ XMLUtil = {
 		if filename ~= nil then
 			local xmlFilename = Utils.getFilename(filename, baseDirectory)
 			xmlFile = loadXMLFile("mapDataXML", xmlFilename)
+
+			if xmlFile == 0 then
+				return false
+			end
 		end
 
 		local success = loadFunc(loadTarget, xmlFile, ...)

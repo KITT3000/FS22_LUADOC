@@ -39,17 +39,6 @@ function MobileHUD:createDisplayComponents(uiScale)
 	self.ingameMap:setScale(uiScale)
 	table.insert(self.displayComponents, self.ingameMap)
 
-	if g_isPresentationVersion and g_isPresentationVersionLogoEnabled then
-		self.ingameMap:setIsVisible(false)
-
-		local width, height = getNormalizedScreenValues(600, 150)
-		local xOffset, yOffset = getNormalizedScreenValues(-5, 0)
-		local overlay = Overlay.new("dataS/menu/presentationVersionLogo.png", g_safeFrameOffsetX + xOffset, 1 - g_safeFrameOffsetY / 2 - height + yOffset, width, height)
-		self.presentationVersionElement = HUDElement.new(overlay)
-
-		table.insert(self.displayComponents, self.presentationVersionElement)
-	end
-
 	self.gamePausedDisplay = GamePausedDisplay.new(g_baseHUDFilename)
 
 	self.gamePausedDisplay:setScale(uiScale)
@@ -96,13 +85,6 @@ function MobileHUD:createDisplayComponents(uiScale)
 	self.gameInfoDisplay:setTemperatureVisible(false)
 	self.gameInfoDisplay:setVehicle(self.controlledVehicle)
 	table.insert(self.displayComponents, self.gameInfoDisplay)
-
-	self.speakerDisplay = SpeakerDisplay.new(g_baseHUDFilename, self.ingameMap)
-
-	self.speakerDisplay:setScale(uiScale)
-	self.speakerDisplay:storeOriginalPosition()
-	self.speakerDisplay:setVisible(false, false)
-	table.insert(self.displayComponents, self.speakerDisplay)
 
 	self.controlBarDisplay = ControlBarDisplay.new(self, g_baseHUDFilename)
 
@@ -154,13 +136,20 @@ function MobileHUD:createDisplayComponents(uiScale)
 	self.topNotification:storeOriginalPosition()
 	self.topNotification:setVisible(false, false)
 	table.insert(self.displayComponents, self.topNotifications)
+
+	self.infoDisplay = InfoDisplay.new(g_baseHUDFilename)
+
+	self.infoDisplay:setScale(uiScale)
+	self.infoDisplay:storeOriginalPosition()
+	self.infoDisplay:setVisible(false, false)
+	table.insert(self.displayComponents, self.infoDisplay)
 end
 
 function MobileHUD:drawControlledEntityHUD()
 	if self.isVisible then
 		if self.controlledVehicle ~= nil then
 			if self.showVehicleInfo then
-				self.controlledVehicle:draw()
+				-- Nothing
 			end
 		elseif self.controlPlayer and self.player ~= nil then
 			self.player:draw()
@@ -174,9 +163,6 @@ function MobileHUD:drawControlledEntityHUD()
 end
 
 function MobileHUD:drawInputHelp()
-end
-
-function MobileHUD:drawCommunicationDisplay()
 end
 
 function MobileHUD:drawVehicleName()
@@ -205,18 +191,10 @@ function MobileHUD:showFillDogBowlContext()
 end
 
 function MobileHUD:onMenuVisibilityChange(isMenuVisible, isOverlayMenu)
-	self.isMenuVisible = isMenuVisible
-
 	self.achievementMessage:onMenuVisibilityChange(isMenuVisible)
-	self.popupMessage:onMenuVisibilityChange(isMenuVisible)
-	self.gamePausedDisplay:onMenuVisibilityChange(isMenuVisible, isOverlayMenu)
-	self.speakerDisplay:onMenuVisibilityChange(isMenuVisible, isOverlayMenu)
 end
 
 function MobileHUD:setInputHelpVisible(isVisible)
-end
-
-function MobileHUD:setFieldInfoVisible(isVisible)
 end
 
 function MobileHUD:addCustomInputHelpEntry(actionName1, actionName2, displayText, ignoreComboButtons)
@@ -243,34 +221,26 @@ function MobileHUD:setControlledVehicle(vehicle)
 	self.controlBarDisplay:onInputHelpModeChange(self.lastInputHelpMode)
 	self.speedSliderDisplay:onInputHelpModeChange(self.lastInputHelpMode)
 	self.steeringSliderDisplay:onInputHelpModeChange(self.lastInputHelpMode)
-	self.gameInfoDisplay:onInputHelpModeChange(self.lastInputHelpMode)
-	self.gameInfoDisplay:setVehicle(vehicle)
 end
 
 function MobileHUD:setIsControllingPlayer(isControllingPlayer)
-	self.controlPlayer = isControllingPlayer
+	MobileHUD:superClass().setIsControllingPlayer(self, isControllingPlayer)
+
+	local player = nil
 
 	if isControllingPlayer then
-		self.controlBarDisplay:setPlayer(self.player)
-		self.speedSliderDisplay:setPlayer(self.player)
-		self.steeringSliderDisplay:setPlayer(self.player)
-		self.playerControlPadDisplay:setPlayer(self.player)
-		self.ingameMap:setPlayer(self.player)
-	else
-		self.controlBarDisplay:setPlayer(nil)
-		self.speedSliderDisplay:setPlayer(nil)
-		self.steeringSliderDisplay:setPlayer(nil)
-		self.playerControlPadDisplay:setPlayer(nil)
-		self.ingameMap:setPlayer(nil)
+		player = self.player
 	end
+
+	self.controlBarDisplay:setPlayer(player)
+	self.speedSliderDisplay:setPlayer(player)
+	self.steeringSliderDisplay:setPlayer(player)
+	self.playerControlPadDisplay:setPlayer(player)
+	self.ingameMap:setPlayer(player)
 
 	local _, height = self.ingameMap:getBackgroundPosition()
 
 	self.ingameMap:setPosition(nil, height)
-end
-
-function MobileHUD:setPlayer(player)
-	self.player = player
 end
 
 function MobileHUD:update(dt)
@@ -296,9 +266,6 @@ function MobileHUD:update(dt)
 		self.speedSliderDisplay:onInputHelpModeChange(inputHelpMode)
 		self.steeringSliderDisplay:onInputHelpModeChange(inputHelpMode)
 		self.playerControlPadDisplay:onInputHelpModeChange(inputHelpMode)
-		self.gameInfoDisplay:onInputHelpModeChange(inputHelpMode)
-
-		self.lastInputHelpMode = inputHelpMode
 	end
 
 	local gyroscopeSteeringActive = g_gameSettings:getValue(GameSettings.SETTING.GYROSCOPE_STEERING)
@@ -306,17 +273,11 @@ function MobileHUD:update(dt)
 	if self.lastGyroSteeringState ~= gyroscopeSteeringActive then
 		self.controlBarDisplay:onGyroscopeSteeringChanged(gyroscopeSteeringActive)
 		self.steeringSliderDisplay:onGyroscopeSteeringChanged(gyroscopeSteeringActive)
-
-		self.lastGyroSteeringState = gyroscopeSteeringActive
 	end
 
 	if self.lastMouseInput.touchIsDown then
 		self:mouseEvent(self.lastMouseInput.posX, self.lastMouseInput.posY, true, false, self.lastMouseInput.button)
 	end
-end
-
-function MobileHUD:mouseEvent(posX, posY, isDown, isUp, button)
-	self.inGameIcon:mouseEvent(posX, posY, isDown, isUp, button)
 end
 
 function MobileHUD:addTouchButton(overlay, areaOffsetX, areaOffsetY, callback, callbackTarget, triggerType, extraArguments)
@@ -354,4 +315,21 @@ function MobileHUD:setChatWindowVisible(isVisible, animate)
 end
 
 function MobileHUD:setChatMessagesReference(chatMessages)
+end
+
+function MobileHUD:addChatMessage(msg, sender, farmId)
+end
+
+function MobileHUD:setConnectedUsers(users)
+end
+
+function MobileHUD:setInfoVisible(isVisible)
+end
+
+function MobileHUD:updateMap(dt)
+	self.ingameMap:update(dt)
+end
+
+function MobileHUD:registerInput()
+	self.ingameMap:registerInput()
 end

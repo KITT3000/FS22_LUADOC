@@ -19,6 +19,14 @@ function AchievementsScreen.new(target, custom_mt, achievementManager)
 	return self
 end
 
+function AchievementsScreen.createFromExistingGui(gui, guiName)
+	local newGui = AchievementsScreen.new(nil, nil, gui.achievementManager)
+
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui)
+
+	return newGui
+end
+
 function AchievementsScreen:onOpen()
 	AchievementsScreen:superClass().onOpen(self)
 

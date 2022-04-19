@@ -145,6 +145,8 @@ function DensityMapHeightManager:loadFromXMLFile(xmlFilename)
 		end
 	end)
 	xmlFile:delete()
+
+	return true
 end
 
 function DensityMapHeightManager:saveToXMLFile(xmlFilename)
@@ -463,29 +465,31 @@ function DensityMapHeightManager:initialize(isServer, tipCollisionMap, placement
 		end
 	end
 
-	self.placementCollisionMap = placementCollisionMap
-	self.placementCollisionMapCreated = false
+	if not GS_IS_MOBILE_VERSION then
+		self.placementCollisionMap = placementCollisionMap
+		self.placementCollisionMapCreated = false
 
-	if placementCollisionMap == 0 then
-		self.placementCollisionMap = createBitVectorMap("PlacementCollisionMap")
-		self.placementCollisionMapCreated = true
-	end
-
-	local placementCollisionMapValid = false
-
-	if not GS_IS_MOBILE_VERSION and missionInfo:getIsPlacementCollisionValid(g_currentMission) then
-		local savegameFilename = missionInfo.savegameDirectory .. "/" .. DensityMapHeightManager.GENERATED_PLACEMENT_COLLISION_FILENAME
-
-		if loadBitVectorMapFromFile(self.placementCollisionMap, savegameFilename, 1) then
-			placementCollisionMapValid = true
-		else
-			Logging.warning("Failed to load savegame placement collision map '" .. savegameFilename .. "'. Loading default placement collision map and recreating from placeables.")
+		if placementCollisionMap == 0 then
+			self.placementCollisionMap = createBitVectorMap("PlacementCollisionMap")
+			self.placementCollisionMapCreated = true
 		end
-	end
 
-	if not placementCollisionMapValid and self.placementCollisionMapCreated then
-		Logging.warning("No placement collision map defined. Creating empty placement collision map.")
-		loadBitVectorMapNew(self.placementCollisionMap, placementMapSize, placementMapSize, 1, false)
+		local placementCollisionMapValid = false
+
+		if missionInfo:getIsPlacementCollisionValid(g_currentMission) then
+			local savegameFilename = missionInfo.savegameDirectory .. "/" .. DensityMapHeightManager.GENERATED_PLACEMENT_COLLISION_FILENAME
+
+			if loadBitVectorMapFromFile(self.placementCollisionMap, savegameFilename, 1) then
+				placementCollisionMapValid = true
+			else
+				Logging.warning("Failed to load savegame placement collision map '" .. savegameFilename .. "'. Loading default placement collision map and recreating from placeables.")
+			end
+		end
+
+		if not placementCollisionMapValid and self.placementCollisionMapCreated then
+			Logging.warning("No placement collision map defined. Creating empty placement collision map.")
+			loadBitVectorMapNew(self.placementCollisionMap, placementMapSize, placementMapSize, 1, false)
+		end
 	end
 
 	g_fillTypeManager:constructDensityMapHeightTextureArrays(heightTypes)
@@ -525,21 +529,23 @@ function DensityMapHeightManager:update(dt)
 	end
 
 	local num = 0
+	local terrainHalfSize = g_currentMission.terrainSize * 0.5
 
-	for areaIndex in pairs(self.pendingCollisionRecalculateAreas) do
-		self.pendingCollisionRecalculateAreas[areaIndex] = nil
-		local zi = math.floor(areaIndex / self.numCollisionRecalculateAreasPerSide)
-		local xi = areaIndex - zi * self.numCollisionRecalculateAreasPerSide
-		local terrainHalfSize = g_currentMission.terrainSize * 0.5
-		local minX = xi * self.collisionRecalculateAreaWorldSize - terrainHalfSize
-		local minZ = zi * self.collisionRecalculateAreaWorldSize - terrainHalfSize
+	for areaIndex, loopIndex in pairs(self.pendingCollisionRecalculateAreas) do
+		if loopIndex <= g_updateLoopIndex then
+			self.pendingCollisionRecalculateAreas[areaIndex] = nil
+			local zi = math.floor(areaIndex / self.numCollisionRecalculateAreasPerSide)
+			local xi = areaIndex - zi * self.numCollisionRecalculateAreasPerSide
+			local minX = xi * self.collisionRecalculateAreaWorldSize - terrainHalfSize
+			local minZ = zi * self.collisionRecalculateAreaWorldSize - terrainHalfSize
 
-		self:updateCollisionMap(minX, minZ, minX + self.collisionRecalculateAreaWorldSize, minZ + self.collisionRecalculateAreaWorldSize)
+			self:updateCollisionMap(minX, minZ, minX + self.collisionRecalculateAreaWorldSize, minZ + self.collisionRecalculateAreaWorldSize)
 
-		num = num + 1
+			num = num + 1
 
-		if num > 6 then
-			break
+			if num > 6 then
+				break
+			end
 		end
 	end
 end
@@ -566,34 +572,39 @@ function DensityMapHeightManager:visualizeCollisionMap()
 		local minZi = math.max(zi - 25, 0)
 		local maxXi = math.min(xi + 25, densitySize - 1)
 		local maxZi = math.min(zi + 25, densitySize - 1)
+		local green = {
+			0,
+			1,
+			0
+		}
+		local blue = {
+			0,
+			0,
+			1
+		}
+		local red = {
+			1,
+			0,
+			0.1
+		}
+		local color = nil
 
 		for stepZi = minZi, maxZi do
 			for stepXi = minXi, maxXi do
 				local v = getBitVectorMapPoint(self.tipCollisionMap, stepXi, stepZi, 0, 2)
-				local r = 0
-				local g = 1
-				local b = 0
+				color = green
 
 				if v > 1 then
-					b = 0.1
-					g = 0
-					r = 1
+					color = red
 				elseif v > 0 then
-					b = 1
-					g = 0
-					r = 0
+					color = blue
 				end
 
 				local wx = stepXi * self.densityToWorldMap - terrainHalfSize
 				local wz = stepZi * self.densityToWorldMap - terrainHalfSize
 				local wy = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, wx, 0, wz) + 0.05
 
-				Utils.renderTextAtWorldPosition(wx, wy, wz, tostring(v), getCorrectTextSize(0.016), 0, {
-					r,
-					g,
-					b,
-					1
-				})
+				Utils.renderTextAtWorldPosition(wx, wy, wz, tostring(v), getCorrectTextSize(0.016), 0, color)
 			end
 		end
 	end
@@ -681,7 +692,7 @@ function DensityMapHeightManager:savePreparedPlacementCollisionMap(callback, cal
 	end
 end
 
-function DensityMapHeightManager:setCollisionMapAreaDirty(minX, minZ, maxX, maxZ)
+function DensityMapHeightManager:setCollisionMapAreaDirty(minX, minZ, maxX, maxZ, delayed)
 	local terrainHalfSize = g_currentMission.terrainSize * 0.5
 	local minXi = math.floor((minX + terrainHalfSize) / self.collisionRecalculateAreaWorldSize)
 	local minZi = math.floor((minZ + terrainHalfSize) / self.collisionRecalculateAreaWorldSize)
@@ -691,7 +702,13 @@ function DensityMapHeightManager:setCollisionMapAreaDirty(minX, minZ, maxX, maxZ
 	for zi = minZi, maxZi do
 		for xi = minXi, maxXi do
 			local areaIndex = zi * self.numCollisionRecalculateAreasPerSide + xi
-			self.pendingCollisionRecalculateAreas[areaIndex] = true
+			local frameOffset = 0
+
+			if delayed then
+				frameOffset = 2
+			end
+
+			self.pendingCollisionRecalculateAreas[areaIndex] = g_updateLoopIndex + frameOffset
 		end
 	end
 end

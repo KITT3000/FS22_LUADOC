@@ -165,11 +165,9 @@ function HUDPopupMessage:startMessage()
 	self.ingameMap:turnSmall()
 	self:assignCurrentMessage(self.pendingMessages[1])
 	table.remove(self.pendingMessages, 1)
-	self:setInputActive(true)
 end
 
 function HUDPopupMessage:finishMessage()
-	self:setInputActive(false)
 	self.ingameMap:setAllowToggle(true)
 
 	if self.currentMessage ~= nil and self.currentMessage.callback ~= nil then
@@ -276,6 +274,11 @@ function HUDPopupMessage:onConfirmMessage(actionName, inputValue)
 	if self.animation:getFinished() then
 		self:setVisible(false, true)
 	end
+end
+
+function HUDPopupMessage:setVisible(isVisible, animate)
+	self:setInputActive(isVisible)
+	HUDPopupMessage:superClass().setVisible(self, isVisible, animate)
 end
 
 function HUDPopupMessage:draw()

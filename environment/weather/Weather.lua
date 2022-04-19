@@ -180,8 +180,10 @@ function Weather:load(xmlFile, key)
 	self.fogUpdater:setHeight(self.fog.height)
 	self.fogUpdater:setTargetValues(self.fog.minMieScale, 0)
 
-	if self.skyBoxUpdater ~= nil then
-		self.skyBoxUpdater:load(xmlFile, key .. ".skyBox")
+	if self.skyBoxUpdater ~= nil and not self.skyBoxUpdater:load(xmlFile, key .. ".skyBox") then
+		self.skyBoxUpdater:delete()
+
+		self.skyBoxUpdater = nil
 	end
 
 	if g_server ~= nil then

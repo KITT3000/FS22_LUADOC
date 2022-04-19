@@ -464,7 +464,7 @@ function PlaceableHusbandry:removeHusbandryFillLevel(farmId, deltaFillLevel, fil
 	local spec = self.spec_husbandry
 
 	if spec.loadingStation == nil then
-		return 0
+		return deltaFillLevel
 	end
 
 	return spec.loadingStation:removeFillLevel(fillTypeIndex, deltaFillLevel, farmId or self:getOwnerFarmId())

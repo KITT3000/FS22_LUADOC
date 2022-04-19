@@ -110,6 +110,10 @@ function ScrollingLayoutElement:scrollTo(startY, updateSlider, noUpdateTarget)
 	self:raiseCallback("onScrollCallback")
 end
 
+function ScrollingLayoutElement:scrollToEnd()
+	self:scrollTo(math.max(self.contentSize - self.absSize[2], 0), true)
+end
+
 function ScrollingLayoutElement:smoothScrollTo(offset)
 	offset = math.max(math.min(offset, self.contentSize - self.absSize[2]), 0)
 	self.targetFirstVisibleY = offset

@@ -81,13 +81,6 @@ end
 function InGameMenuMobileSettingsFrame:onFrameOpen(element)
 	InGameMenuMobileSettingsFrame:superClass().onFrameOpen(self)
 	self:updateGeneralSettings()
-
-	if g_isPresentationVersion then
-		self.multiGraphics:setDisabled(true)
-		self.checkGyroscope:setDisabled(true)
-		self.checkTilt:setDisabled(true)
-	end
-
 	FocusManager:setFocus(self.boxLayout)
 end
 

@@ -43,9 +43,11 @@ function AIJobStopEvent:writeStream(streamId, connection)
 end
 
 function AIJobStopEvent:run(connection)
-	if connection:getIsServer() then
-		g_currentMission.aiSystem:stopJobInternal(self.job, self.aiMessage)
-	else
-		g_currentMission.aiSystem:stopJob(self.job, self.aiMessage)
+	if self.job ~= nil then
+		if connection:getIsServer() then
+			g_currentMission.aiSystem:stopJobInternal(self.job, self.aiMessage)
+		else
+			g_currentMission.aiSystem:stopJob(self.job, self.aiMessage)
+		end
 	end
 end

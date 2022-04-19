@@ -31,7 +31,7 @@ end
 
 function ConstructionBrushDestruct:deactivate()
 	self.cursor:setSelectionMode(false)
-	self:resetColoredNodes()
+	self:resetPlaceableSelection()
 	g_messageCenter:unsubscribeAll(self)
 	ConstructionBrushDestruct:superClass().deactivate(self)
 end

@@ -6,6 +6,7 @@ function KeyValueInfoHUDBox.new(uiScale)
 	self.displayComponents = {}
 	self.cachedLines = {}
 	self.activeLines = {}
+	self.title = "Unknown Title"
 
 	return self
 end

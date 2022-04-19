@@ -203,12 +203,8 @@ end
 
 function ModHubItemsFrame:updateDownloadStates()
 	if #self.itemsList.elements > 0 then
-		for i = self.itemsList.elements[1].indexInSection, self.itemsList.elements[#self.itemsList.elements].indexInSection do
-			local cell = self.itemsList:getElementAtSectionIndex(1, i)
-
-			if cell ~= nil then
-				self:updateModDownloadState(cell, i)
-			end
+		for _, cell in ipairs(self.itemsList.elements) do
+			self:updateModDownloadState(cell, cell.indexInSection)
 		end
 	end
 
@@ -217,6 +213,15 @@ end
 
 function ModHubItemsFrame:updateModDownloadState(cell, index)
 	local modInfo = self.mods[index]
+
+	if modInfo == nil then
+		return
+	end
+
+	if cell:getAttribute("nameLabel"):getText() ~= modInfo:getName() then
+		return
+	end
+
 	local isDownloading = modInfo:getIsDownloading()
 	local isInstalled = modInfo:getIsInstalled()
 	local isDownload = modInfo:getIsDownload()

@@ -108,6 +108,21 @@ function InGameMenuAIFrame.new(subclass_mt, messageCenter, l10n, inputManager, i
 	return self
 end
 
+function InGameMenuAIFrame.createFromExistingGui(gui, guiName)
+	local inputManager = gui.inputManager
+	local fruitTypeManager = gui.fruitTypeManager
+	local fillTypeManager = gui.fillTypeManager
+	local farmlandManager = gui.farmlandManager
+	local farmManager = gui.farmManager
+	local newGui = InGameMenuAIFrame.new(nil, nil, nil, inputManager, nil, fruitTypeManager, fillTypeManager, nil, nil, farmlandManager, farmManager)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function InGameMenuAIFrame:copyAttributes(src)
 	InGameMenuAIFrame:superClass().copyAttributes(self, src)
 
@@ -208,6 +223,7 @@ function InGameMenuAIFrame:onFrameOpen()
 	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_PLAYER, true)
 	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_SHOP, true)
 	self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_OTHER, true)
+	g_gameSettings:saveToXMLFile(g_savegameXML)
 
 	self.mapOverviewZoom = 1
 	self.mapOverviewCenterX = 0.5

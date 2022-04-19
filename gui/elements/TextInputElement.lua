@@ -170,11 +170,11 @@ function TextInputElement:finalize()
 	}
 
 	if not self.maxInputTextWidth and (self.textAlignment == RenderText.ALIGN_CENTER or self.textAlignment == RenderText.ALIGN_RIGHT) then
-		print("Error: TextInputElement loading using \"center\" or \"right\" alignment requires specification of \"maxInputTextWidth\"")
+		Logging.error("TextInputElement loading using \"center\" or \"right\" alignment requires specification of \"maxInputTextWidth\"")
 	end
 
 	if self.maxInputTextWidth and self.maxInputTextWidth <= getTextWidth(self.textSize, self.frontDotsText) + self.cursorNeededSize[1] + getTextWidth(self.textSize, self.backDotsText) then
-		Logging.warning("Warning: TextInputElement loading specified \"maxInputTextWidth\" is too small (%.4f) to display needed data", self.maxInputTextWidth)
+		Logging.warning("TextInputElement loading specified \"maxInputTextWidth\" is too small (%.4f) to display needed data", self.maxInputTextWidth)
 	end
 end
 
@@ -488,7 +488,7 @@ function TextInputElement:keyEvent(unicode, sym, modifier, isDown, eventUsed)
 			if not wasSpecialKey and self:getIsUnicodeAllowed(unicode) then
 				local textLength = utf8Strlen(self.text)
 
-				if not self.maxCharacters or textLength < self.maxCharacters then
+				if self.maxCharacters == nil or textLength < self.maxCharacters then
 					self.text = (self.cursorPosition > 1 and utf8Substr(self.text, 0, self.cursorPosition - 1) or "") .. unicodeToUtf8(unicode) .. (self.cursorPosition <= textLength and utf8Substr(self.text, self.cursorPosition - 1) or "")
 					self.cursorPosition = self.cursorPosition + 1
 
@@ -558,7 +558,7 @@ function TextInputElement:update(dt)
 
 			self:updateVisibleTextElements()
 
-			self.repeatingSpecialKeyDelayTime = math.max(TextInputElement.MIN_REPEAT_DELAY, self.repeatingSpecialKeyDelayTime * 0.1^(dt / 100))
+			self.repeatingSpecialKeyDelayTime = math.max(TextInputElement.MIN_REPEAT_DELAY, (self.repeatingSpecialKeyDelayTime or TextInputElement.INITIAL_REPEAT_DELAY) * 0.1^(dt / 100))
 			self.repeatingSpecialKeyRemainingDelayTime = self.repeatingSpecialKeyDelayTime
 		end
 	end

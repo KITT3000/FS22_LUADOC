@@ -15,6 +15,7 @@ ReverseDriving = {
 		schema:register(XMLValueType.STRING, "vehicle.reverseDriving#animationName", "Animation name", "reverseDriving")
 		schema:register(XMLValueType.BOOL, "vehicle.reverseDriving#hideCharacterOnChange", "Hide the chracter while chaning the direction", true)
 		schema:register(XMLValueType.BOOL, "vehicle.reverseDriving#inverseTransmission", "Inverse the transmission gear ratio when direction has changed", false)
+		schema:register(XMLValueType.VECTOR_N, "vehicle.reverseDriving#disablingAttacherJointIndices", "Attacher joint indices which are disabling the reverse driving")
 		schema:register(XMLValueType.NODE_INDEX, "vehicle.reverseDriving.ai#directionNode", "Direction Node while in reverse driving mode")
 		schema:register(XMLValueType.NODE_INDEX, "vehicle.reverseDriving.ai#steeringNode", "Steering Node while in reverse driving mode")
 		AIImplement.registerAICollisionTriggerXMLPaths(schema, "vehicle.reverseDriving.ai")
@@ -32,6 +33,26 @@ ReverseDriving = {
 
 		schemaSavegame:register(XMLValueType.BOOL, "vehicles.vehicle(?).reverseDriving#isActive", "Reverse driving is active")
 	end,
+	postInitSpecialization = function ()
+		local schema = Vehicle.xmlSchema
+
+		for name, _ in pairs(g_configurationManager:getConfigurations()) do
+			local specializationKey = g_configurationManager:getConfigurationAttribute(name, "xmlKey")
+
+			if specializationKey ~= nil then
+				specializationKey = "." .. specializationKey
+			else
+				specializationKey = ""
+			end
+
+			local configrationsKey = string.format("vehicle%s.%sConfigurations", specializationKey, name)
+			local configrationKey = string.format("%s.%sConfiguration(?)", configrationsKey, name)
+
+			schema:setXMLSharedRegistration("configReverseDriving", configrationKey)
+			schema:register(XMLValueType.BOOL, configrationKey .. ".reverseDriving#isAllowed", "Reverse driving is allowed while this configuration is equipped", true)
+			schema:setXMLSharedRegistration()
+		end
+	end,
 	registerEvents = function (vehicleType)
 		SpecializationUtil.registerEvent(vehicleType, "onStartReverseDirectionChange")
 		SpecializationUtil.registerEvent(vehicleType, "onReverseDirectionChanged")
@@ -41,6 +62,7 @@ ReverseDriving = {
 function ReverseDriving.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "reverseDirectionChanged", ReverseDriving.reverseDirectionChanged)
 	SpecializationUtil.registerFunction(vehicleType, "setIsReverseDriving", ReverseDriving.setIsReverseDriving)
+	SpecializationUtil.registerFunction(vehicleType, "getIsReverseDrivingAllowed", ReverseDriving.getIsReverseDrivingAllowed)
 end
 
 function ReverseDriving.registerOverwrittenFunctions(vehicleType)
@@ -93,6 +115,7 @@ function ReverseDriving:onLoad(savegame)
 	spec.reverseDrivingAnimation = self.xmlFile:getValue("vehicle.reverseDriving#animationName", "reverseDriving")
 	spec.hideCharacterOnChange = self.xmlFile:getValue("vehicle.reverseDriving#hideCharacterOnChange", true)
 	spec.inverseTransmission = self.xmlFile:getValue("vehicle.reverseDriving#inverseTransmission", false)
+	spec.disablingAttacherJointIndices = self.xmlFile:getValue("vehicle.reverseDriving#disablingAttacherJointIndices", nil, true)
 	spec.aiDirectionNode = self.xmlFile:getValue("vehicle.reverseDriving.ai#directionNode", nil, self.components, self.i3dMappings)
 	spec.aiSteeringNode = self.xmlFile:getValue("vehicle.reverseDriving.ai#steeringNode", nil, self.components, self.i3dMappings)
 
@@ -101,6 +124,23 @@ function ReverseDriving:onLoad(savegame)
 	end
 
 	spec.hasReverseDriving = self:getAnimationExists(spec.reverseDrivingAnimation)
+
+	for name, id in pairs(self.configurations) do
+		local specializationKey = g_configurationManager:getConfigurationAttribute(name, "xmlKey")
+
+		if specializationKey ~= nil then
+			specializationKey = "." .. specializationKey
+		else
+			specializationKey = ""
+		end
+
+		local key = string.format("vehicle%s.%sConfigurations.%sConfiguration(%d).reverseDriving", specializationKey, name, name, id - 1)
+
+		if not self.xmlFile:getValue(key .. "#isAllowed", true) then
+			spec.hasReverseDriving = false
+		end
+	end
+
 	spec.isChangingDirection = false
 	spec.isReverseDriving = false
 	spec.isSelectable = true
@@ -242,6 +282,20 @@ function ReverseDriving:setIsReverseDriving(isReverseDriving, noEventSend)
 		SpecializationUtil.raiseEvent(self, "onStartReverseDirectionChange")
 		ReverseDrivingSetStateEvent.sendEvent(self, isReverseDriving, noEventSend)
 	end
+end
+
+function ReverseDriving:getIsReverseDrivingAllowed(newState)
+	local spec = self.spec_reverseDriving
+
+	if newState and spec.disablingAttacherJointIndices ~= nil then
+		for i = 1, #spec.disablingAttacherJointIndices do
+			if self:getImplementFromAttacherJointIndex(spec.disablingAttacherJointIndices[i]) ~= nil then
+				return false
+			end
+		end
+	end
+
+	return true
 end
 
 function ReverseDriving:updateSteeringWheel(superFunc, steeringWheel, dt, direction)
@@ -392,5 +446,7 @@ end
 function ReverseDriving:actionEventToggleReverseDriving(actionName, inputValue, callbackState, isAnalog)
 	local spec = self.spec_reverseDriving
 
-	self:setIsReverseDriving(not spec.isReverseDriving)
+	if self:getIsReverseDrivingAllowed(not spec.isReverseDriving) then
+		self:setIsReverseDriving(not spec.isReverseDriving)
+	end
 end

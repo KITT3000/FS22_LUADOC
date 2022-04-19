@@ -44,7 +44,8 @@ function PlaceableWeighingStation:onLoad(savegame)
 
 	addTrigger(spec.trigger, "onWeighingTriggerCallback", self)
 
-	spec.triggerVehicles = {}
+	spec.triggerVehicleNodes = {}
+	spec.vehicles = {}
 	spec.displays = {}
 
 	self.xmlFile:iterate(key .. ".display", function (_, displayKey)
@@ -94,12 +95,26 @@ end
 
 function PlaceableWeighingStation:updateWeightDisplay()
 	local spec = self.spec_weighingStation
+
+	for node, _ in pairs(spec.triggerVehicleNodes) do
+		if entityExists(node) then
+			local vehicle = g_currentMission:getNodeObject(node)
+
+			if vehicle ~= nil and vehicle.getTotalMass ~= nil then
+				spec.vehicles[vehicle] = true
+			end
+		else
+			spec.triggerVehicleNodes[node] = nil
+		end
+	end
+
 	local mass = 0
 
-	for vehicle, _ in pairs(spec.triggerVehicles) do
+	for vehicle in pairs(spec.vehicles) do
 		mass = mass + vehicle:getTotalMass(true)
 	end
 
+	table.clear(spec.vehicles)
 	self:setWeightDisplay(mass * 1000)
 end
 
@@ -117,22 +132,11 @@ end
 function PlaceableWeighingStation:onWeighingTriggerCallback(triggerId, otherId, onEnter, onLeave, onStay)
 	if onEnter or onLeave then
 		local spec = self.spec_weighingStation
-		local vehicle = g_currentMission:getNodeObject(otherId)
 
 		if onEnter then
-			if vehicle ~= nil then
-				if spec.triggerVehicles[vehicle] == nil then
-					spec.triggerVehicles[vehicle] = 0
-				end
-
-				spec.triggerVehicles[vehicle] = spec.triggerVehicles[vehicle] + 1
-			end
-		elseif vehicle ~= nil then
-			spec.triggerVehicles[vehicle] = spec.triggerVehicles[vehicle] - 1
-
-			if spec.triggerVehicles[vehicle] == 0 then
-				spec.triggerVehicles[vehicle] = nil
-			end
+			spec.triggerVehicleNodes[otherId] = true
+		else
+			spec.triggerVehicleNodes[otherId] = nil
 		end
 
 		self:updateWeightDisplay()

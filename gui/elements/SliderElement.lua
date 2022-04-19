@@ -50,6 +50,7 @@ function SliderElement.new(target, custom_mt)
 	self.maxAbsSliderPos = 0.92
 	self.isSliderVisible = true
 	self.needsSlider = true
+	self.useStepRounding = false
 	self.hideParentWhenEmpty = false
 
 	return self
@@ -90,6 +91,7 @@ function SliderElement:loadFromXML(xmlFile, key)
 	self.stepSize = Utils.getNoNil(getXMLFloat(xmlFile, key .. "#stepSize"), self.stepSize)
 	self.isThreePartBitmap = Utils.getNoNil(getXMLBool(xmlFile, key .. "#isThreePartBitmap"), self.isThreePartBitmap)
 	self.hideParentWhenEmpty = Utils.getNoNil(getXMLBool(xmlFile, key .. "#hideParentWhenEmpty"), self.hideParentWhenEmpty)
+	self.useStepRounding = Utils.getNoNil(getXMLBool(xmlFile, key .. "#useStepRounding"), self.useStepRounding)
 	self.sliderOffset = unpack(GuiUtils.getNormalizedValues(getXMLString(xmlFile, key .. "#sliderOffset"), {
 		self.outputSize[2]
 	}, {
@@ -133,6 +135,7 @@ function SliderElement:loadProfile(profile, applyProfile)
 	self.stepSize = profile:getNumber("stepSize", self.stepSize)
 	self.isThreePartBitmap = profile:getBool("isThreePartBitmap", self.isThreePartBitmap)
 	self.hideParentWhenEmpty = profile:getBool("hideParentWhenEmpty", self.hideParentWhenEmpty)
+	self.useStepRounding = profile:getBool("useStepRounding", self.useStepRounding)
 	self.sliderOffset = unpack(GuiUtils.getNormalizedValues(profile:getValue("sliderOffset"), {
 		self.outputSize[2]
 	}, {
@@ -165,6 +168,7 @@ function SliderElement:copyAttributes(src)
 	self.sliderSize = table.copy(src.sliderSize)
 	self.isThreePartBitmap = src.isThreePartBitmap
 	self.hideParentWhenEmpty = src.hideParentWhenEmpty
+	self.useStepRounding = src.useStepRounding
 	self.startSize = table.copy(src.startSize)
 	self.midSize = table.copy(src.midSize)
 	self.endSize = table.copy(src.endSize)
@@ -284,15 +288,18 @@ function SliderElement:setValue(newValue, doNotUpdateDataElement, immediateMode)
 
 	self:updateSliderPosition()
 
-	local rem = (newValue - self.minValue) % self.stepSize
+	if self.useStepRounding then
+		local rem = (newValue - self.minValue) % self.stepSize
 
-	if rem >= self.stepSize - rem then
-		newValue = newValue + self.stepSize - rem
-	else
-		newValue = newValue - rem
+		if rem >= self.stepSize - rem then
+			newValue = newValue + self.stepSize - rem
+		else
+			newValue = newValue - rem
+		end
+
+		newValue = math.min(math.max(newValue, self.minValue), self.maxValue)
 	end
 
-	newValue = math.min(math.max(newValue, self.minValue), self.maxValue)
 	local numDecimalPlaces = 5
 	local mult = 10^numDecimalPlaces
 	newValue = math.floor(newValue * mult + 0.5) / mult
@@ -612,6 +619,7 @@ function SliderElement:onBindUpdate(element)
 		local list = element
 		local numItems = list:getItemCount()
 		local numVisibleItems = list:getVisibleItemCount()
+		self.useStepRounding = true
 
 		self:setMinValue(1)
 		self:setMaxValue(math.ceil(numItems - numVisibleItems) / list:getItemFactor() + 1)
@@ -621,6 +629,8 @@ function SliderElement:onBindUpdate(element)
 		self.needsSlider = numVisibleItems < numItems
 	elseif element:isa(ScrollingLayoutElement) then
 		self:setMinValue(1)
+
+		self.useStepRounding = true
 
 		if element:getNeedsScrolling() then
 			self:setMaxValue(element.contentSize / element.absSize[2] * 20)

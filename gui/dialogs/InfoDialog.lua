@@ -77,7 +77,9 @@ function InfoDialog:setCallback(onOk, target, args)
 end
 
 function InfoDialog:setButtonTexts(okText)
-	self.okButton:setText(Utils.getNoNil(okText, self.defaultOkText))
+	if self.okButton ~= nil then
+		self.okButton:setText(Utils.getNoNil(okText, self.defaultOkText))
+	end
 end
 
 function InfoDialog:setButtonAction(buttonAction)

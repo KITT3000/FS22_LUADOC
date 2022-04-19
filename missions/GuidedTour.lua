@@ -117,10 +117,6 @@ function GuidedTour:loadMapData(mapXmlFile, missionInfo, baseDirectory)
 	if not self.mission:getIsTourSupported() then
 		self.missionInfo.guidedTourActive = false
 	end
-
-	if g_isPresentationVersion and not g_isPresentationVersionIsTourEnabled then
-		self.missionInfo.guidedTourActive = false
-	end
 end
 
 function GuidedTour:loadStepContentsFromXML(xmlFile, key, step, baseDirectory)
@@ -333,7 +329,14 @@ function GuidedTour:onReactToDialog(yes)
 	else
 		self.missionInfo.guidedTourActive = false
 
-		self.mission.hud:showInGameMessage("", self.abortText, -1)
+		if GS_IS_MOBILE_VERSION then
+			g_gui:showInfoDialog({
+				title = "",
+				text = self.abortText
+			})
+		else
+			self.mission.hud:showInGameMessage("", self.abortText, -1)
+		end
 	end
 end
 
@@ -746,4 +749,18 @@ function GuidedTour:performComparison(valueCheckWith, value, valueType, comparat
 			return valueCheckWith ~= value
 		end
 	end
+end
+
+function GuidedTour:getPassedSteps()
+	local dialogs = {}
+
+	for index = 1, self.missionInfo.guidedTourStep do
+		local step = self.steps[index]
+
+		if step.dialog ~= nil then
+			table.insert(dialogs, step.dialog)
+		end
+	end
+
+	return dialogs
 end

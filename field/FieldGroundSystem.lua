@@ -41,10 +41,19 @@ function FieldGroundSystem:loadGroundTypes(filename)
 	self:loadDensityMapFromXML(FieldDensityMap.GROUND_ANGLE, xmlFile, "fieldGround.densityMaps.groundAngle")
 	self:loadDensityMapFromXML(FieldDensityMap.SPRAY_TYPE, xmlFile, "fieldGround.densityMaps.sprayTypes")
 	self:loadDensityMapFromXML(FieldDensityMap.SPRAY_LEVEL, xmlFile, "fieldGround.densityMaps.sprayLevel", 3)
-	self:loadDensityMapFromXML(FieldDensityMap.LIME_LEVEL, xmlFile, "fieldGround.densityMaps.limeLevel")
 	self:loadDensityMapFromXML(FieldDensityMap.PLOW_LEVEL, xmlFile, "fieldGround.densityMaps.plowLevel")
-	self:loadDensityMapFromXML(FieldDensityMap.STUBBLE_SHRED, xmlFile, "fieldGround.densityMaps.stubbleShredLevel")
-	self:loadDensityMapFromXML(FieldDensityMap.ROLLER_LEVEL, xmlFile, "fieldGround.densityMaps.rollerLevel")
+
+	if Platform.gameplay.useLimeCounter then
+		self:loadDensityMapFromXML(FieldDensityMap.LIME_LEVEL, xmlFile, "fieldGround.densityMaps.limeLevel")
+	end
+
+	if Platform.gameplay.useStubbleShred then
+		self:loadDensityMapFromXML(FieldDensityMap.STUBBLE_SHRED, xmlFile, "fieldGround.densityMaps.stubbleShredLevel")
+	end
+
+	if Platform.gameplay.useRolling then
+		self:loadDensityMapFromXML(FieldDensityMap.ROLLER_LEVEL, xmlFile, "fieldGround.densityMaps.rollerLevel")
+	end
 
 	local _ = nil
 	_, self.groundTypesFirstChannel, self.groundTypesNumChannels = self:getDensityMapData(FieldDensityMap.GROUND_TYPE)
@@ -144,12 +153,6 @@ function FieldGroundSystem:loadGroundTypes(filename)
 		1,
 		1
 	})
-	self:loadSprayIdFromXML(FieldSprayType.LIME, xmlFile, "fieldGround.densityMaps.sprayTypes.lime", FieldSprayType.LIME, {
-		1,
-		1,
-		1,
-		1
-	})
 	self:loadSprayIdFromXML(FieldSprayType.MANURE, xmlFile, "fieldGround.densityMaps.sprayTypes.manure", FieldSprayType.MANURE, {
 		1,
 		1,
@@ -162,6 +165,16 @@ function FieldGroundSystem:loadGroundTypes(filename)
 		1,
 		1
 	})
+
+	if Platform.gameplay.useLimeCounter then
+		self:loadSprayIdFromXML(FieldSprayType.LIME, xmlFile, "fieldGround.densityMaps.sprayTypes.lime", FieldSprayType.LIME, {
+			1,
+			1,
+			1,
+			1
+		})
+	end
+
 	self:loadChopperIdFromXML(FieldChopperType.CHOPPER_STRAW, xmlFile, "fieldGround.densityMaps.sprayTypes.straw", 5, {
 		1,
 		1,
@@ -224,6 +237,7 @@ function FieldGroundSystem:initTerrain(mission, terrainNode, terrainDetailId)
 			local path = data.path
 			local missionInfo = mission.missionInfo
 			local loadFromSave = false
+			local needDefaultMap = false
 
 			if missionInfo.isValid then
 				path = missionInfo.savegameDirectory .. "/" .. data.filename
@@ -236,8 +250,21 @@ function FieldGroundSystem:initTerrain(mission, terrainNode, terrainDetailId)
 				loadFromSave = false
 			end
 
-			if not loadFromSave and not loadBitVectorMapFromFile(data.map, data.path, data.numChannels) then
-				Logging.warning("Loading default density map file '" .. tostring(data.path) .. "' failed!")
+			if not loadFromSave then
+				if data.path ~= nil then
+					if not loadBitVectorMapFromFile(data.map, data.path, data.numChannels) then
+						Logging.error("Loading default density map file '" .. tostring(data.path) .. "' failed!")
+
+						needDefaultMap = true
+					end
+				else
+					needDefaultMap = true
+				end
+			end
+
+			if needDefaultMap then
+				loadBitVectorMapNew(data.map, 1024, 1024, data.numChannels, false)
+				Logging.error("Missing field density map data for '%s'! Creating empty default", data.key)
 			end
 
 			data.width, data.height = getBitVectorMapSize(data.map)
@@ -292,6 +319,7 @@ function FieldGroundSystem:loadDensityMapFromXML(identifier, xmlFile, key, force
 	end
 
 	data.maxValue = maxValue
+	data.key = key
 	self.densityMaps[identifier] = data
 
 	return true

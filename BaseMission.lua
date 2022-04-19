@@ -119,6 +119,7 @@ function BaseMission:initialize()
 
 	self.hud = self:createHUD()
 	self.placementManager = PlacementManager.new()
+	self.benchmark = Benchmark.new()
 end
 
 function BaseMission:createHUD()
@@ -176,6 +177,10 @@ function BaseMission:delete()
 
 	if self.placementManager ~= nil then
 		self.placementManager:delete()
+	end
+
+	if self.benchmark ~= nil then
+		self.benchmark:delete()
 	end
 
 	if self.player ~= nil then
@@ -343,10 +348,6 @@ function BaseMission:onStartMission()
 
 	if self:getIsClient() then
 		local context = Player.INPUT_CONTEXT_NAME
-
-		if GS_IS_MOBILE_VERSION and self.missionInfo.isNewSPCareer then
-			context = Vehicle.INPUT_CONTEXT_NAME
-		end
 
 		self.inputManager:setContext(context, true, true)
 		self:registerActionEvents()
@@ -1203,6 +1204,10 @@ function BaseMission:update(dt)
 		self.interactiveVehicleInRange = self:getInteractiveVehicleInRange()
 	end
 
+	if self.benchmark ~= nil then
+		self.benchmark:update(dt)
+	end
+
 	if self.environment ~= nil then
 		self.environment:update(dt)
 	end
@@ -1275,8 +1280,6 @@ function BaseMission:draw()
 			for _, v in pairs(self.drawables) do
 				v:draw()
 			end
-
-			self.hud:drawPresentationVersion()
 		end
 	end
 

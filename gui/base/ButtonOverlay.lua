@@ -87,7 +87,7 @@ function ButtonOverlay:setColor(r, g, b, a)
 	end
 end
 
-function ButtonOverlay:renderButton(buttonText, posX, posY, height, alignment, colorText)
+function ButtonOverlay:renderButton(buttonText, posX, posY, height, alignment, colorText, clipX1, clipY1, clipX2, clipY2)
 	alignment = Utils.getNoNil(alignment, RenderText.ALIGN_LEFT)
 	local totalWidth, textWidth, leftButtonWidth, rightButtonWidth, textSize = self:getButtonWidth(buttonText, height)
 	local pos = posX
@@ -103,7 +103,7 @@ function ButtonOverlay:renderButton(buttonText, posX, posY, height, alignment, c
 	end
 
 	self.buttonLeftOverlay:setPosition(pos, posY)
-	self.buttonLeftOverlay:render()
+	self.buttonLeftOverlay:render(clipX1, clipY1, clipX2, clipY2)
 
 	pos = pos + leftButtonWidth
 
@@ -118,16 +118,25 @@ function ButtonOverlay:renderButton(buttonText, posX, posY, height, alignment, c
 
 	local yCenter = posY + height * 0.5 - textSize * self.textSizeFactor
 
+	if clipX1 ~= nil then
+		setTextClipArea(clipX1, clipY1, clipX2, clipY2)
+	end
+
 	renderText(pos + textWidth * 0.5, yCenter + textSize * self.textYOffsetFactor, textSize, utf8ToUpper(buttonText))
+
+	if clipX1 ~= nil then
+		setTextClipArea(0, 0, 1, 1)
+	end
+
 	setTextBold(false)
 	setTextColor(1, 1, 1, 1)
 	self.buttonScaleOverlay:setPosition(pos, posY)
-	self.buttonScaleOverlay:render()
+	self.buttonScaleOverlay:render(clipX1, clipY1, clipX2, clipY2)
 
 	pos = pos + textWidth
 
 	self.buttonRightOverlay:setPosition(pos, posY)
-	self.buttonRightOverlay:render()
+	self.buttonRightOverlay:render(clipX1, clipY1, clipX2, clipY2)
 
 	if self.debugEnabled or g_uiDebugEnabled then
 		local xPixel = 1 / g_screenWidth

@@ -415,7 +415,7 @@ function SpeedSliderDisplay:onJumpEventCallback()
 	end
 
 	if self.player ~= nil then
-		self.player:onInputJump(_, 1)
+		self.player:onInputJump(nil, 1)
 	end
 end
 
@@ -448,10 +448,10 @@ function SpeedSliderDisplay:update(dt)
 	if self.player ~= nil then
 		local acceleration, brake = self:getAccelerateAndBrakeValue()
 
-		self.player:onInputMoveForward(_, -(acceleration - brake))
+		self.player:onInputMoveForward(nil, -(acceleration - brake))
 
 		if acceleration > 0.75 then
-			self.player:onInputRun(_, 1)
+			self.player:onInputRun(nil, 1)
 		end
 	end
 
@@ -734,9 +734,9 @@ SpeedSliderDisplay.COLOR = {
 		0.8
 	},
 	CRUISE_CONTROL = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		0.9
 	},
 	JUMP_UP = {
@@ -746,9 +746,9 @@ SpeedSliderDisplay.COLOR = {
 		1
 	},
 	JUMP_DOWN = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		1
 	},
 	JUMP_DISABLED = {

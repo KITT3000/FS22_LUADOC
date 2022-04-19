@@ -8,6 +8,13 @@ function ChainsawUtil.cutSplitShape(shape, x, y, z, nx, ny, nz, yx, yy, yz, cutS
 		splitTypeName = splitType.name
 	end
 
+	if getRigidBodyType(shape) == RigidBodyType.STATIC then
+		local range = 5
+
+		g_densityMapHeightManager:setCollisionMapAreaDirty(x - range, z - range, x + range, z + range, true)
+		g_currentMission.aiSystem:setAreaDirty(x - range, x + range, z - range, z + range)
+	end
+
 	local farm = g_farmManager:getFarmById(farmId)
 
 	if math.abs(ny) < 0.866 then

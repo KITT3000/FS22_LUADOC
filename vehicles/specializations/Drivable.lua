@@ -674,7 +674,7 @@ function Drivable:updateSteeringWheel(steeringWheel, dt, direction)
 			if self.getVehicleCharacter ~= nil then
 				local vehicleCharacter = self:getVehicleCharacter()
 
-				if vehicleCharacter ~= nil then
+				if vehicleCharacter ~= nil and vehicleCharacter:getAllowCharacterUpdate() then
 					vehicleCharacter:setDirty(true)
 				end
 			end
@@ -822,26 +822,23 @@ function Drivable:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnor
 		end
 
 		local _, actionEventId = nil
-		local levelVery = g_isPresentationVersionShowDrivingHelp and GS_PRIO_VERY_HIGH or GS_PRIO_VERY_LOW
-		local level = g_isPresentationVersionShowDrivingHelp and GS_PRIO_HIGH or GS_PRIO_LOW
-		local visibility = g_isPresentationVersionShowDrivingHelp
 
 		if self:getIsActiveForInput(true, true) and entered then
 			if not self:getIsAIActive() then
 				_, actionEventId = self:addPoweredActionEvent(spec.actionEvents, InputAction.AXIS_ACCELERATE_VEHICLE, self, Drivable.actionEventAccelerate, false, false, true, true, nil)
 
-				g_inputBinding:setActionEventTextPriority(actionEventId, levelVery)
-				g_inputBinding:setActionEventTextVisibility(actionEventId, visibility)
+				g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_VERY_LOW)
+				g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
 				_, actionEventId = self:addPoweredActionEvent(spec.actionEvents, InputAction.AXIS_BRAKE_VEHICLE, self, Drivable.actionEventBrake, false, false, true, true, nil)
 
-				g_inputBinding:setActionEventTextPriority(actionEventId, levelVery)
-				g_inputBinding:setActionEventTextVisibility(actionEventId, visibility)
+				g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_VERY_LOW)
+				g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 
 				_, actionEventId = self:addPoweredActionEvent(spec.actionEvents, InputAction.AXIS_MOVE_SIDE_VEHICLE, self, Drivable.actionEventSteer, false, false, true, true, nil)
 
-				g_inputBinding:setActionEventTextPriority(actionEventId, levelVery)
-				g_inputBinding:setActionEventTextVisibility(actionEventId, visibility)
+				g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_VERY_LOW)
+				g_inputBinding:setActionEventTextVisibility(actionEventId, false)
 				g_inputBinding:setActionEventText(actionEventId, g_i18n:getText("action_steer"))
 
 				_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.TOGGLE_CRUISE_CONTROL, self, Drivable.actionEventCruiseControlState, false, true, true, true, nil)
@@ -854,7 +851,7 @@ function Drivable:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnor
 			_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.AXIS_CRUISE_CONTROL, self, Drivable.actionEventCruiseControlValue, false, true, true, true, nil)
 
 			g_inputBinding:setActionEventText(actionEventId, g_i18n:getText("action_changeCruiseControlLevel"))
-			g_inputBinding:setActionEventTextPriority(actionEventId, level)
+			g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_LOW)
 		end
 	end
 end

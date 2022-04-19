@@ -16,7 +16,7 @@ function ModManager:initDataStructures()
 	self.numMods = 0
 end
 
-function ModManager:addMod(title, description, version, modDescVersion, author, iconFilename, modName, modDir, modFile, isMultiplayerSupported, fileHash, absBaseFilename, isDirectory, isDLC, hasScripts, dependencies, multiplayerOnly, isSelectable, uniqueType)
+function ModManager:addMod(title, description, version, modDescVersion, author, iconFilename, modName, modDir, modFile, isMultiplayerSupported, fileHash, absBaseFilename, isDirectory, isDLC, hasScripts, dependencies, multiplayerOnly, isSelectable, uniqueType, isInternalScriptMod)
 	if fileHash ~= nil and self.hashToMod[fileHash] ~= nil then
 		print("Error: Adding mod with same file hash twice. Title is " .. title .. " filehash: " .. fileHash)
 
@@ -42,6 +42,7 @@ function ModManager:addMod(title, description, version, modDescVersion, author, 
 		isMultiplayerSupported = isMultiplayerSupported,
 		isSelectable = isSelectable,
 		hasScripts = hasScripts,
+		isInternalScriptMod = isInternalScriptMod,
 		dependencies = dependencies,
 		multiplayerOnly = multiplayerOnly,
 		uniqueType = uniqueType

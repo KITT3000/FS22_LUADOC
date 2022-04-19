@@ -12,12 +12,17 @@ end
 
 function PlaceableBeehivePalletSpawner.registerOverwrittenFunctions(placeableType)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "canBuy", PlaceableBeehivePalletSpawner.canBuy)
+	SpecializationUtil.registerOverwrittenFunction(placeableType, "updateInfo", PlaceableBeehivePalletSpawner.updateInfo)
 end
 
 function PlaceableBeehivePalletSpawner.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceableBeehivePalletSpawner)
 	SpecializationUtil.registerEventListener(placeableType, "onDelete", PlaceableBeehivePalletSpawner)
 	SpecializationUtil.registerEventListener(placeableType, "onFinalizePlacement", PlaceableBeehivePalletSpawner)
+	SpecializationUtil.registerEventListener(placeableType, "onReadStream", PlaceableBeehivePalletSpawner)
+	SpecializationUtil.registerEventListener(placeableType, "onWriteStream", PlaceableBeehivePalletSpawner)
+	SpecializationUtil.registerEventListener(placeableType, "onReadUpdateStream", PlaceableBeehivePalletSpawner)
+	SpecializationUtil.registerEventListener(placeableType, "onWriteUpdateStream", PlaceableBeehivePalletSpawner)
 end
 
 function PlaceableBeehivePalletSpawner.registerXMLPaths(schema, basePath)
@@ -38,13 +43,19 @@ function PlaceableBeehivePalletSpawner:onLoad(savegame)
 
 	if not spec.palletSpawner:load(self.components, xmlFile, palletSpawnerKey, self.customEnvironment, self.i3dMappings) then
 		Logging.xmlError(xmlFile, "Unable to load pallet spawner %s", palletSpawnerKey)
+		self:setLoadingState(Placeable.LOADING_STATE_ERROR)
 
-		return false
+		return
 	end
 
 	spec.pendingLiters = 0
 	spec.spawnPending = false
+	spec.palletLimitReached = false
+	spec.infoHudTooManyPallets = {
+		title = g_i18n:getText("infohud_tooManyPallets")
+	}
 	spec.fillType = g_fillTypeManager:getFillTypeIndexByName("HONEY")
+	spec.dirtyFlag = self:getNextDirtyFlag()
 end
 
 function PlaceableBeehivePalletSpawner:onDelete()
@@ -59,6 +70,36 @@ end
 
 function PlaceableBeehivePalletSpawner:onFinalizePlacement()
 	g_currentMission.beehiveSystem:addBeehivePalletSpawner(self)
+end
+
+function PlaceableBeehivePalletSpawner:onReadStream(streamId, connection)
+	if connection:getIsServer() then
+		local spec = self.spec_beehivePalletSpawner
+		spec.palletLimitReached = streamReadBool(streamId)
+	end
+end
+
+function PlaceableBeehivePalletSpawner:onWriteStream(streamId, connection)
+	if not connection:getIsServer() then
+		local spec = self.spec_beehivePalletSpawner
+
+		streamWriteBool(streamId, spec.palletLimitReached)
+	end
+end
+
+function PlaceableBeehivePalletSpawner:onReadUpdateStream(streamId, timestamp, connection)
+	if connection:getIsServer() then
+		local spec = self.spec_beehivePalletSpawner
+		spec.palletLimitReached = streamReadBool(streamId)
+	end
+end
+
+function PlaceableBeehivePalletSpawner:onWriteUpdateStream(streamId, connection, dirtyMask)
+	if not connection:getIsServer() then
+		local spec = self.spec_beehivePalletSpawner
+
+		streamWriteBool(streamId, spec.palletLimitReached)
+	end
 end
 
 function PlaceableBeehivePalletSpawner:loadFromXMLFile(xmlFile, key)
@@ -102,11 +143,33 @@ function PlaceableBeehivePalletSpawner:getPalletCallback(pallet, result, fillTyp
 
 	if pallet ~= nil then
 		if result == PalletSpawner.RESULT_SUCCESS then
+			if spec.palletLimitReached then
+				spec.palletLimitReached = false
+
+				self:raiseDirtyFlags(spec.dirtyFlag)
+			end
+
 			pallet:emptyAllFillUnits(true)
 		end
 
 		local delta = pallet:addFillUnitFillLevel(self:getOwnerFarmId(), 1, spec.pendingLiters, fillTypeIndex, ToolType.UNDEFINED)
 		spec.pendingLiters = math.max(spec.pendingLiters - delta, 0)
+	elseif result == PalletSpawner.RESULT_NO_SPACE then
+		-- Nothing
+	elseif result == PalletSpawner.PALLET_LIMITED_REACHED and not spec.palletLimitReached then
+		spec.palletLimitReached = true
+
+		self:raiseDirtyFlags(spec.dirtyFlag)
+	end
+end
+
+function PlaceableBeehivePalletSpawner:updateInfo(superFunc, infoTable)
+	superFunc(self, infoTable)
+
+	local spec = self.spec_beehivePalletSpawner
+
+	if spec.palletLimitReached then
+		table.insert(infoTable, spec.infoHudTooManyPallets)
 	end
 end
 

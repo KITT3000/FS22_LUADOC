@@ -158,6 +158,26 @@ function InGameMenuMapFrame.new(subclass_mt, messageCenter, l10n, inputManager, 
 	return self
 end
 
+function InGameMenuMapFrame.createFromExistingGui(gui, guiName)
+	local messageCenter = gui.messageCenter
+	local l10n = gui.l10n
+	local inputManager = gui.inputManager
+	local inputDisplayManager = gui.inputDisplayManager
+	local fruitTypeManager = gui.fruitTypeManager
+	local fillTypeManager = gui.fillTypeManager
+	local storeManager = gui.storeManager
+	local shopController = gui.shopController
+	local farmlandManager = gui.farmlandManager
+	local farmManager = gui.farmManager
+	local newGui = InGameMenuMapFrame.new(nil, messageCenter, l10n, inputManager, inputDisplayManager, fruitTypeManager, fillTypeManager, storeManager, shopController, farmlandManager, farmManager)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function InGameMenuMapFrame:copyAttributes(src)
 	InGameMenuMapFrame:superClass().copyAttributes(self, src)
 
@@ -269,10 +289,6 @@ function InGameMenuMapFrame:onFrameOpen()
 
 	if not GS_IS_MOBILE_VERSION then
 		self:updateInputGlyphs()
-	else
-		self:onPageChanged(self.currentPage, self.currentPage)
-		self.ingameMap:setFixedHorizontal(1 - self.filterBox.absSize[1], self.filterBox.absSize[1] / 2)
-		self.ingameMap:setLockedToBorder(-self.pageHeader.absSize[2] / 2, 1 - self.pageHeader.absSize[2])
 	end
 end
 
@@ -900,40 +916,7 @@ function InGameMenuMapFrame:setMapSelectionItem(hotspot)
 	end
 
 	if showContextBox then
-		if GS_IS_MOBILE_VERSION then
-			if vehicle ~= nil then
-				if self.currentPage ~= 4 then
-					local old = self.currentPage
-					self.currentPage = 4
-
-					self:onPageChanged(self.currentPage, old)
-				end
-
-				local storeItem = self.storeManager:getItemByXMLFilename(vehicle.configFileName)
-				local itemBrand = g_brandManager:getBrandByIndex(storeItem.brandIndex)
-
-				self.vehicleBox:getDescendantByName("brandImage"):setImageFilename(itemBrand.image)
-				self.vehicleBox:getDescendantByName("name"):setText(vehicle:getName())
-
-				local childs = vehicle:getChildVehicles()
-
-				for i = 1, 3 do
-					local attached = childs[i]
-					local show = attached ~= nil and attached ~= vehicle
-					local icon = self.vehicleBox:getDescendantByName("attachIcon" .. i)
-					local text = self.vehicleBox:getDescendantByName("attachText" .. i)
-
-					icon:setVisible(show)
-					text:setVisible(show)
-
-					if show then
-						text:setText(attached:getName())
-					end
-				end
-
-				self.vehicleBox:getDescendantByName("nothingAttached"):setVisible(#childs <= 1)
-			end
-		else
+		if not GS_IS_MOBILE_VERSION then
 			InGameMenuMapUtil.showContextBox(self.contextBox, hotspot, name, imageFilename, uvs, farmId)
 		end
 	elseif not GS_IS_MOBILE_VERSION then
@@ -1538,7 +1521,6 @@ function InGameMenuMapFrame:updateInputGlyphs()
 
 	self.buttonSwitchMapMode:setInputAction(InputAction.MENU_EXTRA_1)
 	self.buttonSwitchMapMode:setText(switchText)
-	self.buttonSwitchMapMode:setDisabled(g_isPresentationVersion and not g_isPresentationVersionShopEnabled)
 end
 
 function InGameMenuMapFrame:onYesNoBuyFarmland(yes)
@@ -1588,10 +1570,6 @@ function InGameMenuMapFrame:onPageChanged(page, fromPage)
 	if page > 3 and (self.currentHotspot == nil or not InGameMenuMapFrame.PAGE_HOTSPOTS[self.currentPage][self.currentHotspot:getCategory()]) then
 		self:selectFirstHotspot()
 	end
-
-	self.vehicleBox:setVisible(vehicleBox)
-	self.filterBoxBackground:setVisible(filterBox)
-	self.genericBox:setVisible(not vehicleBox and not filterBox)
 end
 
 function InGameMenuMapFrame:onClickBuyField(fieldId)

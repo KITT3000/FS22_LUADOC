@@ -613,11 +613,54 @@ end
 function AISystem:consoleCommandAIToggleSplineVisibility()
 	self.splinesVisible = not self.splinesVisible
 
-	for _, spline in ipairs(self.roadSplines) do
-		setVisibility(spline, self.splinesVisible)
-		I3DUtil.interateRecursively(spline, function (node)
-			setVisibility(node, self.splinesVisible)
-		end)
+	if self.splinesVisible then
+		self.splineDebugElements = {}
+		local debugMat = g_debugManager:getDebugMat()
+
+		for _, roadSplineOrTG in ipairs(self.roadSplines) do
+			if I3DUtil.getIsSpline(roadSplineOrTG) then
+				self.splineDebugElements[roadSplineOrTG] = true
+			end
+
+			I3DUtil.interateRecursively(roadSplineOrTG, function (node)
+				if I3DUtil.getIsSpline(node) then
+					self.splineDebugElements[node] = true
+				end
+			end)
+		end
+
+		for spline in pairs(self.splineDebugElements) do
+			DebugUtil.setNodeEffectivelyVisible(spline)
+
+			local r, g, b = unpack(DebugUtil.getDebugColor(spline))
+
+			setMaterial(spline, debugMat, 0)
+			setShaderParameter(spline, "color", r, g, b, 0, false)
+			setShaderParameter(spline, "alpha", 1, 0, 0, 0, false)
+
+			local debugElements = DebugUtil.getSplineDebugElements(spline)
+			self.splineDebugElements[spline] = debugElements
+
+			for elemName, debugElement in pairs(debugElements) do
+				if elemName == "splineAttributes" then
+					debugElement:setColor(r, g, b)
+				end
+
+				g_debugManager:addPermanentElement(debugElement)
+			end
+		end
+	else
+		for spline, debugElements in pairs(self.splineDebugElements) do
+			for _, debugElement in pairs(debugElements) do
+				g_debugManager:removePermanentElement(debugElement)
+			end
+
+			if entityExists(spline) then
+				setVisibility(spline, false)
+			end
+		end
+
+		self.splineDebugElements = nil
 	end
 
 	if g_currentMission.trafficSystem ~= nil and g_currentMission.trafficSystem.rootNodeId ~= nil then
@@ -639,7 +682,7 @@ function AISystem:consoleCommandAIToggleAINodeDebug()
 
 				if x ~= nil then
 					local text = "UnloadingStation: " .. unloadingStation:getName()
-					local gizmo = DebugGizmo.new():createWithNode(unloadTrigger.aiNode, text, nil, nil, nil, false)
+					local gizmo = DebugGizmo.new():createWithNode(unloadTrigger.aiNode, text, nil, nil, nil, false, true)
 
 					g_debugManager:addPermanentElement(gizmo)
 					table.insert(self.stationsAINodesDebugElements, gizmo)
@@ -652,7 +695,7 @@ function AISystem:consoleCommandAIToggleAINodeDebug()
 
 			if x ~= nil then
 				local text = "LoadingStation: " .. loadingStation:getName()
-				local gizmo = DebugGizmo.new():createWithNode(loadTrigger.aiNode, text, nil, nil, nil, false)
+				local gizmo = DebugGizmo.new():createWithNode(loadTrigger.aiNode, text, nil, nil, nil, false, true)
 
 				g_debugManager:addPermanentElement(gizmo)
 				table.insert(self.stationsAINodesDebugElements, gizmo)

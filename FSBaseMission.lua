@@ -116,6 +116,7 @@ function FSBaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.snowSystem = SnowSystem.new(self, self:getIsServer())
 	self.growthSystem = GrowthSystem.new(self, self:getIsServer())
 	self.foliageSystem = FoliageSystem.new()
+	self.destructibleMapObjectSystem = DestructibleMapObjectSystem.new(self, self:getIsServer())
 	self.slotSystem = SlotSystem.new(self, self:getIsServer())
 	self.economyManager = EconomyManager.new()
 	self.playerUserId = -1
@@ -173,10 +174,6 @@ function FSBaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.eventRadioToggle = ""
 	self.radioEvents = {}
 	self.moneyChanges = {}
-
-	if g_isPresentationVersionPlaytimeCountdown ~= nil then
-		self.playtimeReloadTimer = g_isPresentationVersionPlaytimeCountdown * 1000
-	end
 
 	return self
 end
@@ -261,6 +258,7 @@ function FSBaseMission:delete()
 	self.weedSystem:delete()
 	self.vineSystem:delete()
 	self.foliageSystem:delete()
+	self.destructibleMapObjectSystem:delete()
 	self.slotSystem:delete()
 	self.aiJobTypeManager:delete()
 	self.aiMessageManager:delete()
@@ -487,7 +485,7 @@ function FSBaseMission:onStartMission()
 			g_client:getServerConnection():sendEvent(ClientStartMissionEvent.new())
 		end
 
-		if g_dedicatedServer == nil and (not GS_IS_MOBILE_VERSION or not self.missionInfo.isNewSPCareer) then
+		if g_dedicatedServer == nil then
 			local spawnPoint = g_farmManager:getSpawnPoint(self.player.farmId)
 
 			if not self.missionInfo.isValid then
@@ -568,17 +566,11 @@ function FSBaseMission:onStartMission()
 
 	self:notifyPlayerFarmChanged(self.player)
 
-	if GS_IS_MOBILE_VERSION and self.missionInfo.isNewSPCareer and #self.enterables > 0 then
-		self:requestToEnterVehicle(self.enterables[1])
-	end
-
 	if self.missionDynamicInfo.isMultiplayer and g_dedicatedServer == nil then
 		voiceChatAddLocalUser(self:getIsServer())
 	end
 
 	self.slotSystem:updateSlotUsage()
-
-	self.playtimeCountdownEnabled = g_isPresentationVersionPlaytimeCountdown ~= nil
 end
 
 function FSBaseMission:createPlayer(connection, isOwner, farmId, userId)
@@ -1068,6 +1060,7 @@ function FSBaseMission:sendInitialClientState(connection, user, farm)
 	connection:sendEvent(PricingHistoryInitialEvent.new())
 	self.vehicleSaleSystem:sendAllToClient(connection)
 	self.collectiblesSystem:onClientJoined(connection)
+	self.destructibleMapObjectSystem:onClientJoined(connection)
 	self.aiSystem:onClientJoined(connection)
 end
 
@@ -1207,7 +1200,9 @@ function FSBaseMission:onConnectionClosed(connection)
 			g_farmManager:playerQuitGame(user:getId())
 		end
 
-		self.wildlifeSpawner:onConnectionClosed()
+		if self.wildlifeSpawner ~= nil then
+			self.wildlifeSpawner:onConnectionClosed()
+		end
 
 		for _, vehicle in pairs(self.vehicles) do
 			if vehicle.owner == connection then
@@ -1964,14 +1959,6 @@ function FSBaseMission:update(dt)
 
 	self:updatePauseInputContext()
 
-	if self.playtimeCountdownEnabled then
-		self.playtimeReloadTimer = self.playtimeReloadTimer - dt
-
-		if self.playtimeReloadTimer <= 0 then
-			self:onReloadSavegame()
-		end
-	end
-
 	if not self.isRunning and g_dedicatedServer == nil then
 		if self.paused and not self.isSynchronizingWithPlayers and not g_gui:getIsGuiVisible() and GS_PLATFORM_PLAYSTATION then
 			setPresenceMode(PresenceModes.PRESENCE_IDLE)
@@ -2359,16 +2346,6 @@ function FSBaseMission:draw()
 	if not self.hud:getIsFading() then
 		self.hud:drawInGameMessageAndIcon()
 	end
-
-	if g_isPresentationVersionPlaytimeCountdown ~= nil then
-		local text = string.format("%0.1d:%0.2d", self.playtimeReloadTimer / 60000, self.playtimeReloadTimer / 1000 % 60)
-
-		setTextBold(true)
-		setTextAlignment(RenderText.ALIGN_CENTER)
-		renderText(0.5, g_gui:getIsGuiVisible() and 0.85 or 0.932, 0.05, text)
-		setTextAlignment(RenderText.ALIGN_LEFT)
-		setTextBold(false)
-	end
 end
 
 function FSBaseMission:addMoneyChange(amount, farmId, moneyType, forceShow)
@@ -2461,7 +2438,7 @@ function FSBaseMission:addIngameNotification(notificationType, text)
 end
 
 function FSBaseMission:getIsAutoSaveSupported()
-	return not g_isPresentationVersion and not g_isPresentationVersionUseReloadButton
+	return true
 end
 
 function FSBaseMission:doPauseGame()
@@ -3211,7 +3188,7 @@ function FSBaseMission:consoleCommandExportStoreItems()
 					value = ""
 				end
 
-				data = data .. tostring(value):trim() .. ";"
+				data = data .. string.trim(tostring(value)) .. ";"
 			end
 
 			file:write(data .. "\n")
@@ -3454,13 +3431,14 @@ function FSBaseMission:consoleCommandLoadTree(length, treeType, growthState)
 	g_treePlantManager:loadTreeTrunk(treeTypeDesc, x, y, z, dirX, dirY, dirZ, length, growthState)
 end
 
-function FSBaseMission:consoleCommandTeleport(fieldIdOrX, zPos)
-	local usage = "gsTeleport xPos|field [zPos] (if zPos is not given first parameter is used as field id)"
+function FSBaseMission:consoleCommandTeleport(fieldIdOrX, zPos, useWorldCoords)
+	local usage = "Usage: gsTeleport xPos|field [zPos] [useWorldCoords]\n  if zPos is not given first parameter is used as field id.\n  set useWorldCoords to true if given coordinates are in 3D/world (0 0 = map center) instead of minimap (0 0 = map corner) space."
 	fieldIdOrX = tonumber(fieldIdOrX)
 	zPos = tonumber(zPos)
+	useWorldCoords = Utils.stringToBoolean(useWorldCoords)
 
 	if fieldIdOrX == nil then
-		return "Invalid field or x-position. " .. usage
+		return "Error: Invalid field or x-position\n" .. usage
 	end
 
 	local targetX, targetZ = nil
@@ -3472,13 +3450,16 @@ function FSBaseMission:consoleCommandTeleport(fieldIdOrX, zPos)
 			targetZ = field.posZ
 			targetX = field.posX
 		else
-			return "Invalid field id. " .. usage
+			return string.format("Error: Invalid field id '%s'\n%s", fieldIdOrX, usage)
 		end
-	else
+	elseif not useWorldCoords then
 		local worldSizeX = self.terrainSize
 		local worldSizeZ = self.terrainSize
 		targetX = MathUtil.clamp(fieldIdOrX, 0, worldSizeX) - worldSizeX * 0.5
 		targetZ = MathUtil.clamp(zPos, 0, worldSizeZ) - worldSizeZ * 0.5
+	else
+		targetZ = zPos
+		targetX = fieldIdOrX
 	end
 
 	if self.controlledVehicle == nil then
@@ -3508,7 +3489,7 @@ function FSBaseMission:consoleCommandTeleport(fieldIdOrX, zPos)
 					})
 				end
 
-				for _ = table.getn(vehicle:getAttachedImplements()), 1, -1 do
+				for _ = #vehicle:getAttachedImplements(), 1, -1 do
 					vehicle:detachImplement(1, true)
 				end
 			end
@@ -3537,6 +3518,8 @@ function FSBaseMission:consoleCommandTeleport(fieldIdOrX, zPos)
 			combo.vehicle:attachImplement(combo.object, combo.inputAttacherJointDescIndex, combo.jointDescIndex, true, nil, nil, false)
 		end
 	end
+
+	return string.format("Teleported to world coordinates x=%d z=%d", targetX, targetZ)
 end
 
 function FSBaseMission:consoleCommandAddDirtAmount(amount)
@@ -3694,6 +3677,16 @@ function FSBaseMission:consoleCommandLoadAllVehiclesNext()
 		return
 	end
 
+	if self.debugVehiclesLoaded ~= nil then
+		for _, vehicle in pairs(self.debugVehiclesLoaded) do
+			if not vehicle.isDeleted then
+				g_currentMission:removeVehicle(vehicle)
+			end
+		end
+
+		self.debugVehiclesLoaded = nil
+	end
+
 	local data = table.remove(self.debugVehiclesToBeLoaded, 1)
 
 	if data == nil then
@@ -3707,16 +3700,6 @@ function FSBaseMission:consoleCommandLoadAllVehiclesNext()
 		I3DManager.VERBOSE_LOADING = true
 
 		return
-	end
-
-	if self.debugVehiclesLoaded ~= nil then
-		for _, vehicle in pairs(self.debugVehiclesLoaded) do
-			if not vehicle.isDeleted then
-				g_currentMission:removeVehicle(vehicle)
-			end
-		end
-
-		self.debugVehiclesLoaded = nil
 	end
 
 	log(#self.debugVehiclesToBeLoaded, data.storeItem.xmlFilename)
@@ -3924,7 +3907,7 @@ end
 function FSBaseMission:consoleCommandShowTipCollisions(active)
 	g_showTipCollisions = Utils.getNoNil(active, not g_showTipCollisions)
 
-	if g_showTipCollisions and StartParams.getValue("scriptDebug") == nil then
+	if g_showTipCollisions and not StartParams.getIsSet("scriptDebug") then
 		return "Error: Game must be started with '-scriptDebug' parameter"
 	end
 
@@ -3934,7 +3917,7 @@ end
 function FSBaseMission:consoleCommandShowPlacementCollisions(active)
 	g_showPlacementCollisions = Utils.getNoNil(active, not g_showPlacementCollisions)
 
-	if g_showPlacementCollisions and StartParams.getValue("scriptDebug") == nil then
+	if g_showPlacementCollisions and not StartParams.getIsSet("scriptDebug") then
 		return "Error: Game must be started with '-scriptDebug' parameter"
 	end
 
@@ -4307,12 +4290,9 @@ function FSBaseMission:registerActionEvents()
 	FSBaseMission:superClass().registerActionEvents(self)
 
 	local _, eventId = nil
+	_, eventId = self.inputManager:registerActionEvent(InputAction.MENU, self, self.onToggleMenu, false, true, false, true)
 
-	if not g_isPresentationVersionMenuDisabled then
-		_, eventId = self.inputManager:registerActionEvent(InputAction.MENU, self, self.onToggleMenu, false, true, false, true)
-
-		self.inputManager:setActionEventTextVisibility(eventId, false)
-	end
+	self.inputManager:setActionEventTextVisibility(eventId, false)
 
 	_, eventId = self.inputManager:registerActionEvent(InputAction.TOGGLE_STORE, self, self.onToggleStore, false, true, false, true)
 
@@ -4322,19 +4302,15 @@ function FSBaseMission:registerActionEvents()
 
 	self.inputManager:setActionEventTextVisibility(eventId, false)
 
-	_, eventId = self.inputManager:registerActionEvent(InputAction.TOGGLE_CHARACTER_CREATION, self, self.onToggleCharacterCreation, false, true, false, true)
+	if Platform.hasWardrobe then
+		_, eventId = self.inputManager:registerActionEvent(InputAction.TOGGLE_CHARACTER_CREATION, self, self.onToggleCharacterCreation, false, true, false, true)
 
-	self.inputManager:setActionEventTextVisibility(eventId, false)
+		self.inputManager:setActionEventTextVisibility(eventId, false)
+	end
 
 	_, eventId = self.inputManager:registerActionEvent(InputAction.TOGGLE_CONSTRUCTION, self, self.onToggleConstructionScreen, false, true, false, true)
 
 	self.inputManager:setActionEventTextVisibility(eventId, false)
-
-	if g_isPresentationVersionUseReloadButton then
-		_, eventId = self.inputManager:registerActionEvent(InputAction.RELOAD_GAME, self, self.onReloadSavegame, false, true, false, true)
-
-		self.inputManager:setActionEventTextVisibility(eventId, false)
-	end
 
 	if g_soundPlayer ~= nil then
 		_, eventId = self.inputManager:registerActionEvent(InputAction.RADIO_TOGGLE, self, self.onToggleRadio, false, true, false, false)
@@ -4390,41 +4366,6 @@ function FSBaseMission:registerPauseActionEvents()
 	self.inputManager:endActionEventsModification()
 end
 
-function FSBaseMission:onReloadSavegame()
-	if g_gamingStationManager:getIsActive() then
-		OnInGameMenuMenu()
-		g_gui:showGui("CareerScreen")
-
-		return
-	end
-
-	local savegameIndex = self.missionInfo.savegameIndex
-	local isSaved = self.missionInfo.isValid
-
-	OnInGameMenuMenu()
-
-	if isSaved then
-		g_gui:setIsMultiplayer(false)
-		g_gui:showGui("CareerScreen")
-
-		g_careerScreen.selectedIndex = savegameIndex
-		local savegameController = g_careerScreen.savegameController
-		local savegame = savegameController:getSavegame(savegameIndex)
-
-		if savegame == SavegameController.NO_SAVEGAME or not savegame.isValid then
-			return
-		end
-
-		g_careerScreen.currentSavegame = savegame
-
-		g_careerScreen:onStartAction()
-
-		if g_gui.currentGuiName == "ModSelectionScreen" then
-			g_modSelectionScreen:onClickOk()
-		end
-	end
-end
-
 function FSBaseMission:onToggleMenu()
 	if not self.isSynchronizingWithPlayers then
 		g_gui:changeScreen(nil, InGameMenu)
@@ -4450,20 +4391,20 @@ function FSBaseMission:onToggleStore()
 			})
 		end
 
-		if (not g_isPresentationVersion or g_isPresentationVersionShopEnabled) and g_currentMission.missionInfo:isa(FSCareerMissionInfo) and not self.isPlayerFrozen and self.player.farmId ~= FarmManager.SPECTATOR_FARM_ID then
+		if g_currentMission.missionInfo:isa(FSCareerMissionInfo) and not self.isPlayerFrozen and self.player.farmId ~= FarmManager.SPECTATOR_FARM_ID then
 			g_gui:changeScreen(nil, ShopMenu)
 		end
 	end
 end
 
 function FSBaseMission:onToggleCharacterCreation()
-	if not self.isSynchronizingWithPlayers and (not g_isPresentationVersion or g_isPresentationVersionWardrobeEnabled) then
+	if not self.isSynchronizingWithPlayers then
 		g_gui:changeScreen(nil, WardrobeScreen)
 	end
 end
 
 function FSBaseMission:onToggleConstructionScreen()
-	if not self.isSynchronizingWithPlayers and self.player.farmId ~= FarmManager.SPECTATOR_FARM_ID and (not g_isPresentationVersion or g_isPresentationVersionBuildModeEnabled) then
+	if not self.isSynchronizingWithPlayers and self.player.farmId ~= FarmManager.SPECTATOR_FARM_ID then
 		g_gui:changeScreen(nil, ConstructionScreen)
 	end
 end

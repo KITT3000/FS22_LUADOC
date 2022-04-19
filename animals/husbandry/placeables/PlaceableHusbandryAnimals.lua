@@ -54,8 +54,6 @@ function PlaceableHusbandryAnimals.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onUpdate", PlaceableHusbandryAnimals)
 	SpecializationUtil.registerEventListener(placeableType, "onPeriodChanged", PlaceableHusbandryAnimals)
 	SpecializationUtil.registerEventListener(placeableType, "onDayChanged", PlaceableHusbandryAnimals)
-	SpecializationUtil.registerEventListener(placeableType, "onInfoTriggerEnter", PlaceableHusbandryAnimals)
-	SpecializationUtil.registerEventListener(placeableType, "onInfoTriggerLeave", PlaceableHusbandryAnimals)
 end
 
 function PlaceableHusbandryAnimals.registerXMLPaths(schema, basePath)
@@ -87,6 +85,10 @@ end
 
 function PlaceableHusbandryAnimals.initSpecialization()
 	g_storeManager:addSpecType("numberAnimals", "shopListAttributeIconCapacity", PlaceableHusbandryAnimals.loadSpecValueNumberAnimals, PlaceableHusbandryAnimals.getSpecValueNumberAnimals, "placeable")
+
+	if g_isDevelopmentVersion then
+		addConsoleCommand("gsHusbandryAddAnimals", "Add or remove animals from husbandry where player is currently located", "consoleCommandAddAnimals", PlaceableHusbandryAnimals)
+	end
 end
 
 function PlaceableHusbandryAnimals:onLoad(savegame)
@@ -209,16 +211,16 @@ function PlaceableHusbandryAnimals:onLoad(savegame)
 		text = "",
 		title = g_i18n:getText("statistic_productivity")
 	}
+
+	if not self.isServer or not g_isDevelopmentVersion then
+		removeConsoleCommand("gsHusbandryAddAnimals")
+	end
 end
 
 function PlaceableHusbandryAnimals:onDelete()
 	local spec = self.spec_husbandryAnimals
 
 	g_messageCenter:unsubscribe(AnimalClusterUpdateEvent, self)
-
-	if self.isServer then
-		removeConsoleCommand("gsHusbandryAddAnimals")
-	end
 
 	if spec.clusterHusbandry ~= nil then
 		g_currentMission.husbandrySystem:removeClusterHusbandry(spec.clusterHusbandry)
@@ -749,18 +751,6 @@ function PlaceableHusbandryAnimals.getSpecValueNumberAnimals(storeItem, realItem
 	return data.maxNumAnimals, profile
 end
 
-function PlaceableHusbandryAnimals:onInfoTriggerEnter()
-	if self.isServer then
-		addConsoleCommand("gsHusbandryAddAnimals", "Add animals to husbandry", "consoleCommandAddAnimals", self)
-	end
-end
-
-function PlaceableHusbandryAnimals:onInfoTriggerLeave()
-	if self.isServer then
-		removeConsoleCommand("gsHusbandryAddAnimals")
-	end
-end
-
 function PlaceableHusbandryAnimals:canBeSold(superFunc)
 	if self:getNumOfAnimals() > 0 then
 		return false, g_i18n:getText("info_husbandryNotEmpty")
@@ -800,18 +790,30 @@ function PlaceableHusbandryAnimals:getAnimalDescription(superFunc, cluster)
 	return text .. visual.store.description
 end
 
-function PlaceableHusbandryAnimals:consoleCommandAddAnimals(numAnimals, subTypeIndex)
-	local spec = self.spec_husbandryAnimals
-	numAnimals = tonumber(numAnimals) or 0
-	subTypeIndex = tonumber(subTypeIndex) or 1
+function PlaceableHusbandryAnimals.consoleCommandAddAnimals(_, numAnimals, subTypeIndex)
+	local usage = "Usage: gsHusbandryAddAnimals numAnimals [subTypeIndex]\nUse negative number to remove animals"
+	local x, y, z = getWorldTranslation(getCamera(0))
 
-	if self:getNumOfFreeAnimalSlots() == 0 then
-		return "Husbandry is full"
+	raycastAll(x, y + 100, z, 0, -1, 0, "consoleCommandAddAnimalsRaycastCallback", 110, PlaceableHusbandryAnimals)
+
+	local husbandryInstance = PlaceableHusbandryAnimals.consoleCommandCurrentHusbandry
+	PlaceableHusbandryAnimals.consoleCommandCurrentHusbandry = nil
+
+	if husbandryInstance == nil then
+		return "Error: No husbandry found. Enter a husbandry with the player first"
 	end
 
-	numAnimals = math.min(numAnimals, self:getNumOfFreeAnimalSlots())
+	local spec = husbandryInstance.spec_husbandryAnimals
+	numAnimals = tonumber(numAnimals) or 0
+	subTypeIndex = tonumber(subTypeIndex)
 
 	if numAnimals > 0 then
+		if husbandryInstance:getNumOfFreeAnimalSlots() == 0 then
+			return "Error: Husbandry is full"
+		end
+
+		numAnimals = math.min(numAnimals, husbandryInstance:getNumOfFreeAnimalSlots())
+		subTypeIndex = tonumber(subTypeIndex) or 1
 		local globalSubTypeIndex = spec.animalType.subTypes[subTypeIndex]
 
 		if globalSubTypeIndex ~= nil then
@@ -819,13 +821,53 @@ function PlaceableHusbandryAnimals:consoleCommandAddAnimals(numAnimals, subTypeI
 			newCluster.numAnimals = numAnimals
 
 			spec.clusterSystem:addPendingAddCluster(newCluster)
-			self:raiseActive()
+			husbandryInstance:raiseActive()
 
-			return "Added " .. numAnimals .. " animals"
+			return "Added " .. numAnimals .. " animal(s)"
 		else
-			return "Invalid subtype index"
+			return "Error: Invalid subtype index\n" .. usage
 		end
-	else
-		return "Invalid number of animals"
+	elseif numAnimals < 0 then
+		local remainingAnimals = numAnimals
+
+		for _, cluster in pairs(husbandryInstance:getClusters()) do
+			if subTypeIndex == nil or cluster:getSubTypeIndex() == subTypeIndex then
+				remainingAnimals = cluster:changeNumAnimals(remainingAnimals)
+			end
+
+			if remainingAnimals >= 0 then
+				break
+			end
+		end
+
+		if numAnimals ~= remainingAnimals then
+			return string.format("Removed %d animal(s)", math.abs(numAnimals - remainingAnimals))
+		end
+
+		if subTypeIndex ~= nil then
+			return "Error: Husbandry has no animals of subtype " .. subTypeIndex
+		end
+
+		return "Error: Husbandry has no animals"
 	end
+
+	return "Error: Invalid number of animals\n" .. usage
+end
+
+function PlaceableHusbandryAnimals.consoleCommandAddAnimalsRaycastCallback(_, actorId, x, y, z, distance, nx, ny, nz, subShapeIndex, shapeId, isLast)
+	if actorId ~= 0 then
+		local object = g_currentMission.nodeToObject[actorId]
+
+		if object ~= nil and object:isa(Placeable) and SpecializationUtil.hasSpecialization(PlaceableHusbandryAnimals, object.specializations) then
+			PlaceableHusbandryAnimals.consoleCommandCurrentHusbandry = object
+
+			return true
+		end
+	end
+
+	if isLast then
+		PlaceableHusbandryAnimals.consoleCommandCurrentHusbandry = nil
+	end
+
+	return false
 end

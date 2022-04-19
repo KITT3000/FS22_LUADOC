@@ -20,15 +20,9 @@ function GameInfoDisplayMobile.new(hud, hudAtlasPath, moneyUnit, l10n)
 	table.insert(self.elements, self.backgroundHudElement)
 	self:createSeparators()
 	self:createBorders()
-
-	if g_isPresentationVersion then
-		self:createButtonElement(self.onOpenMenu, GameInfoDisplayMobile.POSITION.MAP_ICON, GameInfoDisplayMobile.SIZE.MAP_ICON, GameInfoDisplayMobile.SIZE.BUTTON_ICON, GameInfoDisplayMobile.UV.MENU, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.COLOR.BUTTON_BACKGROUND, GameInfoDisplayMobile.COLOR.BUTTON_SELECTED, InputAction.MENU)
-	else
-		self:createButtonElement(self.onOpenShop, GameInfoDisplayMobile.POSITION.SHOP_ICON, GameInfoDisplayMobile.SIZE.SHOP_ICON, GameInfoDisplayMobile.SIZE.BUTTON_ICON, GameInfoDisplayMobile.UV.SHOP, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.COLOR.BUTTON_BACKGROUND, GameInfoDisplayMobile.COLOR.BUTTON_SELECTED, InputAction.TOGGLE_STORE)
-		self:createButtonElement(self.onOpenMap, GameInfoDisplayMobile.POSITION.MAP_ICON, GameInfoDisplayMobile.SIZE.MAP_ICON, GameInfoDisplayMobile.SIZE.BUTTON_ICON, GameInfoDisplayMobile.UV.MAP, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.COLOR.BUTTON_BACKGROUND, GameInfoDisplayMobile.COLOR.BUTTON_SELECTED, InputAction.TOGGLE_MAP)
-		self:createButtonElement(self.onOpenMenu, GameInfoDisplayMobile.POSITION.MENU_ICON, GameInfoDisplayMobile.SIZE.MENU_ICON, GameInfoDisplayMobile.SIZE.BUTTON_ICON, GameInfoDisplayMobile.UV.MENU, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.COLOR.BUTTON_BACKGROUND, GameInfoDisplayMobile.COLOR.BUTTON_SELECTED, InputAction.MENU)
-	end
-
+	self:createButtonElement(self.onOpenShop, GameInfoDisplayMobile.POSITION.SHOP_ICON, GameInfoDisplayMobile.SIZE.SHOP_ICON, GameInfoDisplayMobile.SIZE.BUTTON_ICON, GameInfoDisplayMobile.UV.SHOP, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.COLOR.BUTTON_BACKGROUND, GameInfoDisplayMobile.COLOR.BUTTON_SELECTED, InputAction.TOGGLE_STORE)
+	self:createButtonElement(self.onOpenMap, GameInfoDisplayMobile.POSITION.MAP_ICON, GameInfoDisplayMobile.SIZE.MAP_ICON, GameInfoDisplayMobile.SIZE.BUTTON_ICON, GameInfoDisplayMobile.UV.MAP, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.COLOR.BUTTON_BACKGROUND, GameInfoDisplayMobile.COLOR.BUTTON_SELECTED, InputAction.TOGGLE_MAP)
+	self:createButtonElement(self.onOpenMenu, GameInfoDisplayMobile.POSITION.MENU_ICON, GameInfoDisplayMobile.SIZE.MENU_ICON, GameInfoDisplayMobile.SIZE.BUTTON_ICON, GameInfoDisplayMobile.UV.MENU, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.COLOR.BUTTON_BACKGROUND, GameInfoDisplayMobile.COLOR.BUTTON_SELECTED, InputAction.MENU)
 	self:createInfoElement(self.getMoneyValue, GameInfoDisplayMobile.POSITION.MONEY_AREA, GameInfoDisplayMobile.SIZE.MONEY_AREA, GameInfoDisplayMobile.SIZE.MONEY_ICON, GameInfoDisplayMobile.SIZE.ICON_OFFSET_MONEY, GameInfoDisplayMobile.SIZE.ICON_PADDING, GameInfoDisplayMobile.UV.SHOP, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.SIZE.TEXT_OFFSET_MONEY, GameInfoDisplayMobile.SIZE.TEXT_SIZE, true)
 	self:createInfoElement(self.getFuelValue, GameInfoDisplayMobile.POSITION.FUEL_AREA, GameInfoDisplayMobile.SIZE.FUEL_AREA, GameInfoDisplayMobile.SIZE.FUEL_ICON, GameInfoDisplayMobile.SIZE.ICON_OFFSET_FUEL, GameInfoDisplayMobile.SIZE.ICON_PADDING, GameInfoDisplayMobile.UV.FUEL, GameInfoDisplayMobile.COLOR.BUTTON, GameInfoDisplayMobile.SIZE.TEXT_OFFSET_FUEL, GameInfoDisplayMobile.SIZE.TEXT_SIZE, true)
 
@@ -65,69 +59,47 @@ function GameInfoDisplayMobile:createSeparators()
 end
 
 function GameInfoDisplayMobile:createBorders()
-	if not g_isPresentationVersion then
-		local border = self:createHUDElement({
-			0,
-			0
-		}, {
-			GameInfoDisplayMobile.SIZE.BACKGROUND[1],
-			2
-		}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
-
-		table.insert(self.elements, border)
-
-		border = self:createHUDElement({
-			0,
-			2
-		}, {
-			2,
-			GameInfoDisplayMobile.SIZE.BACKGROUND[2]
-		}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
-
-		table.insert(self.elements, border)
-
-		border = self:createHUDElement({
-			GameInfoDisplayMobile.SIZE.BACKGROUND[1] - 2,
-			2
-		}, {
-			2,
-			GameInfoDisplayMobile.SIZE.BACKGROUND[2]
-		}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
-
-		table.insert(self.elements, border)
-
-		border = self:createHUDElement({
-			GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] + GameInfoDisplayMobile.SIZE.CENTER_BACKGROUND[1] + GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] / 2,
-			2
-		}, {
-			2,
-			GameInfoDisplayMobile.SIZE.BACKGROUND[2]
-		}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
-
-		table.insert(self.elements, border)
-	else
-		local border = self:createHUDElement({
-			GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] - 2,
-			0
-		}, {
-			GameInfoDisplayMobile.SIZE.BACKGROUND_REDUCED[1],
-			2
-		}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
-
-		table.insert(self.elements, border)
-
-		border = self:createHUDElement({
-			GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] + GameInfoDisplayMobile.SIZE.CENTER_BACKGROUND[1] + GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] / 2 - 1,
-			2
-		}, {
-			2,
-			GameInfoDisplayMobile.SIZE.BACKGROUND[2]
-		}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
-
-		table.insert(self.elements, border)
-	end
-
 	local border = self:createHUDElement({
+		0,
+		0
+	}, {
+		GameInfoDisplayMobile.SIZE.BACKGROUND[1],
+		2
+	}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
+
+	table.insert(self.elements, border)
+
+	border = self:createHUDElement({
+		0,
+		2
+	}, {
+		2,
+		GameInfoDisplayMobile.SIZE.BACKGROUND[2]
+	}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
+
+	table.insert(self.elements, border)
+
+	border = self:createHUDElement({
+		GameInfoDisplayMobile.SIZE.BACKGROUND[1] - 2,
+		2
+	}, {
+		2,
+		GameInfoDisplayMobile.SIZE.BACKGROUND[2]
+	}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
+
+	table.insert(self.elements, border)
+
+	border = self:createHUDElement({
+		GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] + GameInfoDisplayMobile.SIZE.CENTER_BACKGROUND[1] + GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] / 2,
+		2
+	}, {
+		2,
+		GameInfoDisplayMobile.SIZE.BACKGROUND[2]
+	}, HUDElement.UV.FILL, GameInfoDisplayMobile.COLOR.BORDER)
+
+	table.insert(self.elements, border)
+
+	border = self:createHUDElement({
 		GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND[1] - 2,
 		2
 	}, {
@@ -338,6 +310,9 @@ end
 function GameInfoDisplayMobile:setWeatherVisible(isVisible)
 end
 
+function GameInfoDisplayMobile:setDateVisible(isVisible)
+end
+
 function GameInfoDisplayMobile:setTutorialVisible(isVisible)
 end
 
@@ -380,22 +355,11 @@ function GameInfoDisplayMobile.getBackgroundPosition(scale, width)
 	local offX, offY = getNormalizedScreenValues(unpack(GameInfoDisplayMobile.POSITION.BACKGROUND))
 	local sizeX, _ = getNormalizedScreenValues(unpack(GameInfoDisplayMobile.SIZE.BACKGROUND))
 
-	if g_isPresentationVersion then
-		sizeX, _ = getNormalizedScreenValues(unpack(GameInfoDisplayMobile.SIZE.BACKGROUND_REDUCED))
-		local centerOff, _ = getNormalizedScreenValues(unpack(GameInfoDisplayMobile.POSITION.CENTER_BACKGROUND))
-		offX = offX + centerOff
-	end
-
 	return 0.5 - sizeX / 2 - offX, 1 - g_safeFrameOffsetY - offY * scale
 end
 
 function GameInfoDisplayMobile.createBackground()
 	local width, height = getNormalizedScreenValues(unpack(GameInfoDisplayMobile.SIZE.BACKGROUND))
-
-	if g_isPresentationVersion then
-		width, height = getNormalizedScreenValues(unpack(GameInfoDisplayMobile.SIZE.BACKGROUND_REDUCED))
-	end
-
 	local posX, posY = GameInfoDisplayMobile.getBackgroundPosition(1, width)
 
 	return Overlay.new(nil, posX, posY, width, height)
@@ -629,15 +593,15 @@ GameInfoDisplayMobile.COLOR = {
 		1
 	},
 	BUTTON_SELECTED = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		1
 	},
 	INPUT_GLYPH = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		1
 	}
 }

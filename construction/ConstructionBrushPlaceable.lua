@@ -177,7 +177,7 @@ function ConstructionBrushPlaceable:updatePlaceablePosition()
 end
 
 function ConstructionBrushPlaceable:verifyPlacement(x, y, z, rotY)
-	local err = self:verifyAccess(x, y, z, self.placeable)
+	local err = self:verifyAccess(x, y, z)
 
 	if err ~= nil then
 		return err
@@ -324,6 +324,7 @@ function ConstructionBrushPlaceable:loadedPlaceable(placeable, loadingState, arg
 		return
 	end
 
+	placeable:setPropertyState(Placeable.PROPERTY_STATE_CONSTRUCTION_PREVIEW)
 	placeable:setOwnerFarmId(g_currentMission.player.farmId)
 
 	if placeable.setColor ~= nil then
@@ -359,7 +360,7 @@ function ConstructionBrushPlaceable:onButtonPrimary()
 	end
 
 	if self.isLoading or self.isPlacing or self.displacementError ~= nil then
-		return false
+		return
 	end
 
 	local displacementCosts = self:getDisplacementCost()

@@ -8,14 +8,14 @@ g_globalMods = {}
 g_modNameToDirectory = {}
 local isReloadingDlcs = false
 g_dlcModNameHasPrefix = {}
+g_internalModsDirectory = "dataS/internalMods/"
+local internalScriptMods = {
+	"FS22_precisionFarming"
+}
 modOnCreate = {}
 
 function loadDlcs()
 	storeHaveDlcsChanged()
-
-	if g_isPresentationVersion and not g_isPresentationVersionDlcEnabled then
-		return
-	end
 
 	local loadedDlcs = {}
 
@@ -80,7 +80,7 @@ function loadDlcsFromDirectory(dlcsDir, loadedDlcs)
 			local dlcFile = dlcDir .. xmlFilename
 			g_dlcModNameHasPrefix[dlcName] = addDLCPrefix
 
-			loadModDesc(dlcName, dlcDir, dlcFile, dlcFileHash, dlcsDir .. v.filename, v.isDirectory, addDLCPrefix)
+			loadModDesc(dlcName, dlcDir, dlcFile, dlcFileHash, dlcsDir .. v.filename, v.isDirectory, addDLCPrefix, false)
 		end
 	end
 end
@@ -90,11 +90,6 @@ function loadMods()
 
 	local loadedMods = {}
 	local modsDir = g_modsDirectory
-
-	if g_isPresentationVersion then
-		return
-	end
-
 	g_showIllegalActivityInfo = false
 	local files = Files.new(modsDir)
 
@@ -125,7 +120,7 @@ function loadMods()
 			local modFile = modDir .. "modDesc.xml"
 
 			if loadedMods[modFile] == nil then
-				loadModDesc(modName, modDir, modFile, modFileHash, modsDir .. v.filename, v.isDirectory, false)
+				loadModDesc(modName, modDir, modFile, modFileHash, modsDir .. v.filename, v.isDirectory, false, false)
 
 				loadedMods[modFile] = true
 			end
@@ -137,6 +132,36 @@ function loadMods()
 	end
 
 	g_showIllegalActivityInfo = nil
+end
+
+function loadInternalMods()
+	haveModsChanged()
+
+	local files = Files.new(g_internalModsDirectory)
+
+	for _, v in pairs(files.files) do
+		local modFileHash, modName = nil
+
+		if v.isDirectory then
+			modName = v.filename
+			modFileHash = getMD5("DevInternalMod_" .. v.filename)
+		end
+
+		if modName ~= nil then
+			local modDir = g_internalModsDirectory .. modName .. "/"
+			local modFile = modDir .. "modDesc.xml"
+
+			loadModDesc(modName, modDir, modFile, modFileHash, g_internalModsDirectory .. v.filename, v.isDirectory, false, true)
+		end
+	end
+end
+
+function postInitMods()
+	for _, v in pairs(g_modEventListeners) do
+		if v.onPostInit ~= nil then
+			v:onPostInit()
+		end
+	end
 end
 
 local function getIsValidModDir(modDir)
@@ -159,7 +184,33 @@ local function getIsValidModDir(modDir)
 	return true
 end
 
-function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isDirectory, addDLCPrefix)
+local function getIsInternalScriptMod(modName)
+	for i = 1, #internalScriptMods do
+		local internalModName = internalScriptMods[i]
+
+		if modName == internalModName or modName == internalModName .. "_update" then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function resolveInternalScriptModFilename(filename, modName, modDir)
+	if filename:sub(1, modDir:len()) == modDir then
+		for i = 1, #internalScriptMods do
+			local internalModName = internalScriptMods[i]
+
+			if (modName == internalModName or modName == internalModName .. "_update") and (not fileExists(filename) or GS_IS_CONSOLE_VERSION) then
+				return "dataS/scripts/internalMods/" .. modName .. "/" .. filename:sub(modDir:len() + 1)
+			end
+		end
+	end
+
+	return filename
+end
+
+function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isDirectory, addDLCPrefix, isInternalMod)
 	if not getIsValidModDir(modName) then
 		print("Error: Invalid mod name '" .. modName .. "'! Characters allowed: (_, A-Z, a-z, 0-9). The first character must not be a digit")
 
@@ -296,10 +347,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	end
 
 	function modEnv.source(filename, env)
-		if isAbsolutPath(filename) then
-			if not g_isDevelopmentConsoleScriptModTesting and GS_IS_CONSOLE_VERSION and filename:sub(1, modDir:len()) == modDir then
-				filename = "dataS/scripts/internalMods/" .. modName .. "/" .. filename:sub(modDir:len() + 1)
-			end
+		if isAbsolutPath(filename) or isInternalMod then
+			filename = resolveInternalScriptModFilename(filename, modName, modDir)
 
 			source(filename, modName)
 		else
@@ -321,7 +370,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 
 	modEnv.g_constructionBrushTypeManager = {
 		addBrushType = function (self, typeName, className, filename, customEnvironment)
-			if isAbsolutPath(filename) and (customEnvironment == nil or customEnvironment == "") then
+			if isAbsolutPath(filename) or isInternalMod then
+				filename = resolveInternalScriptModFilename(filename, modName, modDir)
 				customEnvironment = modName
 				typeName = modName .. "." .. typeName
 				className = modName .. "." .. className
@@ -346,11 +396,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 
 	modEnv.g_specializationManager = {
 		addSpecialization = function (self, name, className, filename, customEnvironment)
-			if isAbsolutPath(filename) and (customEnvironment == nil or customEnvironment == "") then
-				if not g_isDevelopmentConsoleScriptModTesting and GS_IS_CONSOLE_VERSION and filename:sub(1, modDir:len()) == modDir then
-					filename = "dataS/scripts/internalMods/" .. modName .. "/" .. filename:sub(modDir:len() + 1)
-				end
-
+			if isAbsolutPath(filename) or isInternalMod then
+				filename = resolveInternalScriptModFilename(filename, modName, modDir)
 				customEnvironment = modName
 				name = modName .. "." .. name
 				className = modName .. "." .. className
@@ -375,11 +422,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 
 	modEnv.g_placeableSpecializationManager = {
 		addSpecialization = function (self, name, className, filename, customEnvironment)
-			if isAbsolutPath(filename) and (customEnvironment == nil or customEnvironment == "") then
-				if not g_isDevelopmentConsoleScriptModTesting and GS_IS_CONSOLE_VERSION and filename:sub(1, modDir:len()) == modDir then
-					filename = "dataS/scripts/internalMods/" .. modName .. "/" .. filename:sub(modDir:len() + 1)
-				end
-
+			if isAbsolutPath(filename) or isInternalMod then
+				filename = resolveInternalScriptModFilename(filename, modName, modDir)
 				customEnvironment = modName
 				name = modName .. "." .. name
 				className = modName .. "." .. className
@@ -404,11 +448,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 
 	modEnv.g_vehicleTypeManager = {
 		addType = function (self, typeName, className, filename, customEnvironment)
-			if isAbsolutPath(filename) and (customEnvironment == nil or customEnvironment == "") then
-				if GS_IS_CONSOLE_VERSION and filename:sub(1, modDir:len()) == modDir then
-					filename = "dataS/scripts/internalMods/" .. modName .. "/" .. filename:sub(modDir:len() + 1)
-				end
-
+			if isAbsolutPath(filename) or isInternalMod then
+				filename = resolveInternalScriptModFilename(filename, modName, modDir)
 				customEnvironment = modName
 				typeName = modName .. "." .. typeName
 				className = modName .. "." .. className
@@ -424,7 +465,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 
 	modEnv.g_placeableTypeManager = {
 		addType = function (self, typeName, className, filename, customEnvironment)
-			if isAbsolutPath(filename) and (customEnvironment == nil or customEnvironment == "") then
+			if isAbsolutPath(filename) or isInternalMod then
+				filename = resolveInternalScriptModFilename(filename, modName, modDir)
 				customEnvironment = modName
 				typeName = modName .. "." .. typeName
 				className = modName .. "." .. className
@@ -490,6 +532,7 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 		end
 	end
 
+	modEnv.g_adsSystem = {}
 	modEnv.InitStaticEventClass = ""
 	modEnv.InitStaticObjectClass = ""
 	modEnv.loadMod = ""
@@ -729,9 +772,22 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 		end
 	end)
 
+	if isInternalMod then
+		g_currentModDirectory = modDir
+		g_currentModName = modName
+
+		xmlFile:iterate("modDesc.preLoadSourceFiles.sourceFile", function (_, key)
+			local filename = xmlFile:getString(key .. "#filename")
+
+			if filename ~= nil then
+				modEnv.source(modDir .. filename, modName)
+			end
+		end)
+	end
+
 	iconFilename = Utils.getFilename(iconFilename, modDir)
 
-	g_modManager:addMod(title, desc, modVersion, modDescVersion, author, iconFilename, modName, modDir, modFile, isMultiplayerSupported, modFileHash, absBaseFilename, isDirectory, isDLCFile, hasScripts, dependencies, isOnlyMultiplayerSupported, isSelectable, uniqueType)
+	g_modManager:addMod(title, desc, modVersion, modDescVersion, author, iconFilename, modName, modDir, modFile, isMultiplayerSupported, modFileHash, absBaseFilename, isDirectory, isDLCFile, hasScripts, dependencies, isOnlyMultiplayerSupported, isSelectable, uniqueType, getIsInternalScriptMod(modName))
 	xmlFile:delete()
 end
 
@@ -765,6 +821,7 @@ function loadMod(modName, modDir, modFile, modTitle)
 		print("  Load mod: " .. modName)
 	end
 
+	local allowScripts = not GS_IS_CONSOLE_VERSION or isDLCFile or g_isDevelopmentConsoleScriptModTesting or getIsInternalScriptMod(modName)
 	g_currentModDirectory = modDir
 	g_currentModName = modName
 
@@ -772,12 +829,12 @@ function loadMod(modName, modDir, modFile, modTitle)
 		g_currentModSettingsDirectory = g_modSettingsDirectory .. modName .. "/"
 	end
 
-	if not GS_IS_CONSOLE_VERSION or isDLCFile or g_isDevelopmentConsoleScriptModTesting then
+	if allowScripts then
 		xmlFile:iterate("modDesc.extraSourceFiles.sourceFile", function (_, key)
 			local filename = xmlFile:getString(key .. "#filename")
 
 			if filename ~= nil then
-				source(modDir .. filename, modName)
+				modEnv.source(modDir .. filename, modName)
 			end
 		end)
 	end
@@ -804,11 +861,9 @@ function loadMod(modName, modDir, modFile, modTitle)
 
 		if specName ~= nil and className ~= nil and filename ~= nil then
 			filename = modDir .. filename
-			className = modName .. "." .. className
-			specName = modName .. "." .. specName
 
-			if not GS_IS_CONSOLE_VERSION or isDLCFile then
-				g_specializationManager:addSpecialization(specName, className, filename, modName)
+			if allowScripts then
+				modEnv.g_specializationManager:addSpecialization(specName, className, filename, modName)
 			else
 				print("Error: Can't register specialization " .. specName .. " with scripts on consoles.")
 			end
@@ -824,11 +879,9 @@ function loadMod(modName, modDir, modFile, modTitle)
 
 		if specName ~= nil and className ~= nil and filename ~= nil then
 			filename = modDir .. filename
-			className = modName .. "." .. className
-			specName = modName .. "." .. specName
 
-			if not GS_IS_CONSOLE_VERSION or isDLCFile then
-				g_placeableSpecializationManager:addSpecialization(specName, className, filename, modName)
+			if allowScripts then
+				modEnv.g_placeableSpecializationManager:addSpecialization(specName, className, filename, modName)
 			else
 				print("Error: Can't register placeable specialization " .. specName .. " with scripts on consoles.")
 			end
@@ -949,8 +1002,11 @@ function reloadDlcsAndMods()
 	end
 
 	if Platform.supportsMods then
+		loadInternalMods()
 		loadMods()
 	end
+
+	g_inputBinding:loadModActions()
 
 	isReloadingDlcs = false
 end

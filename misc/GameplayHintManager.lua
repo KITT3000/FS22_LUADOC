@@ -25,27 +25,30 @@ function GameplayHintManager:loadMapData(xmlFile, missionInfo)
 
 	local customEnvironment, _ = Utils.getModNameAndBaseDirectory(filename)
 	local gameplayHintXmlFile = loadXMLFile("gameplayHints", filename)
-	local i = 0
 
-	while true do
-		local key = string.format("gameplayHints.gameplayHint(%d)", i)
+	if gameplayHintXmlFile ~= 0 then
+		local i = 0
 
-		if not hasXMLProperty(gameplayHintXmlFile, key) then
-			break
+		while true do
+			local key = string.format("gameplayHints.gameplayHint(%d)", i)
+
+			if not hasXMLProperty(gameplayHintXmlFile, key) then
+				break
+			end
+
+			local text = getXMLString(gameplayHintXmlFile, key)
+
+			if text:sub(1, 6) == "$l10n_" then
+				text = g_i18n:getText(text:sub(7), customEnvironment)
+			end
+
+			table.insert(self.gameplayHints, text)
+
+			i = i + 1
 		end
 
-		local text = getXMLString(gameplayHintXmlFile, key)
-
-		if text:sub(1, 6) == "$l10n_" then
-			text = g_i18n:getText(text:sub(7), customEnvironment)
-		end
-
-		table.insert(self.gameplayHints, text)
-
-		i = i + 1
+		delete(gameplayHintXmlFile)
 	end
-
-	delete(gameplayHintXmlFile)
 
 	self.isLoaded = true
 

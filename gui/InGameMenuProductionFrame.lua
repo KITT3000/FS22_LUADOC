@@ -63,10 +63,6 @@ function InGameMenuProductionFrame:onGuiSetupFinished()
 end
 
 function InGameMenuProductionFrame:initialize()
-	self.buttonChangeSettingInfo = {
-		inputAction = InputAction.MENU_ACTIVATE
-	}
-
 	self.recipeFillIcon:unlinkElement()
 	self.recipeText:unlinkElement()
 	self.recipePlus:unlinkElement()
@@ -77,6 +73,14 @@ function InGameMenuProductionFrame:initialize()
 		text = self.i18n:getText(InGameMenuAnimalsFrame.L10N_SYMBOL.BUTTON_HOTSPOT),
 		callback = function ()
 			self:onButtonHotspot()
+		end
+	}
+	self.visitButtonInfo = {
+		profile = "buttonVisitPlace",
+		inputAction = InputAction.MENU_ACTIVATE,
+		text = self.i18n:getText("action_visit"),
+		callback = function ()
+			self:onButtonVisit()
 		end
 	}
 	self.activateButtonInfo = {
@@ -217,6 +221,10 @@ function InGameMenuProductionFrame:updateMenuButtons()
 			end
 
 			table.insert(self.menuButtonInfo, self.hotspotButtonInfo)
+
+			if hotspot:getBeVisited() then
+				table.insert(self.menuButtonInfo, self.visitButtonInfo)
+			end
 		end
 	else
 		local fillType, isInput = self:getSelectedStorageFillType()
@@ -449,6 +457,28 @@ function InGameMenuProductionFrame:onButtonHotspot()
 			self:updateMenuButtons()
 		else
 			g_currentMission:setMapTargetHotspot(nil)
+		end
+	end
+end
+
+function InGameMenuProductionFrame:onButtonVisit()
+	local _, productionPoint = self:getSelectedProduction()
+
+	if productionPoint ~= nil then
+		local hotspot = productionPoint.owningPlaceable:getHotspot()
+
+		if hotspot ~= nil then
+			local x, y, z = hotspot:getTeleportWorldPosition()
+
+			if x ~= nil and y ~= nil and z ~= nil then
+				if g_currentMission.controlledVehicle ~= nil then
+					g_currentMission:onLeaveVehicle(x, y, z, true, false)
+				else
+					g_currentMission.player:moveToAbsolute(x, y, z, false, false)
+				end
+
+				g_gui:changeScreen(nil)
+			end
 		end
 	end
 end

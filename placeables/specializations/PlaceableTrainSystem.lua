@@ -121,7 +121,7 @@ function PlaceableTrainSystem:onLoad(savegame)
 		Logging.xmlError(self.xmlFile, "Train spline is not closed. Open splines are not supported!")
 		self:setLoadingState(Placeable.LOADING_STATE_ERROR)
 
-		return false
+		return
 	end
 
 	spec.splineLength = getSplineLength(spec.spline)
@@ -606,11 +606,13 @@ function PlaceableTrainSystem:createVehicles()
 			local vehicle = g_currentMission.savegameIdToVehicle[id]
 
 			if vehicle ~= nil then
-				vehicle:setTrainSystem(self)
+				if vehicle.setTrainSystem ~= nil then
+					vehicle:setTrainSystem(self)
 
-				vehicle.trainVehicleIndex = k
+					vehicle.trainVehicleIndex = k
 
-				table.insert(spec.railroadVehicles, vehicle)
+					table.insert(spec.railroadVehicles, vehicle)
+				end
 			end
 		end
 

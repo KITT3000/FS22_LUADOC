@@ -276,6 +276,26 @@ function MathUtil.getRotationLimitedVector2(x, y, minRot, maxRot)
 	return x, y
 end
 
+function MathUtil.quaternionVectorMultiplication(quatX, quatY, quatZ, quatW, vecX, vecY, vecZ)
+	local num = quatX * 2
+	local num2 = quatY * 2
+	local num3 = quatZ * 2
+	local num4 = quatX * num
+	local num5 = quatY * num2
+	local num6 = quatZ * num3
+	local num7 = quatX * num2
+	local num8 = quatX * num3
+	local num9 = quatY * num3
+	local num10 = quatW * num
+	local num11 = quatW * num2
+	local num12 = quatW * num3
+	local x = (1 - (num5 + num6)) * vecX + (num7 - num12) * vecY + (num8 + num11) * vecZ
+	local y = (num7 + num12) * vecX + (1 - (num4 + num6)) * vecY + (num9 - num10) * vecZ
+	local z = (num8 - num11) * vecX + (num9 + num10) * vecY + (1 - (num4 + num5)) * vecZ
+
+	return x, y, z
+end
+
 function MathUtil.projectOnLine(px, pz, lineX, lineZ, normlineDirX, normlineDirZ)
 	local dx = px - lineX
 	local dz = pz - lineZ

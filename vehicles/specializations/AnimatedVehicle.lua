@@ -104,6 +104,7 @@ function AnimatedVehicle.registerEvents(vehicleType)
 	SpecializationUtil.registerEvent(vehicleType, "onRegisterAnimationValueTypes")
 	SpecializationUtil.registerEvent(vehicleType, "onPlayAnimation")
 	SpecializationUtil.registerEvent(vehicleType, "onStartAnimation")
+	SpecializationUtil.registerEvent(vehicleType, "onUpdateAnimation")
 	SpecializationUtil.registerEvent(vehicleType, "onFinishAnimation")
 	SpecializationUtil.registerEvent(vehicleType, "onStopAnimation")
 	SpecializationUtil.registerEvent(vehicleType, "onAnimationPartChanged")
@@ -585,7 +586,7 @@ function AnimatedVehicle:playAnimation(name, speed, animTime, noEventSend, allow
 			spec.activeAnimations[name] = animation
 			spec.numActiveAnimations = spec.numActiveAnimations + 1
 
-			SpecializationUtil.raiseEvent(self, "onStartAnimation", name)
+			SpecializationUtil.raiseEvent(self, "onStartAnimation", name, speed)
 		end
 
 		animation.currentSpeed = speed
@@ -1169,6 +1170,8 @@ function AnimatedVehicle:updateAnimation(anim, dtToUse, stopAnim, fixedTimeUpdat
 					end
 				end
 			end
+
+			SpecializationUtil.raiseEvent(self, "onUpdateAnimation", anim.name)
 
 			if spec.activeAnimations[anim.name] == nil then
 				spec.fixedTimeSamplesDirtyDelay = 2

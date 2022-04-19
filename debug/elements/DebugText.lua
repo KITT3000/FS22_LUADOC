@@ -9,7 +9,7 @@ function DebugText.new(customMt)
 	self.rotZ = 0
 	self.rotY = 0
 	self.rotX = 0
-	self.alignment = RenderText.ALIGN_LEFT
+	self.alignment = RenderText.ALIGN_CENTER
 	self.verticalAlignment = RenderText.VERTICAL_ALIGN_MIDDLE
 	self.a = 1
 	self.b = 1
@@ -19,6 +19,7 @@ function DebugText.new(customMt)
 	self.text = nil
 	self.alignToGround = false
 	self.alignToCamera = false
+	self.clipDistance = nil
 
 	return self
 end
@@ -33,6 +34,14 @@ function DebugText:update(dt)
 end
 
 function DebugText:draw()
+	if self.clipDistance ~= nil then
+		local x, y, z = getWorldTranslation(getCamera())
+
+		if self.clipDistance < MathUtil.vector3Length(x - self.x, y - self.y, z - self.z) then
+			return
+		end
+	end
+
 	setTextDepthTestEnabled(false)
 	setTextAlignment(self.alignment)
 	setTextVerticalAlignment(self.verticalAlignment)
@@ -75,4 +84,19 @@ function DebugText:getRotationToCamera(x, y, z)
 	local dirX, _, dirZ = MathUtil.vector3Normalize(cx - x, cy - y, cz - z)
 
 	return MathUtil.getYRotationFromDirection(dirX, dirZ)
+end
+
+function DebugText:setColor(r, g, b, a)
+	self.r = r or self.r
+	self.g = g or self.g
+	self.b = b or self.b
+	self.a = a or self.a
+
+	return self
+end
+
+function DebugText:setClipDistance(clipDistance)
+	self.clipDistance = clipDistance
+
+	return self
 end

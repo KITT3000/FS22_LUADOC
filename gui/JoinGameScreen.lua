@@ -49,7 +49,7 @@ function JoinGameScreen.new(target, custom_mt, startMissionInfo, messageCenter, 
 		table.insert(self.maxNumPlayersNumbers, i)
 	end
 
-	self.maxNumPlayersState = table.getn(self.maxNumPlayersNumbers)
+	self.maxNumPlayersState = #self.maxNumPlayersNumbers
 	self.selectedMaxNumPlayers = self.maxNumPlayersNumbers[self.maxNumPlayersState]
 	self.hasNoPassword = false
 	self.isNotFull = false
@@ -60,6 +60,10 @@ function JoinGameScreen.new(target, custom_mt, startMissionInfo, messageCenter, 
 	self.serverName = ""
 	self.lastUserName = ""
 	self.returnScreenClass = MultiplayerScreen
+
+	if g_isDevelopmentVersion then
+		JoinGameScreen.REFRESH_TIME = 10000
+	end
 
 	return self
 end
@@ -146,6 +150,11 @@ function JoinGameScreen:onClose()
 	JoinGameScreen:superClass().onClose(self)
 
 	self.settingsLoaded = false
+	self.servers = {}
+	self.serversBuffer = {}
+	self.displayServers = {}
+	self.mapTable = {}
+	self.mapIds = {}
 
 	self.messageCenter:unsubscribeAll(self)
 end
@@ -181,12 +190,14 @@ platformId :%s
 		if g_deepLinkingInfo.platformServerId ~= "" then
 			if hasPassword then
 				self.showingDeepLinkingPassword = true
-				g_deepLinkingInfo.serverId = id
 
 				g_gui:showPasswordDialog({
 					defaultPassword = "",
 					callback = self.onPasswordEntered,
-					target = self
+					target = self,
+					args = {
+						serverId = id
+					}
 				})
 			else
 				self:startGame(password, id)
@@ -234,30 +245,33 @@ end
 function JoinGameScreen:onServerInfoStart(numServers, totalNumServers)
 	self.totalNumServers = totalNumServers
 	self.numServers = numServers
-	self.serversBuffer = {}
+	self.serversBufferNextIndex = 1
 end
 
 function JoinGameScreen:onServerInfo(id, name, language, capacity, numPlayers, mapName, hasPassword, allModsAvailable, isLanServer, isFriendServer, allowCrossPlay, platformId)
-	local server = {
-		id = id,
-		name = name,
-		hasPassword = hasPassword,
-		language = language,
-		capacity = capacity,
-		numPlayers = numPlayers,
-		mapName = mapName,
-		allModsAvailable = allModsAvailable,
-		isLanServer = isLanServer,
-		isFriendServer = isFriendServer,
-		allowCrossPlay = allowCrossPlay,
-		platformId = platformId,
-		fullness = numPlayers / capacity
-	}
-
-	table.insert(self.serversBuffer, server)
+	local server = self.serversBuffer[self.serversBufferNextIndex] or {}
+	server.id = id
+	server.name = name
+	server.hasPassword = hasPassword
+	server.language = language
+	server.capacity = capacity
+	server.numPlayers = numPlayers
+	server.mapName = mapName
+	server.allModsAvailable = allModsAvailable
+	server.isLanServer = isLanServer
+	server.isFriendServer = isFriendServer
+	server.allowCrossPlay = allowCrossPlay
+	server.platformId = platformId
+	server.fullness = numPlayers / capacity
+	self.serversBuffer[self.serversBufferNextIndex] = server
+	self.serversBufferNextIndex = self.serversBufferNextIndex + 1
 end
 
 function JoinGameScreen:onServerInfoEnd()
+	for i = #self.serversBuffer, self.serversBufferNextIndex, -1 do
+		self.serversBuffer[i] = nil
+	end
+
 	self.servers = self.serversBuffer
 	self.isRequestPending = false
 
@@ -339,7 +353,7 @@ function JoinGameScreen:updateDisplayedServers()
 	end
 
 	if g_autoDevMP ~= nil then
-		for k, server in pairs(self.displayServers) do
+		for k, server in ipairs(self.displayServers) do
 			if server.name == g_autoDevMP.serverName then
 				self.serverList:setSelectedIndex(k)
 				self:onClickOk(true)
@@ -348,7 +362,7 @@ function JoinGameScreen:updateDisplayedServers()
 			end
 		end
 
-		self.refreshTimer = 0
+		self.refreshTimer = 500
 	end
 end
 
@@ -472,6 +486,7 @@ function JoinGameScreen:onClickOk(isMouseClick)
 		return
 	end
 
+	self:saveFilterSettings()
 	JoinGameScreen:superClass().onClickOk(self)
 
 	if self.serverList.selectedIndex > 0 then
@@ -487,7 +502,10 @@ function JoinGameScreen:onClickOk(isMouseClick)
 					g_gui:showPasswordDialog({
 						callback = self.onPasswordEntered,
 						target = self,
-						defaultPassword = password
+						defaultPassword = password,
+						args = {
+							serverId = server.id
+						}
 					})
 				end
 			end
@@ -497,8 +515,6 @@ function JoinGameScreen:onClickOk(isMouseClick)
 			self:playSample(GuiSoundPlayer.SOUND_SAMPLES.CLICK)
 		end
 	end
-
-	self:saveFilterSettings()
 end
 
 function JoinGameScreen:onClickActivate()
@@ -593,13 +609,13 @@ function JoinGameScreen:loadFilterSettings()
 		self.serverName = g_autoDevMP.serverName
 	end
 
-	self.maxNumPlayersState = table.getn(self.maxNumPlayersNumbers)
+	self.maxNumPlayersState = #self.maxNumPlayersNumbers
 	self.selectedLanguageId = g_gameSettings:getValue(GameSettings.SETTING.MP_LANGUAGE)
 	self.selectedLanguageId = math.min(math.max(self.selectedLanguageId, 0), getNumOfLanguages() - 1)
 	local mapId = g_gameSettings:getTableValue("joinGame", "mapId")
 
 	if mapId ~= nil then
-		for i, m in pairs(self.mapIds) do
+		for i, m in ipairs(self.mapIds) do
 			if m == mapId then
 				selectedMapState = i
 
@@ -611,7 +627,7 @@ function JoinGameScreen:loadFilterSettings()
 	local capacity = g_gameSettings:getTableValue("joinGame", "capacity")
 
 	if capacity ~= nil then
-		for i, c in pairs(self.maxNumPlayersNumbers) do
+		for i, c in ipairs(self.maxNumPlayersNumbers) do
 			if c == capacity then
 				self.maxNumPlayersState = i
 
@@ -647,6 +663,7 @@ function JoinGameScreen:saveFilterSettings()
 	g_gameSettings:setTableValue("joinGame", "hasNoPassword", self.passwordElement:getIsChecked())
 	g_gameSettings:setTableValue("joinGame", "isNotEmpty", self.capacityElement:getIsChecked())
 	g_gameSettings:setTableValue("joinGame", "onlyWithAllModsAvailable", self.modDlcElement:getIsChecked())
+	g_gameSettings:setTableValue("joinGame", "allowCrossPlay", self.allowCrossPlayElement:getIsChecked())
 	g_gameSettings:setTableValue("joinGame", "serverName", self.serverName)
 	g_gameSettings:setTableValue("joinGame", "language", self.selectedLanguageId)
 	g_gameSettings:setTableValue("joinGame", "capacity", self.maxNumPlayersNumbers[self.maxNumPlayersElement.state])
@@ -679,19 +696,35 @@ function JoinGameScreen:isSelectedServerValid()
 	return selectedServer and selectedServer.allModsAvailable and selectedServer.numPlayers < selectedServer.capacity
 end
 
-function JoinGameScreen:onPasswordEntered(password, clickOk)
+function JoinGameScreen:onPasswordEntered(password, clickOk, args)
 	if clickOk then
 		self.showingDeepLinkingPassword = nil
-		local serverId = nil
 
-		if g_deepLinkingInfo ~= nil then
-			serverId = g_deepLinkingInfo.serverId
-		else
+		if g_deepLinkingInfo == nil then
 			g_gameSettings:setTableValue("joinGame", "password", password)
 			g_gameSettings:saveToXMLFile(g_savegameXML)
+		end
 
-			local server = self:getSelectedServer()
-			serverId = server.id
+		local serverId = nil
+		local serverIdRequested = args.serverId
+
+		for _, server in ipairs(self.displayServers) do
+			if server.id == serverIdRequested then
+				serverId = serverIdRequested
+
+				break
+			end
+		end
+
+		if serverId == nil then
+			local text = string.format("%s\n%s", g_i18n:getText("ui_connectionFailed"), g_i18n:getText("ui_serverWasShutdown"))
+
+			g_gui:showInfoDialog({
+				text = text,
+				dialogType = DialogElement.TYPE_WARNING
+			})
+
+			return
 		end
 
 		self:startGame(password, serverId)

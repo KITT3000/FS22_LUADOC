@@ -75,6 +75,11 @@ end
 
 function WeedSystem:loadWeed(filename)
 	local xmlFile = XMLFile.load("weed", filename, WeedSystem.xmlSchema)
+
+	if xmlFile == nil then
+		return
+	end
+
 	self.name = xmlFile:getValue("map.weed#name") or self.name
 	local title = xmlFile:getValue("map.weed#title")
 

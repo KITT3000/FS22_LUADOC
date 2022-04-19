@@ -1,23 +1,24 @@
 GameSettings = {}
 local GameSettings_mt = Class(GameSettings)
 GameSettings.SETTING = {
-	RADIO_IS_ACTIVE = "radioIsActive",
+	MOTOR_STOP_TIMER_DURATION = "motorStopTimerDuration",
 	RESET_CAMERA = "resetCamera",
-	CAMERA_SENSITIVITY = "cameraSensitivity",
+	DEFAULT_SERVER_PORT = "defaultServerPort",
+	FOV_Y = "fovY",
 	LIGHTS_PROFILE = "lightsProfile",
 	GEAR_SHIFT_MODE = "gearShiftMode",
 	SHOW_HELP_TRIGGER = "showHelpTrigger",
 	HORSE_ABANDON_TIMER_DURATION = "horseAbandonTimerDuration",
 	USE_ACRE = "useAcre",
-	MAX_NUM_MIRRORS = "maxNumMirrors",
 	IS_GAMEPAD_ENABLED = "isGamepadEnabled",
 	VOICE_MODE = "voiceMode",
-	MONEY_UNIT = "moneyUnit",
+	MAX_NUM_MIRRORS = "maxNumMirrors",
 	CAMERA_CHECK_COLLISION = "cameraCheckCollision",
 	VOLUME_GUI = "volumeGUI",
+	MONEY_UNIT = "moneyUnit",
 	INGAME_MAP_GROWTH_FILTER = "ingameMapGrowthFilter",
-	INGAME_MAP_SOIL_FILTER = "ingameMapSoilFilter",
 	USE_MILES = "useMiles",
+	INGAME_MAP_SOIL_FILTER = "ingameMapSoilFilter",
 	INVERT_Y_LOOK = "invertYLook",
 	EASY_ARM_CONTROL = "easyArmControl",
 	SHOW_MULTIPLAYER_NAMES = "showMultiplayerNames",
@@ -25,16 +26,16 @@ GameSettings.SETTING = {
 	INGAME_MAP_FILTER = "ingameMapFilter",
 	RADIO_VEHICLE_ONLY = "radioVehicleOnly",
 	INGAME_MAP_STATE = "ingameMapState",
-	FOV_Y = "fovY",
+	VOICE_INPUT_SENSITIVITY = "voiceInputThreshold",
 	VOLUME_VOICE_INPUT = "volumeVoiceInput",
 	IS_TRAIN_TABBABLE = "isTrainTabbable",
 	UI_SCALE = "uiScale",
 	ACTIVE_SUSPENSION_CAMERA = "activeSuspensionCamera",
 	LAST_PLAYER_STYLE_MALE = "lastPlayerStyleMale",
-	DEFAULT_SERVER_PORT = "defaultServerPort",
+	CAMERA_SENSITIVITY = "cameraSensitivity",
 	IS_HEAD_TRACKING_ENABLED = "isHeadTrackingEnabled",
 	STEERING_SENSITIVITY = "steeringSensitivity",
-	MOTOR_STOP_TIMER_DURATION = "motorStopTimerDuration",
+	RADIO_IS_ACTIVE = "radioIsActive",
 	GYROSCOPE_STEERING = "gyroscopeSteering",
 	USE_COLORBLIND_MODE = "useColorblindMode",
 	VOLUME_VEHICLE = "vehicleVolume",
@@ -155,6 +156,7 @@ function GameSettings.new(customMt, messageCenter)
 	self[GameSettings.SETTING.VOLUME_VOICE] = 1
 	self[GameSettings.SETTING.VOLUME_VOICE_INPUT] = 1
 	self[GameSettings.SETTING.VOICE_MODE] = VoiceChatUtil.MODE.VOICE_ACTIVITY
+	self[GameSettings.SETTING.VOICE_INPUT_SENSITIVITY] = 1
 	self[GameSettings.SETTING.RADIO_IS_ACTIVE] = false
 	self[GameSettings.SETTING.RADIO_VEHICLE_ONLY] = true
 	self[GameSettings.SETTING.SHOW_HELP_ICONS] = true
@@ -260,7 +262,7 @@ function GameSettings:setTableValue(name, index, value, doSave)
 	end
 
 	if value == nil then
-		print("Error: GameSetting table value missing or nil for index '" .. index("'!"))
+		print("Error: GameSetting table value missing or nil for index '" .. index .. "'!")
 
 		return false
 	end
@@ -471,6 +473,7 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.VOLUME_VOICE, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.volume.voice"), self[GameSettings.SETTING.VOLUME_VOICE]))
 		self:setValue(GameSettings.SETTING.VOLUME_VOICE_INPUT, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.volume.voiceInput"), self[GameSettings.SETTING.VOLUME_VOICE_INPUT]))
 		self:setValue(GameSettings.SETTING.VOICE_MODE, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.voice#mode"), self[GameSettings.SETTING.VOICE_MODE]))
+		self:setValue(GameSettings.SETTING.VOICE_INPUT_SENSITIVITY, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.voice#inputSensitivity"), self[GameSettings.SETTING.VOICE_INPUT_SENSITIVITY]))
 		self:setValue(GameSettings.SETTING.FORCE_FEEDBACK, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.forceFeedback"), self[GameSettings.SETTING.FORCE_FEEDBACK]))
 		self:setValue(GameSettings.SETTING.SHOWN_FREEMODE_WARNING, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.shownFreemodeWarning"), self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING]))
 		self:setValue(GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.showMultiplayerNames"), self[GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES]))
@@ -570,6 +573,7 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLBool(xmlFile, "gameSettings.radioIsActive", self[GameSettings.SETTING.RADIO_IS_ACTIVE])
 		setXMLBool(xmlFile, "gameSettings.radioVehicleOnly", self[GameSettings.SETTING.RADIO_VEHICLE_ONLY])
 		setXMLInt(xmlFile, "gameSettings.voice#mode", self[GameSettings.SETTING.VOICE_MODE])
+		setXMLInt(xmlFile, "gameSettings.voice#inputSensitivity", self[GameSettings.SETTING.VOICE_INPUT_SENSITIVITY])
 		setXMLInt(xmlFile, "gameSettings.units.money", self[GameSettings.SETTING.MONEY_UNIT])
 		setXMLBool(xmlFile, "gameSettings.units.miles", self[GameSettings.SETTING.USE_MILES])
 		setXMLBool(xmlFile, "gameSettings.units.fahrenheit", self[GameSettings.SETTING.USE_FAHRENHEIT])

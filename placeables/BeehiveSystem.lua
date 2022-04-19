@@ -61,7 +61,7 @@ function BeehiveSystem:onHourChanged()
 end
 
 function BeehiveSystem:update()
-	if #self.beehivePalletSpawners == 0 then
+	if #self.beehivePalletSpawners == 0 or not self.mission:getIsServer() then
 		return
 	end
 

@@ -172,6 +172,7 @@ function Vehicle.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "removeActionEvents", Vehicle.removeActionEvents)
 	SpecializationUtil.registerFunction(vehicleType, "updateActionEvents", Vehicle.updateActionEvents)
 	SpecializationUtil.registerFunction(vehicleType, "registerActionEvents", Vehicle.registerActionEvents)
+	SpecializationUtil.registerFunction(vehicleType, "addActionEvent", Vehicle.addActionEvent)
 	SpecializationUtil.registerFunction(vehicleType, "updateSelectableObjects", Vehicle.updateSelectableObjects)
 	SpecializationUtil.registerFunction(vehicleType, "registerSelectableObjects", Vehicle.registerSelectableObjects)
 	SpecializationUtil.registerFunction(vehicleType, "addSubselection", Vehicle.addSubselection)
@@ -889,6 +890,11 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 	self.isInMediumWater = false
 	self.waterY = -200
 	self.tailwaterDepth = -200
+	self.waterCheckPosition = {
+		0,
+		0,
+		0
+	}
 	self.selectionObjects = {}
 	self.currentSelection = {
 		index = 0,
@@ -1913,10 +1919,6 @@ function Vehicle:update(dt)
 
 	SpecializationUtil.raiseEvent(self, "onPostUpdate", dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 
-	if self.vehicleCharacter ~= nil then
-		self.vehicleCharacter:setDirty(true)
-	end
-
 	if self.finishedFirstUpdate and self.isMassDirty then
 		self.isMassDirty = false
 
@@ -2380,16 +2382,15 @@ end
 
 function Vehicle:updateWaterInfo()
 	local x, y, z = getWorldTranslation(self.rootNode)
+	self.waterCheckPosition[1] = x
+	self.waterCheckPosition[2] = y
+	self.waterCheckPosition[3] = z
 
-	g_currentMission.environmentAreaSystem:getWaterYAtWorldPositionAsync(x, y, z, self.onWaterRaycastCallback, self, {
-		x,
-		y,
-		z
-	})
+	g_currentMission.environmentAreaSystem:getWaterYAtWorldPositionAsync(x, y, z, self.onWaterRaycastCallback, self, nil)
 end
 
 function Vehicle:onWaterRaycastCallback(waterY, args)
-	local x, y, z = unpack(args)
+	local y = self.waterCheckPosition[2]
 	waterY = waterY or -2000
 	self.waterY = waterY
 	self.isInWater = y < waterY
@@ -2397,6 +2398,8 @@ function Vehicle:onWaterRaycastCallback(waterY, args)
 	self.isInMediumWater = false
 
 	if self.isInWater then
+		local x = self.waterCheckPosition[1]
+		local z = self.waterCheckPosition[3]
 		local terrainHeight = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, 0, z)
 		local waterDepth = math.max(0, waterY - terrainHeight)
 		self.isInShallowWater = waterDepth <= 0.5

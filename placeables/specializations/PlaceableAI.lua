@@ -5,13 +5,16 @@ PlaceableAI = {
 }
 
 function PlaceableAI.registerFunctions(placeableType)
+	SpecializationUtil.registerFunction(placeableType, "setObstacleActive", PlaceableAI.setObstacleActive)
 	SpecializationUtil.registerFunction(placeableType, "loadAIUpdateArea", PlaceableAI.loadAIUpdateArea)
 	SpecializationUtil.registerFunction(placeableType, "loadAISpline", PlaceableAI.loadAISpline)
+	SpecializationUtil.registerFunction(placeableType, "loadAIObstacle", PlaceableAI.loadAIObstacle)
 	SpecializationUtil.registerFunction(placeableType, "updateAIUpdateAreas", PlaceableAI.updateAIUpdateAreas)
 end
 
 function PlaceableAI.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceableAI)
+	SpecializationUtil.registerEventListener(placeableType, "onPostLoad", PlaceableAI)
 	SpecializationUtil.registerEventListener(placeableType, "onDelete", PlaceableAI)
 	SpecializationUtil.registerEventListener(placeableType, "onFinalizePlacement", PlaceableAI)
 end
@@ -23,6 +26,12 @@ function PlaceableAI.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".ai.splines.spline(?)#node", "Spline node or transform group containing splines. Spline direction not relevant")
 	schema:register(XMLValueType.FLOAT, basePath .. ".ai.splines.spline(?)#maxWidth", "Maximum vehicle width supported by the spline")
 	schema:register(XMLValueType.FLOAT, basePath .. ".ai.splines.spline(?)#maxTurningRadius", "Maxmium vehicle turning supported by the spline")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".ai.obstacles.obstacle(?)#node", "Node to be used for obstacle box", nil, true)
+	schema:register(XMLValueType.VECTOR_3, basePath .. ".ai.obstacles.obstacle(?)#size", "Obstacle box size as x y z vector, required if node is not a rigid body")
+	schema:register(XMLValueType.VECTOR_3, basePath .. ".ai.obstacles.obstacle(?)#offset", "Obstacle box offset to node as x y z vector")
+	schema:register(XMLValueType.INT, basePath .. ".ai.obstacles.obstacle(?).animatedObject#index", "Index of corresponding animated object in xml", nil, true)
+	schema:register(XMLValueType.FLOAT, basePath .. ".ai.obstacles.obstacle(?).animatedObject#startTime", "Normalized start time to activate obstacle", nil, true)
+	schema:register(XMLValueType.FLOAT, basePath .. ".ai.obstacles.obstacle(?).animatedObject#endTime", "Normalized end time to deactivate obstacle", nil, true)
 	schema:setXMLSpecializationType()
 end
 
@@ -53,6 +62,46 @@ function PlaceableAI:onLoad(savegame)
 			table.insert(spec.splines, spline)
 		end
 	end)
+
+	spec.obstacles = {}
+
+	xmlFile:iterate("placeable.ai.obstacles.obstacle", function (_, key)
+		local obstacle = {}
+
+		if self:loadAIObstacle(xmlFile, key, obstacle) then
+			table.insert(spec.obstacles, obstacle)
+		end
+	end)
+end
+
+function PlaceableAI:onPostLoad(savegame)
+	local spec = self.spec_ai
+
+	if self.spec_animatedObjects ~= nil and g_currentMission.aiSystem ~= nil and g_currentMission.aiSystem.navigationMap ~= nil then
+		local animatedObjects = self.spec_animatedObjects.animatedObjects
+
+		for obstacleIndex, obstacle in ipairs(spec.obstacles) do
+			local animatedObject = animatedObjects[obstacle.animatedObjectIndex]
+
+			if animatedObject == nil then
+				Logging.warning("Placeable AI obstacle %d: AnimatedObject with index %d does not exist", obstacleIndex, obstacle.animatedObjectIndex)
+			else
+				obstacle.animatedObject = animatedObject
+
+				function obstacle.updateState(_, t, omitSound)
+					if obstacle.animatedObjectTimeStart <= t and t <= obstacle.animatedObjectTimeEnd then
+						if not obstacle.isActive then
+							self:setObstacleActive(obstacle, true)
+						end
+					elseif obstacle.isActive then
+						self:setObstacleActive(obstacle, false)
+					end
+				end
+
+				animatedObject.setAnimTime = Utils.appendedFunction(animatedObject.setAnimTime, obstacle.updateState)
+			end
+		end
+	end
 end
 
 function PlaceableAI:onDelete()
@@ -63,9 +112,23 @@ function PlaceableAI:onDelete()
 			self:updateAIUpdateAreas()
 		end
 
-		if g_currentMission.aiSystem ~= nil and spec.splines ~= nil then
-			for _, spline in pairs(spec.splines) do
-				g_currentMission.aiSystem:removeRoadSpline(spline.splineNode)
+		if g_currentMission.aiSystem ~= nil then
+			if spec.splines ~= nil then
+				for _, spline in pairs(spec.splines) do
+					g_currentMission.aiSystem:removeRoadSpline(spline.splineNode)
+				end
+			end
+
+			if self.spec_animatedObjects ~= nil and g_currentMission.aiSystem.navigationMap ~= nil then
+				local animatedObjects = self.spec_animatedObjects.animatedObjects
+
+				if animatedObjects ~= nil then
+					for _, obstacle in ipairs(spec.obstacles) do
+						if obstacle.isActive then
+							self:setObstacleActive(obstacle, false)
+						end
+					end
+				end
 			end
 		end
 	end
@@ -123,6 +186,52 @@ function PlaceableAI:loadAISpline(xmlFile, key, spline)
 	return true
 end
 
+function PlaceableAI:loadAIObstacle(xmlFile, key, obstacle)
+	obstacle.node = xmlFile:getValue(key .. "#node", nil, self.components, self.i3dMappings)
+
+	if obstacle.node == nil then
+		Logging.xmlWarning(xmlFile, "Obstacle '%s' node does not exist", key)
+
+		return false
+	end
+
+	obstacle.size = xmlFile:getValue(key .. "#size", "0 0 0", true)
+	obstacle.offset = xmlFile:getValue(key .. "#offset", "0 0 0", true)
+
+	if getRigidBodyType(obstacle.node) == RigidBodyType.NONE and obstacle.size[1] == 0 then
+		Logging.xmlWarning(xmlFile, "Obstacle '%s' is not a rigid body and needs a size", key)
+
+		return false
+	end
+
+	obstacle.animatedObjectIndex = xmlFile:getValue(key .. ".animatedObject#index")
+
+	if obstacle.animatedObjectIndex == nil then
+		Logging.xmlWarning(xmlFile, "Obstacle '%s' is missing animated object index", key)
+
+		return false
+	end
+
+	obstacle.animatedObjectTimeStart = xmlFile:getValue(key .. ".animatedObject#startTime")
+	obstacle.animatedObjectTimeEnd = xmlFile:getValue(key .. ".animatedObject#endTime")
+
+	if obstacle.animatedObjectTimeStart == nil or obstacle.animatedObjectTimeEnd == nil then
+		Logging.xmlWarning(xmlFile, "Obstacle '%s' is missing start or end time", key)
+
+		return false
+	end
+
+	if obstacle.animatedObjectTimeEnd <= obstacle.animatedObjectTimeStart then
+		Logging.xmlWarning(xmlFile, "Obstacle '%s' start time need to be smaller than end time", key)
+
+		return false
+	end
+
+	obstacle.isActive = false
+
+	return true
+end
+
 function PlaceableAI:onFinalizePlacement()
 	if self.isServer then
 		local spec = self.spec_ai
@@ -134,11 +243,37 @@ function PlaceableAI:onFinalizePlacement()
 		end
 
 		if g_currentMission.aiSystem ~= nil then
-			for _, spline in pairs(spec.splines) do
+			for _, spline in ipairs(spec.splines) do
 				g_currentMission.aiSystem:addRoadSpline(spline.splineNode, spline.maxWidth, spline.maxTurningRadius)
+			end
+
+			if g_currentMission.aiSystem.navigationMap ~= nil then
+				for _, obstacle in ipairs(spec.obstacles) do
+					if obstacle.animatedObject ~= nil then
+						obstacle.updateState(nil, obstacle.animatedObject.animation.time)
+					end
+				end
 			end
 		end
 	end
+end
+
+function PlaceableAI:setObstacleActive(obstacle, active)
+	if active then
+		local sx = obstacle.size[1]
+		local sy = obstacle.size[2]
+		local sz = obstacle.size[3]
+		local ox = obstacle.offset[1]
+		local oy = obstacle.offset[2]
+		local oz = obstacle.offset[3]
+
+		addVehicleNavigationPhysicsObstacle(g_currentMission.aiSystem.navigationMap, obstacle.node, ox, oy, oz, sx, sy, sz, 0)
+		setVehicleNavigationPhysicsObstacleIsPassable(g_currentMission.aiSystem.navigationMap, obstacle.node, false)
+	else
+		removeVehicleNavigationPhysicsObstacle(g_currentMission.aiSystem.navigationMap, obstacle.node)
+	end
+
+	obstacle.isActive = active
 end
 
 function PlaceableAI:updateAIUpdateAreas()

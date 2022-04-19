@@ -51,17 +51,24 @@ function FieldManager:loadMapData(xmlFile)
 	local sprayLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
 	local plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.PLOW_LEVEL)
 	local plowLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.PLOW_LEVEL)
-	local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
-	local limeLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.LIME_LEVEL)
-	local stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.STUBBLE_SHRED)
+	self.limeLevelMaxValue = 0
 	self.plowLevelMaxValue = plowLevelMaxValue
-	self.limeLevelMaxValue = limeLevelMaxValue
 	self.sprayLevelMaxValue = sprayLevelMaxValue
 	self.fruitModifiers = {}
 	self.sprayLevelModifier = DensityMapModifier.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainNode)
 	self.plowLevelModifier = DensityMapModifier.new(plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels, terrainNode)
-	self.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainNode)
-	self.stubbleShredModifier = DensityMapModifier.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainNode)
+
+	if Platform.gameplay.useLimeCounter then
+		local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
+		self.limeLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.LIME_LEVEL)
+		self.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainNode)
+	end
+
+	if Platform.gameplay.useStubbleShred then
+		local stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.STUBBLE_SHRED)
+		self.stubbleShredModifier = DensityMapModifier.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainNode)
+	end
+
 	local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
 	self.groundTypeModifier = DensityMapModifier.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels, terrainNode)
 	local groundAngleMapId, groundAngleFirstChannel, groundAngleNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_ANGLE)
@@ -950,7 +957,7 @@ function FieldManager:setFieldPartitionStatus(field, fieldPartitions, fieldParti
 			self.weedModifier:executeSet(weedState)
 		end
 
-		if limeState ~= nil then
+		if limeState ~= nil and self.limeLevelModifier ~= nil then
 			self.limeLevelModifier:setParallelogramWorldCoords(x, z, widthX, widthZ, heightX, heightZ, DensityCoordType.POINT_VECTOR_VECTOR)
 			self.limeLevelModifier:executeSet(limeState)
 		end
@@ -1005,10 +1012,16 @@ function FieldManager:setFieldGround(field, groundTypeState, angle, sprayTypeSta
 		self.sprayLevelModifier:executeSet(fertilizerState)
 		self.plowLevelModifier:setParallelogramWorldCoords(x, z, x1, z1, x2, z2, DensityCoordType.POINT_POINT_POINT)
 		self.plowLevelModifier:executeSet(plowingState)
-		self.limeLevelModifier:setParallelogramWorldCoords(x, z, x1, z1, x2, z2, DensityCoordType.POINT_POINT_POINT)
-		self.limeLevelModifier:executeSet(limeState)
-		self.stubbleShredModifier:setParallelogramWorldCoords(x, z, x1, z1, x2, z2, DensityCoordType.POINT_POINT_POINT)
-		self.stubbleShredModifier:executeSet(stubbleState)
+
+		if self.limeLevelModifier ~= nil then
+			self.limeLevelModifier:setParallelogramWorldCoords(x, z, x1, z1, x2, z2, DensityCoordType.POINT_POINT_POINT)
+			self.limeLevelModifier:executeSet(limeState)
+		end
+
+		if self.stubbleShredModifier ~= nil then
+			self.stubbleShredModifier:setParallelogramWorldCoords(x, z, x1, z1, x2, z2, DensityCoordType.POINT_POINT_POINT)
+			self.stubbleShredModifier:executeSet(stubbleState)
+		end
 
 		if self.weedModifier ~= nil then
 			self.weedModifier:setParallelogramWorldCoords(x, z, x1, z1, x2, z2, DensityCoordType.POINT_POINT_POINT)

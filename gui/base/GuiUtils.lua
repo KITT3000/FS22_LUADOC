@@ -164,9 +164,9 @@ end
 
 function GuiUtils.checkOverlayOverlap(posX, posY, overlayX, overlayY, overlaySizeX, overlaySizeY, hotspot)
 	if hotspot ~= nil and #hotspot == 4 then
-		return posX >= overlayX + hotspot[1] and posX <= overlayX + overlaySizeX + hotspot[3] and posY >= overlayY + hotspot[2] and posY <= overlayY + overlaySizeY + hotspot[4]
+		return overlaySizeX > 0 and overlaySizeY > 0 and posX >= overlayX + hotspot[1] and posX <= overlayX + overlaySizeX + hotspot[3] and posY >= overlayY + hotspot[2] and posY <= overlayY + overlaySizeY + hotspot[4]
 	else
-		return overlayX <= posX and posX <= overlayX + overlaySizeX and overlayY <= posY and posY <= overlayY + overlaySizeY
+		return overlaySizeX > 0 and overlaySizeY > 0 and overlayX <= posX and posX <= overlayX + overlaySizeX and overlayY <= posY and posY <= overlayY + overlaySizeY
 	end
 end
 
@@ -201,4 +201,13 @@ function GuiUtils.rotateUVs(uvs, direction)
 		uvs[7] = u1
 		uvs[8] = v1
 	end
+end
+
+function GuiUtils.alignToScreenPixels(x, y)
+	local pixelSizeX = 1 / g_screenWidth
+	local pixelSizeY = 1 / g_screenHeight
+	x = MathUtil.round(x / pixelSizeX) * pixelSizeX
+	y = MathUtil.round(y / pixelSizeY) * pixelSizeY
+
+	return x, y
 end

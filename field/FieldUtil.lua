@@ -30,11 +30,13 @@ function FieldUtil.initTerrain(terrainDetailId)
 
 	plowValueFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
 
-	local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
-	limeModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainNode)
-	limeValueFilter = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels)
+	if Platform.gameplay.useLimeCounter then
+		local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
+		limeModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainNode)
+		limeValueFilter = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels)
 
-	limeValueFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+		limeValueFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+	end
 
 	local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = mission.fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
 	fieldFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
@@ -79,9 +81,13 @@ function FieldUtil.getPlowFactor(field, fruitIndependent)
 end
 
 function FieldUtil.getLimeFactor(field)
+	if not Platform.gameplay.useLimeCounter then
+		return 1
+	end
+
 	local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(field.fruitType)
 
-	if fruitDesc ~= nil and not fruitDesc.growthRequiresLime or not g_currentMission.missionInfo.limeRequired then
+	if not g_currentMission.missionInfo.limeRequired or fruitDesc ~= nil and not fruitDesc.growthRequiresLime then
 		return 1
 	end
 

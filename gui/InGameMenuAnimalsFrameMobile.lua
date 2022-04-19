@@ -131,7 +131,7 @@ function InGameMenuAnimalsFrameMobile:displayHorse(animal, horseHusbandry)
 
 	self:addAttribute(self.l10n:getText("ui_sellValue"), horseValueText)
 
-	local riding = MathUtil.clamp(animal:getTodaysRidingTime() / Horse.DAILY_TARGET_RIDING_TIME, 0, 1)
+	local riding = MathUtil.clamp(animal:getTodaysRidingTime() / AnimalClusterHorse.DAILY_RIDING_TIME, 0, 1)
 
 	self:addAttribute(self.l10n:getText("ui_horseDailyRiding"), string.format("%d %%", riding * 100))
 

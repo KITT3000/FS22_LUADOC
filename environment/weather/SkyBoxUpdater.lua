@@ -16,11 +16,20 @@ function SkyBoxUpdater.new(customMt)
 end
 
 function SkyBoxUpdater:load(xmlFile, key)
-	local i3dFilename = getXMLString(xmlFile, key .. "#filename")
+	local i3dFilename = xmlFile:getString(key .. "#filename")
+
+	if i3dFilename == nil then
+		Logging.devWarning("Missing filename for skybox updater in '%s'", key)
+
+		return false
+	end
+
 	self.loadRequestId = g_i3DManager:loadI3DFileAsync(i3dFilename, false, false, SkyBoxUpdater.skyNodeLoaded, self, nil)
 	self.skyCurve = AnimCurve.new(linearInterpolator4)
 
-	self.skyCurve:loadCurveFromXML(xmlFile, key .. ".curve", loadInterpolator4Curve)
+	self.skyCurve:loadCurveFromXML(xmlFile:getHandle(), key .. ".curve", loadInterpolator4Curve)
+
+	return true
 end
 
 function SkyBoxUpdater:skyNodeLoaded(i3dNode, failedReason, args)
@@ -31,9 +40,17 @@ function SkyBoxUpdater:skyNodeLoaded(i3dNode, failedReason, args)
 
 		self.skyId = getChildAt(self.skyNode, 0)
 	end
+
+	self.loadRequestId = nil
 end
 
 function SkyBoxUpdater:delete()
+	if self.loadRequestId ~= nil then
+		g_i3DManager:cancelStreamI3DFile(self.loadRequestId)
+
+		self.loadRequestId = nil
+	end
+
 	if self.skyNode ~= nil then
 		delete(self.skyNode)
 	end

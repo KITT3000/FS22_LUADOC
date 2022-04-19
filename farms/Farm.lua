@@ -198,10 +198,6 @@ function Farm:setInitialEconomy()
 		self.money = g_currentMission.missionInfo.initialMoney
 		self.loan = g_currentMission.missionInfo.initialLoan
 
-		if g_isPresentationVersion then
-			self.money = 1000000
-		end
-
 		if difficulty == 1 and g_addTestCommands then
 			self.money = 100000000
 

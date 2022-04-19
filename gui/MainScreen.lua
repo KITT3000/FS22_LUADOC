@@ -121,19 +121,6 @@ function MainScreen:setupButtons()
 		table.insert(buttonSetup, self.changeUserButton)
 	end
 
-	if g_isPresentationVersion and g_isPresentationVersionHideMenuButtons then
-		self.multiplayerButton:setDisabled(true)
-		self.downloadModsButton:setDisabled(true)
-		self.achievementsButton:setDisabled(true)
-
-		if not Platform.isConsole then
-			self.settingsButton:setDisabled(true)
-		end
-
-		self.quitButton:setDisabled(true)
-		self.storeButton:setDisabled(true)
-	end
-
 	for _, button in pairs(buttonSetup) do
 		button:setVisible(true)
 	end
@@ -507,7 +494,7 @@ function MainScreen:update(dt)
 	MainScreen:superClass().update(self, dt)
 	modDownloadManagerUpdateSync(false)
 
-	if self.showGamepadModeDialog and not GS_IS_CONSOLE_VERSION and not GS_PLATFORM_GGP and not g_gameSettings:getValue("gamepadEnabledSetByUser") and getNumOfGamepads() > 0 then
+	if self.showGamepadModeDialog and not GS_IS_CONSOLE_VERSION and not GS_PLATFORM_GGP and not GS_IS_MOBILE_VERSION and not g_gameSettings:getValue("gamepadEnabledSetByUser") and getNumOfGamepads() > 0 then
 		g_gui:showYesNoDialog({
 			title = g_i18n:getText("ui_activateGamepadsTitle"),
 			text = g_i18n:getText("ui_activateGamepads"),
@@ -533,14 +520,8 @@ function MainScreen:update(dt)
 		self.gamerTagElement:setText(g_gameSettings:getValue(GameSettings.SETTING.ONLINE_PRESENCE_NAME))
 	end
 
-	if GS_IS_CONSOLE_VERSION and not g_isPresentationVersion then
-		if getNetworkError() then
-			if self.storeButton:getIsActive() then
-				self.storeButton:setDisabled(true)
-			end
-		elseif not self.storeButton:getIsActive() then
-			self.storeButton:setDisabled(false)
-		end
+	if GS_IS_CONSOLE_VERSION then
+		self:updateStoreButtons()
 	end
 
 	if self.isFirstOpen == nil then
@@ -553,7 +534,7 @@ function MainScreen:update(dt)
 		self.isFirstOpen = true
 	end
 
-	if not g_isServerStreamingVersion and not g_isPresentationVersion then
+	if not g_isServerStreamingVersion then
 		self:updateNotifications(dt)
 	end
 
@@ -578,6 +559,16 @@ function MainScreen:update(dt)
 	end
 
 	self:updateFading(dt)
+end
+
+function MainScreen:updateStoreButtons()
+	if getNetworkError() then
+		if self.storeButton:getIsActive() then
+			self.storeButton:setDisabled(true)
+		end
+	elseif not self.storeButton:getIsActive() then
+		self.storeButton:setDisabled(false)
+	end
 end
 
 function MainScreen:assignNotificationData()

@@ -1,4 +1,47 @@
-DebugUtil = {}
+DebugUtil = {
+	COLORS = {
+		{
+			1,
+			0,
+			0.86
+		},
+		{
+			0.16,
+			1,
+			0
+		},
+		{
+			0,
+			1,
+			1
+		},
+		{
+			1,
+			0,
+			0
+		},
+		{
+			0,
+			0,
+			1
+		},
+		{
+			1,
+			0.52,
+			0
+		},
+		{
+			0,
+			0.4,
+			0
+		},
+		{
+			0.1,
+			0.35,
+			0.4
+		}
+	}
+}
 
 function DebugUtil.drawDebugNode(node, text, alignToGround, offsetY)
 	offsetY = offsetY or 0
@@ -65,6 +108,10 @@ function DebugUtil.drawDebugLine(x1, y1, z1, x2, y2, z2, r, g, b, radius, alignT
 		y1 = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x1, 0, z1) + 0.1
 		y2 = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x2, 0, z2) + 0.1
 	end
+
+	r = r or 1
+	g = g or 1
+	b = b or 1
 
 	drawDebugLine(x1, y1, z1, r, g, b, x2, y2, z2, r, g, b)
 
@@ -433,14 +480,14 @@ function DebugUtil.tableToColor(tbl, alpha)
 	return color
 end
 
+function DebugUtil.getDebugColor(index)
+	index = tonumber(index) or math.random(#DebugUtil.COLORS)
+
+	return DebugUtil.COLORS[(index - 1) % #DebugUtil.COLORS + 1]
+end
+
 function DebugUtil.getSplineDebugElements(spline)
 	local debugElements = {}
-	local userAttributes = {
-		"speedLimit",
-		"maxWidth",
-		"maxTurningRadius",
-		"isTeleport"
-	}
 	local splineLength = getSplineLength(spline)
 	local splineName = string.format("%s (%d)", getName(spline), spline)
 	local splineText = string.format([[
@@ -449,12 +496,9 @@ isClosed=%s
 length=%.1f
 numCVs=%d]], splineName, getIsSplineClosed(spline), splineLength, getSplineNumOfCV(spline))
 
-	for _, userAttribute in ipairs(userAttributes) do
-		local value = getUserAttribute(spline, userAttribute)
-
-		if value ~= nil then
-			splineText = splineText .. string.format("\nUserAttr %s=%s", userAttribute, value)
-		end
+	for i = 1, getNumUserAttribute(spline) do
+		local value, name = getUserAttributeByIndex(spline, i)
+		splineText = splineText .. string.format("\nUserAttr %s=%s", name, value)
 	end
 
 	local function getDebugTextNode(x, y, z, text)

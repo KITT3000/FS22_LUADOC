@@ -77,11 +77,5 @@ function PlaceableWardrobeActivatable:getIsActivatable()
 end
 
 function PlaceableWardrobeActivatable:run()
-	if not g_isPresentationVersion or g_isPresentationVersionWardrobeEnabled then
-		g_currentMission:onToggleCharacterCreation()
-	else
-		g_gui:showInfoDialog({
-			text = g_i18n:getText("ui_featureDisabled")
-		})
-	end
+	g_currentMission:onToggleCharacterCreation()
 end

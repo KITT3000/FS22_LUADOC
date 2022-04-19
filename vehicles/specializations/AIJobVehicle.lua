@@ -510,7 +510,7 @@ function AIJobVehicle:onRegisterActionEvents(isActiveForInput, isActiveForInputI
 
 		self:clearActionEventsTable(spec.actionEvents)
 
-		if spec.supportsAIJobs and self:getIsActiveForInput(true, true) and (not g_isPresentationVersion or g_isPresentationVersionAIEnabled) then
+		if spec.supportsAIJobs and self:getIsActiveForInput(true, true) then
 			local _, eventId = self:addActionEvent(spec.actionEvents, InputAction.TOGGLE_AI, self, AIJobVehicle.actionEventToggleAIState, false, true, false, true, nil)
 
 			g_inputBinding:setActionEventTextPriority(eventId, GS_PRIO_HIGH)

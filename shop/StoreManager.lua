@@ -60,37 +60,36 @@ function StoreManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 	end
 
 	local constructionXMLFile = XMLFile.load("constructionXML", "dataS/constructionCategories.xml")
-	local defaultIconFilename = constructionXMLFile:getString("constructionCategories#defaultIconFilename")
-	local defaultRefSize = constructionXMLFile:getVector("constructionCategories#refSize", {
-		1024,
-		1024
-	}, 2)
 
-	constructionXMLFile:iterate("constructionCategories.category", function (_, key)
-		local categoryName = constructionXMLFile:getString(key .. "#name")
-		local title = g_i18n:convertText(constructionXMLFile:getString(key .. "#title"))
-		local iconFilename = constructionXMLFile:getString(key .. "#iconFilename") or defaultIconFilename
-		local refSize = constructionXMLFile:getVector(key .. "#refSize", defaultRefSize, 2)
-		local iconUVs = GuiUtils.getUVs(constructionXMLFile:getString(key .. "#iconUVs", "0 0 1 1"), refSize)
+	if constructionXMLFile ~= nil then
+		local defaultIconFilename = constructionXMLFile:getString("constructionCategories#defaultIconFilename")
+		local defaultRefSize = constructionXMLFile:getVector("constructionCategories#refSize", {
+			1024,
+			1024
+		}, 2)
 
-		self:addConstructionCategory(categoryName, title, iconFilename, iconUVs, "")
-		constructionXMLFile:iterate(key .. ".tab", function (_, tKey)
-			local tabName = constructionXMLFile:getString(tKey .. "#name")
-			local tabTitle = g_i18n:convertText(constructionXMLFile:getString(tKey .. "#title"))
-			local tabIconFilename = constructionXMLFile:getString(tKey .. "#iconFilename") or defaultIconFilename
-			local tabRefSize = constructionXMLFile:getVector(tKey .. "#refSize", defaultRefSize, 2)
-			local tabIconUVs = GuiUtils.getUVs(constructionXMLFile:getString(tKey .. "#iconUVs", "0 0 1 1"), tabRefSize)
+		constructionXMLFile:iterate("constructionCategories.category", function (_, key)
+			local categoryName = constructionXMLFile:getString(key .. "#name")
+			local title = g_i18n:convertText(constructionXMLFile:getString(key .. "#title"))
+			local iconFilename = constructionXMLFile:getString(key .. "#iconFilename") or defaultIconFilename
+			local refSize = constructionXMLFile:getVector(key .. "#refSize", defaultRefSize, 2)
+			local iconUVs = GuiUtils.getUVs(constructionXMLFile:getString(key .. "#iconUVs", "0 0 1 1"), refSize)
 
-			self:addConstructionTab(categoryName, tabName, tabTitle, tabIconFilename, tabIconUVs, "")
+			self:addConstructionCategory(categoryName, title, iconFilename, iconUVs, "")
+			constructionXMLFile:iterate(key .. ".tab", function (_, tKey)
+				local tabName = constructionXMLFile:getString(tKey .. "#name")
+				local tabTitle = g_i18n:convertText(constructionXMLFile:getString(tKey .. "#title"))
+				local tabIconFilename = constructionXMLFile:getString(tKey .. "#iconFilename") or defaultIconFilename
+				local tabRefSize = constructionXMLFile:getVector(tKey .. "#refSize", defaultRefSize, 2)
+				local tabIconUVs = GuiUtils.getUVs(constructionXMLFile:getString(tKey .. "#iconUVs", "0 0 1 1"), tabRefSize)
+
+				self:addConstructionTab(categoryName, tabName, tabTitle, tabIconFilename, tabIconUVs, "")
+			end)
 		end)
-	end)
-	constructionXMLFile:delete()
-
-	local storeItemsFilename = "dataS/storeItems.xml"
-
-	if g_isPresentationVersionSpecialStore then
-		storeItemsFilename = g_isPresentationVersionSpecialStorePath
+		constructionXMLFile:delete()
 	end
+
+	local storeItemsFilename = self:getDefaultStoreItemsFilename()
 
 	self:loadItemsFromXML(storeItemsFilename, "", nil)
 
@@ -118,6 +117,10 @@ end
 function StoreManager:unloadMapData()
 	StoreManager:superClass().unloadMapData(self)
 	removeConsoleCommand("gsStoreItemsReload")
+end
+
+function StoreManager:getDefaultStoreItemsFilename()
+	return "dataS/storeItems.xml"
 end
 
 function StoreManager:loadItemsFromXML(filename, baseDirectory, customEnvironment)
@@ -911,16 +914,16 @@ function StoreManager:loadItem(rawXMLFilename, baseDir, customEnvironment, isMod
 				parameters[index] = value
 			end)
 
-			local category = self:getConstructionCategoryByName(xmlFile:getValue(storeDataXMLKey .. ".brush.category"))
+			local brushCategory = self:getConstructionCategoryByName(xmlFile:getValue(storeDataXMLKey .. ".brush.category"))
 
-			if category ~= nil then
-				local tab = self:getConstructionTabByName(xmlFile:getValue(storeDataXMLKey .. ".brush.tab"), category.name)
+			if brushCategory ~= nil then
+				local tab = self:getConstructionTabByName(xmlFile:getValue(storeDataXMLKey .. ".brush.tab"), brushCategory.name)
 
 				if tab ~= nil then
 					storeItem.brush = {
 						type = brushType,
 						parameters = parameters,
-						category = category,
+						category = brushCategory,
 						tab = tab
 					}
 				else
@@ -1013,15 +1016,21 @@ end
 
 function StoreManager:addPackItem(name, itemFilename)
 	if name == nil or name == "" then
-		print("Warning: Could not add pack item. Name is missing or empty.")
+		Logging.warning("Could not add pack item. Name is missing or empty.")
+
+		return
 	end
 
 	if self.packs[name] == nil then
-		print("Warning: Could not add pack item. Pack does not exist.")
+		Logging.warning("Could not add pack item. Pack '%s' does not exist.", name)
+
+		return
 	end
 
 	if itemFilename == nil or itemFilename == "" then
-		print("Warning: Could not add pack item. Item filename is missing.")
+		Logging.warning("Could not add pack item to '%s'. Item filename is missing.", name)
+
+		return
 	end
 
 	table.insert(self.packs[name].items, itemFilename)
@@ -1088,6 +1097,7 @@ function StoreManager.registerStoreDataXMLPaths(schema, basePath)
 	schema:register(XMLValueType.INT, basePath .. ".storeData.instanceVertexBufferMemoryUsage", "Instance vertex buffer memory usage", 0)
 	schema:register(XMLValueType.INT, basePath .. ".storeData.instanceIndexBufferMemoryUsage", "Instance index buffer memory usage", 0)
 	schema:register(XMLValueType.BOOL, basePath .. ".storeData.ignoreVramUsage", "Ignore VRAM usage", false)
+	schema:register(XMLValueType.INT, basePath .. ".storeData.audioMemoryUsage", "Audio memory usage", 0)
 	schema:register(XMLValueType.STRING, basePath .. ".storeData.bundleElements.bundleElement(?).xmlFilename", "XML filename")
 	schema:register(XMLValueType.VECTOR_TRANS, basePath .. ".storeData.bundleElements.bundleElement(?).offset", "Translation offset of vehicle")
 	schema:register(XMLValueType.VECTOR_ROT, basePath .. ".storeData.bundleElements.bundleElement(?).rotationOffset", "Rotation offset of vehicle")

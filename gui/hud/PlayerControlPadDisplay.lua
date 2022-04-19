@@ -3,7 +3,7 @@ local PlayerControlPadDisplay_mt = Class(PlayerControlPadDisplay, HUDDisplayElem
 
 function PlayerControlPadDisplay.new(hud, hudAtlasPath)
 	local backgroundOverlay = PlayerControlPadDisplay.createBackground()
-	local self = PlayerControlPadDisplay:superClass().new(PlayerControlPadDisplay_mt, backgroundOverlay, nil)
+	local self = PlayerControlPadDisplay:superClass().new(backgroundOverlay, nil, PlayerControlPadDisplay_mt)
 	self.hud = hud
 	self.uiScale = 1
 	self.hudAtlasPath = hudAtlasPath

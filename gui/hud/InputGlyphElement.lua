@@ -282,7 +282,7 @@ function InputGlyphElement:getGlyphWidth()
 	return width
 end
 
-function InputGlyphElement:draw()
+function InputGlyphElement:draw(clipX1, clipY1, clipX2, clipY2)
 	if #self.actionNames == 0 or not self.overlay.visible then
 		return
 	end
@@ -291,20 +291,20 @@ function InputGlyphElement:draw()
 
 	if self.hasButtonOverlays then
 		for _, actionName in ipairs(self.actionNames) do
-			posX = self:drawControllerButtons(self.buttonOverlays[actionName], posX, posY)
+			posX = self:drawControllerButtons(self.buttonOverlays[actionName], posX, posY, clipX1, clipY1, clipX2, clipY2)
 		end
 	elseif self.hasKeyNames then
 		for _, actionName in ipairs(self.actionNames) do
-			posX = self:drawKeyboardKeys(self.keyNames[actionName], posX, posY)
+			posX = self:drawKeyboardKeys(self.keyNames[actionName], posX, posY, clipX1, clipY1, clipX2, clipY2)
 		end
 	end
 
 	if self.actionText ~= nil then
-		self:drawActionText(posX, posY)
+		self:drawActionText(posX, posY, clipX1, clipY1, clipX2, clipY2)
 	end
 end
 
-function InputGlyphElement:drawControllerButtons(buttonOverlays, posX, posY)
+function InputGlyphElement:drawControllerButtons(buttonOverlays, posX, posY, clipX1, clipY1, clipX2, clipY2)
 	for i, overlay in ipairs(buttonOverlays) do
 		if i > 1 then
 			local separatorType = self.separators[i - 1]
@@ -324,7 +324,7 @@ function InputGlyphElement:drawControllerButtons(buttonOverlays, posX, posY)
 			separatorOverlay:setColor(nil, nil, nil, self.buttonColor[4])
 			separatorOverlay:setPosition(posX, posY + separatorHeight)
 			separatorOverlay:setDimension(separatorWidth, separatorHeight)
-			separatorOverlay:render()
+			separatorOverlay:render(clipX1, clipY1, clipX2, clipY2)
 			separatorOverlay:setColor(nil, nil, nil, 1)
 			separatorOverlay:resetDimensions()
 
@@ -334,7 +334,7 @@ function InputGlyphElement:drawControllerButtons(buttonOverlays, posX, posY)
 		overlay:setPosition(posX, posY + self.iconSizeY * 0.5)
 		overlay:setDimension(self.iconSizeX, self.iconSizeY)
 		overlay:setColor(unpack(self.buttonColor))
-		overlay:render()
+		overlay:render(clipX1, clipY1, clipX2, clipY2)
 		overlay:resetDimensions()
 
 		local padding = i < #buttonOverlays and self.glyphOffsetX or 0
@@ -344,20 +344,29 @@ function InputGlyphElement:drawControllerButtons(buttonOverlays, posX, posY)
 	return posX
 end
 
-function InputGlyphElement:drawKeyboardKeys(keyNames, posX, posY)
+function InputGlyphElement:drawKeyboardKeys(keyNames, posX, posY, clipX1, clipY1, clipX2, clipY2)
 	for i, key in ipairs(keyNames) do
 		local padding = i < #keyNames and self.glyphOffsetX or 0
-		posX = posX + self.keyboardOverlay:renderButton(key, posX, posY, self.iconSizeY, nil, true) + padding
+		posX = posX + self.keyboardOverlay:renderButton(key, posX, posY, self.iconSizeY, nil, true, clipX1, clipY1, clipX2, clipY2) + padding
 	end
 
 	return posX
 end
 
-function InputGlyphElement:drawActionText(posX, posY)
+function InputGlyphElement:drawActionText(posX, posY, clipX1, clipY1, clipX2, clipY2)
 	setTextAlignment(RenderText.ALIGN_LEFT)
 	setTextBold(self.bold)
 	setTextColor(unpack(self.color))
+
+	if clipX1 ~= nil then
+		setTextClipArea(clipX1, clipY1, clipX2, clipY2)
+	end
+
 	renderText(posX + self.textOffsetX, posY + self.actionTextSize * 0.5, self.actionTextSize, self.displayText)
+
+	if clipX1 ~= nil then
+		setTextClipArea(0, 0, 1, 1)
+	end
 end
 
 function InputGlyphElement:setBaseSize(baseWidth, baseHeight)

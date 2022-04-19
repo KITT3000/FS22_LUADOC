@@ -22,6 +22,7 @@ ArticulatedAxis = {
 		schema:register(XMLValueType.FLOAT, "vehicle.articulatedAxis.rotatingPart(?)#posRotFactor", "Positive rotation factor", 1)
 		schema:register(XMLValueType.FLOAT, "vehicle.articulatedAxis.rotatingPart(?)#negRotFactor", "Negative rotation factor", 1)
 		schema:register(XMLValueType.BOOL, "vehicle.articulatedAxis.rotatingPart(?)#invertSteeringAngle", "Invert steering angle", false)
+		SoundManager.registerSampleXMLPaths(schema, "vehicle.articulatedAxis.sounds", "steering")
 		schema:setXMLSpecializationType()
 	end
 }
@@ -34,6 +35,8 @@ end
 function ArticulatedAxis.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", ArticulatedAxis)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostLoad", ArticulatedAxis)
+	SpecializationUtil.registerEventListener(vehicleType, "onDelete", ArticulatedAxis)
+	SpecializationUtil.registerEventListener(vehicleType, "onDeactivate", ArticulatedAxis)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", ArticulatedAxis)
 end
 
@@ -200,6 +203,13 @@ function ArticulatedAxis:onLoad(savegame)
 		end
 	end
 
+	if self.isClient then
+		spec.samples = {
+			steering = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.articulatedAxis.sounds", "steering", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
+		}
+		spec.isSteeringSoundPlaying = false
+	end
+
 	spec.interpolatedRotatedTime = 0
 end
 
@@ -212,6 +222,24 @@ function ArticulatedAxis:onPostLoad()
 		end
 	else
 		SpecializationUtil.removeEventListener(self, "onUpdate", ArticulatedAxis)
+	end
+end
+
+function ArticulatedAxis:onDelete()
+	if self.isClient then
+		local spec = self.spec_articulatedAxis
+
+		g_soundManager:deleteSamples(spec.samples)
+	end
+end
+
+function ArticulatedAxis:onDeactivate()
+	if self.isClient then
+		local spec = self.spec_articulatedAxis
+
+		g_soundManager:stopSamples(spec.samples)
+
+		spec.isSteeringSoundPlaying = false
 	end
 end
 
@@ -228,6 +256,20 @@ function ArticulatedAxis:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
 
 	if self.updateArticulatedAxisRotation ~= nil then
 		steeringAngle = self:updateArticulatedAxisRotation(steeringAngle, dt)
+	end
+
+	if self.isClient then
+		local isSteering = math.abs(steeringAngle - spec.curRot) > 0.0001
+
+		if isSteering ~= spec.isSteeringSoundPlaying then
+			if isSteering then
+				g_soundManager:playSample(spec.samples.steering)
+			else
+				g_soundManager:stopSample(spec.samples.steering)
+			end
+
+			spec.isSteeringSoundPlaying = isSteering
+		end
 	end
 
 	if math.abs(steeringAngle - spec.curRot) > 1e-06 then

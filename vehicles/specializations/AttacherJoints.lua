@@ -4053,7 +4053,7 @@ function AttacherJoints.updateVehiclesInAttachRange(vehicle, maxDistanceSq, maxA
 				for i = firstJoint, lastJoint do
 					local jointInfo = g_currentMission.inputAttacherJoints[i]
 
-					if jointInfo.jointType == attacherJoint.jointType then
+					if jointInfo.jointType == attacherJoint.jointType and jointInfo.vehicle:getIsInputAttacherActive(jointInfo.inputAttacherJoint) then
 						local distSq = MathUtil.vector2LengthSq(x - jointInfo.translation[1], z - jointInfo.translation[3])
 
 						if distSq < maxDistanceSq and distSq < pendingInfo.minDistance then

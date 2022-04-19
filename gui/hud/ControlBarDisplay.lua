@@ -1148,9 +1148,9 @@ ControlBarDisplay.COLOR = {
 		1
 	},
 	BUTTON_ACTIVE = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		1
 	},
 	BOTTOM_BAR = {
@@ -1166,9 +1166,9 @@ ControlBarDisplay.COLOR = {
 		1
 	},
 	FILL_LEVEL_BAR = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		1
 	},
 	FILL_LEVEL_INFO = {

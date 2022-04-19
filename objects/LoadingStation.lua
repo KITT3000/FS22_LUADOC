@@ -251,7 +251,7 @@ function LoadingStation:addFillLevelToFillableObject(fillableObject, fillUnitInd
 	end
 
 	if fillableObject.getConveyorBeltFillLevel ~= nil then
-		freeCapacity = freeCapacity - fillableObject:getConveyorBeltFillLevel()
+		freeCapacity = math.max(freeCapacity - fillableObject:getConveyorBeltFillLevel(), 0)
 	end
 
 	fillDelta = math.min(freeCapacity, fillDelta)

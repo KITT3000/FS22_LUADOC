@@ -19,7 +19,7 @@ function mouseEvent(posX, posY, isDown, isUp, button)
 	g_lastMousePosX = posX
 	g_lastMousePosY = posY
 
-	if button <= Input.MOUSE_BUTTON_LEFT then
+	if button <= Input.MOUSE_BUTTON_LEFT and Platform.hasTouchInput then
 		touchEvent(posX, posY, isDown, isUp, TouchHandler.MOUSE_TOUCH_ID)
 	end
 end
@@ -27,6 +27,10 @@ end
 function touchEvent(posX, posY, isDown, isUp, touchId)
 	if g_touchHandler ~= nil then
 		g_touchHandler:onTouchEvent(posX, posY, isDown, isUp, touchId)
+	end
+
+	if g_currentMission == nil or g_currentMission:getAllowsGuiDisplay() then
+		g_gui:touchEvent(posX, posY, isDown, isUp, touchId)
 	end
 
 	if g_inputBinding ~= nil then
@@ -201,7 +205,7 @@ function acceptedGameInvite(platformServerId, requestUserName)
 
 		OnInGameMenuMenu()
 
-		if g_isRestarting then
+		if g_pendingRestartData ~= nil then
 			return
 		end
 

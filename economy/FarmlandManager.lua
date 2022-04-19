@@ -36,7 +36,7 @@ function FarmlandManager:loadFarmlandData(xmlFile)
 	local success = loadBitVectorMapFromFile(self.localMap, filename, self.numberOfBits)
 
 	if not success then
-		print("Warning: Loading farmland file '" .. tostring(filename) .. "' failed!")
+		Logging.xmlWarning(xmlFile, "Loading farmland file '%s' failed!", filename)
 
 		return false
 	end
@@ -74,7 +74,7 @@ function FarmlandManager:loadFarmlandData(xmlFile)
 	end
 
 	if missingFarmlandDefinitions then
-		print("Warning: Farmland-Ids not set for all pixel in farmland-infoLayer!")
+		Logging.xmlWarning(xmlFile, "Farmland-Id was not set for all pixels in farmland-infoLayer!")
 	end
 
 	local isNewSavegame = not g_currentMission.missionInfo.isValid
@@ -101,11 +101,11 @@ function FarmlandManager:loadFarmlandData(xmlFile)
 			end
 		else
 			if self.farmlandMapping[farmland.id] == nil then
-				print("Error: Farmland-Id " .. tostring(farmland.id) .. " not defined in farmland ownage file '" .. filename .. "'. Skipping farmland definition!")
+				Logging.xmlError(xmlFile, "Farmland-Id " .. tostring(farmland.id) .. " not defined in farmland ownage file '" .. filename .. "'. Skipping farmland definition!")
 			end
 
 			if self.farmlands[farmland.id] ~= nil then
-				print("Error: Farmland-id '" .. tostring(farmland.id) .. "' already exists! Ignore it!")
+				Logging.xmlError(xmlFile, "Farmland-id '" .. tostring(farmland.id) .. "' already exists! Ignore it!")
 			end
 
 			farmland:delete()
@@ -116,7 +116,7 @@ function FarmlandManager:loadFarmlandData(xmlFile)
 
 	for index, _ in pairs(self.farmlandMapping) do
 		if index ~= FarmlandManager.NOT_BUYABLE_FARM_ID and self.farmlands[index] == nil then
-			print("Error: Farmland-Id " .. tostring(index) .. " not defined in farmland xml file!")
+			Logging.xmlError(xmlFile, "Farmland-Id " .. tostring(index) .. " not defined in farmland xml file!")
 		end
 	end
 
@@ -141,6 +141,7 @@ function FarmlandManager:loadFarmlandData(xmlFile)
 		addConsoleCommand("gsFarmlandBuyAll", "Buys all farmlands", "consoleCommandBuyAllFarmlands", self)
 		addConsoleCommand("gsFarmlandSell", "Sells farmland with given id", "consoleCommandSellFarmland", self)
 		addConsoleCommand("gsFarmlandSellAll", "Sells all farmlands", "consoleCommandSellAllFarmlands", self)
+		addConsoleCommand("gsFarmlandShow", "Show farmlands", "consoleCommandShowFarmlands", self)
 	end
 
 	return true
@@ -151,6 +152,7 @@ function FarmlandManager:unloadMapData()
 	removeConsoleCommand("gsFarmlandBuyAll")
 	removeConsoleCommand("gsFarmlandSell")
 	removeConsoleCommand("gsFarmlandSellAll")
+	removeConsoleCommand("gsFarmlandShow")
 	g_messageCenter:unsubscribeAll(self)
 
 	if self.localMap ~= nil then
@@ -310,9 +312,9 @@ function FarmlandManager:setLandOwnership(farmlandId, farmId)
 	local farmland = self:getFarmlandById(farmlandId)
 
 	if farmland == nil then
-		print("Warning: Farmland not defined in map!")
+		Logging.warning("Farmland id %d not defined in map!", farmlandId)
 
-		return
+		return false
 	end
 
 	self.farmlandMapping[farmlandId] = farmId
@@ -321,6 +323,8 @@ function FarmlandManager:setLandOwnership(farmlandId, farmId)
 	for _, listener in pairs(self.stateChangeListener) do
 		listener:onFarmlandStateChanged(farmlandId, farmId)
 	end
+
+	return true
 end
 
 function FarmlandManager:getFarmlandById(farmlandId)
@@ -430,6 +434,71 @@ function FarmlandManager:consoleCommandSellAllFarmlands()
 		return "Sold all farmlands"
 	else
 		return "Command not allowed"
+	end
+end
+
+function FarmlandManager:consoleCommandShowFarmlands()
+	if not g_currentMission:getHasDrawable(self) then
+		g_currentMission:addDrawable(self)
+
+		return "showFarmlands = true\nUse F5 to enter debug mode for enabling overlay"
+	else
+		g_currentMission:removeDrawable(self)
+
+		return "showFarmlands = false"
+	end
+end
+
+function FarmlandManager:draw()
+	local x, _, z = getWorldTranslation(getCamera(0))
+
+	if g_currentMission.controlledVehicle ~= nil then
+		local object = g_currentMission.controlledVehicle
+
+		if g_currentMission.controlledVehicle.selectedImplement ~= nil then
+			object = g_currentMission.controlledVehicle.selectedImplement.object
+		end
+
+		x, _, z = getWorldTranslation(object.components[1].node)
+	end
+
+	local terrainSizeHalf = g_currentMission.terrainSize / 2
+	local bitmapToWorld = g_currentMission.terrainSize / self.localMapWidth
+	local worldToBitmap = self.localMapWidth / g_currentMission.terrainSize
+	local bitmapX = math.floor((x + terrainSizeHalf) * worldToBitmap)
+	local bitmapZ = math.floor((z + terrainSizeHalf) * worldToBitmap)
+	local range = 25
+	local bitmapMinX = math.max(bitmapX - range, 0)
+	local bitmapMinZ = math.max(bitmapZ - range, 0)
+	local bitmapMaxX = math.min(bitmapX + range, self.localMapWidth - 1)
+	local bitmapMaxZ = math.min(bitmapZ + range, self.localMapWidth - 1)
+	local farmlands = {}
+
+	for bitmapStepZ = bitmapMinZ, bitmapMaxZ do
+		for bitmapStepX = bitmapMinX, bitmapMaxX do
+			local farmland = self.farmlands[getBitVectorMapPoint(self.localMap, bitmapStepX, bitmapStepZ, 0, self.numberOfBits)]
+
+			if farmland then
+				local color = DebugUtil.getDebugColor(farmland.id)
+				farmlands[farmland] = color
+				local worldX = bitmapStepX * bitmapToWorld - terrainSizeHalf
+				local worldZ = bitmapStepZ * bitmapToWorld - terrainSizeHalf
+
+				DebugUtil.drawDebugAreaRectangleFilled(worldX, 0, worldZ, worldX + bitmapToWorld, 0, worldZ, worldX, 0, worldZ + bitmapToWorld, true, color[1], color[2], color[3], 0.15)
+			end
+		end
+	end
+
+	local i = 0
+
+	for farmland, color in pairs(farmlands) do
+		local text = string.format("Farmland %d - Owner: %s%s", farmland.id, self:getFarmlandOwner(farmland.id), farmland.defaultFarmProperty and " - defaultFarmProperty" or "")
+
+		setTextColor(color[1], color[2], color[3], 1)
+		renderText(0.3, 0.96 - i * 0.02, 0.02, text)
+		setTextColor(1, 1, 1, 1)
+
+		i = i + 1
 	end
 end
 

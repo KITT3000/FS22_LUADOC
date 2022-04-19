@@ -438,11 +438,16 @@ function Combine:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection,
 			local _, _, curZ = getRotation(automaticTiltNode.node)
 
 			if not isActive and doReset then
-				currentDelta = -curZ * 0.1
+				currentDelta = -curZ
 			end
 
 			if math.abs(currentDelta) > 1e-05 then
 				local speedScale = math.min(math.pow(math.abs(currentDelta) / 0.01745, 2), 1) * MathUtil.sign(currentDelta)
+
+				if not isActive and doReset then
+					speedScale = speedScale * 0.5
+				end
+
 				local rotSpeed = speedScale * automaticTiltNode.maxSpeed * dt
 				local newRotZ = MathUtil.clamp(curZ + rotSpeed, automaticTiltNode.minAngle, automaticTiltNode.maxAngle)
 

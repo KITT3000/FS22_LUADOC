@@ -92,7 +92,6 @@ function HUD.new(isServer, isClient, isConsoleVersion, messageCenter, l10n, inpu
 	self.allowHelpText = false
 	self.showVehicleInfo = true
 	self.ingameMap = nil
-	self.presentationVersionElement = nil
 	self.gamePausedDisplay = nil
 	self.vehicleNameDisplay = nil
 	self.blinkingWarningDisplay = nil
@@ -151,16 +150,6 @@ function HUD:createDisplayComponents(uiScale)
 
 	self.ingameMap:setScale(uiScale)
 	table.insert(self.displayComponents, self.ingameMap)
-
-	if g_isPresentationVersion and g_isPresentationVersionLogoEnabled then
-		self.ingameMap:setIsVisible(false)
-
-		local width, height = getNormalizedScreenValues(600, 150)
-		local overlay = Overlay.new("dataS/menu/presentationVersionLogo.png", g_safeFrameOffsetX, g_safeFrameOffsetY, width, height)
-		self.presentationVersionElement = HUDElement.new(overlay)
-
-		table.insert(self.displayComponents, self.presentationVersionElement)
-	end
 
 	self.gamePausedDisplay = GamePausedDisplay.new(g_baseHUDFilename)
 
@@ -366,12 +355,6 @@ end
 function HUD:drawBlinkingWarning()
 	if not self.popupMessage:getVisible() and self.blinkingWarning ~= nil then
 		self.blinkingWarningDisplay:draw()
-	end
-end
-
-function HUD:drawPresentationVersion()
-	if g_isPresentationVersion and g_isPresentationVersionLogoEnabled then
-		self.presentationVersionElement:draw()
 	end
 end
 

@@ -668,7 +668,7 @@ function VehicleDebug:drawDifferentialInfoRendering(x, y)
 		end
 
 		local function getRatioOfDifferential(speed1, speed2)
-			local ratio = math.abs(math.max(speed1, speed2)) / math.max(math.abs(math.min(speed1, speed2)), 0.001)
+			local ratio = math.max(math.abs(speed1), math.abs(speed2)) / math.max(math.min(math.abs(speed1), math.abs(speed2)), 0.001)
 
 			return ratio
 		end
@@ -1327,6 +1327,18 @@ function VehicleDebug.drawDebugAttributeRendering(vehicle)
 
 				drawDebugLine(x1, y1 - 0.1, z1, 0, 1, 0, x1, y1 + 0.1, z1, 0, 1, 0, true)
 				drawDebugLine(x2, y2 - 0.1, z2, 0, 1, 0, x2, y2 + 0.1, z2, 0, 1, 0, true)
+
+				x1, y1, z1 = localToWorld(attacherJoint.bottomArm.translationNode, 0.359, 0, attacherJoint.bottomArm.referenceDistance * attacherJoint.bottomArm.zScale)
+				x2, y2, z2 = localToWorld(attacherJoint.bottomArm.translationNode, -0.359, 0, attacherJoint.bottomArm.referenceDistance * attacherJoint.bottomArm.zScale)
+
+				drawDebugLine(x1, y1 - 0.1, z1, 1, 0, 0, x1, y1 + 0.1, z1, 1, 0, 0, true)
+				drawDebugLine(x2, y2 - 0.1, z2, 1, 0, 0, x2, y2 + 0.1, z2, 1, 0, 0, true)
+
+				x1, y1, z1 = localToWorld(attacherJoint.bottomArm.translationNode, 0.505, 0, attacherJoint.bottomArm.referenceDistance * attacherJoint.bottomArm.zScale)
+				x2, y2, z2 = localToWorld(attacherJoint.bottomArm.translationNode, -0.505, 0, attacherJoint.bottomArm.referenceDistance * attacherJoint.bottomArm.zScale)
+
+				drawDebugLine(x1, y1 - 0.1, z1, 0, 0, 1, x1, y1 + 0.1, z1, 0, 0, 1, true)
+				drawDebugLine(x2, y2 - 0.1, z2, 0, 0, 1, x2, y2 + 0.1, z2, 0, 0, 1, true)
 			end
 		end
 	end
@@ -1339,6 +1351,18 @@ function VehicleDebug.drawDebugAttributeRendering(vehicle)
 
 				drawDebugLine(x1, y1 - 0.1, z1, 0, 1, 0, x1, y1 + 0.1, z1, 0, 1, 0, true)
 				drawDebugLine(x2, y2 - 0.1, z2, 0, 1, 0, x2, y2 + 0.1, z2, 0, 1, 0, true)
+
+				x1, y1, z1 = localToWorld(inputAttacherJoint.node, 0, 0, 0.359)
+				x2, y2, z2 = localToWorld(inputAttacherJoint.node, 0, 0, -0.359)
+
+				drawDebugLine(x1, y1 - 0.1, z1, 1, 0, 0, x1, y1 + 0.1, z1, 1, 0, 0, true)
+				drawDebugLine(x2, y2 - 0.1, z2, 1, 0, 0, x2, y2 + 0.1, z2, 1, 0, 0, true)
+
+				x1, y1, z1 = localToWorld(inputAttacherJoint.node, 0, 0, 0.505)
+				x2, y2, z2 = localToWorld(inputAttacherJoint.node, 0, 0, -0.505)
+
+				drawDebugLine(x1, y1 - 0.1, z1, 0, 0, 1, x1, y1 + 0.1, z1, 0, 0, 1, true)
+				drawDebugLine(x2, y2 - 0.1, z2, 0, 0, 1, x2, y2 + 0.1, z2, 0, 0, 1, true)
 			end
 		end
 	end

@@ -7,7 +7,6 @@ CreditsScreen = {
 		CREDITS_TITLE_ELEMENT = "creditsTitleElement",
 		CREDITS_TEXT_ELEMENT = "creditsTextElement",
 		LOGO = "logo",
-		CREDITS_SEPARATOR_ELEMENT = "creditsSeparatorElement",
 		CREDITS_PLACEHOLDER = "creditsPlaceholder",
 		CREDITS_DISCLAIMER_ELEMENT = "creditsDisclaimerElement",
 		CREDITS_BOX = "creditsVisibilityBox"
@@ -921,7 +920,7 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.SEPARATOR
 	})
 
-	if not GS_PLATFORM_XBOX then
+	if not GS_PLATFORM_XBOX and not GS_IS_MOBILE_VERSION then
 		table.insert(creditsTexts, {
 			t = CreditsScreen.DISCLAIMER,
 			c = g_i18n:getText("ui_copyrightSymbol") .. " 2021 Sony Interactive Entertainment LLC."

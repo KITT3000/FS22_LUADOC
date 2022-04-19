@@ -38,6 +38,16 @@ function InGameMenuPricesFrame.new(subclass_mt, l10n, fillTypeManager)
 	return self
 end
 
+function InGameMenuPricesFrame.createFromExistingGui(gui, guiName)
+	local newGui = InGameMenuPricesFrame.new(nil, gui.l10n, gui.fillTypeManager)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function InGameMenuPricesFrame:copyAttributes(src)
 	InGameMenuPricesFrame:superClass().copyAttributes(self, src)
 

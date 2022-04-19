@@ -67,9 +67,11 @@ function Logging.info(infoMessage, ...)
 end
 
 function Logging.fatal(fatalMessage, ...)
-	print(string.format("  Fatal Error: " .. fatalMessage, ...))
+	local message = string.format("  Fatal Error: " .. fatalMessage, ...)
+
+	printCallstack()
 	requestExit()
-	error()
+	error(message)
 end
 
 function Logging.devWarning(warningMessage, ...)

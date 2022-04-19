@@ -557,8 +557,9 @@ function I18N:getCurrentDate()
 	return dateString
 end
 
-function I18N:consoleCommandVerifyAll(ignoreTodos)
+function I18N:consoleCommandVerifyAll(ignoreTodos, l10nDir)
 	ignoreTodos = Utils.stringToBoolean(ignoreTodos)
+	l10nDir = l10nDir or "dataS/"
 
 	print("Verifying i18n files:")
 	setFileLogPrefixTimestamp(false)
@@ -599,7 +600,7 @@ function I18N:consoleCommandVerifyAll(ignoreTodos)
 			masterLang = filenameShort
 		end
 
-		local xmlFilename = "dataS/" .. filenameShort
+		local xmlFilename = l10nDir .. filenameShort
 
 		if fileExists(xmlFilename) then
 			local xmlFile = loadXMLFile(filenameShort, xmlFilename)
@@ -616,8 +617,12 @@ function I18N:consoleCommandVerifyAll(ignoreTodos)
 			print(string.format("loaded %d entries from %s", table.size(keys), xmlFilename))
 			delete(xmlFile)
 		else
-			print(string.format("Warning: unable to find %s for langIndex %d", xmlFilename, langIndex))
+			print(string.format("Warning: unable to find xml file %s for langIndex %d", xmlFilename, langIndex))
 		end
+	end
+
+	if next(langToKeys) == nil then
+		return "Error: no l10n entries were loaded"
 	end
 
 	for key, _ in pairs(allKeysSet) do

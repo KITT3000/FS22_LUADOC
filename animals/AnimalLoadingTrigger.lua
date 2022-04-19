@@ -62,7 +62,7 @@ function AnimalLoadingTrigger:load(node, husbandry)
 	addTrigger(self.triggerNode, "triggerCallback", self)
 
 	self.title = g_i18n:getText(Utils.getNoNil(getUserAttribute(node, "title"), "ui_farm"), self.customEnvironment)
-	self.isEnabled = not g_isPresentationVersion or g_isPresentationVersionShopEnabled
+	self.isEnabled = true
 
 	return true
 end

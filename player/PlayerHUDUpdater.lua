@@ -283,7 +283,7 @@ function PlayerHUDUpdater:fieldAddFarmland(data, box)
 			farmName = g_i18n:getText("fieldInfo_ownerNobody")
 		else
 			local npc = farmland:getNPC()
-			farmName = npc.title
+			farmName = npc ~= nil and npc.title or "Unknown"
 		end
 	else
 		local farm = g_farmManager:getFarmById(ownerFarmId)
@@ -299,6 +299,10 @@ function PlayerHUDUpdater:fieldAddFarmland(data, box)
 end
 
 function PlayerHUDUpdater:fieldAddLime(data, box)
+	if not Platform.gameplay.useLimeCounter then
+		return
+	end
+
 	local isRequired = PlayerHUDUpdater.LIME_REQUIRED_THRESHOLD < data.needsLimeFactor
 
 	if isRequired and g_currentMission.missionInfo.limeRequired then
@@ -315,6 +319,10 @@ function PlayerHUDUpdater:fieldAddPlowing(data, box)
 end
 
 function PlayerHUDUpdater:fieldAddRolling(data, box)
+	if not Platform.gameplay.useRolling then
+		return
+	end
+
 	local isRequired = PlayerHUDUpdater.ROLLING_REQUIRED_THRESHOLD < data.needsRollingFactor
 
 	if isRequired then
@@ -435,22 +443,30 @@ function PlayerHUDUpdater:fieldAddFruit(data, box)
 		if isGrowing then
 			local sprayFactor = data.fertilizerFactor
 			local plowFactor = data.plowFactor
-			local limeFactor = 1 - data.needsLimeFactor
+			local limeFactor = 1
 			local weedFactor = data.weedFactor
-			local stubbleFactor = data.stubbleFactor
-			local rollerFactor = 1 - data.needsRollingFactor
+			local stubbleFactor = 1
+			local rollerFactor = 1
 			local missionInfo = g_currentMission.missionInfo
 
 			if not missionInfo.plowingRequiredEnabled then
 				plowFactor = 1
 			end
 
-			if not missionInfo.limeRequired then
-				limeFactor = 1
+			if missionInfo.limeRequired and Platform.gameplay.useLimeCounter then
+				limeFactor = 1 - data.needsLimeFactor
 			end
 
 			if not missionInfo.weedsEnabled then
 				weedFactor = 1
+			end
+
+			if Platform.gameplay.useRolling then
+				rollerFactor = 1 - data.needsRollingFactor
+			end
+
+			if Platform.gameplay.useStubbleShred then
+				stubbleFactor = data.stubbleFactor
 			end
 
 			local harvestMultiplier = g_currentMission:getHarvestScaleMultiplier(fruitTypeIndex, sprayFactor, plowFactor, limeFactor, weedFactor, stubbleFactor, rollerFactor, 0) - 1

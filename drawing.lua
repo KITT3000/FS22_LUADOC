@@ -22,19 +22,19 @@ local function loadOverlays()
 		overlays[TOUCH_SIDE] = createImageOverlay(g_baseUIFilename)
 
 		setOverlayUVs(overlays[TOUCH_SIDE], unpack(GuiUtils.getUVs({
-			438,
-			485,
+			573,
+			502,
 			58,
-			122
+			120
 		})))
 
 		overlays[TOUCH_MIDDLE] = createImageOverlay(g_baseUIFilename)
 
 		setOverlayUVs(overlays[TOUCH_MIDDLE], unpack(GuiUtils.getUVs({
-			518,
-			485,
+			651,
+			502,
 			1,
-			122
+			120
 		})))
 	end
 
@@ -62,10 +62,10 @@ function drawFilledRect(x, y, width, height, r, g, b, a, clipX1, clipY1, clipX2,
 		return
 	end
 
+	x, y = GuiUtils.alignToScreenPixels(x, y)
+	width, height = GuiUtils.alignToScreenPixels(width, height)
 	width = math.max(width, PIXEL_X_SIZE)
 	height = math.max(height, PIXEL_Y_SIZE)
-	x = math.floor(x / PIXEL_X_SIZE) * PIXEL_X_SIZE
-	y = math.floor(y / PIXEL_Y_SIZE) * PIXEL_Y_SIZE
 
 	if clipX1 ~= nil then
 		local posX2 = x + width
@@ -113,28 +113,26 @@ local function alignHorizontalToScreenPixels(x)
 	return math.floor(x / PIXEL_X_SIZE) * PIXEL_X_SIZE
 end
 
-if GS_IS_MOBILE_VERSION then
-	function drawTouchButton(x, y, width, isPressed)
-		if not loadedOverlays then
-			loadOverlays()
-		end
-
-		x = alignHorizontalToScreenPixels(x)
-		width = alignHorizontalToScreenPixels(width)
-		y = y - TOUCH_HEIGHT * 0.5
-
-		if isPressed then
-			setOverlayColor(overlays[TOUCH_SIDE], 0.718, 0.716, 0.715, 0.25)
-			setOverlayColor(overlays[TOUCH_MIDDLE], 0.718, 0.716, 0.715, 0.25)
-		else
-			setOverlayColor(overlays[TOUCH_SIDE], 1, 1, 1, 1)
-			setOverlayColor(overlays[TOUCH_MIDDLE], 1, 1, 1, 1)
-		end
-
-		setOverlayRotation(overlays[TOUCH_SIDE], 0, 0, 0)
-		renderOverlay(overlays[TOUCH_SIDE], x, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
-		setOverlayRotation(overlays[TOUCH_SIDE], math.pi, TOUCH_SIDE_WIDTH * 0.5, TOUCH_HEIGHT * 0.5)
-		renderOverlay(overlays[TOUCH_SIDE], x + width - TOUCH_SIDE_WIDTH, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
-		renderOverlay(overlays[TOUCH_MIDDLE], x + TOUCH_SIDE_WIDTH, y, width - 2 * TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
+function drawTouchButton(x, y, width, isPressed)
+	if not loadedOverlays then
+		loadOverlays()
 	end
+
+	x = alignHorizontalToScreenPixels(x)
+	width = alignHorizontalToScreenPixels(width)
+	y = y - TOUCH_HEIGHT * 0.5
+
+	if isPressed then
+		setOverlayColor(overlays[TOUCH_SIDE], 0.718, 0.716, 0.715, 0.25)
+		setOverlayColor(overlays[TOUCH_MIDDLE], 0.718, 0.716, 0.715, 0.25)
+	else
+		setOverlayColor(overlays[TOUCH_SIDE], 1, 1, 1, 1)
+		setOverlayColor(overlays[TOUCH_MIDDLE], 1, 1, 1, 1)
+	end
+
+	setOverlayRotation(overlays[TOUCH_SIDE], 0, 0, 0)
+	renderOverlay(overlays[TOUCH_SIDE], x, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
+	setOverlayRotation(overlays[TOUCH_SIDE], math.pi, TOUCH_SIDE_WIDTH * 0.5, TOUCH_HEIGHT * 0.5)
+	renderOverlay(overlays[TOUCH_SIDE], x + width - TOUCH_SIDE_WIDTH, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
+	renderOverlay(overlays[TOUCH_MIDDLE], x + TOUCH_SIDE_WIDTH, y, width - 2 * TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
 end

@@ -29,6 +29,7 @@ InGameMenu.CONTROLS = {
 	"pageProduction",
 	"pageHelpLine",
 	"pageMain",
+	"pageTour",
 	"background"
 }
 InGameMenu.MULTIPLAYER_SAVING_DISPLAY_DURATION = 800
@@ -73,6 +74,51 @@ function InGameMenu.new(target, customMt, messageCenter, l10n, inputManager, sav
 	return self
 end
 
+function InGameMenu.createFromExistingGui(gui, guiName)
+	InGameMenuMainFrame.createFromExistingGui(g_gui.frames.ingameMenuMain.target, "InGameMenuMainFrame")
+	InGameMenuAIFrame.createFromExistingGui(g_gui.frames.ingameMenuAI.target, "InGameMenuAIFrame")
+	InGameMenuHelpFrame.createFromExistingGui(g_gui.frames.ingameMenuHelpLine.target, "InGameMenuHelpFrame")
+	InGameMenuStatisticsFrame.createFromExistingGui(g_gui.frames.ingameMenuGameStats.target, "InGameMenuStatisticsFrame")
+	InGameMenuAnimalsFrame.createFromExistingGui(g_gui.frames.ingameMenuAnimals.target, "InGameMenuAnimalsFrame")
+	InGameMenuFinancesFrame.createFromExistingGui(g_gui.frames.ingameMenuFinances.target, "InGameMenuFinancesFrame")
+	InGameMenuPricesFrame.createFromExistingGui(g_gui.frames.ingameMenuPrices.target, "InGameMenuPricesFrame")
+	InGameMenuVehiclesFrame.createFromExistingGui(g_gui.frames.garageOverview.target, "InGameMenuVehiclesFrame")
+	InGameMenuMapFrame.createFromExistingGui(g_gui.frames.ingameMenuMapOverview.target, "InGameMenuMapFrame")
+
+	local messageCenter = gui.messageCenter
+	local savegameController = gui.savegameController
+	local l10n = gui.l10n
+	local inputManager = gui.inputManager
+	local fruitTypeManager = gui.fruitTypeManager
+	local fillTypeManager = gui.fillTypeManager
+	local isConsoleVersion = gui.isConsoleVersion
+	local newGui = InGameMenu.new(nil, nil, messageCenter, l10n, inputManager, savegameController, fruitTypeManager, fillTypeManager, isConsoleVersion)
+
+	g_gui.guis.InGameMenu:delete()
+	g_gui.guis.InGameMenu.target:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui)
+
+	g_currentMission.inGameMenu = newGui
+	local mission = g_currentMission
+
+	newGui:setEnvironment(mission.environment)
+	newGui:setConnectedUsers(mission.userManager:getUsers())
+	newGui:setClient(g_client)
+	newGui:setServer(g_server)
+	newGui:setPlayer(mission.player)
+	newGui:setMissionInfo(mission.missionInfo, mission.missionDynamicInfo, mission.baseDirectory)
+	newGui:setTerrainSize(mission.terrainSize)
+	newGui:setHUD(mission.hud)
+	newGui:setInGameMap(mission.hud:getIngameMap())
+	newGui:setManureTriggers(mission.manureLoadingStations, mission.liquidManureLoadingStations)
+	newGui:setMissionFruitTypes(gui.missionFruitTypes)
+	newGui:setPlayerFarm(gui.playerFarm)
+	newGui:setCurrentUserId(mission.playerUserId)
+	newGui:onLoadMapFinished()
+
+	return newGui
+end
+
 function InGameMenu:setInGameMap(inGameMap)
 	self.pageMapOverview:setInGameMap(inGameMap)
 	self.pageAI:setInGameMap(inGameMap)
@@ -90,6 +136,8 @@ function InGameMenu:setTerrainSize(terrainSize)
 end
 
 function InGameMenu:setMissionFruitTypes(fruitTypes)
+	self.missionFruitTypes = fruitTypes
+
 	self.pageMapOverview:setMissionFruitTypes(fruitTypes)
 end
 
@@ -116,8 +164,6 @@ end
 
 function InGameMenu:updateHasMasterRights()
 	local hasMasterRights = self.isMasterUser or self.isServer
-
-	self.pageFinances:setHasMasterRights(hasMasterRights)
 
 	if self.pageSettingsGame ~= nil then
 		self.pageSettingsGame:setHasMasterRights(hasMasterRights)
@@ -155,6 +201,7 @@ function InGameMenu:initializePages()
 	self.clickBackCallback = self:makeSelfCallback(self.onButtonBack)
 
 	self.pageMapOverview:initialize(self.clickBackCallback)
+	self.pageTour:initialize()
 	self.pageAI:initialize(self.clickBackCallback)
 	self.pageGarageOverview:initialize()
 	self.pagePrices:initialize()
@@ -166,6 +213,7 @@ function InGameMenu:initializePages()
 	end
 
 	self.pageProduction:initialize()
+	self.pageStatistics:initialize()
 	self.pageFinances:initialize()
 	self.pageAnimals:initialize()
 
@@ -204,8 +252,13 @@ function InGameMenu:setupMenuPages()
 	local orderedDefaultPages = {
 		{
 			self.pageMain,
-			mobileFunc,
+			self:makIsMainEnabledPredicate(),
 			InGameMenu.TAB_UV.MAP
+		},
+		{
+			self.pageTour,
+			self:makIsTourEnabledPredicate(),
+			InGameMenu.TAB_UV.TOUR
 		},
 		{
 			self.pageMapOverview,
@@ -348,10 +401,6 @@ function InGameMenu:setupMenuButtonInfo()
 		}
 	end
 
-	if g_isPresentationVersion then
-		table.remove(self.defaultMenuButtonInfo, 2)
-	end
-
 	self.defaultMenuButtonInfoByActions[InputAction.MENU_BACK] = self.defaultMenuButtonInfo[1]
 	self.defaultMenuButtonInfoByActions[InputAction.MENU_ACTIVATE] = self.defaultMenuButtonInfo[2]
 	self.defaultMenuButtonInfoByActions[InputAction.MENU_CANCEL] = self.defaultMenuButtonInfo[3]
@@ -364,6 +413,13 @@ end
 
 function InGameMenu:onGuiSetupFinished()
 	InGameMenu:superClass().onGuiSetupFinished(self)
+
+	if not Platform.isMobile and self.pageMain ~= nil then
+		self.pageMain:delete()
+
+		self.pageMain = nil
+	end
+
 	self.messageCenter:subscribe(MessageType.GUI_INGAME_OPEN_FINANCES_SCREEN, self.openFinancesScreen, self)
 	self.messageCenter:subscribe(MessageType.GUI_INGAME_OPEN_FARMS_SCREEN, self.openFarmsScreen, self)
 	self.messageCenter:subscribe(MessageType.GUI_INGAME_OPEN_PRODUCTION_SCREEN, self.openProductionScreen, self)
@@ -519,7 +575,7 @@ function InGameMenu:onClose(element)
 end
 
 function InGameMenu:onButtonSaveGame()
-	if g_isPresentationVersion or self.missionDynamicInfo.isMultiplayer and self.missionDynamicInfo.isClient and not self.isMasterUser or not g_currentMission.isMissionStarted or self.isSaving then
+	if self.missionDynamicInfo.isMultiplayer and self.missionDynamicInfo.isClient and not self.isMasterUser or not g_currentMission.isMissionStarted or self.isSaving then
 		return true
 	end
 
@@ -889,6 +945,18 @@ function InGameMenu:onSoilSettingChanged()
 	self.pageMapOverview:onSoilSettingChanged()
 end
 
+function InGameMenu:makIsMainEnabledPredicate()
+	return function ()
+		return GS_IS_MOBILE_VERSION
+	end
+end
+
+function InGameMenu:makIsTourEnabledPredicate()
+	return function ()
+		return g_currentMission.guidedTour.isRunning
+	end
+end
+
 function InGameMenu:makeIsMapEnabledPredicate()
 	return function ()
 		return true
@@ -897,7 +965,7 @@ end
 
 function InGameMenu:makeIsAIEnabledPredicate()
 	return function ()
-		return not g_isPresentationVersion or g_isPresentationVersionAIEnabled
+		return true
 	end
 end
 
@@ -917,7 +985,7 @@ function InGameMenu:makeIsPricesEnabledPredicate()
 	return function ()
 		local isNotMultiplayerOrIsInFarm = not self.missionDynamicInfo.isMultiplayer or self.playerFarmId ~= FarmManager.SPECTATOR_FARM_ID
 
-		return isNotMultiplayerOrIsInFarm and not g_isPresentationVersion
+		return isNotMultiplayerOrIsInFarm
 	end
 end
 
@@ -925,7 +993,7 @@ function InGameMenu:makeIsAnimalsEnabledPredicate()
 	return function ()
 		local isNotMultiplayerOrIsInFarm = not self.missionDynamicInfo.isMultiplayer or self.playerFarmId ~= FarmManager.SPECTATOR_FARM_ID
 
-		return isNotMultiplayerOrIsInFarm and not g_isPresentationVersion
+		return isNotMultiplayerOrIsInFarm
 	end
 end
 
@@ -933,7 +1001,7 @@ function InGameMenu:makeIsContractsEnabledPredicate()
 	return function ()
 		local isNotMultiplayerOrIsInFarm = not self.missionDynamicInfo.isMultiplayer or self.playerFarmId ~= FarmManager.SPECTATOR_FARM_ID
 
-		return isNotMultiplayerOrIsInFarm and not g_isPresentationVersion
+		return isNotMultiplayerOrIsInFarm
 	end
 end
 
@@ -941,7 +1009,7 @@ function InGameMenu:makeIsGarageEnabledPredicate()
 	return function ()
 		local isNotMultiplayerOrIsInFarm = not self.missionDynamicInfo.isMultiplayer or self.playerFarmId ~= FarmManager.SPECTATOR_FARM_ID
 
-		return isNotMultiplayerOrIsInFarm and not g_isPresentationVersion
+		return isNotMultiplayerOrIsInFarm
 	end
 end
 
@@ -976,7 +1044,7 @@ end
 
 function InGameMenu:makeIsControlsSettingsEnabledPredicate()
 	return function ()
-		return not self.isConsoleVersion and not g_isPresentationVersion
+		return not self.isConsoleVersion and not GS_IS_MOBILE_VERSION
 	end
 end
 
@@ -996,7 +1064,7 @@ end
 
 function InGameMenu:makeIsHelpEnabledPredicate()
 	return function ()
-		return not g_isPresentationVersion
+		return true
 	end
 end
 
@@ -1090,6 +1158,12 @@ InGameMenu.TAB_UV = {
 	CONTROLS_SETTINGS = {
 		845,
 		0,
+		65,
+		65
+	},
+	TOUR = {
+		780,
+		130,
 		65,
 		65
 	},

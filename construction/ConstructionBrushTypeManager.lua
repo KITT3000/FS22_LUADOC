@@ -17,20 +17,22 @@ function ConstructionBrushTypeManager:loadMapData()
 
 	local xmlFile = XMLFile.load("BrushTypesXML", "dataS/constructionBrushTypes.xml")
 
-	xmlFile:iterate("constructionBrushTypes.constructionBrushType", function (index, key)
-		local typeName = xmlFile:getString(key .. "#name")
+	if xmlFile ~= nil then
+		xmlFile:iterate("constructionBrushTypes.constructionBrushType", function (index, key)
+			local typeName = xmlFile:getString(key .. "#name")
 
-		if typeName == nil then
-			return
-		end
+			if typeName == nil then
+				return
+			end
 
-		local className = xmlFile:getString(key .. "#className")
-		local filename = xmlFile:getString(key .. "#filename")
+			local className = xmlFile:getString(key .. "#className")
+			local filename = xmlFile:getString(key .. "#filename")
 
-		self:addBrushType(typeName, className, filename, "")
-	end)
-	xmlFile:delete()
-	Logging.info("  Loaded construction brush types")
+			self:addBrushType(typeName, className, filename, "")
+		end)
+		xmlFile:delete()
+		Logging.info("  Loaded construction brush types")
+	end
 
 	return true
 end

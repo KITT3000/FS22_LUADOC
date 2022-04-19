@@ -43,6 +43,7 @@ end
 
 function GroundAdjustedNodes:onLoad(savegame)
 	local spec = self.spec_groundAdjustedNodes
+	self.raycastMask = CollisionFlag.TERRAIN + CollisionFlag.STATIC_OBJECT
 	spec.groundAdjustedNodes = {}
 	local i = 0
 
@@ -237,7 +238,7 @@ function GroundAdjustedNodes:updateGroundAdjustedNode(adjustedNode, dt)
 				local dx, dy, dz = localDirectionToWorld(raycastNode.node, 0, -1, 0)
 				self.lastRaycastDistance = 0
 
-				raycastAll(x, y, z, dx, dy, dz, "groundAdjustRaycastCallback", raycastNode.distance, self)
+				raycastAll(x, y, z, dx, dy, dz, "groundAdjustRaycastCallback", raycastNode.distance, self, self.raycastMask)
 
 				distance = self.lastRaycastDistance
 
@@ -336,7 +337,7 @@ function GroundAdjustedNodes:getIsGroundAdjustedNodeActive(groundAdjustedNode)
 end
 
 function GroundAdjustedNodes:groundAdjustRaycastCallback(transformId, x, y, z, distance)
-	if g_currentMission:getNodeObject(transformId) == self or getHasTrigger(transformId) then
+	if getHasTrigger(transformId) then
 		return true
 	end
 

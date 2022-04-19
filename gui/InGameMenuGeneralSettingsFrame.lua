@@ -2,7 +2,7 @@ InGameMenuGeneralSettingsFrame = {}
 local InGameMenuGeneralSettingsFrame_mt = Class(InGameMenuGeneralSettingsFrame, TabbedMenuFrameElement)
 InGameMenuGeneralSettingsFrame.CONTROLS = {
 	CHECKBOX_RESET_CAMERA = "checkResetCamera",
-	OPTION_HUD_SPEED_GAUGE = "multiHudSpeedGauge",
+	OPTION_VOICE_INPUT_SENSITIVITY = "multiVoiceInputSensitivity",
 	CHECKBOX_USE_EASY_ARM_CONTROLER = "checkUseEasyArmControl",
 	OPTION_REAL_BEACON_LIGHT = "multiRealBeaconLightBrightness",
 	CHECKBOX_AUTO_HELP = "checkAutoHelp",
@@ -17,6 +17,7 @@ InGameMenuGeneralSettingsFrame.CONTROLS = {
 	OPTION_VOLUME_VEHICLE = "multiVehicleVolume",
 	CHECKBOX_SHOW_HELP_TRIGGER = "checkShowHelpTrigger",
 	OPTION_VOLUME_MASTER = "multiMasterVolume",
+	OPTION_HUD_SPEED_GAUGE = "multiHudSpeedGauge",
 	OPTION_INPUT_HELP_MODE = "multiInputHelpMode",
 	CHECKBOX_SHOW_TRIGGER_MARKER = "checkShowTriggerMarker",
 	CHECKBOX_IS_TRAIN_TABBABLE = "checkIsTrainTabbable",
@@ -101,6 +102,7 @@ function InGameMenuGeneralSettingsFrame:initialize()
 	self.optionMapping[self.multiVolumeVoice] = SettingsModel.SETTING.VOLUME_VOICE
 	self.optionMapping[self.multiVolumeVoiceInput] = SettingsModel.SETTING.VOLUME_VOICE_INPUT
 	self.optionMapping[self.multiVoiceMode] = SettingsModel.SETTING.VOICE_MODE
+	self.optionMapping[self.multiVoiceInputSensitivity] = SettingsModel.SETTING.VOICE_INPUT_SENSITIVITY
 	self.optionMapping[self.multiRealBeaconLightBrightness] = SettingsModel.SETTING.REAL_BEACON_LIGHT_BRIGHTNESS
 
 	self.multiMoneyUnit:setTexts(self.settingsModel:getMoneyUnitTexts())
@@ -116,6 +118,7 @@ function InGameMenuGeneralSettingsFrame:initialize()
 	self.multiVolumeVoice:setTexts(self.settingsModel:getAudioVolumeTexts())
 	self.multiVolumeVoiceInput:setTexts(self.settingsModel:getRecordingVolumeTexts())
 	self.multiVoiceMode:setTexts(self.settingsModel:getVoiceModeTexts())
+	self.multiVoiceInputSensitivity:setTexts(self.settingsModel:getVoiceInputSensitivityTexts())
 	self.multiInputHelpMode:setTexts(self.settingsModel:getInputHelpModeTexts())
 	self.multiDirectionChangeMode:setTexts(self.settingsModel:getDirectionChangeModeTexts())
 	self.multiGearShiftMode:setTexts(self.settingsModel:getGearShiftModeTexts())

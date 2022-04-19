@@ -247,7 +247,7 @@ function AchievementManager:tryUnlock(idName, score)
 end
 
 function AchievementManager:update(dt)
-	if not areAchievementsAvailable() or g_isPresentationVersion then
+	if not areAchievementsAvailable() then
 		return
 	end
 

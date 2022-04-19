@@ -56,67 +56,69 @@ end
 function ExtraContentSystem:loadFromXML(xmlFilename)
 	local xmlFile = XMLFile.load("extraContentSystem", xmlFilename, nil)
 
-	xmlFile:iterate("extraContent.item", function (_, itemKey)
-		local id = xmlFile:getString(itemKey .. "#id")
-		local code = xmlFile:getString(itemKey .. "#code")
-		local title = xmlFile:getString(itemKey .. ".title")
-		local description = xmlFile:getString(itemKey .. ".description")
-		local imageFilename = xmlFile:getString(itemKey .. ".imageFilename")
-		local isAutoUnlocked = xmlFile:getBool(itemKey .. "#isAutoUnlocked", false)
+	if xmlFile ~= nil then
+		xmlFile:iterate("extraContent.item", function (_, itemKey)
+			local id = xmlFile:getString(itemKey .. "#id")
+			local code = xmlFile:getString(itemKey .. "#code")
+			local title = xmlFile:getString(itemKey .. ".title")
+			local description = xmlFile:getString(itemKey .. ".description")
+			local imageFilename = xmlFile:getString(itemKey .. ".imageFilename")
+			local isAutoUnlocked = xmlFile:getBool(itemKey .. "#isAutoUnlocked", false)
 
-		if id == nil then
-			Logging.xmlWarning(xmlFile, "Extra content item id is missing for '%s'", itemKey)
+			if id == nil then
+				Logging.xmlWarning(xmlFile, "Extra content item id is missing for '%s'", itemKey)
 
-			return
-		end
+				return
+			end
 
-		if code == nil then
-			Logging.xmlWarning(xmlFile, "Extra content item code is missing for '%s'", itemKey)
+			if code == nil then
+				Logging.xmlWarning(xmlFile, "Extra content item code is missing for '%s'", itemKey)
 
-			return
-		end
+				return
+			end
 
-		code = code:upper()
-		local isValid, invalidChar = self:getStringHasValidCharacters(code)
+			code = code:upper()
+			local isValid, invalidChar = self:getStringHasValidCharacters(code)
 
-		if not isValid then
-			Logging.xmlWarning(xmlFile, "Extra content item code contains invalid charater '%s' for '%s'!", invalidChar, itemKey)
+			if not isValid then
+				Logging.xmlWarning(xmlFile, "Extra content item code contains invalid charater '%s' for '%s'!", invalidChar, itemKey)
 
-			return
-		end
+				return
+			end
 
-		local chars = code:toList(ExtraContentSystem.VALID_CHARS_PATTERN)
+			local chars = code:toList(ExtraContentSystem.VALID_CHARS_PATTERN)
 
-		if #chars ~= ExtraContentSystem.NUM_ITEM_CHARACTERS then
-			Logging.xmlWarning(xmlFile, "Extra content item code needs to have %d characters for '%s'", ExtraContentSystem.NUM_ITEM_CHARACTERS, itemKey)
+			if #chars ~= ExtraContentSystem.NUM_ITEM_CHARACTERS then
+				Logging.xmlWarning(xmlFile, "Extra content item code needs to have %d characters for '%s'", ExtraContentSystem.NUM_ITEM_CHARACTERS, itemKey)
 
-			return
-		end
+				return
+			end
 
-		if imageFilename == nil then
-			Logging.xmlWarning(xmlFile, "Extra content item imageFilename is missing for '%s'", itemKey)
+			if imageFilename == nil then
+				Logging.xmlWarning(xmlFile, "Extra content item imageFilename is missing for '%s'", itemKey)
 
-			return
-		end
+				return
+			end
 
-		if title == nil then
-			Logging.xmlWarning(xmlFile, "Extra content item title is missing for '%s'", itemKey)
+			if title == nil then
+				Logging.xmlWarning(xmlFile, "Extra content item title is missing for '%s'", itemKey)
 
-			return
-		end
+				return
+			end
 
-		if description == nil then
-			Logging.xmlWarning(xmlFile, "Extra content item description is missing for '%s'", itemKey)
+			if description == nil then
+				Logging.xmlWarning(xmlFile, "Extra content item description is missing for '%s'", itemKey)
 
-			return
-		end
+				return
+			end
 
-		title = g_i18n:convertText(title)
-		description = g_i18n:convertText(description)
+			title = g_i18n:convertText(title)
+			description = g_i18n:convertText(description)
 
-		self:addItem(id, title, description, imageFilename, chars, isAutoUnlocked)
-	end)
-	xmlFile:delete()
+			self:addItem(id, title, description, imageFilename, chars, isAutoUnlocked)
+		end)
+		xmlFile:delete()
+	end
 end
 
 function ExtraContentSystem:addItem(id, title, description, imageFilename, charList, isAutoUnlocked)
@@ -432,13 +434,19 @@ function ExtraContentSystem:consoleCommandCreateKeys(itemCode, numKeys, file)
 		local xmlFile = XMLFile.load("keys", file)
 
 		if xmlFile ~= nil then
+			local i = 0
+
 			xmlFile:iterate("keys.key", function (_, key)
 				local value = xmlFile:getString(key)
 
 				if value ~= nil then
 					generatedKeys[string.trim(value)] = true
+					i = i + 1
 				end
 			end)
+			print(string.format("Loaded %d existing keys from file...", i))
+		else
+			return "Could not load given existing key file"
 		end
 	end
 

@@ -266,6 +266,11 @@ function TreePlantManager:loadTreeNode(treeTypeDesc, x, y, z, rx, ry, rz, growth
 		addToPhysics(treeId)
 	end
 
+	local updateRange = 2
+
+	g_densityMapHeightManager:setCollisionMapAreaDirty(x - updateRange, z - updateRange, x + updateRange, z + updateRange, true)
+	g_currentMission.aiSystem:setAreaDirty(x - updateRange, x + updateRange, z - updateRange, z + updateRange)
+
 	return treeId, splitShapeFileId
 end
 
@@ -356,7 +361,8 @@ function TreePlantManager:updateTrees(dt, dtGame)
 					local range = 2.5
 					local x, _, z = getWorldTranslation(treeId)
 
-					g_densityMapHeightManager:setCollisionMapAreaDirty(x - range, z - range, x + range, z + range)
+					g_densityMapHeightManager:setCollisionMapAreaDirty(x - range, z - range, x + range, z + range, true)
+					g_currentMission.aiSystem:setAreaDirty(x - range, x + range, z - range, z + range)
 
 					if not tree.hasSplitShapes then
 						self.numTreesWithoutSplits = self.numTreesWithoutSplits + 1

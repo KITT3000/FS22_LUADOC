@@ -1,58 +1,23 @@
-local platformId = getPlatformId()
-GS_PLATFORM_ID = platformId
-GS_PLATFORM_PC = platformId == PlatformId.WIN or platformId == PlatformId.MAC
-GS_PLATFORM_XBOX = platformId == PlatformId.XBOX_ONE or platformId == PlatformId.XBOX_SERIES
-GS_PLATFORM_PLAYSTATION = platformId == PlatformId.PS4 or platformId == PlatformId.PS5
-GS_PLATFORM_GGP = platformId == PlatformId.GGP
-GS_PLATFORM_SWITCH = platformId == PlatformId.SWITCH
-GS_PLATFORM_PHONE = platformId == PlatformId.ANDROID or platformId == PlatformId.IOS
-GS_IS_CONSOLE_VERSION = GS_PLATFORM_XBOX or GS_PLATFORM_PLAYSTATION
-GS_IS_MOBILE_VERSION = GS_PLATFORM_PHONE or GS_PLATFORM_SWITCH
+source("dataS/scripts/std.lua")
+source("dataS/scripts/StartParams.lua")
+source("dataS/scripts/shared/string.lua")
+source("dataS/scripts/testing.lua")
+source("dataS/scripts/events.lua")
+source("dataS/scripts/menu.lua")
+
+local debugTool = debug
+debug = nil
 GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-local debugTool = debug
-debug = nil
-g_gameVersion = 6
-g_gameVersionNotification = "1.3.1.0"
-g_gameVersionDisplay = "1.3.1.0"
+g_gameVersion = 7
+g_gameVersionNotification = "1.4.0.0"
+g_gameVersionDisplay = "1.4.0.0"
 g_gameVersionDisplayExtra = ""
-g_presentationSettingsFile = "dataS/presentationSettings.xml"
-g_isPresentationVersion = false
-g_isPresentationVersionLogoEnabled = true
-g_isPresentationVersionShopEnabled = false
-g_isPresentationVersionWardrobeEnabled = false
-g_isPresentationVersionBuildModeEnabled = false
-g_isPresentationVersionDlcEnabled = false
-g_isPresentationVersionAllMapsEnabled = false
-g_isPresentationVersionUSMapEnabled = false
-g_isPresentationVersionFRMapEnabled = false
-g_isPresentationVersionAlpineMapEnabled = false
-g_isPresentationVersionSpecialStore = false
-g_isPresentationVersionSpecialStorePath = "dataS/storeItems_presentationVersion.xml"
-g_isPresentationVersionAIEnabled = false
-g_isPresentationVersionHideMenuButtons = true
-g_isPresentationVersionUseReloadButton = false
-g_showWatermark = false
 g_isDevelopmentConsoleScriptModTesting = false
-g_isPresentationVersionAlwaysDay = false
-g_isPresentationVersionShowDrivingHelp = false
-g_isPresentationVersionMenuDisabled = false
-g_isPresentationVersionNextLanguageIndex = nil
-g_isPresentationVersionNextLanguageTimer = nil
-g_isPresentationVersionPlaytimeCountdown = nil
-g_isPresentationVersionIsTourEnabled = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 64
-
-source("dataS/scripts/std.lua")
-source("dataS/scripts/events.lua")
-source("dataS/scripts/game.lua")
-source("dataS/scripts/mods.lua")
-source("dataS/scripts/testing.lua")
-source("dataS/scripts/Benchmark.lua")
-
+g_maxModDescVersion = 65
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -227,80 +192,6 @@ g_vehicleColors = {
 		name = "$l10n_ui_colorPink"
 	}
 }
-
-if Platform.isConsole then
-	addReplacedCustomShader("alphaBlendedDecalShader.xml", "data/shaders/alphaBlendedDecalShader.xml")
-	addReplacedCustomShader("alphaTestDisableShader.xml", "data/shaders/alphaTestDisableShader.xml")
-	addReplacedCustomShader("beaconGlassShader.xml", "data/shaders/beaconGlassShader.xml")
-	addReplacedCustomShader("buildingShader.xml", "data/shaders/buildingShader.xml")
-	addReplacedCustomShader("buildingShaderUS.xml", "data/shaders/buildingShaderUS.xml")
-	addReplacedCustomShader("bunkerSiloSilageShader.xml", "data/shaders/bunkerSiloSilageShader.xml")
-	addReplacedCustomShader("carColorShader.xml", "data/shaders/carColorShader.xml")
-	addReplacedCustomShader("characterShader.xml", "data/shaders/characterShader.xml")
-	addReplacedCustomShader("cultivatorSoilShader.xml", "data/shaders/cultivatorSoilShader.xml")
-	addReplacedCustomShader("cuttersShader.xml", "data/shaders/cuttersShader.xml")
-	addReplacedCustomShader("emissiveAdditiveShader.xml", "data/shaders/emissiveAdditiveShader.xml")
-	addReplacedCustomShader("emissiveFalloffShader.xml", "data/shaders/emissiveFalloffShader.xml")
-	addReplacedCustomShader("emissiveLightsShader.xml", "data/shaders/emissiveLightsShader.xml")
-	addReplacedCustomShader("envIntensityShader.xml", "data/shaders/envIntensityShader.xml")
-	addReplacedCustomShader("exhaustShader.xml", "data/shaders/exhaustShader.xml")
-	addReplacedCustomShader("fillIconShader.xml", "data/shaders/fillIconShader.xml")
-	addReplacedCustomShader("fillPlaneShader.xml", "data/shaders/fillPlaneShader.xml")
-	addReplacedCustomShader("flagShader.xml", "data/shaders/flagShader.xml")
-	addReplacedCustomShader("fruitGrowthFoliageShader.xml", "data/shaders/fruitGrowthFoliageShader.xml")
-	addReplacedCustomShader("fxCircleShader.xml", "data/shaders/fxCircleShader.xml")
-	addReplacedCustomShader("grainSmokeShader.xml", "data/shaders/grainSmokeShader.xml")
-	addReplacedCustomShader("grainUnloadingShader.xml", "data/shaders/grainUnloadingShader.xml")
-	addReplacedCustomShader("grimmeMeshScrollShader.xml", "data/shaders/grimmeMeshScrollShader.xml")
-	addReplacedCustomShader("groundHeightShader.xml", "data/shaders/groundHeightShader.xml")
-	addReplacedCustomShader("groundHeightStaticShader.xml", "data/shaders/groundHeightStaticShader.xml")
-	addReplacedCustomShader("lightBeamShader.xml", "data/shaders/lightBeamShader.xml")
-	addReplacedCustomShader("localCatmullRomRopeShader.xml", "data/shaders/localCatmullRomRopeShader.xml")
-	addReplacedCustomShader("meshRotateShader.xml", "data/shaders/meshRotateShader.xml")
-	addReplacedCustomShader("meshScrollShader.xml", "data/shaders/meshScrollShader.xml")
-	addReplacedCustomShader("morphTargetShader.xml", "data/shaders/morphTargetShader.xml")
-	addReplacedCustomShader("numberShader.xml", "data/shaders/numberShader.xml")
-	addReplacedCustomShader("oceanShader.xml", "data/shaders/oceanShader.xml")
-	addReplacedCustomShader("oceanShaderMasked.xml", "data/shaders/oceanShaderMasked.xml")
-	addReplacedCustomShader("particleSystemShader.xml", "data/shaders/particleSystemShader.xml")
-	addReplacedCustomShader("pipeUnloadingShader.xml", "data/shaders/pipeUnloadingShader.xml")
-	addReplacedCustomShader("placeableShader.xml", "data/shaders/placeableShader.xml")
-	addReplacedCustomShader("psColorShader.xml", "data/shaders/psColorShader.xml")
-	addReplacedCustomShader("psSubUVShader.xml", "data/shaders/psSubUVShader.xml")
-	addReplacedCustomShader("rainShader.xml", "data/shaders/rainShader.xml")
-	addReplacedCustomShader("roadShader.xml", "data/shaders/roadShader.xml")
-	addReplacedCustomShader("scrollUVShader.xml", "data/shaders/scrollUVShader.xml")
-	addReplacedCustomShader("shadowDisableShader.xml", "data/shaders/shadowDisableShader.xml")
-	addReplacedCustomShader("silageBaleShader.xml", "data/shaders/silageBaleShader.xml")
-	addReplacedCustomShader("simpleOceanShader.xml", "data/shaders/simpleOceanShader.xml")
-	addReplacedCustomShader("skyShader.xml", "data/shaders/skyShader.xml")
-	addReplacedCustomShader("slurryMeasurementShader.xml", "data/shaders/slurryMeasurementShader.xml")
-	addReplacedCustomShader("slurryShader.xml", "data/shaders/slurryShader.xml")
-	addReplacedCustomShader("solidFoliageShader.xml", "data/shaders/solidFoliageShader.xml")
-	addReplacedCustomShader("streamShader.xml", "data/shaders/streamShader.xml")
-	addReplacedCustomShader("tensionBeltShader.xml", "data/shaders/tensionBeltShader.xml")
-	addReplacedCustomShader("terrainShader.xml", "data/shaders/terrainShader.xml")
-	addReplacedCustomShader("tileAndMirrorShader.xml", "data/shaders/tileAndMirrorShader.xml")
-	addReplacedCustomShader("tintAlphaShader.xml", "data/shaders/tintAlphaShader.xml")
-	addReplacedCustomShader("tireTrackShader.xml", "data/shaders/tireTrackShader.xml")
-	addReplacedCustomShader("treeBillboardShader.xml", "data/shaders/treeBillboardShader.xml")
-	addReplacedCustomShader("treeBillboardSSShader.xml", "data/shaders/treeBillboardSSShader.xml")
-	addReplacedCustomShader("treeBranchShader.xml", "data/shaders/treeBranchShader.xml")
-	addReplacedCustomShader("treeMarkerShader.xml", "data/shaders/treeMarkerShader.xml")
-	addReplacedCustomShader("treeTrunkShader.xml", "data/shaders/treeTrunkShader.xml")
-	addReplacedCustomShader("triPlanarShader.xml", "data/shaders/triPlanarShader.xml")
-	addReplacedCustomShader("underwaterFogShader.xml", "data/shaders/underwaterFogShader.xml")
-	addReplacedCustomShader("uvOffsetShader.xml", "data/shaders/uvOffsetShader.xml")
-	addReplacedCustomShader("uvRotateShader.xml", "data/shaders/uvRotateShader.xml")
-	addReplacedCustomShader("uvScrollShader.xml", "data/shaders/uvScrollShader.xml")
-	addReplacedCustomShader("vehicleShader.xml", "data/shaders/vehicleShader.xml")
-	addReplacedCustomShader("vertexPaintShader.xml", "data/shaders/vertexPaintShader.xml")
-	addReplacedCustomShader("windowShader.xml", "data/shaders/windowShader.xml")
-	addReplacedCustomShader("windrowFoliageShader.xml", "data/shaders/windrowFoliageShader.xml")
-	addReplacedCustomShader("windrowUnloadingShader.xml", "data/shaders/windrowUnloadingShader.xml")
-	addReplacedCustomShader("windShader.xml", "data/shaders/windShader.xml")
-end
-
 g_densityMapRevision = 3
 g_terrainTextureRevision = 1
 g_terrainLodTextureRevision = 2
@@ -348,7 +239,6 @@ g_darkControllerOverlay = nil
 g_aspectScaleX = 1
 g_aspectScaleX = 1
 g_dedicatedServer = nil
-g_serverMaxCapacity = GS_IS_CONSOLE_VERSION and 6 or 16
 g_joinServerMaxCapacity = 16
 g_serverMaxClientCapacity = 16
 g_serverMinCapacity = 2
@@ -359,48 +249,33 @@ g_updateDownloadFinished = false
 g_updateDownloadFinishedDialogShown = false
 g_skipStartupScreen = false
 
-local function updateLoadingBarProgress(isLast)
-	g_curNumLoadingBarStep = g_curNumLoadingBarStep + 1
-	local ratio = g_curNumLoadingBarStep / g_maxNumLoadingBarSteps
+function initPlatform()
+	local debugPlatformId = nil
 
-	if isLast and ratio < 1 or ratio > 1 then
-		print("Invalid g_maxNumLoadingBarSteps. Last step number is " .. g_curNumLoadingBarStep)
-	end
+	if StartParams.getIsSet("platform") then
+		local debugPlatform = string.trim(StartParams.getValue("platform") or "")
 
-	updateLoadingBar(ratio)
-end
-
-local function onShowDeepLinkingErrorMsg()
-	g_deepLinkingInfo = nil
-
-	g_gui:showConnectionFailedDialog({
-		text = g_i18n:getText("ui_failedToConnectToGame"),
-		callback = OnInGameMenuMenu
-	})
-
-	g_showDeeplinkingFailedMessage = false
-end
-
-g_postAnimationUpdateCallbacks = {}
-
-function addPostAnimationCallback(callbackFunc, callbackTarget, callbackArguments)
-	local callbackData = {
-		callbackFunc = callbackFunc,
-		callbackTarget = callbackTarget,
-		callbackArguments = callbackArguments
-	}
-
-	table.insert(g_postAnimationUpdateCallbacks, callbackData)
-
-	return callbackData
-end
-
-function removePostAnimationCallback(callbackDataToRemove)
-	for i, callbackData in pairs(g_postAnimationUpdateCallbacks) do
-		if callbackData == callbackDataToRemove then
-			table.remove(g_postAnimationUpdateCallbacks, i)
+		if PlatformId[debugPlatform] ~= nil then
+			debugPlatformId = PlatformId[debugPlatform]
 		end
 	end
+
+	if debugPlatformId ~= nil then
+		function getPlatformId()
+			return debugPlatformId
+		end
+	end
+
+	local platformId = getPlatformId()
+	GS_PLATFORM_ID = platformId
+	GS_PLATFORM_PC = platformId == PlatformId.WIN or platformId == PlatformId.MAC
+	GS_PLATFORM_XBOX = platformId == PlatformId.XBOX_ONE or platformId == PlatformId.XBOX_SERIES
+	GS_PLATFORM_PLAYSTATION = platformId == PlatformId.PS4 or platformId == PlatformId.PS5
+	GS_PLATFORM_GGP = platformId == PlatformId.GGP
+	GS_PLATFORM_SWITCH = platformId == PlatformId.SWITCH
+	GS_PLATFORM_PHONE = platformId == PlatformId.ANDROID or platformId == PlatformId.IOS
+	GS_IS_CONSOLE_VERSION = GS_PLATFORM_XBOX or GS_PLATFORM_PLAYSTATION
+	GS_IS_MOBILE_VERSION = GS_PLATFORM_PHONE or GS_PLATFORM_SWITCH
 end
 
 function init(args)
@@ -409,6 +284,65 @@ function init(args)
 	if initTesting() then
 		return
 	end
+
+	initPlatform()
+	source("dataS/scripts/game.lua")
+	Platform.init()
+
+	local settingsXML = XMLFile.load("SettingsFile", "dataS/settings.xml")
+	local developmentLevel = settingsXML:getString("settings#developmentLevel", "release"):lower()
+	g_buildName = settingsXML:getString("settings#buildName", g_buildName)
+	g_buildTypeParam = settingsXML:getString("settings#buildTypeParam", g_buildTypeParam)
+	g_gameRevision = settingsXML:getString("settings#revision", g_gameRevision)
+	g_gameRevision = g_gameRevision .. getGameRevisionExtraText()
+	g_isDevelopmentVersion = false
+
+	if developmentLevel == "internal" then
+		print("INTERNAL VERSION")
+
+		g_addTestCommands = true
+	elseif developmentLevel == "development" then
+		print("DEVELOPMENT VERSION")
+
+		g_isDevelopmentVersion = true
+		g_addTestCommands = true
+
+		enableDevelopmentControls()
+	end
+
+	if g_isDevelopmentVersion then
+		g_networkDebug = true
+	end
+
+	if g_addTestCommands or StartParams.getIsSet("cheats") then
+		g_addCheatCommands = true
+	end
+
+	if g_addTestCommands or StartParams.getIsSet("devWarnings") then
+		g_showDevelopmentWarnings = true
+	end
+
+	if g_isDevelopmentVersion then
+		if StartParams.getIsSet("consoleSimulator") then
+			ConsoleSimulator.init()
+			ImeSimulator.init()
+		end
+
+		if StartParams.getIsSet("stadiaSimulator") then
+			StadiaSimulator.init()
+			ImeSimulator.init()
+		end
+
+		if StartParams.getIsSet("imeSimulator") then
+			ImeSimulator.init()
+		end
+
+		if StartParams.getIsSet("iapSimulator") then
+			IAPSimulator.init()
+		end
+	end
+
+	g_serverMaxCapacity = GS_IS_CONSOLE_VERSION and 6 or 16
 
 	AudioGroup.loadGroups()
 	g_i3DManager:init()
@@ -424,8 +358,13 @@ function init(args)
 
 	g_autoSaveManager = AutoSaveManager.new()
 
-	g_gamingStationManager:load()
 	updateLoadingBarProgress()
+
+	local kioskMode = KioskMode.new()
+
+	if kioskMode:load() then
+		g_kioskMode = kioskMode
+	end
 
 	g_lifetimeStats = LifetimeStats.new()
 
@@ -444,11 +383,10 @@ function init(args)
 		g_screenWidth, g_screenHeight = getScreenModeInfo(getScreenMode())
 	end
 
-	local uiPostfix = Platform.isMobile and "_mobile" or ""
 	g_baseUIPostfix = ""
-	g_baseUIFilename = "dataS/menu/hud/ui_elements" .. uiPostfix .. ".png"
-	g_iconsUIFilename = "dataS/menu/hud/ui_icons" .. uiPostfix .. ".png"
-	g_baseHUDFilename = "dataS/menu/hud/hud_elements" .. uiPostfix .. ".png"
+	g_baseUIFilename = "dataS/menu/hud/ui_elements.png"
+	g_iconsUIFilename = "dataS/menu/hud/ui_icons.png"
+	g_baseHUDFilename = "dataS/menu/hud/hud_elements.png"
 
 	if g_isDevelopmentVersion then
 		print(string.format(" Loading UI-textures: '%s' '%s' '%s'", g_baseUIFilename, g_baseHUDFilename, g_iconsUIFilename))
@@ -479,10 +417,7 @@ function init(args)
 
 	loadUserSettings(g_gameSettings)
 	updateLoadingBarProgress()
-
-	local xmlFile = XMLFile.load("SettingsFile", "dataS/settings.xml")
-
-	loadLanguageSettings(xmlFile)
+	loadLanguageSettings(settingsXML)
 
 	local availableLanguagesString = "Available Languages:"
 
@@ -490,40 +425,7 @@ function init(args)
 		availableLanguagesString = availableLanguagesString .. " " .. getLanguageCode(lang)
 	end
 
-	local developmentLevel = xmlFile:getString("settings#developmentLevel", "release"):lower()
-	g_buildName = xmlFile:getString("settings#buildName", g_buildName)
-	g_buildTypeParam = xmlFile:getString("settings#buildTypeParam", g_buildTypeParam)
-	g_gameRevision = xmlFile:getString("settings#revision", g_gameRevision)
-	g_gameRevision = g_gameRevision .. getGameRevisionExtraText()
-
-	xmlFile:delete()
-
-	g_isDevelopmentVersion = false
-
-	if developmentLevel == "internal" then
-		print("INTERNAL VERSION")
-
-		g_addTestCommands = true
-	elseif developmentLevel == "development" then
-		print("DEVELOPMENT VERSION")
-
-		g_isDevelopmentVersion = true
-		g_addTestCommands = true
-
-		enableDevelopmentControls()
-	end
-
-	if g_isDevelopmentVersion then
-		g_networkDebug = true
-	end
-
-	if g_addTestCommands or StartParams.getIsSet("cheats") then
-		g_addCheatCommands = true
-	end
-
-	if g_addTestCommands or StartParams.getIsSet("devWarnings") then
-		g_showDevelopmentWarnings = true
-	end
+	settingsXML:delete()
 
 	local caption = "Farming Simulator 22"
 
@@ -531,6 +433,12 @@ function init(args)
 		caption = caption .. " (PlayStation 4)"
 	elseif Platform.isXbox then
 		caption = caption .. " (XboxOne)"
+	elseif Platform.isSwitch then
+		caption = caption .. " (Switch)"
+	elseif Platform.isAndroid then
+		caption = caption .. " (Android)"
+	elseif Platform.isIOS then
+		caption = caption .. " (iOS)"
 	end
 
 	if g_isDevelopmentVersion then
@@ -544,7 +452,6 @@ function init(args)
 	end
 
 	setCaption(caption)
-	loadPresentationSettings(g_presentationSettingsFile)
 	addNotificationFilter(GS_PRODUCT_ID, g_gameVersionNotification)
 	updateLoadingBarProgress()
 
@@ -585,6 +492,7 @@ function init(args)
 		createFolder(modSettingsDir)
 	end
 
+	g_adsSystem = AdsSystem.new()
 	local modsDir = getModInstallPath()
 	local modDownloadDir = getModDownloadPath()
 
@@ -636,10 +544,13 @@ function init(args)
 
 	g_i18n:load()
 
-	g_extraContentSystem = ExtraContentSystem.new()
+	if Platform.hasExtraContent then
+		g_extraContentSystem = ExtraContentSystem.new()
 
-	g_extraContentSystem:loadFromXML("dataS/extraContent.xml")
-	g_extraContentSystem:loadFromProfile()
+		g_extraContentSystem:loadFromXML("dataS/extraContent.xml")
+		g_extraContentSystem:loadFromProfile()
+	end
+
 	updateLoadingBarProgress()
 	setMaxNumOfReflectionPlanes(math.max(g_gameSettings:getValue("maxNumMirrors") + 1, 3))
 	math.randomseed(getTime())
@@ -650,15 +561,10 @@ function init(args)
 	g_splitTypeManager:load()
 	addSplitShapesShaderParameterOverwrite("windSnowLeafScale", 0, 0, 0, 80)
 
-	local loadAllMaps = not g_isPresentationVersion or g_isPresentationVersionAllMapsEnabled
 	local mapsXML = XMLFile.load("MapsXML", "dataS/maps.xml")
 
 	mapsXML:iterate("maps.map", function (_, key)
-		local mapId = mapsXML:getString(key .. "#id", "")
-
-		if loadAllMaps or mapId == "MapUS" and g_isPresentationVersionUSMapEnabled or mapId == "MapFR" and g_isPresentationVersionFRMapEnabled or mapId == "mapAlpine" and g_isPresentationVersionAlpineMapEnabled then
-			g_mapManager:loadMapFromXML(mapsXML, key, "", nil, true, true, false)
-		end
+		g_mapManager:loadMapFromXML(mapsXML, key, "", nil, true, true, false)
 	end)
 	mapsXML:delete()
 	updateLoadingBarProgress()
@@ -681,7 +587,11 @@ function init(args)
 
 	g_achievementManager:load()
 	updateLoadingBarProgress()
-	initModDownloadManager(g_modsDirectory, modDownloadDir, g_minModDescVersion, g_maxModDescVersion, g_isDevelopmentVersion)
+
+	if g_modsDirectory then
+		initModDownloadManager(g_modsDirectory, modDownloadDir, g_minModDescVersion, g_maxModDescVersion, g_isDevelopmentVersion)
+	end
+
 	startUpdatePendingMods()
 	updateLoadingBarProgress()
 	loadDlcs()
@@ -698,6 +608,7 @@ function init(args)
 	end
 
 	if Platform.supportsMods then
+		loadInternalMods()
 		loadMods()
 	end
 
@@ -710,6 +621,10 @@ function init(args)
 	g_inputBinding = InputBinding.new(g_modManager, g_messageCenter, GS_IS_CONSOLE_VERSION)
 
 	g_inputBinding:load()
+
+	if g_kioskMode ~= nil then
+		g_kioskMode:loadInputBindings()
+	end
 
 	g_inputDisplayManager = InputDisplayManager.new(g_messageCenter, g_inputBinding, g_modManager, GS_IS_CONSOLE_VERSION)
 
@@ -753,11 +668,6 @@ function init(args)
 
 	updateLoadingBarProgress()
 
-	g_wardrobeScreen = WardrobeScreen.new(nil, nil, g_messageCenter, g_i18n, g_inputBinding)
-	local wardrobeItemsFrame = WardrobeItemsFrame.new(nil)
-	local wardrobeColorsFrame = WardrobeColorsFrame.new(nil)
-	local wardrobeOutfitsFrame = WardrobeOutfitsFrame.new(nil)
-	local wardrobeCharactersFrame = WardrobeCharactersFrame.new(nil)
 	local inAppPurchaseController = InAppPurchaseController.new(g_messageCenter, g_i18n, g_gameSettings)
 	local shopController = ShopController.new(g_messageCenter, g_i18n, g_storeManager, g_brandManager, g_fillTypeManager, inAppPurchaseController)
 	local inGameMenuMapFrame = InGameMenuMapFrame.new(nil, g_messageCenter, g_i18n, g_inputBinding, g_inputDisplayManager, g_fruitTypeManager, g_fillTypeManager, g_storeManager, shopController, g_farmlandManager, g_farmManager)
@@ -775,6 +685,7 @@ function init(args)
 	local inGameMenuMultiplayerFarmsFrame = InGameMenuMultiplayerFarmsFrame.new(nil, g_messageCenter, g_i18n, g_farmManager)
 	local inGameMenuMultiplayerUsersFrame = InGameMenuMultiplayerUsersFrame.new(nil, g_messageCenter, g_i18n, g_farmManager)
 	local inGameMenuHelpFrame = InGameMenuHelpFrame.new(nil, g_i18n, g_helpLineManager)
+	local inGameMenuTourFrame = InGameMenuTourFrame.new(nil, g_i18n)
 	local inGameMenuGeneralSettingsFrame = InGameMenuGeneralSettingsFrame.new(nil, settingsModel)
 	local inGameMenuGameSettingsFrame = InGameMenuGameSettingsFrame.new(nil, g_i18n)
 	local inGameMenuMobileSettingsFrame, inGameMenuMainFrame = nil
@@ -857,18 +768,13 @@ function init(args)
 	local unBanDialog = UnBanDialog.new(nil, nil, g_i18n)
 	local serverSettingsDialog = ServerSettingsDialog.new(nil, nil, g_i18n, settingsModel)
 	local modHubScreenshotDialog = ModHubScreenshotDialog.new()
-	local voteDialog = nil
-
-	if Platform.supportsMods then
-		voteDialog = VoteDialog.new(nil, nil)
-	end
 
 	updateLoadingBarProgress()
 
 	g_modHubController = ModHubController.new(g_messageCenter, g_i18n, g_gameSettings)
 
-	if Platform.supportsMods then
-		g_modHubScreen = ModHubScreen.new(nil, nil, g_messageCenter, g_i18n, g_inputBinding, g_modHubController, GS_IS_CONSOLE_VERSION)
+	if g_kioskMode ~= nil then
+		g_kioskMode:initializedGUIClasses()
 	end
 
 	g_gui:loadGui("dataS/gui/SettingsGeneralFrame.xml", "SettingsGeneralFrame", SettingsGeneralFrame.new(nil, nil, settingsModel, g_i18n), true)
@@ -879,25 +785,14 @@ function init(args)
 	g_gui:loadGui("dataS/gui/SettingsConsoleFrame.xml", "SettingsConsoleFrame", SettingsConsoleFrame.new(nil, nil, settingsModel, g_i18n), true)
 	g_gui:loadGui("dataS/gui/SettingsDeviceFrame.xml", "SettingsDeviceFrame", SettingsDeviceFrame.new(nil, nil, settingsModel, g_i18n), true)
 	g_gui:loadGui("dataS/gui/MainScreen.xml", "MainScreen", g_mainScreen)
-
-	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/CreditsScreen.xml", "CreditsScreen", g_creditsScreen)
-	else
-		g_gui:loadGui("dataS/gui/CreditsScreen.xml", "CreditsScreen", g_creditsScreen)
-	end
+	g_gui:loadGui("dataS/gui/CreditsScreen.xml", "CreditsScreen", g_creditsScreen)
 
 	if Platform.needsSignIn then
 		g_gui:loadGui("dataS/gui/GamepadSigninScreen.xml", "GamepadSigninScreen", g_gamepadSigninScreen)
 	end
 
 	g_gui:loadGui("dataS/gui/SettingsScreen.xml", "SettingsScreen", g_settingsScreen)
-
-	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/CareerScreen.xml", "CareerScreen", g_careerScreen)
-	else
-		g_gui:loadGui("dataS/gui/CareerScreen.xml", "CareerScreen", g_careerScreen)
-	end
-
+	g_gui:loadGui("dataS/gui/CareerScreen.xml", "CareerScreen", g_careerScreen)
 	g_gui:loadGui("dataS/gui/ScenariosScreen.xml", "ScenariosScreen", g_scenariosScreen)
 	updateLoadingBarProgress()
 	g_gui:loadGui("dataS/gui/DifficultyScreen.xml", "DifficultyScreen", g_difficultyScreen)
@@ -907,14 +802,8 @@ function init(args)
 	g_gui:loadGui("dataS/gui/MapSelectionScreen.xml", "MapSelectionScreen", g_mapSelectionScreen)
 	g_gui:loadGui("dataS/gui/ModSelectionScreen.xml", "ModSelectionScreen", g_modSelectionScreen)
 	updateLoadingBarProgress()
-
-	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/AchievementsScreen.xml", "AchievementsScreen", g_achievementsScreen)
-		g_gui:loadGui("dataS/gui_mobile/AnimalScreen.xml", "AnimalScreen", g_animalScreen)
-	else
-		g_gui:loadGui("dataS/gui/AchievementsScreen.xml", "AchievementsScreen", g_achievementsScreen)
-		g_gui:loadGui("dataS/gui/AnimalScreen.xml", "AnimalScreen", g_animalScreen)
-	end
+	g_gui:loadGui("dataS/gui/AchievementsScreen.xml", "AchievementsScreen", g_achievementsScreen)
+	g_gui:loadGui("dataS/gui/AnimalScreen.xml", "AnimalScreen", g_animalScreen)
 
 	if Platform.showStartupScreen and g_skipStartupScreen == false then
 		g_gui:loadGui("dataS/gui/StartupScreen.xml", "StartupScreen", g_startupScreen)
@@ -929,84 +818,67 @@ function init(args)
 	g_gui:loadGui("dataS/gui/ConnectToMasterServerScreen.xml", "ConnectToMasterServerScreen", g_connectToMasterServerScreen)
 	g_gui:loadGui("dataS/gui/ServerDetailScreen.xml", "ServerDetailScreen", g_serverDetailScreen)
 
-	local modHubLoadingFrame = ModHubLoadingFrame.new(nil)
-	local modHubCategoriesFrame = ModHubCategoriesFrame.new(nil, g_modHubController, g_i18n, GS_IS_CONSOLE_VERSION)
-	local modHubItemsFrame = ModHubItemsFrame.new(nil, g_modHubController, g_i18n, GS_IS_CONSOLE_VERSION)
-	local modHubDetailsFrame = ModHubDetailsFrame.new(nil, g_modHubController, g_i18n, GS_IS_CONSOLE_VERSION, GS_IS_STEAM_VERSION)
-	local modHubExtraContentFrame = ModHubExtraContentFrame.new(nil)
-
-	g_gui:loadGui("dataS/gui/ModHubLoadingFrame.xml", "ModHubLoadingFrame", modHubLoadingFrame, true)
-	g_gui:loadGui("dataS/gui/ModHubCategoriesFrame.xml", "ModHubCategoriesFrame", modHubCategoriesFrame, true)
-	g_gui:loadGui("dataS/gui/ModHubItemsFrame.xml", "ModHubItemsFrame", modHubItemsFrame, true)
-	g_gui:loadGui("dataS/gui/ModHubDetailsFrame.xml", "ModHubDetailsFrame", modHubDetailsFrame, true)
-	g_gui:loadGui("dataS/gui/ModHubExtraContentFrame.xml", "ModHubExtraContentFrame", modHubExtraContentFrame, true)
-
 	if Platform.supportsMods then
+		local modHubLoadingFrame = ModHubLoadingFrame.new(nil)
+		local modHubCategoriesFrame = ModHubCategoriesFrame.new(nil, g_modHubController, g_i18n, GS_IS_CONSOLE_VERSION)
+		local modHubItemsFrame = ModHubItemsFrame.new(nil, g_modHubController, g_i18n, GS_IS_CONSOLE_VERSION)
+		local modHubDetailsFrame = ModHubDetailsFrame.new(nil, g_modHubController, g_i18n, GS_IS_CONSOLE_VERSION, GS_IS_STEAM_VERSION)
+		local modHubExtraContentFrame = ModHubExtraContentFrame.new(nil)
+		local voteDialog = VoteDialog.new(nil, nil)
+		g_modHubScreen = ModHubScreen.new(nil, nil, g_messageCenter, g_i18n, g_inputBinding, g_modHubController, GS_IS_CONSOLE_VERSION)
+
+		g_gui:loadGui("dataS/gui/ModHubLoadingFrame.xml", "ModHubLoadingFrame", modHubLoadingFrame, true)
+		g_gui:loadGui("dataS/gui/ModHubCategoriesFrame.xml", "ModHubCategoriesFrame", modHubCategoriesFrame, true)
+		g_gui:loadGui("dataS/gui/ModHubItemsFrame.xml", "ModHubItemsFrame", modHubItemsFrame, true)
+		g_gui:loadGui("dataS/gui/ModHubDetailsFrame.xml", "ModHubDetailsFrame", modHubDetailsFrame, true)
+		g_gui:loadGui("dataS/gui/ModHubExtraContentFrame.xml", "ModHubExtraContentFrame", modHubExtraContentFrame, true)
 		g_gui:loadGui("dataS/gui/ModHubScreen.xml", "ModHubScreen", g_modHubScreen)
+		g_gui:loadGui("dataS/gui/dialogs/VoteDialog.xml", "VoteDialog", voteDialog)
 	end
 
-	g_gui:loadGui("dataS/gui/WardrobeItemsFrame.xml", "WardrobeItemsFrame", wardrobeItemsFrame, true)
-	g_gui:loadGui("dataS/gui/WardrobeColorsFrame.xml", "WardrobeColorsFrame", wardrobeColorsFrame, true)
-	g_gui:loadGui("dataS/gui/WardrobeOutfitsFrame.xml", "WardrobeOutfitsFrame", wardrobeOutfitsFrame, true)
-	g_gui:loadGui("dataS/gui/WardrobeCharactersFrame.xml", "WardrobeCharactersFrame", wardrobeCharactersFrame, true)
-	g_gui:loadGui("dataS/gui/WardrobeScreen.xml", "WardrobeScreen", g_wardrobeScreen)
+	if Platform.hasWardrobe then
+		local wardrobeItemsFrame = WardrobeItemsFrame.new(nil)
+		local wardrobeColorsFrame = WardrobeColorsFrame.new(nil)
+		local wardrobeOutfitsFrame = WardrobeOutfitsFrame.new(nil)
+		local wardrobeCharactersFrame = WardrobeCharactersFrame.new(nil)
+		g_wardrobeScreen = WardrobeScreen.new(nil, nil, g_messageCenter, g_i18n, g_inputBinding)
+
+		g_gui:loadGui("dataS/gui/WardrobeItemsFrame.xml", "WardrobeItemsFrame", wardrobeItemsFrame, true)
+		g_gui:loadGui("dataS/gui/WardrobeColorsFrame.xml", "WardrobeColorsFrame", wardrobeColorsFrame, true)
+		g_gui:loadGui("dataS/gui/WardrobeOutfitsFrame.xml", "WardrobeOutfitsFrame", wardrobeOutfitsFrame, true)
+		g_gui:loadGui("dataS/gui/WardrobeCharactersFrame.xml", "WardrobeCharactersFrame", wardrobeCharactersFrame, true)
+		g_gui:loadGui("dataS/gui/WardrobeScreen.xml", "WardrobeScreen", g_wardrobeScreen)
+	end
+
 	updateLoadingBarProgress()
-
-	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuMapFrame.xml", "MapFrame", inGameMenuMapFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuPricesFrame.xml", "PricesFrame", inGameMenuPricesFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuVehiclesFrame.xml", "VehiclesFrame", inGameMenuVehiclesFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuFinancesFrame.xml", "FinancesFrame", inGameMenuFinancesFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuStatisticsFrame.xml", "StatisticsFrame", inGameMenuStatisticsFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuAnimalsFrame.xml", "AnimalsFrame", inGameMenuAnimalsFrame, true)
-	else
-		g_gui:loadGui("dataS/gui/InGameMenuMapFrame.xml", "MapFrame", inGameMenuMapFrame, true)
-		g_gui:loadGui("dataS/gui/InGameMenuAIFrame.xml", "AIFrame", inGameMenuAIFrame, true)
-		g_gui:loadGui("dataS/gui/InGameMenuPricesFrame.xml", "PricesFrame", inGameMenuPricesFrame, true)
-		g_gui:loadGui("dataS/gui/InGameMenuVehiclesFrame.xml", "VehiclesFrame", inGameMenuVehiclesFrame, true)
-		g_gui:loadGui("dataS/gui/InGameMenuFinancesFrame.xml", "FinancesFrame", inGameMenuFinancesFrame, true)
-		g_gui:loadGui("dataS/gui/InGameMenuStatisticsFrame.xml", "StatisticsFrame", inGameMenuStatisticsFrame, true)
-		g_gui:loadGui("dataS/gui/InGameMenuAnimalsFrame.xml", "AnimalsFrame", inGameMenuAnimalsFrame, true)
-	end
-
+	g_gui:loadGui("dataS/gui/InGameMenuMapFrame.xml", "MapFrame", inGameMenuMapFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuAIFrame.xml", "AIFrame", inGameMenuAIFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuPricesFrame.xml", "PricesFrame", inGameMenuPricesFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuVehiclesFrame.xml", "VehiclesFrame", inGameMenuVehiclesFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuFinancesFrame.xml", "FinancesFrame", inGameMenuFinancesFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuStatisticsFrame.xml", "StatisticsFrame", inGameMenuStatisticsFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuAnimalsFrame.xml", "AnimalsFrame", inGameMenuAnimalsFrame, true)
 	g_gui:loadGui("dataS/gui/InGameMenuContractsFrame.xml", "ContractsFrame", inGameMenuContractsFrame, true)
 	g_gui:loadGui("dataS/gui/InGameMenuProductionFrame.xml", "ProductionFrame", inGameMenuProductionFrame, true)
 	g_gui:loadGui("dataS/gui/InGameMenuWeatherFrame.xml", "WeatherFrame", inGameMenuWeatherFrame, true)
 	g_gui:loadGui("dataS/gui/InGameMenuCalendarFrame.xml", "CalendarFrame", inGameMenuCalendarFrame, true)
 	g_gui:loadGui("dataS/gui/InGameMenuMultiplayerFarmsFrame.xml", "MultiplayerFarmsFrame", inGameMenuMultiplayerFarmsFrame, true)
 	g_gui:loadGui("dataS/gui/InGameMenuMultiplayerUsersFrame.xml", "StatisticsFrame", inGameMenuMultiplayerUsersFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuHelpFrame.xml", "HelpFrame", inGameMenuHelpFrame, true)
+	g_gui:loadGui("dataS/gui/InGameMenuTourFrame.xml", "TourFrame", inGameMenuTourFrame, true)
 
 	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuHelpFrame.xml", "HelpFrame", inGameMenuHelpFrame, true)
-	else
-		g_gui:loadGui("dataS/gui/InGameMenuHelpFrame.xml", "HelpFrame", inGameMenuHelpFrame, true)
-	end
-
-	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuMainFrame.xml", "MainFrame", inGameMenuMainFrame, true)
+		g_gui:loadGui("dataS/gui/InGameMenuMainFrame.xml", "MainFrame", inGameMenuMainFrame, true)
+		g_gui:loadGui("dataS/gui/InGameMenuMobileSettingsFrame.xml", "InGameMenuMobileSettingsFrame", inGameMenuMobileSettingsFrame, true)
 	end
 
 	g_gui:loadGui("dataS/gui/InGameMenuGeneralSettingsFrame.xml", "GeneralSettingsFrame", inGameMenuGeneralSettingsFrame, true)
 	g_gui:loadGui("dataS/gui/InGameMenuGameSettingsFrame.xml", "GameSettingsFrame", inGameMenuGameSettingsFrame, true)
-
-	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/InGameMenuMobileSettingsFrame.xml", "InGameMenuMobileSettingsFrame", inGameMenuMobileSettingsFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/InGameMenu.xml", "InGameMenu", inGameMenu)
-	else
-		g_gui:loadGui("dataS/gui/InGameMenu.xml", "InGameMenu", inGameMenu)
-	end
-
-	if Platform.isMobile then
-		g_gui:loadGui("dataS/gui_mobile/ShopCategoriesFrame.xml", "ShopCategoriesFrame", shopCategoriesFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/ShopItemsFrame.xml", "ShopItemsFrame", shopItemsFrame, true)
-		g_gui:loadGui("dataS/gui_mobile/ShopMenu.xml", "ShopMenu", shopMenu)
-	else
-		g_gui:loadGui("dataS/gui/ShopCategoriesFrame.xml", "ShopCategoriesFrame", shopCategoriesFrame, true)
-		g_gui:loadGui("dataS/gui/ShopItemsFrame.xml", "ShopItemsFrame", shopItemsFrame, true)
-		g_gui:loadGui("dataS/gui/ShopOthersFrame.xml", "ShopOthersFrame", shopOthersFrame, true)
-		g_gui:loadGui("dataS/gui/ShopMenu.xml", "ShopMenu", shopMenu)
-	end
-
+	g_gui:loadGui("dataS/gui/InGameMenu.xml", "InGameMenu", inGameMenu)
+	g_gui:loadGui("dataS/gui/ShopCategoriesFrame.xml", "ShopCategoriesFrame", shopCategoriesFrame, true)
+	g_gui:loadGui("dataS/gui/ShopItemsFrame.xml", "ShopItemsFrame", shopItemsFrame, true)
+	g_gui:loadGui("dataS/gui/ShopOthersFrame.xml", "ShopOthersFrame", shopOthersFrame, true)
+	g_gui:loadGui("dataS/gui/ShopMenu.xml", "ShopMenu", shopMenu)
 	updateLoadingBarProgress()
 	g_gui:loadGui("dataS/gui/dialogs/MessageDialog.xml", "MessageDialog", g_messageDialog)
 	g_gui:loadGui("dataS/gui/dialogs/YesNoDialog.xml", "YesNoDialog", g_yesNoDialog)
@@ -1036,10 +908,6 @@ function init(args)
 	g_gui:loadGui("dataS/gui/dialogs/TransferMoneyDialog.xml", "TransferMoneyDialog", transferMoneyDialog)
 	g_gui:loadGui("dataS/gui/dialogs/SavegameConflictDialog.xml", "SavegameConflictDialog", g_savegameConflictDialog)
 
-	if Platform.supportsMods then
-		g_gui:loadGui("dataS/gui/dialogs/VoteDialog.xml", "VoteDialog", voteDialog)
-	end
-
 	g_menuMusic = createStreamedSample("menuMusic", true)
 
 	loadStreamedSample(g_menuMusic, "data/music/menu.ogg")
@@ -1058,7 +926,10 @@ function init(args)
 
 	g_soundMixer:addVolumeChangedListener(AudioGroup.MENU_MUSIC, func, nil)
 	updateLoadingBarProgress(true)
-	g_gamingStationManager:initBrand()
+
+	if g_kioskMode ~= nil then
+		g_kioskMode:init()
+	end
 
 	if Platform.showStartupScreen and g_skipStartupScreen == false then
 		g_gui:showGui("StartupScreen")
@@ -1097,33 +968,7 @@ function init(args)
 		RestartManager:handleRestart()
 	end
 
-	addConsoleCommand("gsGuiDrawHelper", "", "drawGuiHelper", SystemConsoleCommands)
-	addConsoleCommand("gsI3DCacheClean", "Removes all cached i3d files to ensure the latest versions are loaded from disk", "cleanI3DCache", SystemConsoleCommands)
-	addConsoleCommand("gsSetHighQuality", "Incease draw and LOD distances of foliage, terrain and objects", "setHighQuality", SystemConsoleCommands)
-	addConsoleCommand("gsGuiSafeFrameShow", "", "showSafeFrame", SystemConsoleCommands)
-	addConsoleCommand("gsGuiDebug", "", "toggleUiDebug", SystemConsoleCommands)
-	addConsoleCommand("gsRenderColorAndDepthScreenShot", "", "renderColorAndDepthScreenShot", SystemConsoleCommands)
-
-	if g_addCheatCommands then
-		addConsoleCommand("gsRenderingDebugMode", "", "setDebugRenderingMode", SystemConsoleCommands)
-		addConsoleCommand("gsInputDrawRaw", "", "drawRawInput", SystemConsoleCommands)
-		addConsoleCommand("gsTestForceFeedback", "", "testForceFeedback", SystemConsoleCommands)
-		addConsoleCommand("gsTextureStreamingSetBudget", "", "setTextureStreamingBudget", SystemConsoleCommands)
-	end
-
-	if g_addTestCommands then
-		addConsoleCommand("gsLanguageSet", "Set active language", "changeLanguage", SystemConsoleCommands)
-		addConsoleCommand("gsGuiReloadCurrent", "", "reloadCurrentGui", SystemConsoleCommands)
-
-		if not GS_IS_CONSOLE_VERSION and not GS_IS_MOBILE_VERSION then
-			addConsoleCommand("gsSuspendApp", "", "suspendApp", SystemConsoleCommands)
-		end
-
-		addConsoleCommand("gsInputFuzz", "", "fuzzInput", SystemConsoleCommands)
-		addConsoleCommand("gsUpdateDownloadFinished", "", "updateDownloadFinished", SystemConsoleCommands)
-		addConsoleCommand("gsRenderingFidelityFxSRSet", "", "setFidelityFxSR", SystemConsoleCommands)
-		addConsoleCommand("gsSoftRestart", "", "softRestart", SystemConsoleCommands)
-	end
+	SystemConsoleCommands.init()
 
 	if g_dedicatedServer ~= nil then
 		g_dedicatedServer:start()
@@ -1155,6 +1000,10 @@ function init(args)
 		if eventAdded then
 			g_inputBinding:setActionEventTextVisibility(eventId, false)
 		end
+	end
+
+	if Platform.supportsMods then
+		postInitMods()
 	end
 
 	g_logFilePrefixTimestamp = true
@@ -1221,7 +1070,6 @@ function update(dt)
 	end
 
 	g_debugManager:update(dt)
-	g_benchmark:update(dt)
 	g_lifetimeStats:update(dt)
 	g_soundMixer:update(dt)
 	g_asyncTaskManager:update(dt)
@@ -1277,7 +1125,11 @@ function update(dt)
 	end
 
 	g_soundManager:update(dt)
-	g_gamingStationManager:update(dt)
+
+	if g_kioskMode ~= nil then
+		g_kioskMode:update(dt)
+	end
+
 	Input.updateFrameEnd()
 
 	if GS_PLATFORM_PC and g_dedicatedServer == nil then
@@ -1293,11 +1145,10 @@ function update(dt)
 				text = g_i18n:getText("ui_updateDownloadFinishedText")
 			})
 		end
+	end
 
-		if g_isPresentationVersionNextLanguageTimer ~= nil and g_isPresentationVersionNextLanguageTimer < g_time then
-			RestartManager:setStartScreen(RestartManager.START_SCREEN_MAIN)
-			restartApplication(true, "")
-		end
+	if g_pendingRestartData ~= nil then
+		performRestart()
 	end
 end
 
@@ -1318,29 +1169,8 @@ function draw()
 		g_currentMission:draw()
 	end
 
-	if g_isPresentationVersionNextLanguageIndex ~= nil then
-		setTextAlignment(RenderText.ALIGN_CENTER)
-		setTextBold(true)
-		setTextColor(0, 0, 0, 1)
-
-		local timeLeft = math.ceil((g_isPresentationVersionNextLanguageTimer - g_time) / 1000)
-
-		renderText(0.5 + 2 / g_screenWidth, 0.75 - 1 / g_screenHeight, 0.025, string.format("Changing Language.\nNew language after restart will be '%s'. \nRestarting in %d seconds...", getLanguageName(g_isPresentationVersionNextLanguageIndex), timeLeft))
-		setTextColor(1, 1, 1, 1)
-		renderText(0.5, 0.75, 0.025, string.format("Changing Language.\nNew language after restart will be '%s'. \nRestarting in %d seconds...", getLanguageName(g_isPresentationVersionNextLanguageIndex), timeLeft))
-		setTextAlignment(RenderText.ALIGN_LEFT)
-		setTextBold(false)
-	end
-
-	if g_showWatermark then
-		setTextAlignment(RenderText.ALIGN_CENTER)
-		setTextBold(true)
-		setTextColor(1, 1, 1, 0.5)
-		renderText(0.5, 0.75, getCorrectTextSize(0.075), "INTERNAL USE ONLY")
-		renderText(0.5, 0.73, getCorrectTextSize(0.03), "Copyright GIANTS Software GmbH")
-		setTextColor(1, 1, 1, 1)
-		setTextBold(false)
-		setTextAlignment(RenderText.ALIGN_LEFT)
+	if g_kioskMode ~= nil then
+		g_kioskMode:draw()
 	end
 
 	if g_isDevelopmentConsoleScriptModTesting then
@@ -1510,6 +1340,8 @@ function draw()
 			renderText(0.025, yCoord, 0.025, "No gamepads found")
 		end
 	end
+
+	g_adsSystem:draw()
 end
 
 function postAnimationUpdate(dt)
@@ -1541,6 +1373,7 @@ function cleanUp()
 	g_createGameScreen:removePortMapping()
 	g_inputDisplayManager:delete()
 	g_gui:delete()
+	g_adsSystem:delete()
 	delete(g_menuMusic)
 	delete(g_savegameXML)
 	g_lifetimeStats:save()
@@ -1561,22 +1394,7 @@ function cleanUp()
 		setFileLogPrefixTimestamp(g_logFilePrefixTimestamp)
 	end
 
-	removeConsoleCommand("gsGuiDrawHelper")
-	removeConsoleCommand("gsI3DCacheClean")
-	removeConsoleCommand("gsSetHighQuality")
-	removeConsoleCommand("gsGuiSafeFrameShow")
-	removeConsoleCommand("gsGuiDebug")
-	removeConsoleCommand("gsRenderColorAndDepthScreenShot")
-	removeConsoleCommand("gsRenderingDebugMode")
-	removeConsoleCommand("gsInputDrawRaw")
-	removeConsoleCommand("gsTestForceFeedback")
-	removeConsoleCommand("gsLanguageSet")
-	removeConsoleCommand("gsGuiReloadCurrent")
-	removeConsoleCommand("gsSuspendApp")
-	removeConsoleCommand("gsInputFuzz")
-	removeConsoleCommand("gsUpdateDownloadFinished")
-	removeConsoleCommand("gsRenderingFidelityFxSRSet")
-	removeConsoleCommand("gsSoftRestart")
+	SystemConsoleCommands.delete()
 end
 
 function doExit()
@@ -1586,16 +1404,6 @@ function doExit()
 end
 
 function doRestart(restartProcess, args)
-	cleanUp()
-
-	local restartType = ""
-
-	if not restartProcess then
-		restartType = "(soft restart)"
-	end
-
-	print("Application restart " .. restartType)
-
 	if g_invitePlatformServerId ~= nil then
 		local userName = base64Encode(g_inviteRequestUserName)
 		args = args .. "-invitePlatformServerId " .. g_invitePlatformServerId .. " -inviteRequestUserName " .. userName
@@ -1609,9 +1417,29 @@ function doRestart(restartProcess, args)
 		end
 	end
 
-	g_isRestarting = true
+	g_pendingRestartData = {
+		restartProcess = restartProcess,
+		args = args
+	}
+end
 
-	restartApplication(restartProcess, args)
+function performRestart()
+	if g_pendingRestartData == nil then
+		return
+	end
+
+	local data = g_pendingRestartData
+
+	cleanUp()
+
+	local restartType = ""
+
+	if not data.restartProcess then
+		restartType = "(soft restart)"
+	end
+
+	print("Application restart " .. restartType)
+	restartApplication(data.restartProcess, data.args)
 end
 
 function loadLanguageSettings(xmlFile)
@@ -1765,47 +1593,6 @@ function registerGlobalActionEvents(inputManager)
 	inputManager:setActionEventTextVisibility(eventId, false)
 end
 
-function loadPresentationSettings(file)
-	if fileExists(file) then
-		local xmlFile = loadXMLFile("settingsFile", file)
-		g_isPresentationVersion = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.active"), false)
-		g_isPresentationVersionLogoEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.logo"), false)
-		g_isPresentationVersionShopEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.shop"), false)
-		g_isPresentationVersionDlcEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.dlcs"), false)
-		g_isPresentationVersionAllMapsEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.allMaps"), true)
-		g_isPresentationVersionUSMapEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.usMap"), false)
-		g_isPresentationVersionFRMapEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.frMap"), false)
-		g_isPresentationVersionAlpineMapEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.alpineMap"), false)
-
-		if not g_isPresentationVersionUSMapEnabled and not g_isPresentationVersionAlpineMapEnabled then
-			g_isPresentationVersionFRMapEnabled = true
-		end
-
-		g_isPresentationVersionSpecialStore = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.specialStore"), false)
-
-		if g_isPresentationVersionSpecialStore then
-			g_isPresentationVersionSpecialStorePath = getXMLString(xmlFile, "presentationSettings.specialStore#path") or "dataS/storeItems_presentationVersion.xml"
-		end
-
-		g_presentationVersionDifficulty = getXMLInt(xmlFile, "presentationSettings.difficulty")
-		g_isPresentationVersionAIEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.ai"), false)
-		g_isPresentationVersionHideMenuButtons = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.limitedMainMenu"), false)
-		g_isPresentationVersionUseReloadButton = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.reloadButton"), false)
-		g_showWatermark = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.waterMark"), false)
-
-		if hasXMLProperty(xmlFile, "presentationSettings.playtimeResetDuration") then
-			g_isPresentationVersionPlaytimeCountdown = getXMLFloat(xmlFile, "presentationSettings.playtimeResetDuration")
-		end
-
-		g_isPresentationVersionAlwaysDay = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.alwaysDay"), false)
-		g_isPresentationVersionShowDrivingHelp = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.drivingHelp"), false)
-		g_isPresentationVersionMenuDisabled = not Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.menuActive"), true)
-		g_isPresentationVersionIsTourEnabled = Utils.getNoNil(getXMLBool(xmlFile, "presentationSettings.isTourEnabled"), false)
-
-		delete(xmlFile)
-	end
-end
-
 function updateAspectRatio(aspect)
 	local referenceAspect = g_referenceScreenWidth / g_referenceScreenHeight
 
@@ -1818,417 +1605,49 @@ function updateAspectRatio(aspect)
 	end
 end
 
-SystemConsoleCommands = {
-	drawGuiHelper = function (self, steps)
-		steps = tonumber(steps)
+g_postAnimationUpdateCallbacks = {}
 
-		if steps ~= nil then
-			g_guiHelperSteps = math.max(steps, 0.001)
-			g_drawGuiHelper = true
-		else
-			g_guiHelperSteps = 0.1
-			g_drawGuiHelper = false
-		end
+function addPostAnimationCallback(callbackFunc, callbackTarget, callbackArguments)
+	local callbackData = {
+		callbackFunc = callbackFunc,
+		callbackTarget = callbackTarget,
+		callbackArguments = callbackArguments
+	}
 
-		if g_drawGuiHelper then
-			return "DrawGuiHelper = true (step = " .. g_guiHelperSteps .. ")"
-		else
-			return "DrawGuiHelper = false"
-		end
-	end,
-	showSafeFrame = function (self)
-		g_showSafeFrame = not g_showSafeFrame
+	table.insert(g_postAnimationUpdateCallbacks, callbackData)
 
-		return string.format("showSafeFrame = %s", g_showSafeFrame)
-	end,
-	drawRawInput = function (self)
-		g_showRawInput = not g_showRawInput
+	return callbackData
+end
 
-		return string.format("showRawInput = %s", g_showRawInput)
-	end,
-	testForceFeedback = function (self)
-		if getHasGamepadAxisForceFeedback(0, 0) then
-			co = coroutine.create(function ()
-				for i = 1, 0, -0.2 do
-					setGamepadAxisForceFeedback(0, 0, 0.8, i)
-					print(string.format("TestForceFeedback %1.2f", i))
-					usleep(500000)
-					setGamepadAxisForceFeedback(0, 0, 0.8, -i)
-					usleep(500000)
-				end
-
-				setGamepadAxisForceFeedback(0, 0, 0, 0)
-			end)
-
-			coroutine.resume(co)
-		else
-			print("Force feedback not available")
-		end
-	end,
-	setTextureStreamingBudget = function (self, sizeInMB)
-		sizeInMB = tonumber(sizeInMB)
-
-		if sizeInMB == nil then
-			setTextureStreamingMemoryBudget(0)
-
-			return "Reset Texture Streaming Memory Budget to default"
-		else
-			setTextureStreamingMemoryBudget(sizeInMB)
-
-			return "Set Texture Streaming Memory Budget to " .. sizeInMB .. " MB"
-		end
-	end,
-	cleanI3DCache = function (self, verbose)
-		verbose = Utils.stringToBoolean(verbose)
-
-		g_i3DManager:clearEntireSharedI3DFileCache(verbose)
-
-		local ret = "I3D cache cleaned."
-
-		if not verbose then
-			ret = ret .. " Use 'true' parameter for verbose output"
-		end
-
-		return ret
-	end,
-	setHighQuality = function (self, coeffOverride)
-		local minValue = 1e-06
-		local maxValue = 10
-		local default = 5
-		local usage = string.format("Usage 'gsSetHighQuality <factor (default=%d)>'", default)
-		local coeff = MathUtil.clamp(tonumber(coeffOverride) or default, minValue, maxValue)
-
-		setViewDistanceCoeff(coeff)
-		setLODDistanceCoeff(coeff)
-		setTerrainLODDistanceCoeff(coeff)
-		setFoliageViewDistanceCoeff(math.max(1, coeff * 0.5))
-
-		return string.format("High quality activated, used factor=%s.%s", MathUtil.round(coeff, 8), coeffOverride == nil and " " .. usage or "")
-	end,
-	renderColorAndDepthScreenShot = function (self, inWidth, inHeight)
-		local width, height = nil
-
-		if inWidth == nil or inHeight == nil then
-			local curScrMode = getScreenMode()
-			width, height = getScreenModeInfo(curScrMode)
-		else
-			width = tonumber(inWidth)
-			height = tonumber(inHeight)
-		end
-
-		setDebugRenderingMode(DebugRendering.NONE)
-
-		local strDate = getDate("%Y_%m_%d_%H_%M_%S") .. ".hdr"
-		local colorScreenShot = g_screenshotsDirectory .. "fsScreen_color_" .. strDate
-
-		print("Saving color screenshot: " .. colorScreenShot)
-		renderScreenshot(colorScreenShot, width, height, width / height, "raw_hdr", 1, 0, 0, 0, 0, 0, 15, false, 4)
-		setDebugRenderingMode(DebugRendering.DEPTH)
-
-		local depthScreenShot = g_screenshotsDirectory .. "fsScreen_depth_" .. strDate
-
-		print("Saving depth screenshot: " .. depthScreenShot)
-		renderScreenshot(depthScreenShot, width, height, width / height, "raw_hdr", 1, 0, 0, 0, 0, 0, 15, false, 0)
-		setDebugRenderingMode(DebugRendering.NONE)
-	end,
-	setDebugRenderingMode = function (self, newMode)
-		if newMode == nil or newMode == "" then
-			setDebugRenderingMode(DebugRendering.NONE)
-
-			return "Possible modes: alpha, parallax, albedo, normals, smoothness, metalness, ambientOcclusion (ao), bakedAmbientOcclusion (bakedAO), screenSpaceAmbientOcclusion(ssao), specularOcclusion, diffuseLighting, specularLighting, indirectLighting, lightGrid, shadowSplits, depth, mipLevels, triangleDensity, terrainSlopes, motionVectors, vrs"
-		end
-
-		newMode = newMode:lower()
-		local modeDescs = {
-			alpha = {
-				DebugRendering.ALPHA,
-				"alpha"
-			},
-			parallax = {
-				DebugRendering.PARALLAX,
-				"parallax"
-			},
-			albedo = {
-				DebugRendering.ALBEDO,
-				"albedo"
-			},
-			normals = {
-				DebugRendering.NORMALS,
-				"normals"
-			},
-			smoothness = {
-				DebugRendering.SMOOTHNESS,
-				"smoothness"
-			},
-			metalness = {
-				DebugRendering.METALNESS,
-				"metalness"
-			},
-			ambient_occlusion = {
-				DebugRendering.AMBIENT_OCCLUSION,
-				"ambientOcclusion"
-			},
-			ambientocclusion = {
-				DebugRendering.AMBIENT_OCCLUSION,
-				"ambientOcclusion"
-			},
-			ao = {
-				DebugRendering.AMBIENT_OCCLUSION,
-				"ambientOcclusion"
-			},
-			baked_ambient_occlusion = {
-				DebugRendering.BAKED_AMBIENT_OCCLUSION,
-				"bakedAmbientOcclusion"
-			},
-			bakedambientocclusion = {
-				DebugRendering.BAKED_AMBIENT_OCCLUSION,
-				"bakedAmbientOcclusion"
-			},
-			bakedao = {
-				DebugRendering.BAKED_AMBIENT_OCCLUSION,
-				"bakedAmbientOcclusion"
-			},
-			screenspaceambientocclusion = {
-				DebugRendering.SCREEN_SPACE_AMBIENT_OCCLUSION,
-				"screenSpaceAmbientOcclusion"
-			},
-			screen_space_ambient_occlusion = {
-				DebugRendering.SCREEN_SPACE_AMBIENT_OCCLUSION,
-				"screenSpaceAmbientOcclusion"
-			},
-			ssao = {
-				DebugRendering.SCREEN_SPACE_AMBIENT_OCCLUSION,
-				"screenSpaceAmbientOcclusion"
-			},
-			specular_occlusion = {
-				DebugRendering.SPECULAR_OCCLUSION,
-				"specularOcclusion"
-			},
-			specularocclusion = {
-				DebugRendering.SPECULAR_OCCLUSION,
-				"specularOcclusion"
-			},
-			diffuse_lighting = {
-				DebugRendering.DIFFUSE_LIGHTING,
-				"diffuseLighting"
-			},
-			diffuselighting = {
-				DebugRendering.DIFFUSE_LIGHTING,
-				"diffuseLighting"
-			},
-			diffuse = {
-				DebugRendering.DIFFUSE_LIGHTING,
-				"diffuseLighting"
-			},
-			specular_lighting = {
-				DebugRendering.SPECULAR_LIGHTING,
-				"specularLighting"
-			},
-			specularlighting = {
-				DebugRendering.SPECULAR_LIGHTING,
-				"specularLighting"
-			},
-			specular = {
-				DebugRendering.SPECULAR_LIGHTING,
-				"specularLighting"
-			},
-			indirect_lighting = {
-				DebugRendering.INDIRECT_LIGHTING,
-				"indirectLighting"
-			},
-			indirectlighting = {
-				DebugRendering.INDIRECT_LIGHTING,
-				"indirectLighting"
-			},
-			indirect = {
-				DebugRendering.INDIRECT_LIGHTING,
-				"indirectLighting"
-			},
-			light_grid = {
-				DebugRendering.LIGHT_GRID,
-				"lightGrid"
-			},
-			lightgrid = {
-				DebugRendering.LIGHT_GRID,
-				"lightGrid"
-			},
-			shadow_splits = {
-				DebugRendering.SHADOW_SPLITS,
-				"shadowSplits"
-			},
-			shadowsplits = {
-				DebugRendering.SHADOW_SPLITS,
-				"shadowSplits"
-			},
-			depth = {
-				DebugRendering.DEPTH_SCALED,
-				"depth"
-			},
-			miplevels = {
-				DebugRendering.MIP_LEVELS,
-				"mipLevels"
-			},
-			mips = {
-				DebugRendering.MIP_LEVELS,
-				"mipLevels"
-			},
-			triangledensity = {
-				DebugRendering.TRIANGLE_DENSITY,
-				"triangleDensity"
-			},
-			terrainslopes = {
-				DebugRendering.TERRAIN_SLOPES,
-				"terrainSlopes"
-			},
-			motionvectors = {
-				DebugRendering.MOTION_VECTORS,
-				"motionVectors"
-			},
-			vrs = {
-				DebugRendering.SHADING_RATE,
-				"vrs"
-			},
-			custom1 = {
-				DebugRendering.CUSTOM1,
-				"custom1"
-			},
-			custom2 = {
-				DebugRendering.CUSTOM2,
-				"custom2"
-			}
-		}
-		local modeDesc = modeDescs[newMode]
-		local modeName = "none"
-		local mode = DebugRendering.NONE
-
-		if modeDesc ~= nil then
-			mode = modeDesc[1]
-			modeName = modeDesc[2]
-		end
-
-		setDebugRenderingMode(mode)
-
-		return "Changed debug rendering to " .. modeName
-	end,
-	changeLanguage = function (self, newCode)
-		local numLanguages = getNumOfLanguages()
-		local newLang = -1
-
-		if newCode == nil then
-			local newIndex = g_settingsLanguageGUI + 1
-
-			if table.getn(g_availableLanguagesTable) <= newIndex then
-				newIndex = 0
-			end
-
-			newLang = g_availableLanguagesTable[newIndex + 1]
-		else
-			for i = 0, numLanguages - 1 do
-				if getLanguageCode(i) == newCode then
-					newLang = i
-
-					break
-				end
-			end
-
-			if newLang < 0 then
-				return "Invalid language parameter " .. tostring(newCode)
-			end
-		end
-
-		if setLanguage(newLang) then
-			local xmlFile = XMLFile.load("SettingsFile", "dataS/settings.xml")
-
-			loadLanguageSettings(xmlFile)
-			xmlFile:delete()
-			g_i18n:load()
-
-			return string.format("Changed language to '%s'. Note that many texts are loaded on game start and need a reboot to be updated.", getLanguageCode(newLang))
-		end
-
-		return "Invalid language parameter " .. tostring(newCode)
-	end,
-	reloadCurrentGui = function (self)
-		if g_gui.currentGuiName ~= nil and g_gui.currentGuiName ~= "" then
-			local guiName = g_gui.currentGuiName
-			local guiController = g_gui.currentGui.target
-			local class = ClassUtil.getClassObject(guiName)
-			g_dummyGui = nil
-
-			if class.createFromExistingGui ~= nil then
-				g_dummyGui = class.createFromExistingGui(guiController)
-			else
-				g_dummyGui = class.new()
-			end
-
-			g_gui:showGui("")
-			g_i18n:load()
-			g_gui:loadProfiles("dataS/guiProfiles.xml")
-			g_gui:loadGui("dataS/gui/" .. guiName .. ".xml", guiName, g_dummyGui)
-			g_gui:showGui(guiName)
-		end
-	end,
-	toggleUiDebug = function (self)
-		if g_uiDebugEnabled then
-			g_uiDebugEnabled = false
-
-			return "UI Debug disabled"
-		else
-			g_uiDebugEnabled = true
-
-			return "UI Debug enabled"
-		end
-	end,
-	suspendApp = function (self)
-		if g_appIsSuspended then
-			notifyAppResumed()
-		else
-			notifyAppSuspended()
-		end
-
-		return "App Suspended: " .. tostring(g_appIsSuspended)
-	end,
-	fuzzInput = function (self)
-		beginInputFuzzing()
-	end,
-	softRestart = function (self)
-		RestartManager:setStartScreen(RestartManager.START_SCREEN_MAIN)
-		doRestart(false, "")
-	end,
-	updateDownloadFinished = function (self)
-		g_updateDownloadFinished = true
-
-		log("g_updateDownloadFinished = true")
-	end,
-	setFidelityFxSR = function (self, newQuality)
-		local usage = "Usage: gsRenderingFidelityFxSRSet <qualityNumber>"
-		newQuality = tonumber(newQuality)
-		local currentQuality = getFidelityFxSRQuality()
-
-		print(string.format("current setting: %s (%d)", getFidelityFxSRQualityName(currentQuality), currentQuality))
-		print("Available settings:")
-
-		for i = 0, FidelityFxSRQuality.NUM - 1 do
-			local name = getFidelityFxSRQualityName(i)
-
-			print(string.format("    %d | %s | supported=%s", i, name, getSupportsFidelityFxSRQuality(i)))
-		end
-
-		if newQuality ~= nil then
-			if newQuality >= 0 and newQuality < FidelityFxSRQuality.NUM and getSupportsFidelityFxSRQuality(newQuality) then
-				setFidelityFxSRQuality(newQuality)
-			else
-				return string.format("Error: Given quality '%d' not supported\n%s", newQuality, usage)
-			end
-
-			local effectiveQuality = getFidelityFxSRQuality()
-
-			return string.format("new setting: %s (%d)", getFidelityFxSRQualityName(effectiveQuality), effectiveQuality)
-		else
-			return usage
+function removePostAnimationCallback(callbackDataToRemove)
+	for i, callbackData in pairs(g_postAnimationUpdateCallbacks) do
+		if callbackData == callbackDataToRemove then
+			table.remove(g_postAnimationUpdateCallbacks, i)
 		end
 	end
-}
+end
+
+function updateLoadingBarProgress(isLast)
+	g_curNumLoadingBarStep = g_curNumLoadingBarStep + 1
+	local ratio = g_curNumLoadingBarStep / g_maxNumLoadingBarSteps
+
+	if isLast and ratio < 1 or ratio > 1 then
+		print("Invalid g_maxNumLoadingBarSteps. Last step number is " .. g_curNumLoadingBarStep)
+	end
+
+	updateLoadingBar(ratio)
+end
+
+function onShowDeepLinkingErrorMsg()
+	g_deepLinkingInfo = nil
+
+	g_gui:showConnectionFailedDialog({
+		text = g_i18n:getText("ui_failedToConnectToGame"),
+		callback = OnInGameMenuMenu
+	})
+
+	g_showDeeplinkingFailedMessage = false
+end
 
 function startDevServer(savegameId, uniqueUserId)
 	if StartParams.getIsSet("restart") then
@@ -2335,8 +1754,3 @@ function connectToServer(platformServerId)
 		g_multiplayerScreen:onClickJoinGame()
 	end
 end
-
-source("dataS/scripts/debug/ConsoleSimulator.lua")
-source("dataS/scripts/debug/MobileSimulator.lua")
-source("dataS/scripts/debug/StadiaSimulator.lua")
-source("dataS/scripts/debug/MemoryLeaks.lua")

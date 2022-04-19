@@ -489,7 +489,7 @@ end
 function VehicleMotor:getDrivingDirection()
 	if self.directionChangeMode == VehicleMotor.DIRECTION_CHANGE_MODE_MANUAL then
 		return self.currentDirection
-	elseif self.vehicle:getLastSpeed() > 1 then
+	elseif self.vehicle:getLastSpeed() > 0.95 then
 		return self.vehicle.movingDirection
 	end
 

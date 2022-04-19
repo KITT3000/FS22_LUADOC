@@ -40,26 +40,15 @@ function FSDensityMapUtil.cutFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 		local plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.PLOW_LEVEL)
 		local sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_LEVEL)
 		local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
-		local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
-		local stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.STUBBLE_SHRED)
-		local rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.ROLLER_LEVEL)
 		functionData = {
+			fruitValueModifiers = {},
+			fruitFilters = {},
+			sownType = fieldGroundSystem:getFieldGroundValue(FieldGroundType.SOWN),
 			plowLevelModifier = DensityMapModifier.new(plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels, terrainRootNode),
 			plowLevelFilter = DensityMapFilter.new(plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels, terrainRootNode)
 		}
 
 		functionData.plowLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
-
-		functionData.rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
-		functionData.rollerLevelFilter = DensityMapFilter.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
-
-		functionData.rollerLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
-
-		functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
-		functionData.stubbleShredModifier = DensityMapModifier.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode)
-		functionData.stubbleShredFilter = DensityMapFilter.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode)
-
-		functionData.stubbleShredFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 1)
 
 		functionData.groundTypeFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels, terrainRootNode)
 
@@ -68,9 +57,28 @@ function FSDensityMapUtil.cutFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 		functionData.sprayLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
 		functionData.sprayLevelModifier = DensityMapModifier.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
 		functionData.groundTypeModifier = DensityMapModifier.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels, terrainRootNode)
-		functionData.fruitValueModifiers = {}
-		functionData.fruitFilters = {}
-		functionData.sownType = fieldGroundSystem:getFieldGroundValue(FieldGroundType.SOWN)
+
+		if Platform.gameplay.useRolling then
+			local rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.ROLLER_LEVEL)
+			functionData.rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
+			functionData.rollerLevelFilter = DensityMapFilter.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
+
+			functionData.rollerLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
+		end
+
+		if Platform.gameplay.useLimeCounter then
+			local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
+			functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+		end
+
+		if Platform.gameplay.useStubbleShred then
+			local stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.STUBBLE_SHRED)
+			functionData.stubbleShredModifier = DensityMapModifier.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode)
+			functionData.stubbleShredFilter = DensityMapFilter.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode)
+
+			functionData.stubbleShredFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 1)
+		end
+
 		FSDensityMapUtil.functionCache.cutFruitArea = functionData
 	end
 
@@ -89,8 +97,6 @@ function FSDensityMapUtil.cutFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 	local sprayLevelModifier = functionData.sprayLevelModifier
 	local plowLevelModifier = functionData.plowLevelModifier
 	local plowLevelFilter = functionData.plowLevelFilter
-	local rollerLevelModifier = functionData.rollerLevelModifier
-	local rollerLevelFilter = functionData.rollerLevelFilter
 	local groundTypeModifier = functionData.groundTypeModifier
 	local sprayLevelMaxValue = functionData.sprayLevelMaxValue
 	local fruitValueModifier = functionData.fruitValueModifiers[fruitIndex]
@@ -156,13 +162,16 @@ function FSDensityMapUtil.cutFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 		plowLevelModifier:executeAdd(-1, fruitFilter)
 	end
 
-	if desc.needsRolling then
+	if desc.needsRolling and Platform.gameplay.useRolling then
+		local rollerLevelModifier = functionData.rollerLevelModifier
+		local rollerLevelFilter = functionData.rollerLevelFilter
+
 		rollerLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
 		_, rollerTotalDelta, _ = rollerLevelModifier:executeGet(fruitFilter, rollerLevelFilter)
 	end
 
-	if desc.consumesLime and missionInfo.limeRequired then
+	if desc.consumesLime and missionInfo.limeRequired and Platform.gameplay.useLimeCounter then
 		local limeLevelModifier = functionData.limeLevelModifier
 
 		limeLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
@@ -223,13 +232,13 @@ function FSDensityMapUtil.cutFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 			plowFactor = 1
 		end
 
-		if desc.needsRolling then
+		if desc.needsRolling and Platform.gameplay.useRolling then
 			rollerFactor = math.abs(rollerTotalDelta) / numPixels
 		else
 			rollerFactor = 1
 		end
 
-		if desc.growthRequiresLime and missionInfo.limeRequired then
+		if desc.growthRequiresLime and missionInfo.limeRequired and Platform.gameplay.useLimeCounter then
 			limeFactor = math.abs(limeTotalDelta) / numPixels
 		else
 			limeFactor = 1
@@ -2311,6 +2320,10 @@ function FSDensityMapUtil.updateMowerArea(fruitType, startWorldX, startWorldZ, w
 end
 
 function FSDensityMapUtil.getStubbleFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+	if not Platform.gameplay.useStubbleShred then
+		return 1
+	end
+
 	local functionData = FSDensityMapUtil.functionCache.getStubbleFactor
 
 	if functionData == nil then
@@ -2337,6 +2350,10 @@ function FSDensityMapUtil.getStubbleFactor(startWorldX, startWorldZ, widthWorldX
 end
 
 function FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+	if not Platform.gameplay.useRolling then
+		return 1
+	end
+
 	local functionData = FSDensityMapUtil.functionCache.getRollerFactor
 
 	if functionData == nil then
@@ -2658,7 +2675,7 @@ function FSDensityMapUtil.updateDirectSowingArea(fruitIndex, startWorldX, startW
 				if fruitDesc.cutState > 1 then
 					fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, fruitDesc.cutState - 1)
 					multiModifier:addExecuteAdd(1, sprayLevelModifier, sprayLevelFilter, fieldFilter, fruitFilter)
-					multiModifier:addExecuteSet(1, sprayTypeModifier, sprayLevelFilter, fruitFilter)
+					multiModifier:addExecuteSet(1, sprayTypeModifier, fieldFilter, fruitFilter)
 				end
 
 				if fruitDesc.allowsSeeding then
@@ -3510,7 +3527,6 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 			local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
 			local sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_LEVEL)
 			local sprayLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
-			local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
 			functionData = {
 				fieldFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
 			}
@@ -3522,14 +3538,17 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 
 			functionData.plowLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
 
-			functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
-			functionData.limeLevelFilter = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
-
-			functionData.limeLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
-
 			functionData.sprayLevelModifier = DensityMapModifier.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
 			functionData.sprayLevelFilter = DensityMapFilter.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
 			functionData.sprayLevelMaxValue = sprayLevelMaxValue
+
+			if Platform.gameplay.useLimeCounter then
+				local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
+				functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+				functionData.limeLevelFilter = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+
+				functionData.limeLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 0)
+			end
 
 			if weedSystem:getMapHasWeed() then
 				local states = weedSystem:getFieldInfoStates()
@@ -3590,15 +3609,19 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 			local _, numPixels, _ = FSDensityMapUtil.getAreaDensity(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels, cultivatedType, startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 			status.cultivatorFactor = numPixels / fieldArea
 		end)
-		g_asyncTaskManager:addSubtask(function ()
-			local limeLevelModifier = functionData.limeLevelModifier
-			local limeLevelFilter = functionData.limeLevelFilter
 
-			limeLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+		if Platform.gameplay.useLimeCounter then
+			g_asyncTaskManager:addSubtask(function ()
+				local limeLevelModifier = functionData.limeLevelModifier
+				local limeLevelFilter = functionData.limeLevelFilter
 
-			local _, numPixels, _ = limeLevelModifier:executeGet(limeLevelFilter, fieldFilter)
-			status.needsLimeFactor = numPixels / fieldArea
-		end)
+				limeLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+
+				local _, numPixels, _ = limeLevelModifier:executeGet(limeLevelFilter, fieldFilter)
+				status.needsLimeFactor = numPixels / fieldArea
+			end)
+		end
+
 		g_asyncTaskManager:addSubtask(function ()
 			local plowLevelModifier = functionData.plowLevelModifier
 			local plowLevelFilter = functionData.plowLevelFilter
@@ -3608,12 +3631,19 @@ function FSDensityMapUtil.getFieldStatusAsync(startWorldX, startWorldZ, widthWor
 			local _, numPixels, _ = plowLevelModifier:executeGet(plowLevelFilter, fieldFilter)
 			status.plowFactor = numPixels / fieldArea
 		end)
-		g_asyncTaskManager:addSubtask(function ()
-			status.needsRollingFactor = FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
-		end)
-		g_asyncTaskManager:addSubtask(function ()
-			status.stubbleFactor = FSDensityMapUtil.getStubbleFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
-		end)
+
+		if Platform.gameplay.useRolling then
+			g_asyncTaskManager:addSubtask(function ()
+				status.needsRollingFactor = FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+			end)
+		end
+
+		if Platform.gameplay.useStubbleShred then
+			g_asyncTaskManager:addSubtask(function ()
+				status.stubbleFactor = FSDensityMapUtil.getStubbleFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+			end)
+		end
+
 		g_asyncTaskManager:addSubtask(function ()
 			local sprayLevelModifier = functionData.sprayLevelModifier
 			local sprayLevelFilter = functionData.sprayLevelFilter
@@ -3722,15 +3752,6 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 			plowLevelModifier = DensityMapModifier.new(plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels, terrainRootNode),
 			plowLevelFilter = DensityMapFilter.new(plowLevelMapId, plowLevelFirstChannel, plowLevelNumChannels, terrainRootNode),
 			plowLevelMaxValue = plowLevelMaxValue,
-			limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode),
-			limeLevelFilter = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode),
-			limeLevelMaxValue = limeLevelMaxValue,
-			stubbleShredModifier = DensityMapModifier.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode),
-			stubbleShredFilter = DensityMapFilter.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode),
-			stubbleShredLevelMaxValue = stubbleShredLevelMaxValue,
-			rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode),
-			rollerLevelFilter = DensityMapFilter.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode),
-			rollerLevelMaxValue = rollerLevelMaxValue,
 			sprayLevelModifier = DensityMapModifier.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode),
 			sprayLevelFilter = DensityMapFilter.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode),
 			sprayLevelMaxValue = sprayLevelMaxValue,
@@ -3738,6 +3759,25 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 			sprayTypeFilter = DensityMapFilter.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode),
 			sprayTypeMaxValue = sprayTypeMaxValue
 		}
+
+		if Platform.gameplay.useLimeCounter then
+			functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+			functionData.limeLevelFilter = DensityMapFilter.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+			functionData.limeLevelMaxValue = limeLevelMaxValue
+		end
+
+		if Platform.gameplay.useStubbleShred then
+			functionData.stubbleShredModifier = DensityMapModifier.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode)
+			functionData.stubbleShredFilter = DensityMapFilter.new(stubbleShredLevelMapId, stubbleShredLevelFirstChannel, stubbleShredLevelNumChannels, terrainRootNode)
+			functionData.stubbleShredLevelMaxValue = stubbleShredLevelMaxValue
+		end
+
+		if Platform.gameplay.useRolling then
+			functionData.rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
+			functionData.rollerLevelFilter = DensityMapFilter.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
+			functionData.rollerLevelMaxValue = rollerLevelMaxValue
+		end
+
 		local stoneSystem = g_currentMission.stoneSystem
 
 		if stoneSystem:getMapHasStones() then
@@ -3765,33 +3805,12 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 	end
 
 	local plowLevelModifier = functionData.plowLevelModifier
-	local limeLevelModifier = functionData.limeLevelModifier
-	local stubbleShredModifier = functionData.stubbleShredModifier
-	local rollerLevelModifier = functionData.rollerLevelModifier
 	local sprayLevelModifier = functionData.sprayLevelModifier
-	local stoneModifier = functionData.stoneModifier
-	local weedModifier = functionData.weedModifier
-	local weedBlockingModifier = functionData.weedBlockingModifier
 	local sprayTypeModifier = functionData.sprayTypeModifier
 
 	plowLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	limeLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	stubbleShredModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	rollerLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	sprayLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	sprayTypeModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-
-	if stoneModifier ~= nil then
-		stoneModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	end
-
-	if weedModifier ~= nil then
-		weedModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	end
-
-	if weedBlockingModifier ~= nil then
-		weedBlockingModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	end
 
 	local _ = nil
 	local modifier = functionData.modifier
@@ -3832,22 +3851,26 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 		})
 	end
 
-	table.insert(status, {
-		value = "",
-		name = ""
-	})
-
+	local limeLevelModifier = functionData.limeLevelModifier
 	local limeLevelFilter = functionData.limeLevelFilter
 
-	for i = 0, functionData.limeLevelMaxValue do
-		limeLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, i)
-
-		_, numPixels, _ = limeLevelModifier:executeGet(limeLevelFilter)
-
+	if limeLevelModifier ~= nil and limeLevelFilter ~= nil then
+		limeLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 		table.insert(status, {
-			name = "lime " .. i,
-			value = numPixels
+			value = "",
+			name = ""
 		})
+
+		for i = 0, functionData.limeLevelMaxValue do
+			limeLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, i)
+
+			_, numPixels, _ = limeLevelModifier:executeGet(limeLevelFilter)
+
+			table.insert(status, {
+				name = "lime " .. i,
+				value = numPixels
+			})
+		end
 	end
 
 	table.insert(status, {
@@ -3868,40 +3891,50 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 		})
 	end
 
-	table.insert(status, {
-		value = "",
-		name = ""
-	})
+	local stubbleShredModifier = functionData.stubbleShredModifier
 
-	local stubbleShredFilter = functionData.stubbleShredFilter
-
-	for i = 0, functionData.stubbleShredLevelMaxValue do
-		stubbleShredFilter:setValueCompareParams(DensityValueCompareType.EQUAL, i)
-
-		_, numPixels, _ = stubbleShredModifier:executeGet(stubbleShredFilter)
-
+	if stubbleShredModifier ~= nil then
+		stubbleShredModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 		table.insert(status, {
-			name = "stubbleShred " .. i,
-			value = numPixels
+			value = "",
+			name = ""
 		})
+
+		local stubbleShredFilter = functionData.stubbleShredFilter
+
+		for i = 0, functionData.stubbleShredLevelMaxValue do
+			stubbleShredFilter:setValueCompareParams(DensityValueCompareType.EQUAL, i)
+
+			_, numPixels, _ = stubbleShredModifier:executeGet(stubbleShredFilter)
+
+			table.insert(status, {
+				name = "stubbleShred " .. i,
+				value = numPixels
+			})
+		end
 	end
 
-	table.insert(status, {
-		value = "",
-		name = ""
-	})
+	local rollerLevelModifier = functionData.rollerLevelModifier
 
-	local rollerLevelFilter = functionData.rollerLevelFilter
-
-	for i = 0, functionData.rollerLevelMaxValue do
-		rollerLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, i)
-
-		_, numPixels, _ = rollerLevelModifier:executeGet(rollerLevelFilter)
-
+	if rollerLevelModifier ~= nil then
+		rollerLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 		table.insert(status, {
-			name = "roller " .. i,
-			value = numPixels
+			value = "",
+			name = ""
 		})
+
+		local rollerLevelFilter = functionData.rollerLevelFilter
+
+		for i = 0, functionData.rollerLevelMaxValue do
+			rollerLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, i)
+
+			_, numPixels, _ = rollerLevelModifier:executeGet(rollerLevelFilter)
+
+			table.insert(status, {
+				name = "roller " .. i,
+				value = numPixels
+			})
+		end
 	end
 
 	table.insert(status, {
@@ -3967,7 +4000,10 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 		end
 	end
 
+	local stoneModifier = functionData.stoneModifier
+
 	if stoneModifier ~= nil then
+		stoneModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 		table.insert(status, {
 			value = "",
 			name = ""
@@ -3987,7 +4023,10 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 		end
 	end
 
+	local weedModifier = functionData.weedModifier
+
 	if weedModifier ~= nil then
+		weedModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 		table.insert(status, {
 			value = "",
 			name = ""
@@ -4013,9 +4052,10 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 				value = numPixels
 			})
 		end
-	end
 
-	if weedBlockingModifier ~= nil then
+		local weedBlockingModifier = functionData.weedBlockingModifier
+
+		weedBlockingModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 		table.insert(status, {
 			value = "",
 			name = ""
@@ -4099,8 +4139,11 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 	status[#status].newColumn = true
 
 	plowLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
-	limeLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
 	sprayLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+
+	if limeLevelFilter ~= nil then
+		limeLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+	end
 
 	for k, fruitIndex in ipairs(foundFruits) do
 		local desc = g_fruitTypeManager:getFruitTypeByIndex(fruitIndex)
@@ -4122,13 +4165,6 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 			value = string.format("%.4f | %d | %d ", plowPixels / fruitTotalPixels, plowPixels, fruitTotalPixels)
 		})
 
-		local _, limePixels, _ = limeLevelModifier:executeGet(limeLevelFilter, filter2)
-
-		table.insert(status, {
-			name = "limeFactor " .. desc.name,
-			value = string.format("%.4f | %d | %d", limePixels / fruitTotalPixels, limePixels, fruitTotalPixels)
-		})
-
 		local sprayPixelsSum, sprayNumPixels, _ = sprayLevelModifier:executeGet(sprayLevelFilter, filter2)
 		local sprayFactor = 0
 
@@ -4140,14 +4176,29 @@ function FSDensityMapUtil.getStatus(startWorldX, startWorldZ, widthWorldX, width
 			name = "sprayFactor " .. desc.name,
 			value = string.format("%.4f | %d | %d", sprayFactor, sprayPixelsSum, fruitTotalPixels * functionData.sprayLevelMaxValue)
 		})
-		table.insert(status, {
-			name = "rollerFactor",
-			value = string.format("%.4f", FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ))
-		})
-		table.insert(status, {
-			name = "stubbleFactor",
-			value = string.format("%.4f", FSDensityMapUtil.getStubbleFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ))
-		})
+
+		if limeLevelModifier ~= nil then
+			local _, limePixels, _ = limeLevelModifier:executeGet(limeLevelFilter, filter2)
+
+			table.insert(status, {
+				name = "limeFactor " .. desc.name,
+				value = string.format("%.4f | %d | %d", limePixels / fruitTotalPixels, limePixels, fruitTotalPixels)
+			})
+		end
+
+		if rollerLevelModifier ~= nil then
+			table.insert(status, {
+				name = "rollerFactor",
+				value = string.format("%.4f", FSDensityMapUtil.getRollerFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ))
+			})
+		end
+
+		if stubbleShredModifier ~= nil then
+			table.insert(status, {
+				name = "stubbleFactor",
+				value = string.format("%.4f", FSDensityMapUtil.getStubbleFactor(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ))
+			})
+		end
 	end
 
 	return status

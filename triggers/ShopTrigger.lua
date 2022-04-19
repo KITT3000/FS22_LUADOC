@@ -55,7 +55,7 @@ function ShopTrigger:openShop()
 end
 
 function ShopTrigger:triggerCallback(triggerId, otherId, onEnter, onLeave, onStay)
-	if self.isEnabled and (not g_isPresentationVersion or g_isPresentationVersionShopEnabled) and g_currentMission.missionInfo:isa(FSCareerMissionInfo) and (onEnter or onLeave) and g_currentMission.player ~= nil and otherId == g_currentMission.player.rootNode then
+	if self.isEnabled and g_currentMission.missionInfo:isa(FSCareerMissionInfo) and (onEnter or onLeave) and g_currentMission.player ~= nil and otherId == g_currentMission.player.rootNode then
 		if onEnter then
 			g_currentMission.activatableObjectsSystem:addActivatable(self.activatable)
 		else
@@ -66,12 +66,12 @@ end
 
 function ShopTrigger:updateIconVisibility()
 	if self.shopSymbol ~= nil then
-		local hideMission = g_isPresentationVersion and not g_isPresentationVersionShopEnabled or not g_currentMission.missionInfo:isa(FSCareerMissionInfo)
+		local isAvailable = self.isEnabled and g_currentMission.missionInfo:isa(FSCareerMissionInfo)
 		local farmId = g_currentMission:getFarmId()
 		local visibleForFarm = farmId ~= FarmManager.SPECTATOR_FARM_ID
 		local settingVisible = g_gameSettings:getValue(GameSettings.SETTING.SHOW_TRIGGER_MARKER)
 
-		setVisibility(self.shopSymbol, not hideMission and visibleForFarm and settingVisible)
+		setVisibility(self.shopSymbol, isAvailable and visibleForFarm and settingVisible)
 	end
 end
 

@@ -51,6 +51,10 @@ function Gui.new(messageCenter, languageSuffix, inputManager, guiSoundPlayer)
 	self.toggleCustomInputContextClosure = self:makeToggleCustomInputContextClosure()
 	self.playSampleClosure = self:makePlaySampleClosure()
 
+	g_adsSystem:clearGroupRegion(AdsSystem.OCCLUSION_GROUP.UI)
+	g_adsSystem:addGroupRegion(AdsSystem.OCCLUSION_GROUP.UI, 0, 0, 1, 1)
+	g_adsSystem:setGroupActive(AdsSystem.OCCLUSION_GROUP.UI, false)
+
 	return self
 end
 
@@ -191,9 +195,13 @@ function Gui:loadProfiles(xmlFilename)
 		end
 
 		delete(xmlFile)
-	else
-		Logging.error("Could not open guiProfile-config '%s'!", xmlFilename)
+
+		return true
 	end
+
+	Logging.error("Could not open guiProfile-config '%s'!", xmlFilename)
+
+	return false
 end
 
 function Gui:loadGui(xmlFilename, name, controller, isFrame)
@@ -207,6 +215,7 @@ function Gui:loadGui(xmlFilename, name, controller, isFrame)
 		gui.name = name
 		gui.xmlFilename = xmlFilename
 		controller.name = name
+		controller.xmlFilename = xmlFilename
 
 		gui:loadFromXML(xmlFile, "GUI")
 
@@ -375,7 +384,7 @@ function Gui:getIsDialogVisible()
 end
 
 function Gui:getIsOverlayGuiVisible()
-	return false
+	return self.currentGui == self.screens[ConstructionScreen]
 end
 
 function Gui:showGui(guiName)
@@ -551,6 +560,18 @@ function Gui:mouseEvent(posX, posY, isDown, isUp, button)
 	end
 end
 
+function Gui:touchEvent(posX, posY, isDown, isUp, touchId)
+	local eventUsed = false
+
+	if self.currentListener ~= nil and self.currentListener.touchEvent ~= nil then
+		eventUsed = self.currentListener:touchEvent(posX, posY, isDown, isUp, touchId)
+	end
+
+	if not eventUsed and self.currentListener ~= nil and self.currentListener.target ~= nil and self.currentListener.target.touchEvent ~= nil then
+		self.currentListener.target:touchEvent(posX, posY, isDown, isUp, touchId)
+	end
+end
+
 function Gui:keyEvent(unicode, sym, modifier, isDown)
 	local eventUsed = false
 
@@ -702,6 +723,14 @@ function Gui:getScreenInstanceByClass(screenClass)
 end
 
 function Gui:changeScreen(source, screenClass, returnScreenClass)
+	local screenController = self.screenControllers[screenClass]
+
+	if screenClass ~= nil and screenController == nil then
+		Logging.devWarning("UI '%s' not found", ClassUtil.getClassName(screenClass))
+
+		return nil
+	end
+
 	self:closeAllDialogs()
 
 	local isMenuOpening = not self:getIsGuiVisible()
@@ -743,6 +772,8 @@ function Gui:changeScreen(source, screenClass, returnScreenClass)
 		self:leaveMenuContext()
 		self.messageCenter:publish(MessageType.GUI_AFTER_CLOSE)
 	end
+
+	g_adsSystem:setGroupActive(AdsSystem.OCCLUSION_GROUP.UI, self.currentGui ~= nil)
 
 	return screenElement
 end
@@ -824,13 +855,19 @@ end
 function Gui:loadMapData(mapXmlFile, missionInfo, baseDirectory)
 	if not Platform.isMobile then
 		self.screenControllers[ShopConfigScreen]:loadMapData(mapXmlFile, missionInfo, baseDirectory)
+	end
+
+	if Platform.hasWardrobe then
 		self.screenControllers[WardrobeScreen]:loadMapData(mapXmlFile, missionInfo, baseDirectory)
 	end
 end
 
 function Gui:unloadMapData()
 	self.screenControllers[ShopConfigScreen]:unloadMapData()
-	self.screenControllers[WardrobeScreen]:unloadMapData()
+
+	if Platform.hasWardrobe then
+		self.screenControllers[WardrobeScreen]:unloadMapData()
+	end
 end
 
 function Gui:setClient(client)

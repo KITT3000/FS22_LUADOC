@@ -19,6 +19,11 @@ function EnvironmentAreaSystem.new(mission, customMt)
 	self.referenceNode = getCamera(0)
 	self.currentAreaType = AreaType.OPEN_FIELD
 	self.waterYRequests = {}
+	self.waterCheckPosition = {
+		0,
+		0,
+		0
+	}
 	self.raycastsXZMaxDistance = 30
 	self.raycastsYMaxDistance = 30
 	self.raycastsXZ = {
@@ -221,10 +226,10 @@ function EnvironmentAreaSystem:update(dt)
 		overlapSphere(wx, y, wz, self.treeCheckRadius, "forestCheckCallback", self, CollisionFlag.TREE, false, true, false, true)
 	end
 
-	self:getWaterYAtWorldPositionAsync(x, y, z, EnvironmentAreaSystem.onCellWaterCallback, self, {
-		x,
-		z
-	})
+	self.waterCheckPosition[1] = x
+	self.waterCheckPosition[3] = z
+
+	self:getWaterYAtWorldPositionAsync(x, y, z, EnvironmentAreaSystem.onCellWaterCallback, self, nil)
 
 	self.lastPosition.x = x
 	self.lastPosition.y = y
@@ -394,8 +399,8 @@ function EnvironmentAreaSystem:onCellWaterCallback(waterY, args)
 	cell.isNearWater = false
 
 	if waterY ~= nil and g_currentMission ~= nil then
-		local x = args[1]
-		local z = args[2]
+		local x = self.waterCheckPosition[1]
+		local z = self.waterCheckPosition[3]
 		local y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, 0, z)
 
 		if waterY > y - 0.25 then

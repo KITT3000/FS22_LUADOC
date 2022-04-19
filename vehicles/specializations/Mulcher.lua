@@ -113,6 +113,7 @@ function Mulcher:onLoad(savegame)
 	end
 
 	spec.isWorking = false
+	spec.lastWorkTime = -math.huge
 	spec.stoneLastState = 0
 	spec.stoneWearMultiplierData = g_currentMission.stoneSystem:getWearMultiplierByType("MULCHER")
 	spec.effectDirtyFlag = self:getNextDirtyFlag()
@@ -226,7 +227,7 @@ function Mulcher:processMulcherArea(workArea, dt)
 	local xh, _, zh = getWorldTranslation(workArea.height)
 	local realArea, area = FSDensityMapUtil.updateMulcherArea(xs, zs, xw, zw, xh, zh)
 
-	if realArea > 0 then
+	if realArea > 0 and self:getLastSpeed() > 0.5 then
 		local effects = spec.workAreaToEffects[workArea.index]
 
 		if effects ~= nil then
@@ -245,11 +246,13 @@ function Mulcher:processMulcherArea(workArea, dt)
 				end
 			end
 		end
+
+		spec.lastWorkTime = g_time
 	end
 
 	FSDensityMapUtil.eraseTireTrack(xs, zs, xw, zw, xh, zh)
 
-	spec.isWorking = self:getLastSpeed() > 0.5
+	spec.isWorking = g_time - spec.lastWorkTime < 500
 
 	if spec.isWorking then
 		spec.stoneLastState = FSDensityMapUtil.getStoneArea(xs, zs, xw, zw, xh, zh)

@@ -791,7 +791,7 @@ function TextElement:getTextWidth()
 	return width
 end
 
-function TextElement:getTextHeight()
+function TextElement:getTextHeight(includeNegativeSpacing)
 	if self.textMaxNumLines > 1 then
 		setTextWrapWidth(self.absSize[1])
 	end
@@ -800,6 +800,10 @@ function TextElement:getTextHeight()
 	setTextLineHeightScale(self.textLineHeightScale)
 
 	local height, numLines = getTextHeight(self.textSize, self.text)
+
+	if includeNegativeSpacing == true and numLines > 0 then
+		height = height + height / numLines * 0.1
+	end
 
 	setTextLineHeightScale(RenderText.DEFAULT_LINE_HEIGHT_SCALE)
 	setTextBold(false)

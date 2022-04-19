@@ -4,34 +4,42 @@ CrabSteering = {
 	STEERING_SEND_NUM_BITS = 3,
 	prerequisitesPresent = function (specializations)
 		return SpecializationUtil.hasSpecialization(Drivable, specializations) and SpecializationUtil.hasSpecialization(Wheels, specializations) and SpecializationUtil.hasSpecialization(AnimatedVehicle, specializations)
-	end,
-	initSpecialization = function ()
-		local schema = Vehicle.xmlSchema
-
-		schema:setXMLSpecializationType("CrabSteering")
-		schema:register(XMLValueType.FLOAT, "vehicle.crabSteering#distFromCompJointToCenterOfBackWheels", "Distance from component joint to center of back wheels")
-		schema:register(XMLValueType.FLOAT, "vehicle.crabSteering#aiSteeringModeIndex", "AI steering mode index", 1)
-		schema:register(XMLValueType.FLOAT, "vehicle.crabSteering#toggleSpeedFactor", "Toggle speed factor", 1)
-		schema:register(XMLValueType.L10N_STRING, "vehicle.crabSteering.steeringMode(?)#name", "Steering mode name")
-		schema:register(XMLValueType.STRING, "vehicle.crabSteering.steeringMode(?)#inputBindingName", "Input action name")
-		schema:register(XMLValueType.INT, "vehicle.crabSteering.steeringMode(?).wheel(?)#index", "Wheel Index")
-		schema:register(XMLValueType.ANGLE, "vehicle.crabSteering.steeringMode(?).wheel(?)#offset", "Rotation offset", 0)
-		schema:register(XMLValueType.BOOL, "vehicle.crabSteering.steeringMode(?).wheel(?)#locked", "Steering is locked", false)
-		schema:register(XMLValueType.ANGLE, "vehicle.crabSteering.steeringMode(?).articulatedAxis#offset", "Articulated axis offset angle", 0)
-		schema:register(XMLValueType.BOOL, "vehicle.crabSteering.steeringMode(?).articulatedAxis#locked", "Articulated axis is locked", false)
-		schema:register(XMLValueType.VECTOR_N, "vehicle.crabSteering.steeringMode(?).articulatedAxis#wheelIndices", "Wheel indices")
-		schema:register(XMLValueType.STRING, "vehicle.crabSteering.steeringMode(?).animation(?)#name", "Change animation name")
-		schema:register(XMLValueType.FLOAT, "vehicle.crabSteering.steeringMode(?).animation(?)#speed", "Animation speed", 1)
-		schema:register(XMLValueType.FLOAT, "vehicle.crabSteering.steeringMode(?).animation(?)#stopTime", "Animation stop time")
-		Dashboard.registerDashboardXMLPaths(schema, "vehicle.crabSteering.dashboards", "state")
-		schema:register(XMLValueType.VECTOR_N, "vehicle.crabSteering.dashboards.dashboard(?)#states", "Crab steering states which activate the dashboard")
-		schema:setXMLSpecializationType()
-
-		local schemaSavegame = Vehicle.xmlSchemaSavegame
-
-		schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).crabSteering#state", "Current steering mode", 1)
 	end
 }
+
+function CrabSteering.initSpecialization()
+	local schema = Vehicle.xmlSchema
+
+	schema:setXMLSpecializationType("CrabSteering")
+	schema:register(XMLValueType.FLOAT, "vehicle.crabSteering#distFromCompJointToCenterOfBackWheels", "Distance from component joint to center of back wheels")
+	schema:register(XMLValueType.FLOAT, "vehicle.crabSteering#aiSteeringModeIndex", "AI steering mode index", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.crabSteering#toggleSpeedFactor", "Toggle speed factor", 1)
+	CrabSteering.registerSteeringModeXMLPaths(schema, "vehicle.crabSteering.steeringMode(?)")
+	CrabSteering.registerSteeringModeXMLPaths(schema, "vehicle.crabSteering.crabSteeringConfiguration(?).steeringMode(?)")
+	Dashboard.registerDashboardXMLPaths(schema, "vehicle.crabSteering.dashboards", "state")
+	schema:register(XMLValueType.VECTOR_N, "vehicle.crabSteering.dashboards.dashboard(?)#states", "Crab steering states which activate the dashboard")
+	schema:register(XMLValueType.INT, "vehicle.wheels.wheelConfigurations.wheelConfiguration(?).wheels#crabSteeringIndex", "Crab steering configuration index")
+	schema:setXMLSpecializationType()
+
+	local schemaSavegame = Vehicle.xmlSchemaSavegame
+
+	schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).crabSteering#state", "Current steering mode", 1)
+end
+
+function CrabSteering.registerSteeringModeXMLPaths(schema, basePath)
+	schema:register(XMLValueType.L10N_STRING, basePath .. "#name", "Steering mode name")
+	schema:register(XMLValueType.STRING, basePath .. "#inputBindingName", "Input action name")
+	schema:register(XMLValueType.INT, basePath .. ".wheel(?)#index", "Wheel Index")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".wheel(?)#node", "Wheel Node")
+	schema:register(XMLValueType.ANGLE, basePath .. ".wheel(?)#offset", "Rotation offset", 0)
+	schema:register(XMLValueType.BOOL, basePath .. ".wheel(?)#locked", "Steering is locked", false)
+	schema:register(XMLValueType.ANGLE, basePath .. ".articulatedAxis#offset", "Articulated axis offset angle", 0)
+	schema:register(XMLValueType.BOOL, basePath .. ".articulatedAxis#locked", "Articulated axis is locked", false)
+	schema:register(XMLValueType.VECTOR_N, basePath .. ".articulatedAxis#wheelIndices", "Wheel indices")
+	schema:register(XMLValueType.STRING, basePath .. ".animation(?)#name", "Change animation name")
+	schema:register(XMLValueType.FLOAT, basePath .. ".animation(?)#speed", "Animation speed", 1)
+	schema:register(XMLValueType.FLOAT, basePath .. ".animation(?)#stopTime", "Animation stop time")
+end
 
 function CrabSteering.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getCanToggleCrabSteering", CrabSteering.getCanToggleCrabSteering)
@@ -42,6 +50,7 @@ end
 
 function CrabSteering.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeSelected", CrabSteering.getCanBeSelected)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadWheelsFromXML", CrabSteering.loadWheelsFromXML)
 end
 
 function CrabSteering.registerEventListeners(vehicleType)
@@ -59,6 +68,7 @@ function CrabSteering:onLoad(savegame)
 	local spec = self.spec_crabSteering
 	spec.state = 1
 	spec.stateMax = -1
+	spec.configurationIndex = spec.configurationIndex or 1
 	spec.distFromCompJointToCenterOfBackWheels = self.xmlFile:getValue("vehicle.crabSteering#distFromCompJointToCenterOfBackWheels")
 	spec.aiSteeringModeIndex = self.xmlFile:getValue("vehicle.crabSteering#aiSteeringModeIndex", 1)
 	spec.toggleSpeedFactor = self.xmlFile:getValue("vehicle.crabSteering#toggleSpeedFactor", 1)
@@ -67,6 +77,12 @@ function CrabSteering:onLoad(savegame)
 	spec.articulatedAxisLastAngle = 0
 	spec.articulatedAxisChangingTime = 0
 	local baseKey = "vehicle.crabSteering"
+	local configKey = string.format("vehicle.crabSteering.crabSteeringConfiguration(%d)", spec.configurationIndex - 1)
+
+	if self.xmlFile:hasProperty(configKey) then
+		baseKey = configKey
+	end
+
 	spec.steeringModes = {}
 	local i = 0
 
@@ -102,9 +118,21 @@ function CrabSteering:onLoad(savegame)
 
 			local wheelEntry = {
 				wheelIndex = self.xmlFile:getValue(wheelKey .. "#index"),
-				offset = self.xmlFile:getValue(wheelKey .. "#offset", 0),
-				locked = self.xmlFile:getValue(wheelKey .. "#locked", false)
+				wheelNode = self.xmlFile:getValue(wheelKey .. "#node", nil, self.components, self.i3dMappings)
 			}
+
+			if wheelEntry.wheelNode ~= nil then
+				local wheel = self:getWheelByWheelNode(wheelEntry.wheelNode)
+
+				if wheel ~= nil then
+					wheelEntry.wheelIndex = wheel.xmlIndex + 1
+				else
+					Logging.xmlError(self.xmlFile, "Invalid wheel node '%s' for '%s'", self.xmlFile:getString(wheelKey .. "#node"), wheelKey)
+				end
+			end
+
+			wheelEntry.offset = self.xmlFile:getValue(wheelKey .. "#offset", 0)
+			wheelEntry.locked = self.xmlFile:getValue(wheelKey .. "#locked", false)
 			local wheels = self:getWheels()
 
 			if wheels[wheelEntry.wheelIndex] ~= nil then
@@ -490,6 +518,12 @@ end
 
 function CrabSteering:getCanBeSelected(superFunc)
 	return self.spec_crabSteering.hasSteeringModes or superFunc(self)
+end
+
+function CrabSteering:loadWheelsFromXML(superFunc, xmlFile, key, wheelConfigurationI)
+	superFunc(self, xmlFile, key, wheelConfigurationI)
+
+	self.spec_crabSteering.configurationIndex = xmlFile:getValue(key .. ".wheels#crabSteeringIndex")
 end
 
 function CrabSteering:onAIImplementStart()

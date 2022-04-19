@@ -1,24 +1,75 @@
+source("dataS/scripts/gui/hud/IngameMapLayoutMobile.lua")
+
 IngameMapMobile = {}
 local IngameMapMobile_mt = Class(IngameMapMobile, IngameMap)
 IngameMapMobile.STATE_HIDDEN = 3
 
 function IngameMapMobile.new(hud, hudAtlasPath, inputDisplayManager, customMt)
-	local self = IngameMapMobile:superClass().new(hud, hudAtlasPath, inputDisplayManager, customMt or IngameMapMobile_mt)
-	self.showPlayerCoordinates = false
-	self.showMapLabel = false
-	self.showInputIcon = false
-	self.minMapWidth, self.minMapHeight = getNormalizedScreenValues(unpack(IngameMapMobile.SIZE.MAP))
+	local self = IngameMap:superClass().new(nil, nil, customMt or IngameMapMobile_mt)
+	self.overlay = self:createBackground(hudAtlasPath)
+	self.hud = hud
+	self.hudAtlasPath = hudAtlasPath
+	self.inputDisplayManager = inputDisplayManager
+	self.uiScale = 1
+	self.isVisible = true
+	self.mobileLayout = IngameMapLayoutMobile.new()
+	self.layouts = {
+		self.mobileLayout
+	}
+	self.fullScreenLayout = IngameMapLayoutFullscreen.new()
+	self.state = 1
+	self.layout = self.layouts[self.state]
+	self.mapOverlay = Overlay.new(nil, 0, 0, 1, 1)
+	self.mapElement = HUDElement.new(self.mapOverlay)
 
-	self:setSize(self.minMapWidth, self.minMapHeight)
+	self:createComponents(hudAtlasPath)
 
+	for _, layout in ipairs(self.layouts) do
+		layout:createComponents(self, hudAtlasPath)
+	end
+
+	self.filter = {
+		[MapHotspot.CATEGORY_FIELD] = true,
+		[MapHotspot.CATEGORY_ANIMAL] = true,
+		[MapHotspot.CATEGORY_MISSION] = true,
+		[MapHotspot.CATEGORY_TOUR] = true,
+		[MapHotspot.CATEGORY_STEERABLE] = true,
+		[MapHotspot.CATEGORY_COMBINE] = true,
+		[MapHotspot.CATEGORY_TRAILER] = true,
+		[MapHotspot.CATEGORY_TOOL] = true,
+		[MapHotspot.CATEGORY_UNLOADING] = true,
+		[MapHotspot.CATEGORY_LOADING] = true,
+		[MapHotspot.CATEGORY_PRODUCTION] = true,
+		[MapHotspot.CATEGORY_SHOP] = true,
+		[MapHotspot.CATEGORY_OTHER] = true,
+		[MapHotspot.CATEGORY_AI] = true,
+		[MapHotspot.CATEGORY_PLAYER] = true
+	}
+
+	self:setWorldSize(2048, 2048)
+
+	self.hotspots = {}
+	self.selectedHotspot = nil
+	self.allowToggle = true
+	self.topDownCamera = nil
+	self.isMapVisible = true
 	self.resizeTimer = 1
-	self.maxMapHeight = self.minMapHeight
-	self.maxMapWidth = self.minMapWidth
-	self.currentOffsetX = 0
-	self.player = nil
-	self.state = IngameMapMobile.STATE_HIDDEN
+	self.mapExtensionOffsetX = 0
+	self.mapExtensionOffsetZ = 0
+	self.mapExtensionScaleFactor = 1
 
 	return self
+end
+
+function IngameMapMobile:loadMap(filename, worldSizeX, worldSizeZ, fieldColor, grassFieldColor)
+	self.mapElement:delete()
+	self:setWorldSize(worldSizeX, worldSizeZ)
+
+	self.mapOverlay = Overlay.new(filename, 0, 0, 1, 1)
+	self.mapElement = HUDElement.new(self.mapOverlay)
+
+	self:addChild(self.mapElement)
+	self:setScale(self.uiScale)
 end
 
 function IngameMapMobile:createComponents(hudAtlasPath)
@@ -27,34 +78,38 @@ function IngameMapMobile:createComponents(hudAtlasPath)
 	local height = self:getHeight()
 
 	self:createFrame(hudAtlasPath, baseX, baseY, width, height)
-	self:createPlayerMapArrow()
-	self:createOtherMapArrowOverlay()
 
-	local halfCircleElement = self:createOverlayElement(IngameMapMobile.POSITION.HALF_CIRCLE, IngameMapMobile.SIZE.HALF_CIRCLE, IngameMapMobile.UV.HALF_CIRCLE, IngameMapMobile.COLOR.RIGHT_BORDER)
+	self.halfCircleElement = self:createOverlayElement(IngameMapMobile.POSITION.HALF_CIRCLE, IngameMapMobile.SIZE.HALF_CIRCLE, IngameMapMobile.UV.HALF_CIRCLE, IngameMapMobile.COLOR.RIGHT_BORDER)
 
-	self:addChild(halfCircleElement)
+	self:addChild(self.halfCircleElement)
 
-	local halfCircleIconElement = self:createOverlayElement(IngameMapMobile.POSITION.HALF_CIRCLE_ICON, IngameMapMobile.SIZE.HALF_CIRCLE_ICON, IngameMapMobile.UV.HALF_CIRCLE_ICON, IngameMapMobile.COLOR.MAP_ICON)
+	self.halfCircleIconElement = self:createOverlayElement(IngameMapMobile.POSITION.HALF_CIRCLE_ICON, IngameMapMobile.SIZE.HALF_CIRCLE_ICON, IngameMapMobile.UV.HALF_CIRCLE_ICON, IngameMapMobile.COLOR.MAP_ICON)
 
-	self:addChild(halfCircleIconElement)
+	self:addChild(self.halfCircleIconElement)
 
-	local rightBorderElement = self:createOverlayElement(IngameMapMobile.POSITION.RIGHT_BORDER, IngameMapMobile.SIZE.RIGHT_BORDER, HUDElement.UV.FILL, IngameMapMobile.COLOR.RIGHT_BORDER)
+	self.rightBorderElement = self:createOverlayElement(IngameMapMobile.POSITION.RIGHT_BORDER, IngameMapMobile.SIZE.RIGHT_BORDER, HUDElement.UV.FILL, IngameMapMobile.COLOR.RIGHT_BORDER)
 
-	self:addChild(rightBorderElement)
+	self:addChild(self.rightBorderElement)
 
-	self.slideButtonDown = self.hud:addTouchButton(halfCircleElement.overlay, 1, 0.4, self.onSlideMapDown, self, TouchHandler.TRIGGER_DOWN)
-	self.slideButtonAlways = self.hud:addTouchButton(halfCircleElement.overlay, 1, 0.4, self.onSlideMapAlways, self, TouchHandler.TRIGGER_ALWAYS)
-	self.slideButtonUp = self.hud:addTouchButton(halfCircleElement.overlay, 1, 0.4, self.onSlideMapUp, self, TouchHandler.TRIGGER_UP)
+	self.slideButtonDown = self.hud:addTouchButton(self.halfCircleElement.overlay, 1, 0.4, self.onSlideMapDown, self, TouchHandler.TRIGGER_DOWN)
+	self.slideButtonAlways = self.hud:addTouchButton(self.halfCircleElement.overlay, 1, 0.4, self.onSlideMapAlways, self, TouchHandler.TRIGGER_ALWAYS)
+	self.slideButtonUp = self.hud:addTouchButton(self.halfCircleElement.overlay, 1, 0.4, self.onSlideMapUp, self, TouchHandler.TRIGGER_UP)
 
 	g_touchHandler:setAreaPressedSizeGain(self.slideButtonDown, 3.5)
 	g_touchHandler:setAreaPressedSizeGain(self.slideButtonAlways, 3.5)
 	g_touchHandler:setAreaPressedSizeGain(self.slideButtonUp, 3.5)
 
-	self.buttonElement = halfCircleElement
+	self.buttonElement = self.halfCircleElement
+end
+
+function IngameMapMobile:getHeight()
+	return self.overlay.height
 end
 
 function IngameMapMobile:setPlayer(player)
 	self.player = player
+
+	self.mobileLayout:setPlayer(player)
 end
 
 function IngameMapMobile:onSlideMapDown(posX, posY)
@@ -74,7 +129,7 @@ function IngameMapMobile:onSlideMapUp(posX, posY)
 		local curX = self:getPosition()
 		self.resizeTimer = 1 - curX / self.mapHideWidth
 
-		self:toggleSize(self.startTouchPosX - posX < 0 and IngameMap.STATE_MINIMAP or IngameMapMobile.STATE_HIDDEN, true)
+		self:toggleSize(self.startTouchPosX - posX > 0, true)
 
 		self.currentOffsetX = 0
 	else
@@ -86,6 +141,9 @@ function IngameMapMobile:createOverlayElement(pos, size, uvs, color)
 	local baseX, baseY = self:getPosition()
 	local posX, posY = getNormalizedScreenValues(unpack(pos))
 	local sizeX, sizeY = getNormalizedScreenValues(unpack(size))
+
+	log(self.hudAtlasPath)
+
 	local overlay = Overlay.new(self.hudAtlasPath, baseX + posX, baseY + posY, sizeX, sizeY)
 
 	overlay:setUVs(GuiUtils.getUVs(uvs))
@@ -97,7 +155,7 @@ end
 function IngameMapMobile:storeScaledValues(uiScale)
 	IngameMapMobile:superClass().storeScaledValues(self, uiScale)
 
-	self.minMapWidth, self.minMapHeight = self:scalePixelToScreenVector(IngameMapMobile.SIZE.MAP)
+	self.mapWidth, self.mapHeight = self:scalePixelToScreenVector(IngameMapMobile.SIZE.MAP)
 	self.mapSizeX, self.mapSizeY = self:scalePixelToScreenVector(IngameMapMobile.SIZE.MAP)
 	self.mapOffsetX, self.mapOffsetY = self:scalePixelToScreenVector(IngameMapMobile.POSITION.MAP)
 	self.mapHideWidth = self:scalePixelToScreenVector(IngameMapMobile.SIZE.MAP_HIDE_WIDTH)
@@ -112,12 +170,14 @@ function IngameMapMobile:resetSettings()
 		return
 	end
 
-	if self.state ~= IngameMap.STATE_MAP then
+	if not self.isMapVisible then
 		self:setPosition(self.mapHideWidth * (1 - self.resizeTimer), nil)
 	end
 end
 
-function IngameMapMobile:updateMapAnimation(dt)
+function IngameMapMobile:update(dt)
+	IngameMapMobile:superClass().update(self, dt)
+
 	if self.resizeDir ~= 0 then
 		local deltaTime = dt
 
@@ -135,45 +195,53 @@ function IngameMapMobile:updateMapAnimation(dt)
 	end
 end
 
-function IngameMapMobile:toggleSize(state, force)
-	if state == nil then
-		if self.state == IngameMap.STATE_MINIMAP then
-			state = IngameMapMobile.STATE_HIDDEN
-		else
-			state = IngameMap.STATE_MINIMAP
-		end
+function IngameMapMobile:draw()
+	if self.resizeDir ~= 0 or self.resizeTimer > 0 then
+		IngameMapMobile:superClass().draw(self)
 	end
 
-	IngameMapMobile:superClass().toggleSize(self, state, force)
+	if self.overlay.visible then
+		self.mapFrameElement:draw()
+		self.halfCircleElement:draw()
+		self.halfCircleIconElement:draw()
+		self.rightBorderElement:draw()
+	end
+end
 
-	if self.state == IngameMapMobile.STATE_HIDDEN then
+function IngameMapMobile:toggleSize(state, force)
+	IngameMapMobile:superClass().toggleSize(self, 1, force)
+
+	if state == nil then
+		state = not self.isMapVisible
+	end
+
+	self.isMapVisible = state
+
+	if state then
 		self.resizeDir = -1
 	else
 		self.resizeDir = 1
 	end
 end
 
-function IngameMapMobile:setFullscreen(isFullscreen)
-	IngameMapMobile:superClass().setFullscreen(self, isFullscreen)
-
-	if isFullscreen then
-		self.state = IngameMapMobile.STATE_HIDDEN
-		self.resizeDir = 0
-		self.resizeTimer = 0
-
-		self:setPosition(self.mapHideWidth * (1 - self.resizeTimer), nil)
-	end
+function IngameMapMobile:setPosition(x, y)
+	IngameMapMobile:superClass().setPosition(self, x, y)
+	self.mobileLayout:setOffset(x or 0)
 end
 
 function IngameMapMobile:getBackgroundPosition()
 	local widthOffset, _ = getNormalizedScreenValues(unpack(IngameMapMobile.SIZE.MAP_HIDE_WIDTH))
 	local _, height = getNormalizedScreenValues(unpack(IngameMapMobile.SIZE.SELF))
+	local _, heightOffset = getNormalizedScreenValues(unpack(IngameMapMobile.POSITION.SELF))
 
 	if self.player ~= nil then
-		return widthOffset, 0.598611 - height / 2
+		local _, heightOffsetPlayer = getNormalizedScreenValues(unpack(IngameMapMobile.POSITION.SELF_PLAYER_OFFSET))
+		heightOffset = heightOffset + heightOffsetPlayer
 	end
 
-	return widthOffset, 0.5 - height / 2
+	local x, y = GuiUtils.alignToScreenPixels(widthOffset, heightOffset - height * 0.5)
+
+	return x, y
 end
 
 function IngameMapMobile:createBackground()
@@ -191,6 +259,9 @@ function IngameMapMobile:createFrame(hudAtlasPath, baseX, baseY, width, height)
 	self.mapFrameElement = frame
 
 	self:addChild(frame)
+end
+
+function IngameMapMobile:drawPlayersCoordinates()
 end
 
 IngameMapMobile.MIN_MAP_WIDTH = 464
@@ -223,6 +294,14 @@ IngameMapMobile.SIZE = {
 	}
 }
 IngameMapMobile.POSITION = {
+	SELF = {
+		0,
+		540
+	},
+	SELF_PLAYER_OFFSET = {
+		0,
+		106
+	},
 	MAP = {
 		IngameMapMobile.FRAME_THICKNESS,
 		IngameMapMobile.FRAME_THICKNESS
@@ -232,20 +311,20 @@ IngameMapMobile.POSITION = {
 		0
 	},
 	HALF_CIRCLE = {
-		IngameMapMobile.FRAME_THICKNESS + IngameMapMobile.SIZE.RIGHT_BORDER[1] + IngameMapMobile.MIN_MAP_WIDTH,
+		IngameMapMobile.SIZE.RIGHT_BORDER[1] + IngameMapMobile.MIN_MAP_WIDTH - 4,
 		IngameMapMobile.MIN_MAP_HEIGHT / 2 - IngameMapMobile.SIZE.HALF_CIRCLE[2] / 2
 	},
 	HALF_CIRCLE_ICON = {
-		IngameMapMobile.FRAME_THICKNESS + IngameMapMobile.SIZE.RIGHT_BORDER[1] + IngameMapMobile.MIN_MAP_WIDTH + 12,
+		IngameMapMobile.SIZE.RIGHT_BORDER[1] + IngameMapMobile.MIN_MAP_WIDTH + 8,
 		IngameMapMobile.MIN_MAP_HEIGHT / 2 - IngameMapMobile.SIZE.HALF_CIRCLE_ICON[2] / 2
 	}
 }
 IngameMapMobile.UV = {
 	HALF_CIRCLE = {
-		102,
-		589,
-		83,
-		165
+		97,
+		576,
+		95,
+		192
 	},
 	HALF_CIRCLE_ICON = {
 		600,
@@ -256,9 +335,9 @@ IngameMapMobile.UV = {
 }
 IngameMapMobile.COLOR = {
 	RIGHT_BORDER = {
-		0.991,
-		0.3865,
-		0.01,
+		0.0227,
+		0.5346,
+		0.8519,
 		1
 	},
 	MAP_ICON = {

@@ -433,49 +433,51 @@ function GuiElement:updateFramePosition()
 	local width, height = unpack(self.absSize)
 	local xPixel = 1 / g_screenWidth
 	local yPixel = 1 / g_screenHeight
-	x = math.floor(x / xPixel) * xPixel
-	y = math.floor(y / yPixel) * yPixel
 	width = math.max(width, xPixel)
 	height = math.max(height, yPixel)
-	local left = 1
-	local top = 2
-	local right = 3
-	local bottom = 4
-	self.frameBounds = {
-		[left] = {
-			x = x,
-			y = y,
-			width = self.frameThickness[left],
-			height = height
-		},
-		[top] = {
-			x = x,
-			y = y + height - self.frameThickness[top],
-			width = width,
-			height = self.frameThickness[top]
-		},
-		[right] = {
-			x = x + width - self.frameThickness[right],
-			y = y,
-			width = self.frameThickness[right],
-			height = height
-		},
-		[bottom] = {
-			x = x,
-			y = y,
-			width = width,
-			height = self.frameThickness[bottom]
-		}
-	}
 
-	self:cutFrameBordersHorizontal(self.frameBounds[left], self.frameBounds[top], true)
-	self:cutFrameBordersHorizontal(self.frameBounds[left], self.frameBounds[bottom], true)
-	self:cutFrameBordersHorizontal(self.frameBounds[right], self.frameBounds[top], false)
-	self:cutFrameBordersHorizontal(self.frameBounds[right], self.frameBounds[bottom], false)
-	self:cutFrameBordersVertical(self.frameBounds[bottom], self.frameBounds[left], true)
-	self:cutFrameBordersVertical(self.frameBounds[bottom], self.frameBounds[right], true)
-	self:cutFrameBordersVertical(self.frameBounds[top], self.frameBounds[left], false)
-	self:cutFrameBordersVertical(self.frameBounds[top], self.frameBounds[right], false)
+	if self.frameBounds == nil then
+		self.frameBounds = {
+			{},
+			{},
+			{},
+			{}
+		}
+	end
+
+	local frameLeft = GuiElement.FRAME_LEFT
+	local frameRight = GuiElement.FRAME_RIGHT
+	local frameTop = GuiElement.FRAME_TOP
+	local frameBottom = GuiElement.FRAME_BOTTOM
+	local left = self.frameBounds[frameLeft]
+	left.x = x
+	left.y = y
+	left.width = self.frameThickness[frameLeft]
+	left.height = height
+	local top = self.frameBounds[frameTop]
+	top.x = x
+	top.y = y + height - self.frameThickness[frameTop]
+	top.width = width
+	top.height = self.frameThickness[frameTop]
+	local right = self.frameBounds[frameRight]
+	right.x = x + width - self.frameThickness[frameRight]
+	right.y = y
+	right.width = self.frameThickness[frameRight]
+	right.height = height
+	local bottom = self.frameBounds[frameBottom]
+	bottom.x = x
+	bottom.y = y
+	bottom.width = width
+	bottom.height = self.frameThickness[frameBottom]
+
+	self:cutFrameBordersHorizontal(self.frameBounds[frameLeft], self.frameBounds[frameTop], true)
+	self:cutFrameBordersHorizontal(self.frameBounds[frameLeft], self.frameBounds[frameBottom], true)
+	self:cutFrameBordersHorizontal(self.frameBounds[frameRight], self.frameBounds[frameTop], false)
+	self:cutFrameBordersHorizontal(self.frameBounds[frameRight], self.frameBounds[frameBottom], false)
+	self:cutFrameBordersVertical(self.frameBounds[frameBottom], self.frameBounds[frameLeft], true)
+	self:cutFrameBordersVertical(self.frameBounds[frameBottom], self.frameBounds[frameRight], true)
+	self:cutFrameBordersVertical(self.frameBounds[frameTop], self.frameBounds[frameLeft], false)
+	self:cutFrameBordersVertical(self.frameBounds[frameTop], self.frameBounds[frameRight], false)
 end
 
 function GuiElement:cutFrameBordersHorizontal(verticalPart, horizontalPart, isLeft)
@@ -508,6 +510,24 @@ function GuiElement:mouseEvent(posX, posY, isDown, isUp, button, eventUsed)
 			local v = self.elements[i]
 
 			if v:mouseEvent(posX, posY, isDown, isUp, button, eventUsed) then
+				eventUsed = true
+			end
+		end
+	end
+
+	return eventUsed
+end
+
+function GuiElement:touchEvent(posX, posY, isDown, isUp, touchId, eventUsed)
+	if eventUsed == nil then
+		eventUsed = false
+	end
+
+	if self.visible then
+		for i = #self.elements, 1, -1 do
+			local v = self.elements[i]
+
+			if v:touchEvent(posX, posY, isDown, isUp, touchId, eventUsed) then
 				eventUsed = true
 			end
 		end

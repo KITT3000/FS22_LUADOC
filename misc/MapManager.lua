@@ -149,9 +149,11 @@ function MapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultipl
 
 	if not GS_IS_CONSOLE_VERSION or isDLCFile or not useModDirectory then
 		return self:addMapItem(mapId, mapFilename, mapClassName, configFilename, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, mapTitle, mapDesc, mapIconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, isModMap)
-	else
-		Logging.error("Can't register map '%s' with scripts on consoles.", mapId)
 	end
+
+	Logging.error("Can't register map '%s' with scripts on consoles.", mapId)
+
+	return false
 end
 
 function MapManager:getModNameFromMapId(mapId)

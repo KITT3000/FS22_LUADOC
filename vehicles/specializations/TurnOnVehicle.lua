@@ -292,25 +292,13 @@ function TurnOnVehicle:setIsTurnedOn(isTurnedOn, noEventSend)
 		SetTurnedOnEvent.sendEvent(self, isTurnedOn, noEventSend)
 
 		spec.isTurnedOn = isTurnedOn
-		local actionEvent = spec.actionEvents[InputAction.TOGGLE_COVER]
-		local text = nil
 
 		if spec.isTurnedOn then
 			SpecializationUtil.raiseEvent(self, "onTurnedOn")
-
-			text = string.format(spec.turnOffText, self.typeDesc)
-
 			self.rootVehicle:raiseStateChange(Vehicle.STATE_CHANGE_TURN_ON, self)
 		else
 			SpecializationUtil.raiseEvent(self, "onTurnedOff")
-
-			text = string.format(spec.turnOnText, self.typeDesc)
-
 			self.rootVehicle:raiseStateChange(Vehicle.STATE_CHANGE_TURN_OFF, self)
-		end
-
-		if actionEvent ~= nil then
-			g_inputBinding:setActionEventText(actionEvent.actionEventId, text)
 		end
 	end
 end

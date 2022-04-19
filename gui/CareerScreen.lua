@@ -3,8 +3,10 @@ local CareerScreen_mt = Class(CareerScreen, ScreenElement)
 CareerScreen.CONTROLS = {
 	SAVEGAME_LIST = "savegameList",
 	BUTTON_DELETE = "buttonDelete",
-	BUTTON_START = "buttonStart",
+	DATA_BOX_STANDARD = "dataBoxStandard",
 	LIST_ITEM_TEMPLATE = "listItemTemplate",
+	DATA_BOX_MOBILE = "dataBoxMobile",
+	BUTTON_START = "buttonStart",
 	LIST_SLIDER = "listSlider"
 }
 CareerScreen.LIST_TEMPLATE_ELEMENT_NAME = {
@@ -64,6 +66,26 @@ function CareerScreen.new(target, custom_mt, savegameController, startMissionInf
 	return self
 end
 
+function CareerScreen.createFromExistingGui(gui, guiName)
+	local newGui = CareerScreen.new(nil, nil, gui.savegameController, gui.startMissionInfo)
+
+	g_gui.guis[guiName]:delete()
+	g_gui.guis[guiName].target:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui)
+
+	return newGui
+end
+
+function CareerScreen:onCreate()
+	if GS_IS_MOBILE_VERSION then
+		if self.dataBoxStandard ~= nil then
+			self.dataBoxStandard:delete()
+		end
+	elseif self.dataBoxMobile ~= nil then
+		self.dataBoxMobile:delete()
+	end
+end
+
 function CareerScreen:onOpen()
 	CareerScreen:superClass().onOpen(self)
 
@@ -87,7 +109,6 @@ function CareerScreen:onOpen()
 		self:updateButtons()
 	end
 
-	g_messageCenter:publish(MessageType.GUI_CAREER_SCREEN_OPEN, canStart)
 	self.savegameList:reloadData()
 end
 
@@ -344,7 +365,7 @@ function CareerScreen:updateButtons()
 	local canDeleteGame = self.savegameController:getCanDeleteGame(self.savegameList.selectedIndex)
 
 	if self.buttonDelete then
-		self.buttonDelete:setDisabled(not canDeleteGame and not g_isPresentationVersion)
+		self.buttonDelete:setDisabled(not canDeleteGame)
 	end
 
 	local canStartGame = self.savegameController:getCanStartGame(self.savegameList.selectedIndex)
@@ -474,10 +495,6 @@ function CareerScreen:onYesNoNotEnoughSpaceForNewSaveGame(yes)
 	if yes then
 		if self.startMissionInfo.scenarioId ~= nil then
 			self:startCurrentSavegame(true)
-		elseif g_isPresentationVersion and g_presentationVersionDifficulty ~= nil then
-			self.startMissionInfo.difficulty = MathUtil.clamp(g_presentationVersionDifficulty, 1, 3)
-
-			self:changeScreen(MapSelectionScreen, CareerScreen)
 		else
 			self:changeScreen(DifficultyScreen, CareerScreen)
 		end
@@ -538,20 +555,16 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 	if not savegame.isValid then
 		savegame.startSiloAmounts = {}
 
-		if not g_isPresentationVersion then
-			if savegame.difficulty == 1 then
-				local low = 8000
-				local high = 16000
-				savegame.startSiloAmounts.wheat = math.random(low, high)
-				savegame.startSiloAmounts.barley = math.random(low, high)
-				savegame.startSiloAmounts.canola = math.random(low, high)
-				savegame.startSiloAmounts.maize = math.random(low, high)
-				savegame.startSiloAmounts.oat = math.random(low, high)
-				savegame.startSiloAmounts.soybean = math.random(low, high)
-				savegame.startSiloAmounts.sunflower = math.random(low, high)
-			end
-		else
-			savegame.startSiloAmounts.wheat = 40000
+		if savegame.difficulty == 1 then
+			local low = 8000
+			local high = 16000
+			savegame.startSiloAmounts.wheat = math.random(low, high)
+			savegame.startSiloAmounts.barley = math.random(low, high)
+			savegame.startSiloAmounts.canola = math.random(low, high)
+			savegame.startSiloAmounts.maize = math.random(low, high)
+			savegame.startSiloAmounts.oat = math.random(low, high)
+			savegame.startSiloAmounts.soybean = math.random(low, high)
+			savegame.startSiloAmounts.sunflower = math.random(low, high)
 		end
 
 		savegame.vehiclesXMLLoad = savegame.defaultVehiclesXMLFilename
@@ -568,12 +581,7 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 		savegame.fieldJobMissionCount = 0
 		savegame.fieldJobMissionByNPC = 0
 		savegame.transportMissionCount = 0
-
-		if g_isPresentationVersion then
-			savegame.isNewSPCareer = false
-		else
-			savegame.isNewSPCareer = true
-		end
+		savegame.isNewSPCareer = true
 	end
 
 	local missionInfo = savegame
@@ -666,8 +674,14 @@ function CareerScreen:populateCellForItemInSection(list, section, index, cell)
 		cell:getAttribute("title"):setText(g_i18n:getText("ui_savegame") .. " " .. tostring(index))
 	end
 
-	cell:getAttribute("gameIcon"):setVisible(savegame.isValid)
-	cell:getAttribute("title"):setVisible(savegame.isValid)
+	if not Platform.isMobile then
+		cell:getAttribute("gameIcon"):setVisible(savegame.isValid)
+		cell:getAttribute("title"):setVisible(savegame.isValid)
+	else
+		cell:getAttribute("gameIcon"):setVisible(false)
+		cell:getAttribute("title"):setVisible(false)
+	end
+
 	cell:getAttribute("dataBox"):setVisible(savegame.isValid)
 	cell:getAttribute("textBox"):setVisible(not savegame.isValid)
 

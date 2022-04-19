@@ -18,6 +18,16 @@ function InGameMenuHelpFrame.new(subclass_mt, l10n, helpLineManager)
 	return self
 end
 
+function InGameMenuHelpFrame.createFromExistingGui(gui, guiName)
+	local newGui = InGameMenuHelpFrame.new(nil, gui.l10n, gui.helpLineManager)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function InGameMenuHelpFrame:copyAttributes(src)
 	InGameMenuHelpFrame:superClass().copyAttributes(self, src)
 
@@ -79,7 +89,7 @@ function InGameMenuHelpFrame:updateContents(page)
 			if paragraph.text ~= nil then
 				textElement:setText(self.helpLineManager:convertText(paragraph.text, paragraph.customEnvironment))
 
-				textHeight = textElement:getTextHeight()
+				textHeight = textElement:getTextHeight(true)
 
 				textElement:setSize(nil, textHeight)
 			end
@@ -103,7 +113,7 @@ function InGameMenuHelpFrame:updateContents(page)
 			imageElement:setVisible(false)
 			textFullElement:setText(self.helpLineManager:convertText(paragraph.text, paragraph.customEnvironment))
 
-			textHeightFullHeight = textFullElement:getTextHeight()
+			textHeightFullHeight = textFullElement:getTextHeight(true)
 
 			textFullElement:setSize(nil, textHeightFullHeight)
 		end

@@ -7,31 +7,34 @@ SettingsModel.SETTING_CLASS = {
 	SAVE_NONE = 0
 }
 SettingsModel.SETTING = {
-	RESOLUTION = "resolution",
-	TERRAIN_LOD_DISTANCE = "terrainLODDistance",
+	TERRAIN_QUALITY = "terrainQuality",
+	SHARPNESS = "sharpness",
+	FIDELITYFX_SR_20 = "fidelityFxSR20",
 	TEXTURE_RESOLUTION = "textureResolution",
-	SHADOW_MAP_FILTERING = "shadowMapFiltering",
+	SHADOW_DISTANCE_QUALITY = "shadowDistanceQuality",
 	V_SYNC = "vSync",
+	TERRAIN_LOD_DISTANCE = "terrainLODDistance",
 	FOLIAGE_SHADOW = "foliageShadow",
 	LANGUAGE = "language",
-	SHADOW_DISTANCE_QUALITY = "shadowDistanceQuality",
+	SHADOW_MAP_FILTERING = "shadowMapFiltering",
 	HDR_PEAK_BRIGHTNESS = "hdrPeakBrightness",
-	CONSOLE_RESOLUTION = "consoleResolution",
+	RESOLUTION = "resolution",
 	RESOLUTION_SCALE = "resolutionScale",
 	SHADOW_QUALITY = "shadowQuality",
-	RESOLUTION_SCALE_3D = "resolutionScale3d",
+	CONSOLE_RESOLUTION = "consoleResolution",
 	DLSS = "dlss",
 	TEXTURE_FILTERING = "textureFiltering",
 	MSAA = "msaa",
 	FULLSCREEN_MODE = "fullscreenMode",
 	VOLUME_MESH_TESSELLATION = "volumeMeshTessellation",
+	RESOLUTION_SCALE_3D = "resolutionScale3d",
 	CONSOLE_RENDER_QUALITY = "consoleRenderQuality",
 	MAX_TIRE_TRACKS = "maxTireTracks",
 	FIDELITYFX_SR = "fidelityFxSR",
+	XESS = "xess",
 	LOD_DISTANCE = "lodDistance",
 	FOLIAGE_DRAW_DISTANCE = "foliageDrawDistance",
 	POST_PROCESS_AA = "postProcessAntiAliasing",
-	TERRAIN_QUALITY = "terrainQuality",
 	CLOUD_QUALITY = "cloudQuality",
 	BRIGHTNESS = "brightness",
 	PERFORMANCE_CLASS = "performanceClass",
@@ -65,6 +68,7 @@ SettingsModel.SETTING = {
 	VOLUME_VOICE = GameSettings.SETTING.VOLUME_VOICE,
 	VOLUME_VOICE_INPUT = GameSettings.SETTING.VOLUME_VOICE_INPUT,
 	VOICE_MODE = GameSettings.SETTING.VOICE_MODE,
+	VOICE_INPUT_SENSITIVITY = GameSettings.SETTING.VOICE_INPUT_SENSITIVITY,
 	SHOW_HELP_ICONS = GameSettings.SETTING.SHOW_HELP_ICONS,
 	USE_COLORBLIND_MODE = GameSettings.SETTING.USE_COLORBLIND_MODE,
 	SHOW_TRIGGER_MARKER = GameSettings.SETTING.SHOW_TRIGGER_MARKER,
@@ -107,6 +111,7 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.defaultReaderFunction = self:makeDefaultReaderFunction()
 	self.defaultWriterFunction = self:makeDefaultWriterFunction()
 	self.volumeTexts = {}
+	self.voiceInputThresholdTexts = {}
 	self.recordingVolumeTexts = {}
 	self.voiceModeTexts = {}
 	self.brightnessTexts = {}
@@ -139,6 +144,9 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.resolutionScale3dTexts = {}
 	self.dlssTexts = {}
 	self.fidelityFxSRTexts = {}
+	self.fidelityFxSR20Texts = {}
+	self.xeSSTexts = {}
+	self.sharpnessTexts = {}
 	self.postProcessAntiAliasingTexts = {}
 	self.msaaTexts = {}
 	self.shadowQualityTexts = {}
@@ -174,6 +182,9 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.minBrightness = 0.5
 	self.maxBrightness = 2
 	self.brightnessStep = 0.1
+	self.minSharpness = 1
+	self.maxSharpness = 2
+	self.sharpnessStep = 0.1
 	self.minFovY = Platform.minFovY
 	self.maxFovY = Platform.maxFovY
 
@@ -210,6 +221,9 @@ function SettingsModel:addManagedSettings()
 	self:addPostProcessAntiAliasingSetting()
 	self:addDLSSSetting()
 	self:addFidelityFxSRSetting()
+	self:addFidelityFxSR20Setting()
+	self:addXeSSSetting()
+	self:addSharpnessSetting()
 	self:addShadingRateQualitySetting()
 	self:addShadowDistanceQualitySetting()
 	self:addSSAOQualitySetting()
@@ -231,6 +245,7 @@ function SettingsModel:addManagedSettings()
 	self:addVoiceVolumeSetting()
 	self:addVoiceInputVolumeSetting()
 	self:addVoiceModeSetting()
+	self:addVoiceInputSensitivitySetting()
 	self:addSteeringBackSpeedSetting()
 	self:addSteeringSensitivitySetting()
 	self:addCameraSensitivitySetting()
@@ -482,6 +497,21 @@ function SettingsModel:createControlDisplayValues()
 		table.insert(self.voiceModeTexts, self.l10n:getText("ui_pushToTalk"))
 	end
 
+	self.voiceInputThresholdTexts = {
+		self.l10n:getText("ui_auto"),
+		"0%",
+		"10%",
+		"20%",
+		"30%",
+		"40%",
+		"50%",
+		"60%",
+		"70%",
+		"80%",
+		"90%",
+		"100%"
+	}
+
 	for i = self.minBrightness, self.maxBrightness + 0.0001, self.brightnessStep do
 		table.insert(self.brightnessTexts, string.format("%.1f", i))
 	end
@@ -640,6 +670,36 @@ function SettingsModel:createControlDisplayValues()
 			self.fidelityFxSRMapping[quality] = #self.fidelityFxSRTexts
 			self.fidelityFxSRMappingReverse[#self.fidelityFxSRTexts] = quality
 		end
+	end
+
+	self.fidelityFxSR20Texts = {}
+	self.fidelityFxSR20Mapping = {}
+	self.fidelityFxSR20MappingReverse = {}
+
+	for quality = 0, FidelityFxSR20Quality.NUM - 1 do
+		if quality == FidelityFxSR20Quality.OFF or getSupportsFidelityFxSR20Quality(quality) then
+			table.insert(self.fidelityFxSR20Texts, quality == FidelityFxSR20Quality.OFF and self.l10n:getText("ui_off") or getFidelityFxSR20QualityName(quality))
+
+			self.fidelityFxSR20Mapping[quality] = #self.fidelityFxSR20Texts
+			self.fidelityFxSR20MappingReverse[#self.fidelityFxSR20Texts] = quality
+		end
+	end
+
+	self.xeSSTexts = {}
+	self.xeSSMapping = {}
+	self.xeSSMappingReverse = {}
+
+	for quality = 0, XeSSQuality.NUM - 1 do
+		if quality == XeSSQuality.OFF or getSupportsXeSSQuality(quality) then
+			table.insert(self.xeSSTexts, quality == XeSSQuality.OFF and self.l10n:getText("ui_off") or getXeSSQualityName(quality))
+
+			self.xeSSMapping[quality] = #self.xeSSTexts
+			self.xeSSMappingReverse[#self.xeSSTexts] = quality
+		end
+	end
+
+	for i = self.minSharpness, self.maxSharpness + 0.0001, self.sharpnessStep do
+		table.insert(self.sharpnessTexts, string.format("%.1f", i))
 	end
 
 	self.postProcessAntiAliasingTexts = {
@@ -1188,6 +1248,18 @@ function SettingsModel:getFidelityFxSRTexts()
 	return self.fidelityFxSRTexts
 end
 
+function SettingsModel:getFidelityFxSR20Texts()
+	return self.fidelityFxSR20Texts
+end
+
+function SettingsModel:getXeSSTexts()
+	return self.xeSSTexts
+end
+
+function SettingsModel:getSharpnessTexts()
+	return self.sharpnessTexts
+end
+
 function SettingsModel:getShadingRateQualityTexts()
 	return self.fourStateTexts
 end
@@ -1282,6 +1354,10 @@ end
 
 function SettingsModel:getAudioVolumeTexts()
 	return self.volumeTexts
+end
+
+function SettingsModel:getVoiceInputSensitivityTexts()
+	return self.voiceInputThresholdTexts
 end
 
 function SettingsModel:getForceFeedbackTexts()
@@ -1492,6 +1568,54 @@ function SettingsModel:addFidelityFxSRSetting()
 	end
 
 	self:addSetting(SettingsModel.SETTING.FIDELITYFX_SR, readValue, writeValue, true)
+end
+
+function SettingsModel:addFidelityFxSR20Setting()
+	local function readValue()
+		return self.fidelityFxSR20Mapping[getFidelityFxSR20Quality()]
+	end
+
+	local function writeValue(value)
+		local newValue = self.fidelityFxSR20MappingReverse[value]
+
+		if getFidelityFxSR20Quality() ~= newValue then
+			setFidelityFxSR20Quality(newValue)
+		end
+	end
+
+	self:addSetting(SettingsModel.SETTING.FIDELITYFX_SR_20, readValue, writeValue, true)
+end
+
+function SettingsModel:addXeSSSetting()
+	local function readValue()
+		return self.xeSSMapping[getXeSSQuality()]
+	end
+
+	local function writeValue(value)
+		local newValue = self.xeSSMappingReverse[value]
+
+		if getXeSSQuality() ~= newValue then
+			setXeSSQuality(newValue)
+		end
+	end
+
+	self:addSetting(SettingsModel.SETTING.XESS, readValue, writeValue, true)
+end
+
+function SettingsModel:addSharpnessSetting()
+	local function readSharpness()
+		local sharpness = getSharpness()
+
+		return tonumber(string.format("%.0f", sharpness))
+	end
+
+	local function writeSharpness(index)
+		local value = self.minSharpness + self.sharpnessStep * (index - 1)
+
+		setSharpness(value)
+	end
+
+	self:addSetting(SettingsModel.SETTING.SHARPNESS, readSharpness, writeSharpness, true)
 end
 
 function SettingsModel:addShadingRateQualitySetting()
@@ -2069,6 +2193,32 @@ function SettingsModel:addVoiceModeSetting()
 	end
 
 	self:addSetting(SettingsModel.SETTING.VOICE_MODE, readMode, writeMode, true)
+end
+
+function SettingsModel:addVoiceInputSensitivitySetting()
+	local function readMode()
+		local value = VoiceChatUtil.getInputSensitivity()
+
+		if value < 0 then
+			return 1
+		else
+			return MathUtil.round(value * 10 + 2)
+		end
+	end
+
+	local function writeMode(value)
+		self.gameSettings:setValue(SettingsModel.SETTING.VOICE_INPUT_SENSITIVITY, value)
+
+		local threshold = -1
+
+		if value > 1 then
+			threshold = (value - 2) / 10
+		end
+
+		VoiceChatUtil.setInputSensitivity(threshold)
+	end
+
+	self:addSetting(SettingsModel.SETTING.VOICE_INPUT_SENSITIVITY, readMode, writeMode, true)
 end
 
 function SettingsModel:addVolumeGUISetting()

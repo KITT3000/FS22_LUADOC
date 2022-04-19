@@ -249,6 +249,8 @@ function MotionPathEffect:start()
 		self.currentStartDelay = self.startDelay
 	end
 
+	self.currentStopDelay = 0
+
 	return true
 end
 

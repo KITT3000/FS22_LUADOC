@@ -7,7 +7,9 @@ function Benchmark.new(customMt)
 	self.currentCamPath = nil
 	self.hasFinished = false
 
-	addConsoleCommand("gsBenchmark", "Starts a benchmark sequence with camera flight and working vehicles", "consoleCommandBenchmark", self)
+	if g_isDevelopmentVersion then
+		addConsoleCommand("gsBenchmark", "Starts a benchmark sequence with camera flight and working vehicles", "consoleCommandBenchmark", self)
+	end
 
 	return self
 end
@@ -213,21 +215,23 @@ function Benchmark:update(dt)
 end
 
 function Benchmark:consoleCommandBenchmark()
-	if g_currentMission ~= nil then
-		if self.isRunning then
-			self:finishBenchmark()
-		end
-
-		if self:load() then
-			self:startBenchmark()
-
-			return "Started benchmark"
-		end
-
-		return "Error: Cannot run benchmark, errors in config"
+	if g_currentMission == nil then
+		return "Error: Cannot run benchmark, load a map first"
 	end
 
-	return "Error: Cannot run benchmark, load a map first"
-end
+	if g_currentMission.missionDynamicInfo.isMultiplayer then
+		return "Error: No available in Multiplayer"
+	end
 
-g_benchmark = Benchmark.new()
+	if self.isRunning then
+		self:finishBenchmark()
+	end
+
+	if self:load() then
+		self:startBenchmark()
+
+		return "Started benchmark"
+	else
+		return "Error: Cannot run benchmark, errors in config"
+	end
+end

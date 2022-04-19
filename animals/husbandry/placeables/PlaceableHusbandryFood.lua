@@ -378,7 +378,7 @@ function PlaceableHusbandryFood:getFoodInfos(superFunc)
 			end
 
 			local info = {
-				title = string.format("%s (%d%%)", title, foodGroup.productionWeight * 100),
+				title = string.format("%s (%d%%)", title, MathUtil.round(foodGroup.productionWeight * 100)),
 				value = fillLevel,
 				capacity = capacity,
 				ratio = 0

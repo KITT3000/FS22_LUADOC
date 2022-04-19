@@ -24,9 +24,7 @@ function load()
 end
 
 if setFileLogPrefixTimestamp == nil then
-	print("Warning: 'setFileLogPrefixTimestamp' does not exist")
-
-	function setFileLogPrefixTimestamp()
+	function setFileLogPrefixTimestamp(addTimestamp)
 	end
 end
 
@@ -74,7 +72,7 @@ function consoleCommandListCommands()
 		print(string.format("%s   %s", paddedName, registeredConsoleCommands[name]))
 	end
 
-	print(string.format("# Listied %d script-based console commands. Use 'help' to get all commands", #sortedNames))
+	print(string.format("# Listed %d script-based console commands. Use 'help' to get all commands", #sortedNames))
 	setFileLogPrefixTimestamp(g_logFilePrefixTimestamp)
 end
 

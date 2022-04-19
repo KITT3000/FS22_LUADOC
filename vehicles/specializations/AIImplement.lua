@@ -184,7 +184,7 @@ function AIImplement:onLoad(savegame)
 	spec.useAttributesOfAttachedImplement = self.xmlFile:getValue(baseName .. ".useAttributesOfAttachedImplement#value", false)
 	spec.hasNoFullCoverageArea = self.xmlFile:getValue(baseName .. ".hasNoFullCoverageArea#value", false)
 	spec.hasNoFullCoverageAreaOffset = self.xmlFile:getValue(baseName .. ".hasNoFullCoverageArea#offset", 0)
-	spec.overlap = self.xmlFile:getValue(baseName .. ".overlap#value", AIVehicleUtil.AREA_OVERLAP)
+	spec.overlap = self.xmlFile:getValue(baseName .. ".overlap#value")
 	spec.terrainDetailRequiredValueRanges = {}
 	spec.terrainDetailProhibitedValueRanges = {}
 	spec.requiredFruitTypes = {}

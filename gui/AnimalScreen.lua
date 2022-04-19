@@ -43,11 +43,12 @@ function AnimalScreen.new(custom_mt)
 	return self
 end
 
-function AnimalScreen.createFromExistingGui(gui)
+function AnimalScreen.createFromExistingGui(gui, guiName)
 	local controller = gui:getController()
 	local newGui = AnimalScreen.new()
 
 	newGui:setController(controller)
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui)
 
 	return newGui
 end

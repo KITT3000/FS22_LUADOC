@@ -78,6 +78,16 @@ function InGameMenuAnimalsFrame.new(subclass_mt, messageCenter, l10n, fillTypeMa
 	return self
 end
 
+function InGameMenuAnimalsFrame.createFromExistingGui(gui, guiName)
+	local newGui = InGameMenuAnimalsFrame.new(nil, gui.messageCenter, gui.l10n, gui.fillTypeManager)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function InGameMenuAnimalsFrame:copyAttributes(src)
 	InGameMenuAnimalsFrame:superClass().copyAttributes(self, src)
 

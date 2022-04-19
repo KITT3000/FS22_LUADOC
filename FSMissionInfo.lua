@@ -45,11 +45,6 @@ function FSMissionInfo:loadDefaults()
 	self.creationDate = getDate("%Y-%m-%d")
 	self.saveDate = nil
 	self.dayTime = 400
-
-	if g_isPresentationVersion then
-		self.dayTime = 900
-	end
-
 	self.timeScale = Platform.gameplay.defaultTimeScale
 	self.timeScaleMultiplier = 1
 	self.missionFrequency = 2

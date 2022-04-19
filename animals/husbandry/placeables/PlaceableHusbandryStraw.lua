@@ -111,18 +111,19 @@ function PlaceableHusbandryStraw:updateOutput(superFunc, foodFactor, productionF
 		local spec = self.spec_husbandryStraw
 
 		if spec.inputLitersPerHour > 0 then
-			self:removeHusbandryFillLevel(self:getOwnerFarmId(), spec.inputLitersPerHour * g_currentMission.environment.timeAdjustment, spec.inputFillType)
-		end
+			local amount = spec.inputLitersPerHour * g_currentMission.environment.timeAdjustment
+			local delta = amount - self:removeHusbandryFillLevel(self:getOwnerFarmId(), amount, spec.inputFillType)
 
-		if spec.outputLitersPerHour > 0 then
-			local liters = foodFactor * spec.outputLitersPerHour * g_currentMission.environment.timeAdjustment
+			if spec.outputLitersPerHour > 0 and delta > 0 then
+				local liters = foodFactor * math.min(spec.outputLitersPerHour, delta) * g_currentMission.environment.timeAdjustment
 
-			if liters > 0 then
-				self:addHusbandryFillLevelFromTool(self:getOwnerFarmId(), liters, spec.outputFillType, nil, nil, nil)
+				if liters > 0 then
+					self:addHusbandryFillLevelFromTool(self:getOwnerFarmId(), liters, spec.outputFillType, nil, nil, nil)
+				end
 			end
-		end
 
-		self:updateStrawPlane()
+			self:updateStrawPlane()
+		end
 	end
 
 	superFunc(self, foodFactor, productionFactor, globalProductionFactor)

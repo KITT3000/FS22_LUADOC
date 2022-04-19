@@ -25,6 +25,8 @@ function MilkingRobot:load(linkNode, filename, asyncCallbackFunction, asyncCallb
 		asyncCallbackArgs = asyncCallbackArgs
 	}
 	self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(i3dFilename, true, false, self.onI3DFileLoaded, self, arguments)
+
+	return true
 end
 
 function MilkingRobot:delete()

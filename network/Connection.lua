@@ -87,7 +87,7 @@ function Connection:sendEvent(event, deleteEvent, force)
 		event:run(self.localConnection)
 	elseif self.isReadyForEvents or force then
 		if event.eventId == nil then
-			print("Error: Invalid event id")
+			print("Error: Invalid event id for " .. (ClassUtil.getClassNameByObject(event) or "<unable to retrieve class>"))
 		else
 			local channel = event.networkChannel
 

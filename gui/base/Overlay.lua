@@ -157,9 +157,59 @@ function Overlay:getScale()
 	return self.scaleWidth, self.scaleHeight
 end
 
-function Overlay:render()
+function Overlay:render(clipX1, clipY1, clipX2, clipY2)
 	if self.visible and self.overlayId ~= 0 and self.a > 0 then
-		renderOverlay(self.overlayId, self.x + self.offsetX, self.y + self.offsetY, self.width, self.height)
+		local posX = self.x + self.offsetX
+		local posY = self.y + self.offsetY
+		local sizeX = self.width
+		local sizeY = self.height
+
+		if clipX1 ~= nil then
+			local u1, v1, u2, v2, u3, v3, u4, v4 = unpack(self.uvs)
+			local oldX1 = posX
+			local oldY1 = posY
+			local oldX2 = sizeX + posX
+			local oldY2 = sizeY + posY
+			local posX2 = posX + sizeX
+			local posY2 = posY + sizeY
+			posX = math.max(posX, clipX1)
+			posY = math.max(posY, clipY1)
+			sizeX = math.max(math.min(posX2, clipX2) - posX, 0)
+			sizeY = math.max(math.min(posY2, clipY2) - posY, 0)
+
+			if sizeX == 0 or sizeY == 0 then
+				return
+			end
+
+			local ou1 = u1
+			local ov1 = v1
+			local ou2 = u2
+			local ov2 = v2
+			local ou3 = u3
+			local ov3 = v3
+			local ou4 = u4
+			local ov4 = v4
+			local p1 = (posX - oldX1) / (oldX2 - oldX1)
+			local p2 = (posY - oldY1) / (oldY2 - oldY1)
+			local p3 = (posX + sizeX - oldX1) / (oldX2 - oldX1)
+			local p4 = (posY + sizeY - oldY1) / (oldY2 - oldY1)
+			u1 = (ou3 - ou1) * p1 + ou1
+			v1 = (ov2 - ov1) * p2 + ov1
+			u2 = (ou3 - ou1) * p1 + ou1
+			v2 = (ov4 - ov3) * p4 + ov3
+			u3 = (ou3 - ou1) * p3 + ou1
+			v3 = (ov2 - ov1) * p2 + ov1
+			u4 = (ou4 - ou2) * p3 + ou2
+			v4 = (ov4 - ov3) * p4 + ov3
+
+			setOverlayUVs(self.overlayId, u1, v1, u2, v2, u3, v3, u4, v4)
+		end
+
+		renderOverlay(self.overlayId, posX, posY, sizeX, sizeY)
+
+		if clipX1 ~= nil then
+			setOverlayUVs(self.overlayId, unpack(self.uvs))
+		end
 	end
 end
 

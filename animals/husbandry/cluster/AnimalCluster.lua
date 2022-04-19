@@ -122,6 +122,8 @@ function AnimalCluster:changeNumAnimals(delta)
 	if math.abs(self.numAnimals - old) > 0 then
 		self:setDirty()
 	end
+
+	return delta - (self.numAnimals - old)
 end
 
 function AnimalCluster:getSubTypeIndex()

@@ -44,6 +44,9 @@ function Platform.Default:apply()
 	self.hasFriendFilter = false
 	self.hasNativeProfiles = false
 	self.hasNetworkSettings = true
+	self.hasExtraContent = true
+	self.hasWardrobe = true
+	self.hasMapSelection = true
 	self.guiPrefixes = {}
 	self.supportsMods = true
 	self.allowsScriptMods = true
@@ -69,6 +72,7 @@ function Platform.Default:apply()
 	self.forcedUIResolution = nil
 	self.usesFixedExposure = false
 	self.verifyMultiplayerAvailabilityInMenu = Platform.Default.verifyMultiplayerAvailabilityInMenu
+	self.gameplay.hasLoans = true
 	self.gameplay.defaultTimeScale = 5
 	self.gameplay.timeScaleSettings = {
 		0.5,
@@ -105,6 +109,7 @@ function Platform.Default:apply()
 	self.gameplay.usePlowCounter = true
 	self.gameplay.useLimeCounter = true
 	self.gameplay.useStubbleShred = true
+	self.gameplay.useRolling = true
 	self.gameplay.automaticDischarge = false
 	self.gameplay.automaticFilling = false
 	self.gameplay.automaticAttach = false
@@ -166,6 +171,12 @@ Platform.Console = {
 		self.safeFrameMajorOffsetY = 54
 		self.forcedUIResolution = 1080
 		self.maxFovY = 90
+		local shaderFolder = "data/shaders/"
+		local files = Files.new(shaderFolder).files
+
+		for _, file in ipairs(files) do
+			addReplacedCustomShader(file.filename, shaderFolder .. file.filename)
+		end
 	end
 }
 Platform.Xbox = {
@@ -213,10 +224,14 @@ Platform.Mobile = {
 
 		self.isMobile = true
 		self.showStartupScreen = false
+		self.hasTouchInput = true
 		self.supportsMods = false
 		self.allowsScriptMods = false
 		self.supportsPedestrians = false
 		self.supportsFoliageBending = false
+		self.hasExtraContent = false
+		self.hasWardrobe = false
+		self.hasMapSelection = false
 		self.canQuitApplication = false
 		self.supportsMultiplayer = false
 		self.hasPlayer = true
@@ -224,7 +239,6 @@ Platform.Mobile = {
 		self.safeFrameOffsetX = 50
 		self.safeFrameOffsetY = 50
 		self.forcedUIResolution = 1080
-		self.usesFixedExposure = true
 		self.gameplay.defaultTimeScale = 30
 		self.gameplay.timeScaleSettings = {
 			1,
@@ -235,6 +249,7 @@ Platform.Mobile = {
 			45
 		}
 		self.gameplay.hasShortNights = true
+		self.gameplay.hasLoans = false
 		self.gameplay.sprayLevelMaxValue = 1
 		self.gameplay.harvestScaleRation = {
 			1,
@@ -250,6 +265,7 @@ Platform.Mobile = {
 		self.gameplay.usePlowCounter = false
 		self.gameplay.useLimeCounter = false
 		self.gameplay.useStubbleShred = false
+		self.gameplay.useRolling = false
 		self.gameplay.automaticDischarge = true
 		self.gameplay.automaticFilling = true
 		self.gameplay.automaticAttach = true
@@ -330,7 +346,8 @@ Platform.IOS = {
 		print("Platform: loading iOS")
 
 		self.isIOS = true
-		self.hasInAppPurchases = false
+		self.hasInAppPurchases = true
+		self.showGamerTagInMainScreen = true
 	end
 }
 Platform.Android = {
@@ -338,6 +355,7 @@ Platform.Android = {
 		print("Platform: loading Android")
 
 		self.isAndroid = true
-		self.hasInAppPurchases = false
+		self.hasInAppPurchases = true
+		self.showGamerTagInMainScreen = true
 	end
 }

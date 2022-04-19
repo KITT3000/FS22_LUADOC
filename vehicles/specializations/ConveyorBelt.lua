@@ -352,11 +352,22 @@ function ConveyorBelt:getFillUnitAllowsFillType(superFunc, fillUnitIndex, fillTy
 
 	if self.getCurrentDischargeNode ~= nil then
 		local currentDischargeNode = self:getCurrentDischargeNode()
-		local object = currentDischargeNode.dischargeHitObject
-		local targetFillUnitIndex = currentDischargeNode.dischargeHitObjectUnitIndex
 
-		if object ~= nil and object.getFillUnitAllowsFillType ~= nil and targetFillUnitIndex ~= nil then
-			return object:getFillUnitAllowsFillType(targetFillUnitIndex, fillType)
+		if currentDischargeNode.fillUnitIndex == fillUnitIndex then
+			local object = currentDischargeNode.dischargeHitObject
+			local targetFillUnitIndex = currentDischargeNode.dischargeHitObjectUnitIndex
+
+			if object ~= nil and object.getFillUnitAllowsFillType ~= nil and targetFillUnitIndex ~= nil then
+				if currentDischargeNode.fillTypeConverter ~= nil then
+					local conversion = currentDischargeNode.fillTypeConverter[fillType]
+
+					if conversion ~= nil and object:getFillUnitAllowsFillType(targetFillUnitIndex, conversion.targetFillTypeIndex) then
+						return true
+					end
+				end
+
+				return object:getFillUnitAllowsFillType(targetFillUnitIndex, fillType)
+			end
 		end
 	end
 
@@ -368,11 +379,14 @@ function ConveyorBelt:getFillUnitFreeCapacity(superFunc, fillUnitIndex, fillType
 
 	if self.getCurrentDischargeNode ~= nil then
 		local currentDischargeNode = self:getCurrentDischargeNode()
-		local object = currentDischargeNode.dischargeHitObject
-		local targetFillUnitIndex = currentDischargeNode.dischargeHitObjectUnitIndex
 
-		if object ~= nil and object.getFillUnitFreeCapacity ~= nil and targetFillUnitIndex ~= nil then
-			return freeCapacity + object:getFillUnitFreeCapacity(targetFillUnitIndex, fillTypeIndex, farmId)
+		if currentDischargeNode.fillUnitIndex == fillUnitIndex then
+			local object = currentDischargeNode.dischargeHitObject
+			local targetFillUnitIndex = currentDischargeNode.dischargeHitObjectUnitIndex
+
+			if object ~= nil and object.getFillUnitFreeCapacity ~= nil and targetFillUnitIndex ~= nil then
+				return freeCapacity + object:getFillUnitFreeCapacity(targetFillUnitIndex, fillTypeIndex, farmId)
+			end
 		end
 	end
 

@@ -1,14 +1,11 @@
 InGameMenuFinancesFrame = {}
 local InGameMenuFinancesFrame_mt = Class(InGameMenuFinancesFrame, TabbedMenuFrameElement)
 InGameMenuFinancesFrame.CONTROLS = {
-	PAST_DAY_HEADERS = "pastDayHeader",
+	"financesList",
 	TOTAL_TEXTS = "totalText",
 	MAIN_BOX = "mainBox",
-	TABLE_SLIDER = "tableSlider",
-	BALANCE_FOOTER = "balanceFooter",
-	HEADER_BOX = "tableHeaderBox",
-	TABLE = "financesTable",
 	BALANCE_TEXT = "balanceText",
+	PAST_DAY_HEADERS = "pastDayHeader",
 	LOAN_TEXT = "loanText"
 }
 InGameMenuFinancesFrame.PAST_PERIOD_COUNT = GS_IS_MOBILE_VERSION and 3 or 4
@@ -26,39 +23,46 @@ function InGameMenuFinancesFrame.new(customMt, messageCenter, l10n, inputManager
 	self.client = nil
 	self.environment = nil
 	self.playerFarm = nil
-	self.dataBindings = {}
 	self.currentMoneyUnitText = ""
 	self.updateTimeFinancesStats = 0
-	self.updateTimeFinances = 0
-	self.hasMasterRights = false
-	self.backButtonInfo = {
-		inputAction = InputAction.MENU_BACK
-	}
-	self.borrowButtonInfo = {
-		text = "",
-		inputAction = InputAction.MENU_ACTIVATE,
-		callback = function ()
-			self:onButtonBorrow()
-		end
-	}
-	self.repayButtonInfo = {
-		text = "",
-		inputAction = InputAction.MENU_CANCEL,
-		callback = function ()
-			self:onButtonRepay()
-		end
-	}
 
-	if not GS_IS_MOBILE_VERSION then
-		self.hasCustomMenuButtons = true
+	if Platform.gameplay.hasLoans then
+		self.backButtonInfo = {
+			inputAction = InputAction.MENU_BACK
+		}
+		self.borrowButtonInfo = {
+			text = "",
+			inputAction = InputAction.MENU_ACTIVATE,
+			callback = function ()
+				self:onButtonBorrow()
+			end
+		}
+		self.repayButtonInfo = {
+			text = "",
+			inputAction = InputAction.MENU_CANCEL,
+			callback = function ()
+				self:onButtonRepay()
+			end
+		}
 		self.menuButtonInfo = {
 			self.backButtonInfo,
 			self.borrowButtonInfo,
 			self.repayButtonInfo
 		}
+		self.hasCustomMenuButtons = true
 	end
 
 	return self
+end
+
+function InGameMenuFinancesFrame.createFromExistingGui(gui, guiName)
+	local newGui = InGameMenuFinancesFrame.new(nil, gui.messageCenter, gui.l10n, gui.inputManager)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
 end
 
 function InGameMenuFinancesFrame:copyAttributes(src)
@@ -69,20 +73,13 @@ function InGameMenuFinancesFrame:copyAttributes(src)
 	self.inputManager = src.inputManager
 end
 
-function InGameMenuFinancesFrame:initialize(environment)
-	self:setupFinancesTable()
-end
-
 function InGameMenuFinancesFrame:onFrameOpen(element)
 	InGameMenuFinancesFrame:superClass().onFrameOpen(self)
-	self.tableHeaderBox:invalidateLayout()
-	self.balanceFooter:invalidateLayout()
 	self:updateMoneyUnit()
 	self:updateFinances()
 	self:updateFinancesLoanButtons()
 	self.messageCenter:subscribe(PlayerPermissionsEvent, self.updateFinancesLoanButtons, self)
 	self.messageCenter:subscribe(ChangeLoanEvent, self.updateFinances, self)
-	FocusManager:setFocus(self.tableSlider)
 end
 
 function InGameMenuFinancesFrame:onFrameClose()
@@ -124,30 +121,57 @@ function InGameMenuFinancesFrame:setPlayerFarm(farm)
 	self.playerFarm = farm
 end
 
-function InGameMenuFinancesFrame:setHasMasterRights(hasMasterRights)
-	self.hasMasterRights = hasMasterRights
-end
-
-function InGameMenuFinancesFrame:getPastPeriods()
-	local periods = {}
+function InGameMenuFinancesFrame:updateFinances()
 	local currentPeriod = self.environment.currentPeriod
 
 	for i = 1, InGameMenuFinancesFrame.PAST_PERIOD_COUNT do
 		local pastPeriod = currentPeriod - i
 
-		table.insert(periods, g_i18n:formatPeriod(pastPeriod, false))
+		self.pastDayHeader[i]:setText(g_i18n:formatPeriod(pastPeriod, false))
 	end
 
-	return periods
+	self.pastDayHeader[0]:setText(g_i18n:formatPeriod(currentPeriod, false))
+	self.financesList:reloadData()
+
+	local stats = self.playerFarm.stats
+
+	self:updateFinancesFooter(stats.finances, stats.financesHistory)
+	self:updateFinancesLoanButtons()
 end
 
-local function alwaysOverride()
-	return true
+function InGameMenuFinancesFrame:updateFinancesLoanButtons()
+	if Platform.gameplay.hasLoans then
+		local allowChangeLoan = self:hasPlayerLoanPermission()
+		local isBorrowEnabled = self.playerFarm.loan < self.playerFarm.loanMax and allowChangeLoan
+		local isRepayEnabled = self.playerFarm.loan > 0 and InGameMenuFinancesFrame.LOAN_STEP <= self.playerFarm.money and allowChangeLoan
+		self.borrowButtonInfo.disabled = not isBorrowEnabled
+		self.repayButtonInfo.disabled = not isRepayEnabled
+
+		self:setMenuButtonInfoDirty()
+	end
 end
 
-function InGameMenuFinancesFrame:setupFinancesTable()
-	self.financesTable:initialize()
-	self.financesTable:setProfileOverrideFilterFunction(alwaysOverride)
+function InGameMenuFinancesFrame:updateMoneyUnit()
+	self.currentMoneyUnitText = self.l10n:getCurrencySymbol(true)
+
+	if Platform.gameplay.hasLoans then
+		local borrowTemplate = self.l10n:getText(InGameMenuFinancesFrame.L10N_SYMBOL.BUTTON_BORROW)
+		local text = string.gsub(borrowTemplate, InGameMenuFinancesFrame.L10N_SYMBOL.CURRENCY, self.currentMoneyUnitText)
+		self.borrowButtonInfo.text = text
+		local repayTemplate = self.l10n:getText(InGameMenuFinancesFrame.L10N_SYMBOL.BUTTON_REPAY)
+		text = string.gsub(repayTemplate, InGameMenuFinancesFrame.L10N_SYMBOL.CURRENCY, self.currentMoneyUnitText)
+		self.repayButtonInfo.text = text
+	end
+end
+
+function InGameMenuFinancesFrame:updateFinancesFooter(currentFinances, pastFinances)
+	self:updateBalance()
+
+	if Platform.gameplay.hasLoans then
+		self:updateLoan()
+	end
+
+	self:updateDayTotals(currentFinances, pastFinances)
 end
 
 function InGameMenuFinancesFrame:updateBalance()
@@ -159,21 +183,8 @@ function InGameMenuFinancesFrame:updateBalance()
 		balanceProfile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEGATIVE
 	end
 
-	self.balanceText:applyProfile(balanceProfile)
+	self.balanceText:applyProfile(balanceProfile, true)
 	self.balanceText:setText(balanceMoneyText .. " " .. self.currentMoneyUnitText)
-end
-
-function InGameMenuFinancesFrame:updateLoan()
-	local currentLoan = self.playerFarm:getLoan()
-	local loanMoneyText = self.l10n:formatMoney(-currentLoan, 0, false)
-	local loanProfile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEUTRAL
-
-	if currentLoan > 0 then
-		loanProfile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEGATIVE
-	end
-
-	self.loanText:applyProfile(loanProfile)
-	self.loanText:setText(loanMoneyText .. " " .. self.currentMoneyUnitText)
 end
 
 function InGameMenuFinancesFrame:updateDayTotals(currentFinances, pastFinances)
@@ -205,82 +216,21 @@ function InGameMenuFinancesFrame:updateDayTotals(currentFinances, pastFinances)
 			self.totalText[i]:setText("")
 		end
 
-		self.totalText[i]:applyProfile(dayTotalProfile)
+		self.totalText[i]:applyProfile(dayTotalProfile, true)
 	end
 end
 
-function InGameMenuFinancesFrame:updateFinancesFooter(currentFinances, pastFinances)
-	self:updateBalance()
+function InGameMenuFinancesFrame:updateLoan()
+	local currentLoan = self.playerFarm:getLoan()
+	local loanMoneyText = self.l10n:formatMoney(-currentLoan, 0, false)
+	local loanProfile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEUTRAL
 
-	if not GS_IS_MOBILE_VERSION then
-		self:updateLoan()
+	if currentLoan > 0 then
+		loanProfile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEGATIVE
 	end
 
-	self:updateDayTotals(currentFinances, pastFinances)
-end
-
-function InGameMenuFinancesFrame:updateFinancesTable(currentFinances, pastFinances)
-	if GS_IS_MOBILE_VERSION then
-		self:setNumberOfPages(math.ceil(#currentFinances.statNames / InGameMenuFinancesFrame.MAX_ITEMS))
-	end
-
-	self.financesTable:clearData()
-
-	for _, statName in ipairs(currentFinances.statNames) do
-		local dataRow = self:buildDataRow(statName, currentFinances, pastFinances)
-
-		self.financesTable:addRow(dataRow)
-	end
-
-	self.financesTable:updateView(false)
-end
-
-function InGameMenuFinancesFrame:updateFinances()
-	local pastDayLabels = self:getPastPeriods()
-
-	for i, dayLabel in ipairs(pastDayLabels) do
-		self.pastDayHeader[i]:setText(dayLabel)
-	end
-
-	self.pastDayHeader[0]:setText(g_i18n:formatPeriod(g_currentMission.environment.currentPeriod, false))
-
-	local finances = self.playerFarm.stats.finances
-	local pastFinances = self.playerFarm.stats.financesHistory
-	local sliderValue = nil
-
-	if self.tableSlider ~= nil then
-		sliderValue = self.tableSlider:getValue()
-	end
-
-	self:updateFinancesTable(finances, pastFinances)
-	self:updateFinancesFooter(finances, pastFinances)
-	self:updateFinancesLoanButtons()
-
-	if self.tableSlider ~= nil then
-		self.tableSlider:setValue(sliderValue)
-	end
-end
-
-function InGameMenuFinancesFrame:updateFinancesLoanButtons()
-	if not GS_IS_MOBILE_VERSION then
-		local allowChangeLoan = self:hasPlayerLoanPermission()
-		local isBorrowEnabled = self.playerFarm.loan < self.playerFarm.loanMax and allowChangeLoan
-		local isRepayEnabled = self.playerFarm.loan > 0 and InGameMenuFinancesFrame.LOAN_STEP <= self.playerFarm.money and allowChangeLoan
-		self.borrowButtonInfo.disabled = not isBorrowEnabled
-		self.repayButtonInfo.disabled = not isRepayEnabled
-
-		self:setMenuButtonInfoDirty()
-	end
-end
-
-function InGameMenuFinancesFrame:updateMoneyUnit()
-	self.currentMoneyUnitText = self.l10n:getCurrencySymbol(true)
-	local borrowTemplate = self.l10n:getText(InGameMenuFinancesFrame.L10N_SYMBOL.BUTTON_BORROW)
-	local text = string.gsub(borrowTemplate, InGameMenuFinancesFrame.L10N_SYMBOL.CURRENCY, self.currentMoneyUnitText)
-	self.borrowButtonInfo.text = text
-	local repayTemplate = self.l10n:getText(InGameMenuFinancesFrame.L10N_SYMBOL.BUTTON_REPAY)
-	text = string.gsub(repayTemplate, InGameMenuFinancesFrame.L10N_SYMBOL.CURRENCY, self.currentMoneyUnitText)
-	self.repayButtonInfo.text = text
+	self.loanText:applyProfile(loanProfile, true)
+	self.loanText:setText(loanMoneyText .. " " .. self.currentMoneyUnitText)
 end
 
 function InGameMenuFinancesFrame:hasPlayerLoanPermission()
@@ -295,59 +245,6 @@ function InGameMenuFinancesFrame:getMainElementPosition()
 	return self.mainBox.absPosition
 end
 
-InGameMenuFinancesFrame.DATA_BINDING = {
-	DAY_TEMPLATE = "day%s",
-	TYPE = "costType"
-}
-
-function InGameMenuFinancesFrame:onDataBindType(element)
-	self.dataBindings[InGameMenuFinancesFrame.DATA_BINDING.TYPE] = element.name
-end
-
-function InGameMenuFinancesFrame:onDataBindDay(element, index)
-	local dbKey = string.format(InGameMenuFinancesFrame.DATA_BINDING.DAY_TEMPLATE, index)
-	self.dataBindings[dbKey] = element.name
-end
-
-function InGameMenuFinancesFrame:buildDataRow(statName, currentFinances, pastFinances)
-	local dataRow = TableElement.DataRow.new(statName, self.dataBindings)
-	local statNameCell = dataRow.columnCells[self.dataBindings[InGameMenuFinancesFrame.DATA_BINDING.TYPE]]
-	local statDisplayText = FinanceStats.statNamesI18n[statName]
-	statNameCell.text = statDisplayText
-
-	for i = 1, InGameMenuFinancesFrame.PAST_PERIOD_COUNT + 1 do
-		local dbKey = string.format(InGameMenuFinancesFrame.DATA_BINDING.DAY_TEMPLATE, tostring(i))
-		local dayCell = dataRow.columnCells[self.dataBindings[dbKey]]
-		local dayFinances = currentFinances
-
-		if i > 1 then
-			local pastIndex = #pastFinances - (i - 2)
-			dayFinances = pastFinances[pastIndex]
-		end
-
-		local profile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEUTRAL
-
-		if dayFinances ~= nil then
-			local moneyValue = dayFinances[statName]
-			dayCell.value = moneyValue
-
-			if math.floor(moneyValue) <= -1 then
-				profile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEGATIVE
-			end
-
-			local moneyText = self.l10n:formatMoney(moneyValue, 0, false)
-			dayCell.text = moneyText .. " " .. self.currentMoneyUnitText
-		else
-			dayCell.value = 0
-			dayCell.text = "-"
-		end
-
-		dayCell.overrideProfileName = profile
-	end
-
-	return dataRow
-end
-
 function InGameMenuFinancesFrame:onButtonBorrow()
 	if self:hasPlayerLoanPermission() then
 		self.client:getServerConnection():sendEvent(ChangeLoanEvent.new(InGameMenuFinancesFrame.LOAN_STEP, self.playerFarm.farmId))
@@ -360,12 +257,51 @@ function InGameMenuFinancesFrame:onButtonRepay()
 	end
 end
 
-function InGameMenuFinancesFrame:onPageChanged(page, fromPage)
-	InGameMenuFinancesFrame:superClass().onPageChanged(self, page, fromPage)
+function InGameMenuFinancesFrame:getNumberOfItemsInSection(list, section)
+	return #FinanceStats.statNames
+end
 
-	local firstIndex = (page - 1) * InGameMenuFinancesFrame.MAX_ITEMS + 1
+function InGameMenuFinancesFrame:populateCellForItemInSection(list, section, index, cell)
+	local stats = self.playerFarm.stats
+	local currentFinances = stats.finances
+	local pastFinances = stats.financesHistory
+	local statsName = FinanceStats.statNames[index]
+	local statsNameText = FinanceStats.statNamesI18n[statsName]
 
-	self.financesTable:scrollTo(firstIndex)
+	cell:getAttribute("name"):setText(statsNameText)
+	self:setPastDayFinances(cell:getAttribute("todayMinusFour"), pastFinances, 4, statsName)
+	self:setPastDayFinances(cell:getAttribute("todayMinusThree"), pastFinances, 3, statsName)
+	self:setPastDayFinances(cell:getAttribute("todayMinusTwo"), pastFinances, 2, statsName)
+	self:setPastDayFinances(cell:getAttribute("todayMinusOne"), pastFinances, 1, statsName)
+	self:setPastDayFinances(cell:getAttribute("today"), currentFinances, 0, statsName)
+end
+
+function InGameMenuFinancesFrame:setPastDayFinances(cell, financesData, dayIndex, statsName)
+	if InGameMenuFinancesFrame.PAST_PERIOD_COUNT < dayIndex then
+		return
+	end
+
+	local value = "-"
+	local profile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEUTRAL
+	local financeData = financesData
+
+	if dayIndex > 0 then
+		local pastIndex = #financesData - (dayIndex - 1)
+		financeData = financesData[pastIndex]
+	end
+
+	if financeData ~= nil then
+		local moneyValue = financeData[statsName]
+		local moneyText = self.l10n:formatMoney(moneyValue, 0, false)
+		value = moneyText .. " " .. self.currentMoneyUnitText
+
+		if math.floor(moneyValue) <= -1 then
+			profile = InGameMenuFinancesFrame.PROFILE.VALUE_CELL_NEGATIVE
+		end
+	end
+
+	cell:applyProfile(profile, true)
+	cell:setText(value)
 end
 
 InGameMenuFinancesFrame.L10N_SYMBOL = {
@@ -375,6 +311,6 @@ InGameMenuFinancesFrame.L10N_SYMBOL = {
 	CURRENCY = "$CURRENCY_SYMBOL"
 }
 InGameMenuFinancesFrame.PROFILE = {
-	VALUE_CELL_NEGATIVE = "ingameMenuFinancesRowCellNegative",
-	VALUE_CELL_NEUTRAL = "ingameMenuFinancesRowCell"
+	VALUE_CELL_NEGATIVE = "ingameMenuFinancesListItemDayNegative",
+	VALUE_CELL_NEUTRAL = "ingameMenuFinancesListItemDay"
 }

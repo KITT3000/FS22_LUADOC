@@ -36,6 +36,20 @@ function SmoothListElement.new(target, custom_mt)
 	self.itemizedScrollDelta = false
 	self.listSmoothingDisabled = false
 	self.selectedWithoutFocus = true
+	self.lastTouchPos = nil
+	self.usedTouchId = nil
+	self.currentTouchDelta = 0
+	self.scrollSpeed = 0
+	self.initialScrollSpeed = 0
+	self.scrollSpeedPixelPerMS = 0.005
+
+	if self.isHorizontalList then
+		self.scrollSpeedInterval = self.scrollSpeedPixelPerMS / g_screenWidth
+	else
+		self.scrollSpeedInterval = self.scrollSpeedPixelPerMS / g_screenHeight
+	end
+
+	self.supportsTouchScrolling = false
 
 	return self
 end
@@ -61,6 +75,7 @@ function SmoothListElement:loadFromXML(xmlFile, key)
 		self.listItemLateralSpacing
 	}))
 	self.supportsMouseScrolling = Utils.getNoNil(getXMLBool(xmlFile, key .. "#supportsMouseScrolling"), self.supportsMouseScrolling)
+	self.supportsTouchScrolling = Utils.getNoNil(getXMLBool(xmlFile, key .. "#supportsTouchScrolling"), self.supportsTouchScrolling)
 	self.doubleClickInterval = Utils.getNoNil(getXMLInt(xmlFile, key .. "#doubleClickInterval"), self.doubleClickInterval)
 	self.selectOnClick = Utils.getNoNil(getXMLBool(xmlFile, key .. "#selectOnClick"), self.selectOnClick)
 	self.ignoreMouse = Utils.getNoNil(getXMLBool(xmlFile, key .. "#ignoreMouse"), self.ignoreMouse)
@@ -117,6 +132,7 @@ function SmoothListElement:loadProfile(profile, applyProfile)
 	self.itemizedScrollDelta = profile:getBool("itemizedScrollDelta", self.itemizedScrollDelta)
 	self.listSmoothingDisabled = profile:getBool("listSmoothingDisabled", self.listSmoothingDisabled)
 	self.selectedWithoutFocus = profile:getBool("selectedWithoutFocus", self.selectedWithoutFocus)
+	self.supportsTouchScrolling = profile:getBool("supportsTouchScrolling", self.supportsTouchScrolling)
 end
 
 function SmoothListElement:clone(parent, includeId, suppressOnCreate)
@@ -178,6 +194,7 @@ function SmoothListElement:copyAttributes(src)
 	self.onScrollCallback = src.onScrollCallback
 	self.onDoubleClickCallback = src.onDoubleClickCallback
 	self.onClickCallback = src.onClickCallback
+	self.supportsTouchScrolling = src.supportsTouchScrolling
 	self.isLoaded = src.isLoaded
 
 	GuiMixin.cloneMixin(PlaySampleMixin, src, self)
@@ -707,7 +724,9 @@ function SmoothListElement:updateCellPosition(element)
 	end
 
 	if self.lengthAxis == 1 then
-		element:setPosition(offset - self.viewOffset, -lateralOffset)
+		local x, y = GuiUtils.alignToScreenPixels(offset - self.viewOffset, -lateralOffset)
+
+		element:setPosition(x, y)
 
 		if element.indexInSection == 0 then
 			element:setSize(nil, self.absSize[2])
@@ -715,7 +734,9 @@ function SmoothListElement:updateCellPosition(element)
 			element:setSize(nil, self.absSize[2] / self.numLateralItems - self.listItemLateralSpacing)
 		end
 	else
-		element:setPosition(lateralOffset, self.viewOffset - offset)
+		local x, y = GuiUtils.alignToScreenPixels(lateralOffset, self.viewOffset - offset)
+
+		element:setPosition(x, y)
 
 		if element.indexInSection == 0 then
 			element:setSize(self.absSize[1], nil)
@@ -936,6 +957,36 @@ function SmoothListElement:update(dt)
 
 		self:updateView(true)
 	end
+
+	if self.supportsTouchScrolling then
+		local isTouchActionActive = self.usedTouchId ~= nil
+		local scrollSpeedAbs = math.abs(self.scrollSpeed)
+
+		if isTouchActionActive or scrollSpeedAbs > 0.0001 then
+			local delta = 0
+
+			if isTouchActionActive then
+				self.scrollSpeed = self.currentTouchDelta / dt
+				delta = self.currentTouchDelta
+			else
+				local dir = MathUtil.sign(self.scrollSpeed)
+
+				if self.isHorizontalList then
+					dir = -dir
+				end
+
+				local speedToBreakRatio = self.scrollSpeed / self.initialScrollSpeed
+				self.scrollSpeed = math.max(scrollSpeedAbs - dt * self.scrollSpeedInterval, 0) * dir
+				delta = self.scrollSpeed * speedToBreakRatio^3 * dt
+			end
+
+			if delta ~= 0 then
+				self:scrollTo(self.viewOffset + delta)
+			end
+
+			self.currentTouchDelta = 0
+		end
+	end
 end
 
 function SmoothListElement:getSelectedElement()
@@ -991,7 +1042,13 @@ function SmoothListElement:onSliderValueChanged(slider, newValue, immediateMode)
 end
 
 function SmoothListElement:getViewOffsetPercentage()
-	return self.viewOffset / (self.contentSize - self.absSize[self.lengthAxis])
+	local size = self.contentSize - self.absSize[self.lengthAxis]
+
+	if size ~= 0 then
+		return self.viewOffset / size
+	end
+
+	return 1
 end
 
 function SmoothListElement:onMouseDown()
@@ -1100,6 +1157,44 @@ function SmoothListElement:mouseEvent(posX, posY, isDown, isUp, button, eventUse
 			self.mouseOverElement = nil
 
 			self:setHighlightedItem(self.mouseOverElement)
+		end
+	end
+
+	return eventUsed
+end
+
+function SmoothListElement:touchEvent(posX, posY, isDown, isUp, touchId, eventUsed)
+	if self.supportsTouchScrolling then
+		if self.usedTouchId == nil then
+			if not eventUsed and isDown and GuiUtils.checkOverlayOverlap(posX, posY, self.absPosition[1], self.absPosition[2], self.absSize[1], self.absSize[2]) then
+				self.currentTouchDelta = 0
+
+				if self.isHorizontalList then
+					self.lastTouchPos = posX
+				else
+					self.lastTouchPos = posY
+				end
+
+				self.usedTouchId = touchId
+				eventUsed = true
+			end
+		elseif self.usedTouchId == touchId then
+			if isUp then
+				self.usedTouchId = nil
+				self.initialScrollSpeed = self.scrollSpeed
+			else
+				local delta = 0
+
+				if self.isHorizontalList then
+					delta = posX - (self.lastTouchPos or posX)
+					self.lastTouchPos = posX
+				else
+					delta = posY - (self.lastTouchPos or posY)
+					self.lastTouchPos = posY
+				end
+
+				self.currentTouchDelta = (self.currentTouchDelta or 0) + delta
+			end
 		end
 	end
 

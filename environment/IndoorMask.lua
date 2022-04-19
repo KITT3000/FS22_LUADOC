@@ -42,11 +42,14 @@ function IndoorMask:onTerrainLoad(terrainRootNode)
 	end
 
 	self.terrainSize = self.mission.terrainSize
+	self.terrainSizeHalf = self.terrainSize / 2
 
 	if self.handle ~= nil then
 		self.maskSize = getBitVectorMapSize(self.handle)
 		self.modifierValue = DensityMapModifier.new(self.handle, IndoorMask.FIRST_CHANNEL, IndoorMask.NUM_CHANNELS)
 		self.filter = DensityMapFilter.new(self.modifierValue)
+		self.worldToDensityMap = self.maskSize / self.terrainSize
+		self.densityToWorldMap = self.terrainSize / self.maskSize
 	end
 end
 
@@ -58,8 +61,9 @@ end
 
 function IndoorMask:visualize()
 	if self.handle ~= nil then
-		local worldToDensityMap = self.maskSize / self.terrainSize
-		local densityToWorldMap = self.terrainSize / self.maskSize
+		local terrainSizeHalf = self.terrainSizeHalf
+		local worldToDensityMap = self.worldToDensityMap
+		local densityToWorldMap = self.densityToWorldMap
 		local x, _, z = getWorldTranslation(getCamera(0))
 
 		if self.mission.controlledVehicle ~= nil then
@@ -72,9 +76,8 @@ function IndoorMask:visualize()
 			x, _, z = getWorldTranslation(object.components[1].node)
 		end
 
-		local terrainHalfSize = self.terrainSize * 0.5
-		local xI = math.floor((x + terrainHalfSize) * worldToDensityMap)
-		local zI = math.floor((z + terrainHalfSize) * worldToDensityMap)
+		local xI = math.floor((x + terrainSizeHalf) * worldToDensityMap)
+		local zI = math.floor((z + terrainSizeHalf) * worldToDensityMap)
 		local minXi = math.max(xI - 20, 0)
 		local minZi = math.max(zI - 20, 0)
 		local maxXi = math.min(xI + 20, self.maskSize - 1)
@@ -94,8 +97,8 @@ function IndoorMask:visualize()
 					r = 1
 				end
 
-				local xt = xi * densityToWorldMap - terrainHalfSize - areaSize * 0.25
-				local zt = zi * densityToWorldMap - terrainHalfSize - areaSize * 0.25
+				local xt = xi * densityToWorldMap - terrainSizeHalf - areaSize * 0.25
+				local zt = zi * densityToWorldMap - terrainSizeHalf - areaSize * 0.25
 
 				DebugUtil.drawDebugAreaRectangleFilled(xt, 0, zt, xt + areaSize, 0, zt, xt, 0, zt + areaSize, true, r, g, b, 0.2)
 			end
@@ -115,6 +118,15 @@ function IndoorMask:getFilter(indoorOutdoor)
 	end
 
 	return nil
+end
+
+function IndoorMask:getValueAtPosition(wx, wz)
+	if self.handle ~= nil then
+		local x = math.floor((wx + self.terrainSizeHalf) * self.worldToDensityMap)
+		local z = math.floor((wz + self.terrainSizeHalf) * self.worldToDensityMap)
+
+		return getBitVectorMapPoint(self.handle, x, z, IndoorMask.FIRST_CHANNEL, IndoorMask.NUM_CHANNELS)
+	end
 end
 
 function IndoorMask:setPlaceableAreaInSnowMask(area, indoor)

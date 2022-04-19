@@ -123,14 +123,16 @@ function HelpLineManager:loadFromXML(filename, missionInfo)
 	local customEnvironment, baseDirectory = Utils.getModNameAndBaseDirectory(filename)
 	local xmlFile = XMLFile.load("helpLineViewContentXML", filename)
 
-	xmlFile:iterate("helpLines.category", function (index, key)
-		local category = self:loadCategory(xmlFile, key, missionInfo, customEnvironment, baseDirectory)
+	if xmlFile ~= nil then
+		xmlFile:iterate("helpLines.category", function (index, key)
+			local category = self:loadCategory(xmlFile, key, missionInfo, customEnvironment, baseDirectory)
 
-		if category ~= nil then
-			table.insert(self.categories, category)
-		end
-	end)
-	xmlFile:delete()
+			if category ~= nil then
+				table.insert(self.categories, category)
+			end
+		end)
+		xmlFile:delete()
+	end
 end
 
 function HelpLineManager:loadCategory(xmlFile, key, missionInfo, customEnvironment, baseDirectory)

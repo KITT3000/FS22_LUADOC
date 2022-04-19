@@ -583,30 +583,35 @@ function InputBinding:getLastInputMode()
 end
 
 function InputBinding:validateActionEventParameters(actionName, targetObject, eventCallback, triggerUp, triggerDown, triggerAlways)
-	local valid = true
+	if actionName == nil then
+		Logging.devWarning("Warning: Tried registering an unknown action")
+		printCallstack()
+
+		return false
+	end
 
 	if InputAction[actionName] == nil then
 		Logging.devWarning("Warning: Tried registering an event for an unknown action: %s", actionName)
 
-		valid = false
+		return false
 	end
 
 	if not targetObject then
 		Logging.devWarning("Warning: Tried registering an action event without a target.")
 
-		valid = false
+		return false
 	end
 
 	if not eventCallback then
 		Logging.devWarning("Warning: Tried registering an action event without an event callback.")
 
-		valid = false
+		return false
 	end
 
 	if not triggerUp and not triggerDown and not triggerAlways then
 		Logging.devWarning("Warning: Tried registering an action event without any active trigger flags.")
 
-		valid = false
+		return false
 	end
 
 	local action = self.nameActions[actionName]
@@ -615,7 +620,7 @@ function InputBinding:validateActionEventParameters(actionName, targetObject, ev
 		return false
 	end
 
-	return valid
+	return true
 end
 
 function InputBinding:registerActionEvent(actionName, targetObject, eventCallback, triggerUp, triggerDown, triggerAlways, startActive, callbackState, disableConflictingBindings, reportAnyDeviceCollision)
@@ -628,7 +633,7 @@ function InputBinding:registerActionEvent(actionName, targetObject, eventCallbac
 		eventOrderCounter = self.registrationContext.eventOrderCounter
 	end
 
-	if startActive then
+	if startActive and valid then
 		local eventCollision, collidingAction = self:checkEventCollision(actionName, disableConflictingBindings, reportAnyDeviceCollision)
 		valid = valid and not eventCollision
 
@@ -1545,6 +1550,10 @@ function InputBinding:loadActions(xmlFile, modName)
 		i18n = _G[modName].g_i18n
 	end
 
+	self:loadActionsFromXMLPath(xmlFile, rootPath, i18n, modName)
+end
+
+function InputBinding:loadActionsFromXMLPath(xmlFile, rootPath, i18n, modName)
 	local actionIndex = 0
 
 	while true do
@@ -1591,7 +1600,19 @@ function InputBinding:loadActions(xmlFile, modName)
 				Logging.warning("Missing l10n '%s'%s", inputSymbol, modPart)
 			end
 
-			table.insert(self.actions, action)
+			if self.nameActions[action.name] ~= nil then
+				for i = 1, #self.actions do
+					local action2 = self.actions[i]
+
+					if action2.name == action.name then
+						self.actions[i] = action
+
+						break
+					end
+				end
+			else
+				table.insert(self.actions, action)
+			end
 
 			self.nameActions[action.name] = action
 		end
@@ -1809,6 +1830,10 @@ function InputBinding:loadActionBindingsFromXML(xmlFile, silentIgnoreDuplicates,
 		rootPath = "modDesc.inputBinding"
 	end
 
+	self:loadActionBindingsFromXMLPath(xmlFile, rootPath, silentIgnoreDuplicates, disallowedDeviceIds, requireUnknownBindings, markActionKnown)
+end
+
+function InputBinding:loadActionBindingsFromXMLPath(xmlFile, rootPath, silentIgnoreDuplicates, disallowedDeviceIds, requireUnknownBindings, markActionKnown)
 	local actionIndex = 0
 
 	while true do
@@ -2824,17 +2849,19 @@ function InputBinding:updateEventBindings(activeBindingsBuffer)
 
 			for _, otherBinding in ipairs(deviceBindings) do
 				if otherBinding ~= binding then
+					if bindingActive and not otherBinding.isShadowed and table.isRealSubset(otherBinding.axisNameSet, binding.axisNameSet) then
+						otherBinding.isShadowed = true
+					end
+
 					local otherActive = otherBinding.isUp or otherBinding.inputValue ~= 0
 
-					if table.isRealSubset(otherBinding.axisNameSet, binding.axisNameSet) then
-						otherBinding.isShadowed = otherBinding.isShadowed or bindingActive
-					elseif table.isRealSubset(binding.axisNameSet, otherBinding.axisNameSet) then
-						binding.isShadowed = binding.isShadowed or otherActive
+					if otherActive and not binding.isShadowed and table.isRealSubset(binding.axisNameSet, otherBinding.axisNameSet) then
+						binding.isShadowed = true
 					end
 				end
 			end
 
-			table.insert(deviceBindings, binding)
+			deviceBindings[#deviceBindings + 1] = binding
 		end
 	end
 end

@@ -17,8 +17,10 @@ end
 function NPCManager:loadDefaultTypes(missionInfo, baseDirectory)
 	local xmlFile = loadXMLFile("npc", "data/maps/maps_npcs.xml")
 
-	self:loadNPCs(xmlFile, missionInfo, baseDirectory, true)
-	delete(xmlFile)
+	if xmlFile ~= 0 then
+		self:loadNPCs(xmlFile, missionInfo, baseDirectory, true)
+		delete(xmlFile)
+	end
 end
 
 function NPCManager:loadMapData(xmlFile, missionInfo, baseDirectory)

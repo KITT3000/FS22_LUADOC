@@ -4,7 +4,6 @@ ShopCategoriesFrame.CONTROLS = {
 	"categoryHeaderIcon",
 	"categoryHeaderText",
 	"categoryList",
-	"listSlider",
 	"noItemsText"
 }
 
@@ -23,6 +22,16 @@ function ShopCategoriesFrame.new(subclass_mt, shopController)
 	self.categories = {}
 
 	return self
+end
+
+function ShopCategoriesFrame.createFromExistingGui(gui, guiName)
+	local newGui = ShopCategoriesFrame.new(nil, gui.shopController)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
 end
 
 function ShopCategoriesFrame:copyAttributes(src)
@@ -87,10 +96,6 @@ function ShopCategoriesFrame:setCategories(categories)
 
 	self.categoryList:reloadData()
 	self.noItemsText:setVisible(self.categoryList.totalItemCount == 0)
-
-	if Platform.isMobile then
-		-- Nothing
-	end
 end
 
 function ShopCategoriesFrame:onFrameOpen()
@@ -146,6 +151,12 @@ function ShopCategoriesFrame:populateCellForItemInSection(list, section, index, 
 	cell:getAttribute("icon"):setAspectRatio(self.iconHeightWidthRatio or 1)
 	cell:getAttribute("icon"):setImageFilename(category.iconFilename)
 	cell:getAttribute("title"):setText(category.label)
+
+	local attr = cell:getAttribute("coinBg")
+
+	if attr ~= nil then
+		attr:setVisible(Platform.hasInAppPurchases and category.id == "COINS")
+	end
 end
 
 function ShopCategoriesFrame:getTitleForSectionHeader(list, section)

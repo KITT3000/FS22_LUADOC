@@ -1,8 +1,8 @@
 IngameMapLayoutSquare = {}
 local IngameMapLayoutSquare_mt = Class(IngameMapLayoutSquare, IngameMapLayout)
 
-function IngameMapLayoutSquare.new()
-	return IngameMapLayoutSquare:superClass().new(IngameMapLayoutSquare_mt)
+function IngameMapLayoutSquare.new(customMt)
+	return IngameMapLayoutSquare:superClass().new(customMt or IngameMapLayoutSquare_mt)
 end
 
 function IngameMapLayoutSquare:delete()

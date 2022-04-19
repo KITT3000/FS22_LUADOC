@@ -301,6 +301,9 @@ function Mission00:loadAdditionalFilesFinished()
 		end
 	end)
 	g_asyncTaskManager:addTask(function ()
+		self.destructibleMapObjectSystem:loadFromXMLFile(self.missionInfo.destructibleMapObjectsXML)
+	end)
+	g_asyncTaskManager:addTask(function ()
 		if g_mission00StartPoint ~= nil then
 			local x, y, z = getTranslation(g_mission00StartPoint)
 			local dirX, _, dirZ = localDirectionToWorld(g_mission00StartPoint, 0, 0, -1)
@@ -320,11 +323,6 @@ function Mission00:loadAdditionalFilesFinished()
 			self:updateFoundHelpIcons()
 		else
 			self:removeAllHelpIcons()
-		end
-	end)
-	g_asyncTaskManager:addTask(function ()
-		if g_isPresentationVersion then
-			self:playerOwnsAllFields()
 		end
 	end)
 	g_asyncTaskManager:addTask(function ()

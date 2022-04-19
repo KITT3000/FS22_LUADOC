@@ -28,6 +28,16 @@ function InGameMenuVehiclesFrame.new(subclass_mt, messageCenter, l10n, storeMana
 	return self
 end
 
+function InGameMenuVehiclesFrame.createFromExistingGui(gui, guiName)
+	local newGui = InGameMenuVehiclesFrame.new(nil, gui.messageCenter, gui.l10n, gui.storeManager, gui.brandManager, gui.shopController)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function InGameMenuVehiclesFrame:copyAttributes(src)
 	InGameMenuVehiclesFrame:superClass().copyAttributes(self, src)
 
@@ -322,7 +332,7 @@ function InGameMenuVehiclesFrame:setOperatingHoursData(dataCell, iconCell, vehic
 end
 
 function InGameMenuVehiclesFrame:setDamageData(dataCell, iconCell, vehicle)
-	if dataCell == nil then
+	if dataCell == nil or GS_IS_MOBILE_VERSION then
 		return
 	end
 
@@ -345,7 +355,7 @@ function InGameMenuVehiclesFrame:setDamageData(dataCell, iconCell, vehicle)
 end
 
 function InGameMenuVehiclesFrame:setLeasingData(dataCell, iconCell, vehicle)
-	if dataCell == nil then
+	if dataCell == nil or GS_IS_MOBILE_VERSION then
 		return
 	end
 

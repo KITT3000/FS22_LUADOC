@@ -301,8 +301,7 @@ function VehicleSchemaDisplay:drawVehicleSchemaOverlays(vehicle)
 			scale = self.maxSchemaWidth / sizeX
 		end
 
-		local _, h = getNormalizedScreenValues(unpack(VehicleSchemaDisplay.SIZE.SELF))
-		local barOffsetX = self:updateBarComponents(baseX, y, sizeX, h * self.uiScale, self.isDocked)
+		local barOffsetX = self:updateBarComponents(baseX, y, sizeX, self.overlay.height * self.uiScale, self.isDocked)
 
 		self.overlayFront:render()
 		self.overlayMiddle:render()

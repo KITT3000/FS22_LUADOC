@@ -228,6 +228,8 @@ function InputHelpDisplay:refreshHUDExtensions()
 			end
 		end
 	end
+
+	table.sort(self.vehicleHudExtensions, VehicleHUDExtension.sortHUDExtensions)
 end
 
 function InputHelpDisplay:updateHUDExtensions()
@@ -747,7 +749,7 @@ end
 
 function InputHelpDisplay:getIsHelpElementAllowed(helpElements, helpElement)
 	if self:getMaxEntryCount(true) <= #helpElements then
-		if GS_PRIO_NORMAL < helpElement.priority and not self.isOverlayMenuVisible then
+		if GS_PRIO_NORMAL <= helpElement.priority and not self.isOverlayMenuVisible then
 			return false
 		elseif self:getMaxEntryCount(false) <= #helpElements then
 			return false

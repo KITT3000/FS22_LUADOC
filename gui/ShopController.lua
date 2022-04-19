@@ -94,6 +94,10 @@ function ShopController:addCategoryForDisplay(category)
 		categories = self.displayPlaceableCategories
 	end
 
+	if Platform.isMobile and (category.type == StoreManager.CATEGORY_TYPE.VEHICLE or category.type == StoreManager.CATEGORY_TYPE.TOOL) then
+		categories = self.displayVehicleCategories
+	end
+
 	if categories ~= nil then
 		table.insert(categories, {
 			id = category.name,
@@ -1211,6 +1215,8 @@ function ShopController:onVehicleBuyFailed(leaseVehicle, errorCode)
 		text = self.l10n:getText(ShopController.L10N_SYMBOL.WARNING_NOT_ENOUGH_MONEY)
 	elseif errorCode == BuyVehicleEvent.STATE_TOO_MANY_BALES then
 		text = self.l10n:getText(ShopController.L10N_SYMBOL.WARNING_TOO_MANY_BALES)
+	elseif errorCode == BuyVehicleEvent.STATE_TOO_MANY_PALLETS then
+		text = self.l10n:getText(ShopController.L10N_SYMBOL.WARNING_TOO_MANY_PALLETS)
 	else
 		text = self.l10n:getText(ShopController.L10N_SYMBOL.BUY_VEHICLE_FAILED_TO_LOAD)
 	end

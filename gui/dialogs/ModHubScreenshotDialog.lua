@@ -49,7 +49,7 @@ function ModHubScreenshotDialog:onListSelectionChanged(list, section, index)
 end
 
 function ModHubScreenshotDialog:inputEvent(action, value, eventUsed)
-	eventUsed = MapSelectionScreen:superClass().inputEvent(self, action, value, eventUsed)
+	eventUsed = ModHubScreenshotDialog:superClass().inputEvent(self, action, value, eventUsed)
 
 	if not eventUsed and (action == InputAction.MENU_PAGE_PREV or action == InputAction.MENU_PAGE_NEXT) then
 		local curIndex = self.list.selectedIndex

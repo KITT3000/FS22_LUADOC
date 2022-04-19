@@ -38,6 +38,16 @@ function printScenegraphRec(node, level, visibleOnly)
 	end
 end
 
+function printFullPath(node, str)
+	str = string.format("|%s%s", getName(node), getVisibility(node) and "" or "(hidden)") .. (str or "")
+
+	if getParent(node) ~= 0 then
+		printFullPath(getParent(node), str)
+	else
+		print(str)
+	end
+end
+
 function exportScenegraphToGraphviz(node, filename)
 	if node ~= nil and node ~= 0 then
 		if filename == nil then

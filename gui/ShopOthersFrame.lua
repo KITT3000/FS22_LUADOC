@@ -47,6 +47,16 @@ function ShopOthersFrame.new(subclass_mt, shopController)
 	return self
 end
 
+function ShopOthersFrame.createFromExistingGui(gui, guiName)
+	local newGui = ShopOthersFrame.new(nil, gui.shopController)
+
+	g_gui.frames[gui.name].target:delete()
+	g_gui.frames[gui.name]:delete()
+	g_gui:loadGui(gui.xmlFilename, guiName, newGui, true)
+
+	return newGui
+end
+
 function ShopOthersFrame:onGuiSetupFinished()
 	ShopOthersFrame:superClass().onGuiSetupFinished(self)
 	self.otherShopsList:setDataSource(self)

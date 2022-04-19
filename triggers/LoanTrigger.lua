@@ -44,7 +44,7 @@ function LoanTrigger:openFinanceMenu()
 end
 
 function LoanTrigger:triggerCallback(triggerId, otherId, onEnter, onLeave, onStay)
-	if self.isEnabled and (not g_isPresentationVersion or g_isPresentationVersionShopEnabled) and g_currentMission.missionInfo:isa(FSCareerMissionInfo) and (onEnter or onLeave) and g_currentMission.player ~= nil and otherId == g_currentMission.player.rootNode then
+	if self.isEnabled and g_currentMission.missionInfo:isa(FSCareerMissionInfo) and (onEnter or onLeave) and g_currentMission.player ~= nil and otherId == g_currentMission.player.rootNode then
 		if onEnter then
 			g_currentMission.activatableObjectsSystem:addActivatable(self.activatable)
 		else
@@ -55,11 +55,11 @@ end
 
 function LoanTrigger:updateIconVisibility()
 	if self.loanSymbol ~= nil then
-		local hideMission = g_isPresentationVersion and not g_isPresentationVersionShopEnabled or not g_currentMission.missionInfo:isa(FSCareerMissionInfo)
+		local isAvailable = self.isEnabled and g_currentMission.missionInfo:isa(FSCareerMissionInfo)
 		local farmId = g_currentMission:getFarmId()
 		local visibleForFarm = farmId ~= FarmManager.SPECTATOR_FARM_ID
 
-		setVisibility(self.loanSymbol, not hideMission and visibleForFarm)
+		setVisibility(self.loanSymbol, isAvailable and visibleForFarm)
 	end
 end
 

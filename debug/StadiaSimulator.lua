@@ -1,12 +1,10 @@
-g_isStadiaSimulationActive = false
-local isHDRActive = false
-local hasRecordingDevice = false
+StadiaSimulator = {
+	IS_HDR_ACTIVE = false,
+	HAS_RECORDING_DEVICE = false,
+	ACTIVE_GAMEPAD_INDEX = 0
+}
 
-if g_isStadiaSimulationActive then
-	source("dataS/scripts/debug/ImeSimulator.lua")
-	print("--> Stadia Simulator active!")
-
-	local activeGamepadIndex = 0
+function StadiaSimulator.init()
 	local oldGetNumOfGamepads = getNumOfGamepads
 	local oldGetGamepadId = getGamepadId
 	local oldGetGamepadButtonLabel = getGamepadButtonLabel
@@ -19,37 +17,30 @@ if g_isStadiaSimulationActive then
 	function keyEvent(unicode, sym, modifier, isDown)
 		if isDown then
 			if sym == Input.KEY_1 then
+				Logging.devInfo("StadiaSimulator: onMultiplayerInviteSent")
 				onMultiplayerInviteSent()
-			end
-
-			if sym == Input.KEY_2 then
+			elseif sym == Input.KEY_2 then
+				Logging.devInfo("StadiaSimulator: onWaitForPendingGameSession")
 				onWaitForPendingGameSession()
-			end
-
-			if sym == Input.KEY_3 then
+			elseif sym == Input.KEY_3 then
+				Logging.devInfo("StadiaSimulator: onRemovedFromInvite")
 				onRemovedFromInvite()
-			end
+			elseif sym == Input.KEY_5 then
+				StadiaSimulator.IS_HDR_ACTIVE = not StadiaSimulator.IS_HDR_ACTIVE
 
-			if sym == Input.KEY_4 then
-				acceptedGameInvite()
-			end
+				Logging.devInfo("StadiaSimulator: isHDRActive: %s", tostring(StadiaSimulator.IS_HDR_ACTIVE))
+			elseif sym == Input.KEY_6 then
+				StadiaSimulator.HAS_RECORDING_DEVICE = not StadiaSimulator.HAS_RECORDING_DEVICE
 
-			if sym == Input.KEY_5 then
-				isHDRActive = not isHDRActive
-			end
+				Logging.devInfo("StadiaSimulator: hasRecordingDevice: %s", tostring(StadiaSimulator.HAS_RECORDING_DEVICE))
+			elseif sym == Input.KEY_7 then
+				StadiaSimulator.ACTIVE_GAMEPAD_INDEX = StadiaSimulator.ACTIVE_GAMEPAD_INDEX + 1
 
-			if sym == Input.KEY_6 then
-				hasRecordingDevice = not hasRecordingDevice
-			end
-
-			if sym == Input.KEY_7 then
-				activeGamepadIndex = activeGamepadIndex + 1
-
-				if oldGetNumOfGamepads() <= activeGamepadIndex then
-					activeGamepadIndex = 0
+				if oldGetNumOfGamepads() <= StadiaSimulator.ACTIVE_GAMEPAD_INDEX then
+					StadiaSimulator.ACTIVE_GAMEPAD_INDEX = 0
 				end
 
-				log("-------------------------CHANGED ACTIVE GAMEPAD")
+				Logging.devInfo("StadiaSimulator: activeGamepadIndex: %d", StadiaSimulator.ACTIVE_GAMEPAD_INDEX)
 			end
 		end
 
@@ -57,11 +48,11 @@ if g_isStadiaSimulationActive then
 	end
 
 	function getHdrAvailable()
-		return isHDRActive
+		return StadiaSimulator.IS_HDR_ACTIVE
 	end
 
-	function getHasRecordingDevice()
-		return hasRecordingDevice
+	function voiceChatGetHasRecordingDevice()
+		return StadiaSimulator.HAS_RECORDING_DEVICE
 	end
 
 	function getNumOfGamepads()
@@ -69,26 +60,41 @@ if g_isStadiaSimulationActive then
 	end
 
 	function getGamepadId(deviceIndex)
-		return oldGetGamepadId(activeGamepadIndex)
+		return oldGetGamepadId(StadiaSimulator.ACTIVE_GAMEPAD_INDEX)
 	end
 
 	function getGamepadButtonLabel(buttonIndex, deviceIndex)
-		return oldGetGamepadButtonLabel(buttonIndex, activeGamepadIndex)
+		return oldGetGamepadButtonLabel(buttonIndex, StadiaSimulator.ACTIVE_GAMEPAD_INDEX)
 	end
 
 	function getGamepadName(deviceIndex)
-		return oldGetGamepadName(activeGamepadIndex)
+		return oldGetGamepadName(StadiaSimulator.ACTIVE_GAMEPAD_INDEX)
 	end
 
 	function getInputButton(buttonIndex, deviceIndex)
-		return oldGetInputButton(buttonIndex, activeGamepadIndex)
+		return oldGetInputButton(buttonIndex, StadiaSimulator.ACTIVE_GAMEPAD_INDEX)
 	end
 
 	function getGamepadAxisLabel(axisIndex, deviceIndex)
-		return oldGetGamepadAxisLabel(axisIndex, activeGamepadIndex)
+		return oldGetGamepadAxisLabel(axisIndex, StadiaSimulator.ACTIVE_GAMEPAD_INDEX)
 	end
 
 	function getInputAxis(axisIndex, deviceIndex)
-		return oldGetInputAxis(axisIndex, activeGamepadIndex)
+		return oldGetInputAxis(axisIndex, StadiaSimulator.ACTIVE_GAMEPAD_INDEX)
 	end
+
+	addConsoleCommand("gsStadiaAcceptInvite", "Stadia simulator accept invitation", "acceptedGameInvite", StadiaSimulator)
+	print([[
+
+
+  ##################   Warning: Stadia Simulator active!   ##################
+
+]])
+end
+
+function StadiaSimulator.acceptedGameInvite(platformServerId, requestUserName)
+	platformServerId = platformServerId or "2"
+	requestUserName = requestUserName or "test -user"
+
+	acceptedGameInvite(platformServerId, requestUserName)
 end

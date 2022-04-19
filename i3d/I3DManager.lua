@@ -219,7 +219,7 @@ function I3DManager:consoleCommandPrintActiveLoadings()
 
 	for k, loadingRequestId in ipairs(loadingRequestIds) do
 		local progress, timeSec, filename, callback, target, args = getStreamI3DFileProgressInfo(loadingRequestId)
-		local text = string.format("%03d: Progress: %s | Time %.3fs | File: %s | Callback: %s | Target: %s | Args: %s", k, progress, timeSec, filename, callback, tostring(target), tostring(args))
+		local text = string.format("%03d: Progress: %s | Time %.3fs | File: %s | Callback: %s | Target: %s | Args: %s", loadingRequestId, progress, timeSec, filename, callback, tostring(target), tostring(args))
 
 		print(text)
 	end
@@ -231,7 +231,7 @@ function I3DManager:consoleCommandPrintActiveLoadings()
 
 	for k, sharedLoadingRequestId in ipairs(sharedLoadingRequestIds) do
 		local progress, timeSec, filename, callback, target, args = getSharedI3DFileProgressInfo(sharedLoadingRequestId)
-		local text = string.format("%03d: Progress: %s | Time %.3fs | File: %s | Callback: %s | Target: %s | Args: %s", k, progress, timeSec, filename, callback, tostring(target), tostring(args))
+		local text = string.format("%03d: Progress: %s | Time %.3fs | File: %s | Callback: %s | Target: %s | Args: %s", sharedLoadingRequestId, progress, timeSec, filename, callback, tostring(target), tostring(args))
 
 		print(text)
 	end
@@ -416,19 +416,19 @@ I3DManager.addDebugLoadingCheck("LOD Checks", function (filename, node)
 	return false
 end)
 I3DManager.addDebugLoadingCheck("Occluder Checks", function (filename, node)
-	local nodeName = getName(node)
-
 	if getHasClassId(node, ClassIds.SHAPE) then
+		local nodeName = getName(node)
 		local isOccluderMesh = getIsOccluderMesh(node)
+		local isNamedOccluder = string.contains(nodeName:upper(), "OCCLUDER")
 
-		if string.contains(nodeName:upper(), "OCCLUDER") or isOccluderMesh then
+		if isNamedOccluder or isOccluderMesh then
 			local hasErrors = false
 
-			if string.contains(nodeName:upper(), "OCCLUDER") and not isOccluderMesh then
+			if isNamedOccluder and not isOccluderMesh then
 				Logging.warning("Mesh is named occluder but does not have the occluder mesh flag set - Node: %s", I3DUtil.getNodePath(node))
 
 				hasErrors = true
-			elseif not string.contains(nodeName:upper(), "OCCLUDER") and isOccluderMesh then
+			elseif not isNamedOccluder and isOccluderMesh then
 				Logging.warning("Mesh has occluder flag set but is not named 'occluder' - Node: %s", I3DUtil.getNodePath(node))
 
 				hasErrors = true
@@ -443,8 +443,8 @@ I3DManager.addDebugLoadingCheck("Occluder Checks", function (filename, node)
 
 				local _, _, _, boundingRadius = getShapeBoundingSphere(node)
 
-				if boundingRadius < 2 then
-					Logging.warning("Occluder is very small , bounding radius %.3f - Node: %s", boundingRadius, I3DUtil.getNodePath(node))
+				if boundingRadius < 3 then
+					Logging.warning("Occluder is very small and should probably be removed, bounding radius %.3f - Node: %s", boundingRadius, I3DUtil.getNodePath(node))
 
 					hasErrors = true
 				end

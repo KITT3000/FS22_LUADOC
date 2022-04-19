@@ -166,7 +166,7 @@ function AIVehicle:loadAIAgentAttachmentsFromXML(xmlFile, baseKey, agentAttachme
 	end)
 
 	if loadSubAttachments == nil and #agentAttachments == 0 then
-		Logging.xmlDevWarning(xmlFile, "Missing ai agent attachment definition for attachable vehicle")
+		Logging.xmlWarning(xmlFile, "Missing ai agent attachment definition for attachable vehicle")
 	end
 end
 

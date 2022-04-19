@@ -125,9 +125,51 @@ function ObjectChangeUtil.loadValuesFromXML(xmlFile, key, node, object, parent, 
 		end
 	end
 
+	local centerOfMassMaskActive = xmlFile:getString(key .. "#centerOfMassActive")
+	local centerOfMassMaskInactive = xmlFile:getString(key .. "#centerOfMassInactive")
+
+	if centerOfMassMaskActive ~= nil or centerOfMassMaskInactive ~= nil then
+		centerOfMassMaskActive = (centerOfMassMaskActive or ""):split(" ")
+		centerOfMassMaskInactive = (centerOfMassMaskInactive or ""):split(" ")
+		object.centerOfMassMask = {
+			1,
+			1,
+			1
+		}
+		object.centerOfMassMaskActive = false
+
+		for i = 1, 3 do
+			if centerOfMassMaskActive ~= nil and centerOfMassMaskActive[i] == "-" then
+				object.centerOfMassMask[i] = 0
+				object.centerOfMassMaskActive = true
+			end
+
+			if centerOfMassMaskInactive ~= nil and centerOfMassMaskInactive[i] == "-" then
+				object.centerOfMassMask[i] = 0
+				object.centerOfMassMaskActive = true
+			end
+		end
+	end
+
 	ObjectChangeUtil.loadValueType(object.values, xmlFile, key, "centerOfMass", function ()
 		return getCenterOfMass(node)
 	end, function (x, y, z)
+		if object.centerOfMassMaskActive ~= nil then
+			local cx, cy, cz = getCenterOfMass(node)
+
+			if object.centerOfMassMask[1] == 0 then
+				x = cx
+			end
+
+			if object.centerOfMassMask[2] == 0 then
+				y = cy
+			end
+
+			if object.centerOfMassMask[3] == 0 then
+				z = cz
+			end
+		end
+
 		setCenterOfMass(node, x, y, z)
 	end, true, nil, true)
 	ObjectChangeUtil.loadValueType(object.values, xmlFile, key, "mass", function ()

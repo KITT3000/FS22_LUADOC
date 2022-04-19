@@ -312,11 +312,14 @@ end
 
 function StumpCutter:crushSplitShape(shape)
 	if self.isServer then
-		local range = 10
 		local x, _, z = getWorldTranslation(shape)
 
-		g_densityMapHeightManager:setCollisionMapAreaDirty(x - range, z - range, x + range, z + range)
 		delete(shape)
+
+		local range = 10
+
+		g_densityMapHeightManager:setCollisionMapAreaDirty(x - range, z - range, x + range, z + range, true)
+		g_currentMission.aiSystem:setAreaDirty(x - range, x + range, z - range, z + range)
 	end
 end
 

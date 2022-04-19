@@ -37,6 +37,10 @@ end
 function VehicleHUDExtension:draw(leftPosX, rightPosX, posY)
 end
 
+function VehicleHUDExtension:getPriority()
+	return 0
+end
+
 local registry = {}
 
 function VehicleHUDExtension.registerHUDExtension(spec, hudExtensionType)
@@ -56,4 +60,8 @@ end
 
 function VehicleHUDExtension.hasHUDExtensionForSpecialization(spec)
 	return not not registry[spec]
+end
+
+function VehicleHUDExtension.sortHUDExtensions(extensionA, extensionB)
+	return extensionB:getPriority() < extensionA:getPriority()
 end

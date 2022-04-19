@@ -6,6 +6,7 @@ BuyVehicleEvent.STATE_NO_SPACE = 2
 BuyVehicleEvent.STATE_NO_PERMISSION = 3
 BuyVehicleEvent.STATE_NOT_ENOUGH_MONEY = 4
 BuyVehicleEvent.STATE_TOO_MANY_BALES = 5
+BuyVehicleEvent.STATE_TOO_MANY_PALLETS = 6
 
 InitStaticEventClass(BuyVehicleEvent, "BuyVehicleEvent", EventIds.EVENT_BUY_VEHICLE)
 
@@ -150,13 +151,20 @@ function BuyVehicleEvent:run(connection)
 		return
 	end
 
-	local xmlFile = XMLFile.load("BaleXML", dataStoreItem.xmlFilename, nil)
+	local xmlFile = XMLFile.load("BuyVehicleEventVehicleXML", dataStoreItem.xmlFilename, nil)
 	local isBalePurchase = xmlFile:hasProperty("vehicle.multipleItemPurchase") and xmlFile:getBool("vehicle.multipleItemPurchase#isVehicle") == false
+	local isPalletPurchase = xmlFile:hasProperty("vehicle.multipleItemPurchase") and xmlFile:getBool("vehicle.multipleItemPurchase#isVehicle")
 
 	xmlFile:delete()
 
 	if isBalePurchase and not g_currentMission.slotSystem:getCanAddLimitedObjects(SlotSystem.LIMITED_OBJECT_BALE, 1) then
 		connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_TOO_MANY_BALES, self.filename, self.leaseVehicle, 0))
+
+		return
+	end
+
+	if isPalletPurchase and not g_currentMission.slotSystem:getCanAddLimitedObjects(SlotSystem.LIMITED_OBJECT_PALLET, 1) then
+		connection:sendEvent(BuyVehicleEvent.newServerToClient(BuyVehicleEvent.STATE_TOO_MANY_PALLETS, self.filename, self.leaseVehicle, 0))
 
 		return
 	end

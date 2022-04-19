@@ -290,6 +290,15 @@ function TabbedMenu:assignMenuButtonInfo(menuButtonInfo)
 			button:setText(buttonText)
 
 			local buttonClickCallback = info.callback or self.defaultButtonActionCallbacks[info.inputAction] or NO_CALLBACK
+
+			if GS_IS_MOBILE_VERSION then
+				if info.profile ~= nil then
+					button:applyProfile(info.profile)
+				else
+					button:applyProfile("buttonBack")
+				end
+			end
+
 			local sound = GuiSoundPlayer.SOUND_SAMPLES.CLICK
 
 			if info.inputAction == InputAction.MENU_BACK then
@@ -492,6 +501,10 @@ function TabbedMenu:updateButtonsPanel(page)
 end
 
 function TabbedMenu:updateTabDisplay()
+	if GS_IS_MOBILE_VERSION then
+		return
+	end
+
 	if self.pagingTabPrevious ~= nil then
 		local isFirstItemVisible = self.pagingTabList.firstVisibleItem == 1
 
@@ -502,6 +515,7 @@ function TabbedMenu:updateTabDisplay()
 			local prevElement = self.pagingTabList.listItems[itemToShow].elements[1]
 
 			self.pagingTabPrevious.elements[1]:setImageUVs(GuiOverlay.STATE_NORMAL, unpack(prevElement.icon.uvs))
+			self.pagingTabPrevious.elements[1]:setImageFilename(prevElement.icon.filename)
 		end
 	end
 
@@ -515,6 +529,7 @@ function TabbedMenu:updateTabDisplay()
 			local nextElement = self.pagingTabList.listItems[itemToShow].elements[1]
 
 			self.pagingTabNext.elements[1]:setImageUVs(GuiOverlay.STATE_NORMAL, unpack(nextElement.icon.uvs))
+			self.pagingTabNext.elements[1]:setImageFilename(nextElement.icon.filename)
 		end
 	end
 end

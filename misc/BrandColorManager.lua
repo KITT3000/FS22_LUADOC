@@ -16,8 +16,10 @@ end
 function BrandColorManager:loadDefaultTypes()
 	local xmlFile = loadXMLFile("brandColors", "data/shared/brandColors.xml")
 
-	self:loadBrandColors(xmlFile, true)
-	delete(xmlFile)
+	if xmlFile ~= 0 then
+		self:loadBrandColors(xmlFile, true)
+		delete(xmlFile)
+	end
 end
 
 function BrandColorManager:loadBrandColors(xmlFile, isBaseType)

@@ -1,4 +1,5 @@
-local exportFilename = "exportedGlobals.txt"
+local exportFilenameRaw = "exportedGlobals.txt"
+local exportFilenameStrings = "exportedGlobalsStrings.txt"
 local maxLineLength = 180
 local ignore = {
 	string = true,
@@ -15,27 +16,36 @@ end
 
 table.sort(engineGlobals)
 print(#engineGlobals .. " globals found")
-print("saving to " .. exportFilename)
+print("saving to " .. exportFilenameRaw)
 
-if fileExists(exportFilename) then
-	deleteFile(exportFilename)
+if fileExists(exportFilenameRaw) then
+	deleteFile(exportFilenameRaw)
 end
 
-local file = createFile(exportFilename, FileAccess.WRITE)
+if fileExists(exportFilenameStrings) then
+	deleteFile(exportFilenameStrings)
+end
+
+local fileRaw = createFile(exportFilenameRaw, FileAccess.WRITE)
+local fileListOfString = createFile(exportFilenameStrings, FileAccess.WRITE)
 local line = ""
 
 for _, global in ipairs(engineGlobals) do
 	if maxLineLength < line:len() then
-		fileWrite(file, line .. "\n")
+		fileWrite(fileListOfString, line .. "\n")
 
 		line = ""
 	end
 
 	line = line .. string.format("\"%s\", ", global)
+
+	fileWrite(fileRaw, global .. "\n")
 end
 
-fileWrite(file, line .. "\n")
-delete(file)
-print("saved globals to " .. exportFilename)
+fileWrite(fileListOfString, line .. "\n")
+delete(fileRaw)
+delete(fileListOfString)
+print("saved raw globals to " .. exportFilenameRaw)
+print("saved globals to " .. exportFilenameStrings)
 print("exiting")
 requestExit()

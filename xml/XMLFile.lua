@@ -19,14 +19,14 @@ function XMLFile.loadIfExists(objectName, filename, schema)
 	return XMLFile.load(objectName, filename, schema)
 end
 
-function XMLFile.create(objectName, filename, rootNodeName, schema)
-	local handle = createXMLFile(objectName, filename, rootNodeName)
+function XMLFile.create(objectName, filepath, rootNodeName, schema)
+	local handle = createXMLFile(objectName, filepath, rootNodeName)
 
 	if handle == 0 then
 		return nil
 	end
 
-	return XMLFile.new(objectName, filename, handle, schema)
+	return XMLFile.new(objectName, filepath, handle, schema)
 end
 
 function XMLFile.new(objectName, filename, handle, schema)
@@ -69,8 +69,36 @@ function XMLFile:hasProperty(property)
 	return hasXMLProperty(self.handle, property)
 end
 
-function XMLFile:save()
-	saveXMLFile(self.handle)
+function XMLFile:save(printToLog, ignoreError)
+	if saveXMLFile(self.handle) then
+		if printToLog then
+			Logging.info("Saved xml file '%s' to '%s'", self.objectName, self.filename)
+		end
+
+		return true
+	end
+
+	if not ignoreError then
+		Logging.error("Could not save xml file '%s' to '%s'", self.objectName, self.filename)
+	end
+
+	return false
+end
+
+function XMLFile:saveTo(filepath, printToLog, ignoreError)
+	if saveXMLFileTo(self.handle, filepath) then
+		if printToLog then
+			Logging.info("Saved xml file '%s' to '%s'", self.objectName, filepath)
+		end
+
+		return true
+	end
+
+	if not ignoreError then
+		Logging.error("Could not save xml file '%s' to '%s'", self.objectName, filepath)
+	end
+
+	return false
 end
 
 function XMLFile:removeProperty(path)
@@ -198,6 +226,8 @@ function XMLFile:setTable(path, tbl, closure)
 			i = i + 1
 		end
 	end
+
+	return i
 end
 
 function XMLFile:setSortedTable(path, tbl, closure)
@@ -216,6 +246,8 @@ function XMLFile:setSortedTable(path, tbl, closure)
 			i = i + 1
 		end
 	end
+
+	return i
 end
 
 function XMLFile:getValueType(path)

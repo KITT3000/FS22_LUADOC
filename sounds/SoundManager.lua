@@ -87,7 +87,7 @@ end
 function SoundManager:loadSoundTemplates(xmlFilename)
 	local xmlFile = loadXMLFile("soundTemplates", xmlFilename)
 
-	if xmlFile ~= nil then
+	if xmlFile ~= 0 then
 		local i = 0
 
 		while true do
@@ -955,6 +955,10 @@ end
 
 function SoundManager:deleteSample(sample)
 	if sample ~= nil and sample.filename ~= nil then
+		if self:getIsSamplePlaying(sample) then
+			self:stopSample(sample)
+		end
+
 		self.samples[sample] = nil
 
 		table.removeElement(self.activeSamples, sample)
@@ -1069,7 +1073,7 @@ function SoundManager:setSamplePitch(sample, pitch)
 end
 
 function SoundManager:getIsSamplePlaying(sample, offset)
-	if sample ~= nil then
+	if sample ~= nil and sample.soundSample ~= nil then
 		return isSamplePlaying(sample.soundSample)
 	end
 
