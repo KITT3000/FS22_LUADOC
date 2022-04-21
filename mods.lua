@@ -395,8 +395,23 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	})
 
 	modEnv.g_specializationManager = {
-		addSpecialization = function (self, name, className, filename, customEnvironment)
-			if isAbsolutPath(filename) or isInternalMod then
+		addSpecialization = function (self, name, className, filename, customEnvironment, ...)
+			if type(self) ~= "table" then
+				Logging.error("Invalid self object given for SpecializationManager.addSpecialization. Usage: 'g_specializationManager:addSpecialization(name, className, filename, customEnvironment)'")
+				printCallstack()
+			end
+
+			if customEnvironment ~= nil and type(customEnvironment) ~= "string" then
+				Logging.error("Invalid customEnvironment given for SpecializationManager.addSpecialization. Should be a string or nil.")
+				printCallstack()
+			end
+
+			if select("#", ...) > 0 then
+				Logging.error("Too many arguments for SpecializationManager.addSpecialization. (Arguments should be: name, className, filename, customEnvironment)")
+				printCallstack()
+			end
+
+			if isAbsolutPath(filename) and (customEnvironment == nil or customEnvironment == "" or customEnvironment == modName) or isInternalMod then
 				filename = resolveInternalScriptModFilename(filename, modName, modDir)
 				customEnvironment = modName
 				name = modName .. "." .. name
@@ -413,6 +428,15 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 			end
 
 			return spec
+		end,
+		getSpecializationObjectByName = function (self, name)
+			local spec = g_specializationManager:getSpecializationObjectByName(name)
+
+			if spec == nil then
+				spec = g_specializationManager:getSpecializationObjectByName(modName .. "." .. name)
+			end
+
+			return spec
 		end
 	}
 
@@ -421,8 +445,23 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	})
 
 	modEnv.g_placeableSpecializationManager = {
-		addSpecialization = function (self, name, className, filename, customEnvironment)
-			if isAbsolutPath(filename) or isInternalMod then
+		addSpecialization = function (self, name, className, filename, customEnvironment, ...)
+			if type(self) ~= "table" then
+				Logging.error("Invalid self object given for SpecializationManager.addSpecialization. Usage: 'g_specializationManager:addSpecialization(name, className, filename, customEnvironment)'")
+				printCallstack()
+			end
+
+			if customEnvironment ~= nil and type(customEnvironment) ~= "string" then
+				Logging.error("Invalid customEnvironment given for SpecializationManager.addSpecialization. Should be a string or nil.")
+				printCallstack()
+			end
+
+			if select("#", ...) > 0 then
+				Logging.error("Too many arguments for SpecializationManager.addSpecialization. (Arguments should be: name, className, filename, customEnvironment)")
+				printCallstack()
+			end
+
+			if isAbsolutPath(filename) and (customEnvironment == nil or customEnvironment == "" or customEnvironment == modName) or isInternalMod then
 				filename = resolveInternalScriptModFilename(filename, modName, modDir)
 				customEnvironment = modName
 				name = modName .. "." .. name
@@ -456,6 +495,15 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 			end
 
 			g_vehicleTypeManager:addType(typeName, className, filename, customEnvironment)
+		end,
+		addSpecialization = function (self, typeName, specName)
+			local spec = g_specializationManager:getSpecializationByName(specName)
+
+			if spec == nil and g_specializationManager:getSpecializationByName(modName .. "." .. specName) ~= nil then
+				specName = modName .. "." .. specName
+			end
+
+			g_vehicleTypeManager:addSpecialization(typeName, specName)
 		end
 	}
 
@@ -473,6 +521,15 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 			end
 
 			g_placeableTypeManager:addType(typeName, className, filename, customEnvironment)
+		end,
+		addSpecialization = function (self, typeName, specName)
+			local spec = g_placeableSpecializationManager:getSpecializationByName(specName)
+
+			if spec == nil and g_placeableSpecializationManager:getSpecializationByName(modName .. "." .. specName) ~= nil then
+				specName = modName .. "." .. specName
+			end
+
+			g_placeableTypeManager:addSpecialization(typeName, specName)
 		end,
 		getClassObjectByTypeName = function (self, typeName)
 			local classObj = g_placeableTypeManager:getClassObjectByTypeName(typeName)
