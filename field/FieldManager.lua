@@ -32,9 +32,9 @@ function FieldManager:initDataStructures()
 	self.farmlandIdFieldMapping = {}
 	self.fieldStatusParametersToSet = nil
 	self.currentFieldPartitionIndex = nil
-	self.lastHandledFieldIndex = 0
-	self.fieldUpdateTimer = 0
-	self.lastFieldCheckedIndex = 0
+	self.nextCheckTime = 0
+	self.nextUpdateTime = 0
+	self.nextFieldCheckIndex = 0
 end
 
 function FieldManager:loadMapData(xmlFile)
@@ -283,9 +283,6 @@ function FieldManager:loadFromXMLFile(xmlFilename)
 			end
 		end
 	end)
-
-	self.lastHandledFieldIndex = xmlFile:getInt("fields.lastHandledFieldIndex", self.lastHandledFieldIndex)
-
 	xmlFile:delete()
 end
 
@@ -305,7 +302,6 @@ function FieldManager:saveToXMLFile(xmlFilename)
 		end
 	end
 
-	xmlFile:setInt("fields.lastHandledFieldIndex", self.lastHandledFieldIndex)
 	xmlFile:save()
 	xmlFile:delete()
 end
@@ -313,6 +309,10 @@ end
 function FieldManager:update(dt)
 	if g_server == nil then
 		return
+	end
+
+	if self.fieldsToCheck == nil then
+		self:setupAIFieldChecks()
 	end
 
 	if self.fieldStatusParametersToSet ~= nil then
@@ -334,32 +334,32 @@ function FieldManager:update(dt)
 			self:setFieldPartitionStatus(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11])
 		end
 	elseif #self.fields > 0 then
-		local workTimePerDay = FieldManager.NPC_END_TIME - FieldManager.NPC_START_TIME
-		local timePerField = workTimePerDay / (#self.fields + 1) * g_currentMission.environment.daysPerPeriod
-		self.fieldUpdateTimer = self.fieldUpdateTimer + dt
+		if #self.fieldsToCheck > 0 and self.nextCheckTime <= g_time then
+			self.nextFieldCheckIndex = self.nextFieldCheckIndex + 1
 
-		if self.fieldUpdateTimer > 100 then
-			self.fieldUpdateTimer = 0
-			self.lastFieldCheckedIndex = self.lastFieldCheckedIndex + 1
-
-			if self.lastFieldCheckedIndex > #self.fields then
-				self.lastFieldCheckedIndex = 1
+			if self.nextFieldCheckIndex > #self.fieldsToCheck then
+				self.nextFieldCheckIndex = 1
 			end
 
-			local allowUpdates = false
-			local time = FieldManager.NPC_START_TIME + (self.lastFieldCheckedIndex + 1) * timePerField % workTimePerDay
-			local day = math.floor((self.lastFieldCheckedIndex + 1) * timePerField / workTimePerDay) + 1
+			local fieldToCheck = self.fieldsToCheck[self.nextFieldCheckIndex]
 
-			if self.lastFieldCheckedIndex == self.lastHandledFieldIndex + 1 and self.lastFieldCheckedIndex <= #self.fields and time < g_currentMission.environment.dayTime and day <= g_currentMission.environment.currentDayInPeriod then
-				self.lastHandledFieldIndex = self.lastFieldCheckedIndex
-				allowUpdates = true
+			if fieldToCheck:getIsAIActive() and fieldToCheck.fieldMissionAllowed and fieldToCheck.currentMission == nil and fieldToCheck.fruitType ~= FruitType.GRASS then
+				self:updateNPCField(fieldToCheck, false)
 			end
 
-			local fieldId = self.lastFieldCheckedIndex
-			local field = self.fields[fieldId]
+			self.nextCheckTime = g_time + 200
+		end
 
-			if field:getIsAIActive() and field.fieldMissionAllowed and field.currentMission == nil and field.fruitType ~= FruitType.GRASS then
-				self:updateNPCField(field, allowUpdates)
+		if self.nextUpdateTime <= g_time then
+			local fieldToUpdate = table.remove(self.fieldsToUpdate, 1)
+
+			if fieldToUpdate ~= nil then
+				if fieldToUpdate:getIsAIActive() and fieldToUpdate.fieldMissionAllowed and fieldToUpdate.currentMission == nil and fieldToUpdate.fruitType ~= FruitType.GRASS then
+					self:updateNPCField(fieldToUpdate, true)
+				end
+
+				local fieldUpdateOffset = 500
+				self.nextUpdateTime = g_time + fieldUpdateOffset
 			end
 		end
 	end
@@ -828,7 +828,21 @@ function FieldManager:onYearChanged()
 end
 
 function FieldManager:onPeriodChanged()
-	self.lastHandledFieldIndex = 0
+	self:setupAIFieldChecks()
+end
+
+function FieldManager:setupAIFieldChecks()
+	self.fieldsToCheck = {}
+	self.fieldsToUpdate = {}
+
+	for _, field in ipairs(self.fields) do
+		if field:getIsAIActive() and field.fieldMissionAllowed and field.currentMission == nil and field.fruitType ~= FruitType.GRASS then
+			table.insert(self.fieldsToCheck, field)
+			table.insert(self.fieldsToUpdate, field)
+		end
+	end
+
+	Utils.shuffle(self.fieldsToUpdate)
 end
 
 function FieldManager:onFarmlandStateChanged(farmlandId, farmId)

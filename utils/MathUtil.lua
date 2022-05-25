@@ -886,3 +886,22 @@ function MathUtil.smoothstep(min, max, x)
 
 	return t * t * (3 - 2 * t)
 end
+
+function MathUtil.snapValue(value, step)
+	if step == 0 then
+		return value
+	end
+
+	local snappedValue = MathUtil.round(value / step) * step
+
+	return snappedValue
+end
+
+function MathUtil.vector2Rotate(x, y, angle)
+	local cosValue = math.cos(angle)
+	local sinValue = math.sin(angle)
+	local rotatedX = x * cosValue - y * sinValue
+	local rotatedY = x * sinValue + y * cosValue
+
+	return rotatedX, rotatedY
+end

@@ -190,7 +190,9 @@ function PlayerModel:load(xmlFilename, isRealPlayer, isOwner, isAnimated, asyncC
 	local xmlFile = loadXMLFile("playerXML", xmlFilename)
 
 	if xmlFile == 0 then
-		return asyncCallbackFunction(asyncCallbackObject, false, asyncCallbackArguments)
+		asyncCallbackFunction(asyncCallbackObject, false, asyncCallbackArguments)
+
+		return
 	end
 
 	local filename = getXMLString(xmlFile, "player.filename")

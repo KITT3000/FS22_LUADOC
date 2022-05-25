@@ -168,6 +168,7 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.foliageShadowTexts = {}
 	self.ssaoQualityTexts = {}
 	self.ssaoQualityValues = {}
+	self.ssaoSamplesToQualityIndex = {}
 	self.cloudQualityTexts = {}
 	self.resolutionTexts = {}
 	self.fullscreenModeTexts = {}
@@ -182,7 +183,7 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.minBrightness = 0.5
 	self.maxBrightness = 2
 	self.brightnessStep = 0.1
-	self.minSharpness = 1
+	self.minSharpness = 0
 	self.maxSharpness = 2
 	self.sharpnessStep = 0.1
 	self.minFovY = Platform.minFovY
@@ -655,8 +656,12 @@ function SettingsModel:createControlDisplayValues()
 		end
 	end
 
-	for i = 0, 4 do
-		table.insert(self.ssaoQualityValues, getDefaultSSAOQuality(i))
+	for i = 0, 3 do
+		local samples = getDefaultSSAOQuality(i)
+
+		table.insert(self.ssaoQualityValues, samples)
+
+		self.ssaoSamplesToQualityIndex[samples] = #self.ssaoQualityValues
 	end
 
 	self.fidelityFxSRTexts = {}
@@ -1605,8 +1610,10 @@ end
 function SettingsModel:addSharpnessSetting()
 	local function readSharpness()
 		local sharpness = getSharpness()
+		sharpness = MathUtil.clamp(sharpness, self.minSharpness, self.maxSharpness)
+		local index = MathUtil.round((sharpness - self.minSharpness) / self.sharpnessStep + 1)
 
-		return tonumber(string.format("%.0f", sharpness))
+		return index
 	end
 
 	local function writeSharpness(index)
@@ -1644,7 +1651,10 @@ end
 
 function SettingsModel:addSSAOQualitySetting()
 	local function readValue()
-		return getSSAOQuality() + 1
+		local numSamples = getSSAOQuality()
+		local index = self.ssaoSamplesToQualityIndex[numSamples] or 1
+
+		return index
 	end
 
 	local function writeValue(value)
@@ -1917,8 +1927,10 @@ end
 function SettingsModel:addBrightnessSetting()
 	local function readBrightness()
 		local brightness = getBrightness()
+		brightness = MathUtil.clamp(brightness, self.minBrightness, self.maxBrightness)
+		local index = MathUtil.round((brightness - self.minBrightness) / self.brightnessStep + 1)
 
-		return tonumber(string.format("%.0f", (brightness - self.minBrightness) / self.brightnessStep)) + 1
+		return index
 	end
 
 	local function writeBrightness(index)

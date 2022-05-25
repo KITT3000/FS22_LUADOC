@@ -83,6 +83,14 @@ function ModSelectionScreen:onOpen()
 	end
 end
 
+function ModSelectionScreen:onClose()
+	self.availableMods = {}
+	self.selectedMods = {}
+	self.uniqueTypesInUse = {}
+
+	ModSelectionScreen:superClass().onClose(self)
+end
+
 function ModSelectionScreen:toggleAllAction()
 	if #self.availableMods > 0 then
 		if self.numAddedModsBesidesMap > 0 then

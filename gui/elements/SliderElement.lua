@@ -644,8 +644,12 @@ function SliderElement:onBindUpdate(element)
 			self.needsSlider = false
 		end
 	elseif element:isa(SmoothListElement) then
-		local numStepsTotal = math.ceil(element.contentSize / element.scrollViewOffsetDelta)
-		local numStepsVisible = math.floor(element.absSize[element.lengthAxis] / element.scrollViewOffsetDelta)
+		local base = element.lengthAxis == 1 and g_screenWidth or g_screenHeight
+		local contentSize = MathUtil.round(element.contentSize * base)
+		local scrollViewOffsetDelta = MathUtil.round(element.scrollViewOffsetDelta * base)
+		local size = MathUtil.round(element.absSize[element.lengthAxis] * base)
+		local numStepsTotal = math.ceil(contentSize / scrollViewOffsetDelta)
+		local numStepsVisible = math.floor(size / scrollViewOffsetDelta)
 		local scrollSteps = math.max(numStepsTotal - numStepsVisible, 0)
 
 		self:setMinValue(1)

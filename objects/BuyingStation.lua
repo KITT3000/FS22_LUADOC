@@ -34,6 +34,12 @@ function BuyingStation:load(components, xmlFile, key, customEnv, i3dMappings)
 		local fillTypeIndex = g_fillTypeManager:getFillTypeIndexByName(fillTypeStr)
 		local fillTypeStatsName = xmlFile:getValue(fillTypeKey .. "#statsName", "other")
 
+		if FinanceStats.statNameToIndex[fillTypeStatsName] == nil then
+			Logging.xmlWarning(xmlFile, "StatsName '%s' for fillType '%s' is not defined for buying station", fillTypeStatsName, fillTypeStr)
+
+			fillTypeStatsName = "other"
+		end
+
 		if fillTypeIndex ~= nil then
 			if self.supportedFillTypes[fillTypeIndex] ~= nil then
 				local priceScale = xmlFile:getValue(fillTypeKey .. "#priceScale", 1)
@@ -139,6 +145,10 @@ function BuyingStation:getIncomeNameForFillType(fillType, toolType)
 
 	if fillType == FillType.LIME then
 		return self.incomeNameLime
+	end
+
+	if self.fillTypeStatsName[fillType] ~= nil then
+		return self.fillTypeStatsName[fillType]
 	end
 
 	return self.incomeName

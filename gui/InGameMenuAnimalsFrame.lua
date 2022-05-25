@@ -308,7 +308,7 @@ function InGameMenuAnimalsFrame:updateFoodDisplay(husbandry)
 
 	self.foodRowTotalValue:setText(totalValueText)
 	self:setStatusBarValue(self.foodRowTotalStatusBar, totalRatio, false)
-	self.foodHeader:setText(string.format("%s (%s)", g_i18n:getText("ui_total"), g_i18n:getText("animals_foodMixEffectiveness")))
+	self.foodHeader:setText(string.format("%s (%s)", g_i18n:getText("ui_silos_totalCapacity"), g_i18n:getText("animals_foodMixEffectiveness")))
 end
 
 function InGameMenuAnimalsFrame:displayCluster(cluster, husbandry)

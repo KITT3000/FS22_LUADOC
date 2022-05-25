@@ -435,6 +435,10 @@ function ProductionPoint:findStorageExtensions()
 				end
 			end
 		end
+
+		if self.loadingStation:getIsFillTypeSupported(FillType.LIQUIDMANURE) or self.loadingStation:getIsFillTypeSupported(FillType.DIGESTATE) then
+			g_currentMission:addLiquidManureLoadingStation(self.loadingStation)
+		end
 	end
 end
 
@@ -468,6 +472,11 @@ function ProductionPoint:delete()
 
 	if self.loadingStation ~= nil then
 		g_currentMission.storageSystem:removeLoadingStation(self.loadingStation, self.owningPlaceable)
+
+		if self.loadingStation:getIsFillTypeSupported(FillType.LIQUIDMANURE) or self.loadingStation:getIsFillTypeSupported(FillType.DIGESTATE) then
+			g_currentMission:removeLiquidManureLoadingStation(self.loadingStation)
+		end
+
 		self.loadingStation:delete()
 	end
 
@@ -1232,6 +1241,12 @@ end
 function ProductionPoint:interactionTriggerCallback(triggerId, otherId, onEnter, onLeave, onStay, otherShapeId)
 	if (onEnter or onLeave) and self.mission.player and self.mission.player.rootNode == otherId then
 		if onEnter then
+			if Platform.isMobile and self.activatable:getIsActivatable() then
+				self.activatable:run()
+
+				return
+			end
+
 			self.activatable:updateText()
 			self.mission.activatableObjectsSystem:addActivatable(self.activatable)
 		end

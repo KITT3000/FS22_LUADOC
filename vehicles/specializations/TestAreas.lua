@@ -208,6 +208,9 @@ function TestAreas:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSele
 				drawDebugLine(x1, y1, z1, 0, 1, 0, x1, y1 + 2, z1, 0, 1, 0)
 				drawDebugLine(x2, y2, z2, 0, 1, 0, x2, y2 + 1, z2, 0, 1, 0)
 			end
+		else
+			workArea.testAreaCurrentWidthMin = -math.huge
+			workArea.testAreaCurrentWidthMax = math.huge
 		end
 	end
 end

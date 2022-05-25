@@ -760,6 +760,10 @@ function Dashboard:loadMultiStateDashboardFromXML(xmlFile, key, dashboard)
 		setScale(dashboard.node, sx, sy, sz)
 		setVisibility(dashboard.node, vis >= 0.5)
 
+		if self.setCharacterTargetNodeStateDirty ~= nil then
+			self:setCharacterTargetNodeStateDirty(dashboard.node)
+		end
+
 		if self.setMovingToolDirty ~= nil then
 			self:setMovingToolDirty(dashboard.node)
 		end
@@ -1038,6 +1042,10 @@ function Dashboard:defaultMultiStateDashboardStateFunc(dashboard, newValue, minV
 				setTranslation(dashboard.node, translation[1], translation[2], translation[3])
 				setScale(dashboard.node, scale[1], scale[2], scale[3])
 				setVisibility(dashboard.node, visibility)
+
+				if self.setCharacterTargetNodeStateDirty ~= nil then
+					self:setCharacterTargetNodeStateDirty(dashboard.node)
+				end
 
 				if self.setMovingToolDirty ~= nil then
 					self:setMovingToolDirty(dashboard.node)

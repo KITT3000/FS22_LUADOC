@@ -258,6 +258,9 @@ function InGameMenuAIFrame:onFrameOpen()
 end
 
 function InGameMenuAIFrame:onFrameClose()
+	self:setMapSelectionItem(nil)
+	self:setMapSelectionPosition(nil, nil)
+
 	self.startJobPending = false
 
 	if self:getIsPicking() then

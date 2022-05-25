@@ -3,10 +3,12 @@ SoundManager = {
 	DEFAULT_REVERB_EFFECT = 0,
 	MAX_SAMPLES_PER_FRAME = 5,
 	DEFAULT_SOUND_TEMPLATES = "data/sounds/soundTemplates.xml",
-	SAMPLE_ATTRIBUTES = {
+	SAMPLE_MODIFIER_ATTRIBUTES = {
 		"volume",
 		"pitch",
-		"lowpassGain"
+		"lowpassGain",
+		"loopSynthesisRpm",
+		"loopSynthesisLoad"
 	},
 	SAMPLE_RANDOMIZATIONS = {
 		"randomizationsIn",
@@ -589,8 +591,9 @@ end
 function SoundManager:loadModifiersFromXML(sample, xmlFile, key)
 	sample.modifiers = Utils.getNoNil(sample.modifiers, {})
 
-	for _, attribute in pairs(SoundManager.SAMPLE_ATTRIBUTES) do
+	for _, attribute in pairs(SoundManager.SAMPLE_MODIFIER_ATTRIBUTES) do
 		local modifier = Utils.getNoNil(sample.modifiers[attribute], {})
+		modifier.hasModification = Utils.getNoNil(modifier.hasModification, false)
 		local i = 0
 
 		while true do
@@ -615,6 +618,8 @@ function SoundManager:loadModifiersFromXML(sample, xmlFile, key)
 					modifiedValue,
 					time = value
 				}, xmlFile, modKey)
+
+				modifier.hasModification = true
 			end
 
 			i = i + 1
@@ -820,7 +825,7 @@ function SoundManager:updateSampleModifiers(sample)
 		return
 	end
 
-	for attributeIndex, attribute in pairs(SoundManager.SAMPLE_ATTRIBUTES) do
+	for attributeIndex, attribute in pairs(SoundManager.SAMPLE_MODIFIER_ATTRIBUTES) do
 		local modifier = sample.modifiers[attribute]
 
 		if modifier ~= nil then
@@ -854,6 +859,18 @@ function SoundManager:updateSampleAttributes(sample, force)
 		setSampleVolume(sample.soundSample, volumeFactor * self:getCurrentSampleVolume(sample))
 		setSamplePitch(sample.soundSample, pitchFactor * self:getCurrentSamplePitch(sample))
 		setSampleFrequencyFilter(sample.soundSample, 1, lowpassGainFactor * self:getCurrentSampleLowpassGain(sample), 0, sample.current.lowpassCutoffFrequency, 0, sample.current.lowpassResonance)
+
+		if sample.modifiers.loopSynthesisRpm.hasModification then
+			local loopSynthesisRpmFactor = self:getModifierFactor(sample, "loopSynthesisRpm")
+
+			setSampleLoopSynthesisRPM(sample.soundSample, MathUtil.clamp(loopSynthesisRpmFactor, 0, 1), true)
+		end
+
+		if sample.modifiers.loopSynthesisLoad.hasModification then
+			local loopSynthesisLoadFactor = self:getModifierFactor(sample, "loopSynthesisLoad")
+
+			setSampleLoopSynthesisLoadFactor(sample.soundSample, MathUtil.clamp(loopSynthesisLoadFactor, 0, 1))
+		end
 	end
 end
 
@@ -1254,6 +1271,8 @@ function SoundManager.registerSampleXMLPaths(schema, basePath, name)
 	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".volume")
 	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".pitch")
 	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".lowpassGain")
+	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".loopSynthesisRpm")
+	SoundManager.registerModifierXMLPaths(schema, soundPath .. ".loopSynthesisLoad")
 	schema:register(XMLValueType.FLOAT, soundPath .. ".randomization(?)#minVolume", "Min volume")
 	schema:register(XMLValueType.FLOAT, soundPath .. ".randomization(?)#maxVolume", "Max volume")
 	schema:register(XMLValueType.FLOAT, soundPath .. ".randomization(?)#minPitch", "Max pitch")

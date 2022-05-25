@@ -146,6 +146,10 @@ function PlaceableSilo:onDelete()
 	end
 
 	if spec.loadingStation ~= nil then
+		if spec.loadingStation:getIsFillTypeSupported(FillType.LIQUIDMANURE) then
+			g_currentMission:removeLiquidManureLoadingStation(spec.loadingStation)
+		end
+
 		storageSystem:removeLoadingStation(spec.loadingStation, self)
 		spec.loadingStation:delete()
 	end
@@ -163,8 +167,15 @@ function PlaceableSilo:onFinalizePlacement()
 
 	spec.unloadingStation:register(true)
 	storageSystem:addUnloadingStation(spec.unloadingStation, self)
-	spec.loadingStation:register(true)
-	storageSystem:addLoadingStation(spec.loadingStation, self)
+
+	if spec.loadingStation ~= nil then
+		spec.loadingStation:register(true)
+		storageSystem:addLoadingStation(spec.loadingStation, self)
+
+		if spec.loadingStation:getIsFillTypeSupported(FillType.LIQUIDMANURE) then
+			g_currentMission:addLiquidManureLoadingStation(spec.loadingStation)
+		end
+	end
 
 	for _, storage in ipairs(spec.storages) do
 		if not spec.storagePerFarm then

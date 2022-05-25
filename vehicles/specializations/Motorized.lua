@@ -159,7 +159,7 @@ end
 function Motorized.registerSoundXMLPaths(schema, baseKey)
 	SoundManager.registerSampleXMLPaths(schema, baseKey, "motorStart")
 	SoundManager.registerSampleXMLPaths(schema, baseKey, "motorStop")
-	SoundManager.registerSampleXMLPaths(schema, baseKey, "gearbox")
+	SoundManager.registerSampleXMLPaths(schema, baseKey, "gearbox(?)")
 	SoundManager.registerSampleXMLPaths(schema, baseKey, "clutchCracking")
 	SoundManager.registerSampleXMLPaths(schema, baseKey, "gearEngaged")
 	SoundManager.registerSampleXMLPaths(schema, baseKey, "gearDisengaged")
@@ -630,6 +630,7 @@ function Motorized:onDelete()
 	ParticleUtil.deleteParticleSystems(spec.exhaustParticleSystems)
 	g_soundManager:deleteSamples(spec.samples)
 	g_soundManager:deleteSamples(spec.motorSamples)
+	g_soundManager:deleteSamples(spec.gearboxSamples)
 	g_animationManager:deleteAnimations(spec.animationNodes)
 end
 
@@ -1496,7 +1497,6 @@ function Motorized:loadSounds(xmlFile, baseString)
 		spec.samples = spec.samples or {}
 		spec.samples.motorStart = g_soundManager:loadSampleFromXML(xmlFile, baseString, "motorStart", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.motorStart
 		spec.samples.motorStop = g_soundManager:loadSampleFromXML(xmlFile, baseString, "motorStop", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.motorStop
-		spec.samples.gearbox = g_soundManager:loadSampleFromXML(xmlFile, baseString, "gearbox", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.gearbox
 		spec.samples.clutchCracking = g_soundManager:loadSampleFromXML(xmlFile, baseString, "clutchCracking", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.clutchCracking
 		spec.samples.gearEngaged = g_soundManager:loadSampleFromXML(xmlFile, baseString, "gearEngaged", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.gearEngaged
 		spec.samples.gearDisengaged = g_soundManager:loadSampleFromXML(xmlFile, baseString, "gearDisengaged", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.gearDisengaged
@@ -1507,6 +1507,7 @@ function Motorized:loadSounds(xmlFile, baseString)
 		spec.samples.gearGroupLeverEnd = g_soundManager:loadSampleFromXML(xmlFile, baseString, "gearGroupLeverEnd", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.gearGroupLeverEnd
 		spec.samples.blowOffValve = g_soundManager:loadSampleFromXML(xmlFile, baseString, "blowOffValve", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.blowOffValve
 		spec.samples.retarder = g_soundManager:loadSampleFromXML(xmlFile, baseString, "retarder", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.retarder
+		spec.gearboxSamples = g_soundManager:loadSamplesFromXML(xmlFile, baseString, "gearbox", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self, spec.gearboxSamples)
 		spec.motorSamples = g_soundManager:loadSamplesFromXML(xmlFile, baseString, "motor", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self, spec.motorSamples)
 		spec.samples.airCompressorStart = g_soundManager:loadSampleFromXML(xmlFile, baseString, "airCompressorStart", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.airCompressorStart
 		spec.samples.airCompressorStop = g_soundManager:loadSampleFromXML(xmlFile, baseString, "airCompressorStop", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self) or spec.samples.airCompressorStop
@@ -1691,7 +1692,7 @@ function Motorized:startMotor(noEventSend)
 			g_soundManager:stopSample(spec.samples.motorStop)
 			g_soundManager:playSample(spec.samples.motorStart)
 			g_soundManager:playSamples(spec.motorSamples, 0, spec.samples.motorStart)
-			g_soundManager:playSample(spec.samples.gearbox, 0, spec.samples.motorStart)
+			g_soundManager:playSamples(spec.gearboxSamples, 0, spec.samples.motorStart)
 			g_soundManager:playSample(spec.samples.retarder, 0, spec.samples.motorStart)
 			g_animationManager:startAnimations(spec.animationNodes)
 
@@ -1751,6 +1752,7 @@ function Motorized:stopMotor(noEventSend)
 			g_soundManager:stopSamples(spec.samples)
 			g_soundManager:playSample(spec.samples.motorStop)
 			g_soundManager:stopSamples(spec.motorSamples)
+			g_soundManager:stopSamples(spec.gearboxSamples)
 
 			spec.isBrakeSamplePlaying = false
 

@@ -62,6 +62,7 @@ function WoodHarvester.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "findSplitShapesInRange", WoodHarvester.findSplitShapesInRange)
 	SpecializationUtil.registerFunction(vehicleType, "cutTree", WoodHarvester.cutTree)
 	SpecializationUtil.registerFunction(vehicleType, "onDelimbTree", WoodHarvester.onDelimbTree)
+	SpecializationUtil.registerFunction(vehicleType, "getCanSplitShapeBeAccessed", WoodHarvester.getCanSplitShapeBeAccessed)
 end
 
 function WoodHarvester.registerOverwrittenFunctions(vehicleType)
@@ -757,6 +758,10 @@ function WoodHarvester:onStateChange(state, data)
 	end
 end
 
+function WoodHarvester:getCanSplitShapeBeAccessed(x, z, shape)
+	return g_currentMission.accessHandler:canFarmAccessLand(self:getActiveFarm(), x, z)
+end
+
 function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
 	local spec = self.spec_woodHarvester
 
@@ -773,7 +778,7 @@ function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
 
 				if splitType == nil or not splitType.allowsWoodHarvester then
 					spec.warnInvalidTree = true
-				elseif g_currentMission.accessHandler:canFarmAccessLand(self:getActiveFarm(), x, z) then
+				elseif self:getCanSplitShapeBeAccessed(x, z, shape) then
 					local treeDx, treeDy, treeDz = localDirectionToWorld(shape, 0, 1, 0)
 					local cosTreeAngle = MathUtil.dotProduct(nx, ny, nz, treeDx, treeDy, treeDz)
 

@@ -331,6 +331,14 @@ function ConstructionBrushPlaceable:loadedPlaceable(placeable, loadingState, arg
 		placeable:setColor(self.colorIndex)
 	end
 
+	if self.cursor ~= nil and placeable.getRotationSnapAngle ~= nil then
+		local snapAngle = placeable:getRotationSnapAngle()
+
+		if snapAngle ~= 0 then
+			self.cursor:setSnapAngle(snapAngle)
+		end
+	end
+
 	self:setInputTextDirty()
 
 	self.placeable = placeable
@@ -347,6 +355,10 @@ function ConstructionBrushPlaceable:unloadPlaceable()
 
 	if self.loadingPlaceable ~= nil then
 		self.loadingPlaceable:delete()
+	end
+
+	if self.cursor ~= nil then
+		self.cursor:setSnapAngle(nil)
 	end
 end
 

@@ -247,7 +247,7 @@ function SettingsDeviceFrame:updateView()
 				addSectionHeader(title, axis)
 
 				if hasDeadzone then
-					local optionElement = self.sensitivityTemplate:clone(self.layout)
+					local optionElement = self.deadzoneTemplate:clone(self.layout)
 
 					optionElement:reloadFocusHandling(true)
 					optionElement:setTexts(self.settingsModel:getDeadzoneTexts())

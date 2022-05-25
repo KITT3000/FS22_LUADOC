@@ -44,6 +44,84 @@ function KioskMode.new(customMt)
 	return self
 end
 
+function KioskMode:generateBitmasks()
+	local mapping = {
+		1,
+		2,
+		3,
+		4,
+		5,
+		6,
+		7,
+		8,
+		15,
+		16,
+		17
+	}
+	local generatedMasks = {}
+	local hashedMasks = {}
+
+	local function printResult(target, n)
+		local bitMask = 0
+
+		for k, v in ipairs(target) do
+			if v == 1 then
+				bitMask = Utils.setBit(bitMask, mapping[k])
+			end
+		end
+
+		if hashedMasks[bitMask] == nil then
+			table.insert(generatedMasks, bitMask)
+
+			hashedMasks[bitMask] = true
+		else
+			Logging.warning("Mask %s already exists", table.concat(target, ""))
+		end
+	end
+
+	local function bitmask(n, target, i)
+		if i == n then
+			printResult(target, n)
+
+			return
+		end
+
+		target[i] = 0
+
+		bitmask(n, target, i + 1)
+
+		target[i] = 1
+
+		bitmask(n, target, i + 1)
+	end
+
+	local masks = {}
+
+	bitmask(12, masks, 1)
+
+	for i, mask in ipairs(generatedMasks) do
+		local str = ""
+
+		for k = 1, 20 do
+			if (k - 1) % 5 == 0 then
+				str = str .. " "
+			end
+
+			if k ~= 18 then
+				if KioskMode.BIT_TO_BUTTON_ID[k] ~= nil then
+					str = str .. (Utils.isBitSet(mask, k) and 1 or 0)
+				else
+					str = str .. (math.random() > 0.5 and 1 or 0)
+				end
+			else
+				str = str .. "0"
+			end
+		end
+
+		log(string.format("%s", str))
+	end
+end
+
 function KioskMode:delete()
 	self:disposeVideo()
 end
@@ -128,8 +206,12 @@ function KioskMode:loadFromPath(path)
 			if bit ~= " " then
 				bit = tonumber(bit)
 
-				if bit == 1 and KioskMode.BIT_TO_BUTTON_ID[bitCount] ~= nil then
-					mask = Utils.setBit(mask, bitCount)
+				if bit == 1 then
+					if KioskMode.BIT_TO_BUTTON_ID[bitCount] ~= nil then
+						mask = Utils.setBit(mask, bitCount)
+					elseif bitCount == 18 then
+						Logging.xmlWarning(xmlFile, "KioskMode:loadFromPath - Bit %d cannot be used. Please replace it with 0 for profile '%s'", bitCount, name)
+					end
 				end
 
 				bitCount = bitCount + 1
@@ -183,6 +265,7 @@ end
 
 function KioskMode:initializedGUIClasses()
 	MainScreen.onOpen = Utils.appendedFunction(MainScreen.onOpen, KioskMode.inj_mainScreen_onOpen)
+	MainScreen.update = Utils.overwrittenFunction(MainScreen.update, KioskMode.inj_mainScreen_update)
 	MainScreen.onClose = Utils.appendedFunction(MainScreen.onClose, KioskMode.inj_mainScreen_onClose)
 	MainScreen.inputEvent = Utils.overwrittenFunction(MainScreen.inputEvent, KioskMode.inj_mainScreen_inputEvent)
 	MainScreen.updateStoreButtons = KioskMode.EMPTY_FUNC
@@ -210,6 +293,7 @@ function KioskMode:init()
 	FSBaseMission.onToggleConstructionScreen = Utils.overwrittenFunction(FSBaseMission.onToggleConstructionScreen, KioskMode.inj_fsBaseMission_onToggleConstructionScreen)
 	FSBaseMission.registerActionEvents = Utils.appendedFunction(FSBaseMission.registerActionEvents, KioskMode.inj_fsBaseMission_registerActionEvents)
 	FSBaseMission.getIsAutoSaveSupported = Utils.appendedFunction(FSBaseMission.getIsAutoSaveSupported, KioskMode.inj_fsBaseMission_getIsAutoSaveSupported)
+	FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, KioskMode.inj_fsBaseMission_update)
 	AnimalLoadingTrigger.load = Utils.overwrittenFunction(AnimalLoadingTrigger.load, KioskMode.inj_animalLoadingTrigger_load)
 	VehicleSellingPoint.load = Utils.overwrittenFunction(VehicleSellingPoint.load, KioskMode.inj_vehicleSellingPoint_load)
 	ShopTrigger.new = Utils.overwrittenFunction(ShopTrigger.new, KioskMode.inj_shopTrigger_new)
@@ -305,6 +389,8 @@ function KioskMode:loadProfileConfig(configFileName)
 	self.settings.extendedDrivingHelp = xmlFile:getBool("config.extendedDrivingHelp", false)
 	self.settings.alwaysDay = xmlFile:getBool("config.alwaysDay", false)
 	self.settings.startMoney = xmlFile:getInt("config.startMoney", 1000000)
+	self.settings.skipMainMenu = xmlFile:getBool("config.skipMainMenu", false)
+	self.settings.startVehicleIndex = xmlFile:getInt("config.startVehicleIndex", nil)
 	local mapsStr = xmlFile:getString("config.maps", "")
 	local mapIds = string.split(mapsStr, " ")
 	self.settings.maps = nil
@@ -351,6 +437,8 @@ function KioskMode:loadProfileConfig(configFileName)
 
 		if videos == nil or #videos == 0 then
 			videos, duration = nil
+
+			Logging.warning("KioskMode: No videos found in '%s'", videosDirectory)
 		end
 	end
 
@@ -381,7 +469,7 @@ function KioskMode:loadProfileConfig(configFileName)
 end
 
 function KioskMode:update(dt)
-	if self.profileSelectorGamepadId ~= nil and g_gui.currentGuiName == "MainScreen" and self.currentProfile == nil then
+	if (self.profileSelectorGamepadId ~= nil or StartParams.getIsSet("kioskProfileId")) and g_gui.currentGuiName == "MainScreen" and self.currentProfile == nil then
 		local profile = self:getProfile()
 
 		if profile ~= nil then
@@ -755,12 +843,34 @@ function KioskMode.inj_fsBaseMission_onToggleMenu(mission, superFunc)
 	superFunc(mission)
 end
 
+function KioskMode.inj_fsBaseMission_update(mission, dt)
+	if g_kioskMode.tryToEnterVehicle ~= nil then
+		local playerStyle = mission.player:getStyle()
+
+		if playerStyle ~= nil then
+			g_currentMission:requestToEnterVehicle(g_kioskMode.tryToEnterVehicle)
+
+			g_kioskMode.tryToEnterVehicle = nil
+		end
+	end
+end
+
 function KioskMode.inj_mission00_onStartMission()
 	if g_kioskMode:getSetting("playtimeEnabled") then
 		g_kioskMode.playtimeReloadTimer = g_kioskMode:getSetting("playtimeDuration")
 	end
 
 	g_currentMission:playerOwnsAllFields()
+
+	local startVehicleIndex = g_kioskMode:getSetting("startVehicleIndex")
+
+	if startVehicleIndex ~= nil then
+		local vehicle = g_currentMission.enterables[startVehicleIndex]
+
+		if vehicle ~= nil then
+			g_kioskMode.tryToEnterVehicle = vehicle
+		end
+	end
 end
 
 function KioskMode.inj_inGameMenu_makeIsAIEnabledPredicate(ingameMenu)
@@ -950,6 +1060,16 @@ function KioskMode.inj_mainScreen_onClose(screen)
 	end
 
 	g_kioskMode:closeMainMenu()
+end
+
+function KioskMode.inj_mainScreen_update(screen, superFunc, dt)
+	if g_kioskMode:getSetting("skipMainMenu") then
+		screen:onCareerClick()
+
+		return
+	end
+
+	superFunc(screen, dt)
 end
 
 function KioskMode.inj_mainScreen_onOpen(screen)

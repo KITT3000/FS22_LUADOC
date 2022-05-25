@@ -832,6 +832,14 @@ function InGameMenuMapFrame:onDrawPostIngameMapHotspots()
 end
 
 function InGameMenuMapFrame:setMapSelectionItem(hotspot)
+	if hotspot ~= nil then
+		local x, _ = hotspot:getWorldPosition()
+
+		if x == nil then
+			hotspot = nil
+		end
+	end
+
 	self.ingameMapBase:setSelectedHotspot(hotspot)
 
 	self.selectedField = nil

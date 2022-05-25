@@ -27,8 +27,6 @@ function ScenarioManager:addScenarioItem(id, configXMLFilename, mapXMLFilename, 
 		title = title,
 		description = description,
 		iconFilename = iconFilename,
-		baseDirectory = baseDirectory,
-		customEnvironment = customEnvironment,
 		isMod = isMod,
 		difficulty = difficulty
 	}
@@ -60,15 +58,16 @@ function ScenarioManager:loadScenarioFromXML(xmlFile, baseName, modDir, modName,
 		print("Error: Failed to load mod scenario '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#mapXMLFilename'.")
 	elseif configXMLFilename == "" then
 		print("Error: Failed to load mod scenario '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#configXMLFilename'.")
-	elseif defaultVehiclesXMLFilename == "" then
+	elseif vehiclesXMLFilename == "" then
 		print("Error: Failed to load mod scenario '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#vehiclesXMLFilename'.")
-	elseif defaultPlaceablesXMLFilename == "" then
+	elseif placeablesXMLFilename == "" then
 		print("Error: Failed to load mod scenario '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#placeablesXMLFilename'.")
-	elseif defaultItemsXMLFilename == "" then
+	elseif itemsXMLFilename == "" then
 		print("Error: Failed to load mod scenario '" .. tostring(modName) .. "'. Missing attribute '" .. tostring(baseName) .. "#itemsXMLFilename'.")
 	elseif iconFilename == "" then
 		print("Error: Failed to load mod scenario '" .. tostring(modName) .. "'. Missing element: '" .. tostring(baseName) .. ".iconFilename'.")
 	else
+		local baseDirectory = modDir
 		local fullConfigFilename = Utils.getFilename(configXMLFilename, baseDirectory)
 		scenarioId = modName .. "." .. scenarioId
 		iconFilename = Utils.getFilename(iconFilename, baseDirectory)

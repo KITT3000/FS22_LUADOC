@@ -19,6 +19,7 @@ function PlaceableHusbandryFood.registerOverwrittenFunctions(placeableType)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "updateFeeding", PlaceableHusbandryFood.updateFeeding)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "getFoodInfos", PlaceableHusbandryFood.getFoodInfos)
 	SpecializationUtil.registerOverwrittenFunction(placeableType, "collectPickObjects", PlaceableHusbandryFood.collectPickObjects)
+	SpecializationUtil.registerOverwrittenFunction(placeableType, "getAnimalDescription", PlaceableHusbandryFood.getAnimalDescription)
 end
 
 function PlaceableHusbandryFood.registerEventListeners(placeableType)
@@ -623,6 +624,12 @@ function PlaceableHusbandryFood:onHusbandryAnimalsUpdate(clusters)
 			end
 		end
 	end
+end
+
+function PlaceableHusbandryFood:getAnimalDescription(superFunc, cluster)
+	local text = superFunc(self, cluster)
+
+	return text .. " " .. g_i18n:getText("animal_descriptionPercentage")
 end
 
 function PlaceableHusbandryFood.loadSpecValueAnimalFoodFillTypes(xmlFile, customEnvironment, baseDir)

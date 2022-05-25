@@ -687,11 +687,16 @@ function BaleWrapper:onLoadFinished(savegame)
 				self:doStateChange(BaleWrapper.CHANGE_WRAPPING_START)
 
 				spec.currentWrapper.currentTime = v.wrapperTime
+				local wrapAnimationName = spec.currentWrapper.animations.wrapBale.animName
 				local wrappingTime = spec.currentWrapper.currentTime / spec.currentWrapper.animTime
 
-				self:setAnimationStopTime(spec.currentWrapper.animations.wrapBale.animName, wrappingTime)
-				AnimatedVehicle.updateAnimationByName(self, spec.currentWrapper.animations.wrapBale.animName, 9999999, true)
+				self:setAnimationStopTime(wrapAnimationName, wrappingTime)
+				AnimatedVehicle.updateAnimationByName(self, wrapAnimationName, 9999999, true)
 				self:updateWrappingState(wrappingTime)
+
+				if wrappingTime < 1 then
+					self:playAnimation(wrapAnimationName, spec.currentWrapper.animations.wrapBale.animSpeed, self:getAnimationTime(wrapAnimationName), true, false)
+				end
 			end
 		end
 	end

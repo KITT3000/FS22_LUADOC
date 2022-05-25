@@ -24,6 +24,8 @@ g_xmlManager:addInitSchemaFunction(function ()
 	schema:setXMLSpecializationType("Chainsaw")
 	schema:register(XMLValueType.FLOAT, "handTool.chainsaw.pricePerMinute", "Price per minute", 50)
 	schema:register(XMLValueType.FLOAT, "handTool.chainsaw#quicktapThreshold", "Quick tab time threshold", 0)
+	schema:register(XMLValueType.FLOAT, "handTool.chainsaw#cutSizeY", "Cut Size Y", 1.1)
+	schema:register(XMLValueType.FLOAT, "handTool.chainsaw#cutSizeZ", "Cut Size Z", 1)
 	schema:register(XMLValueType.VECTOR_3, "handTool.chainsaw.cutAnimation#cutFocusOffset", "Offset for cutting focus point", "0 0 -1")
 	schema:register(XMLValueType.VECTOR_3, "handTool.chainsaw.cutAnimation#cutFocusRotation", "Rotation for cutting focus point", "0 0 0")
 	schema:register(XMLValueType.FLOAT, "handTool.chainsaw.targetSelection#minCutDistance", "Minimum cut distance", 0.5)
@@ -70,8 +72,8 @@ function Chainsaw:postLoad(xmlFile)
 	self.eventIdRotateHandtool = ""
 	self.rotationZ = 0
 	self.rotationSpeedZ = 0.003
-	self.cutSizeY = 1.1
-	self.cutSizeZ = 1
+	self.cutSizeY = xmlFile:getValue("handTool.chainsaw#cutSizeY", 1.1)
+	self.cutSizeZ = xmlFile:getValue("handTool.chainsaw#cutSizeZ", 1)
 	self.isCutting = false
 	self.waitingForResetAfterCut = false
 	self.cutNode = getChildAt(self.rootNode, 0)
@@ -593,7 +595,7 @@ function Chainsaw:update(dt, allowInput)
 				shape, minY, maxY, minZ, maxZ = findSplitShape(x, y, z, nx, ny, nz, yx, yy, yz, self.cutSizeY, self.cutSizeZ)
 
 				if shape ~= nil and shape ~= 0 then
-					if self:isCuttingAllowed(x, y, z) then
+					if self:isCuttingAllowed(x, y, z, shape) then
 						self.showNotOwnedWarning = false
 						local cutTooLow = self:testTooLow(shape, minY, maxY, minZ, maxZ)
 						local outsideRange = self.cutFocusDistance < 0 or self.cutDetectionDistance <= self.cutFocusDistance
@@ -658,7 +660,7 @@ function Chainsaw:update(dt, allowInput)
 					if self.curSplitShape ~= nil then
 						local x, y, z, nx, ny, nz, yx, yy, yz = self:getCutShapeInformation()
 
-						if self:isCuttingAllowed(x, y, z) then
+						if self:isCuttingAllowed(x, y, z, self.curSplitShape) then
 							isCutting = true
 						end
 
@@ -711,7 +713,7 @@ function Chainsaw:update(dt, allowInput)
 	self.activatePressed = false
 end
 
-function Chainsaw:isCuttingAllowed(x, y, z)
+function Chainsaw:isCuttingAllowed(x, y, z, shape)
 	return g_currentMission.accessHandler:canFarmAccessLand(self.player.farmId, x, z)
 end
 
@@ -774,7 +776,7 @@ function Chainsaw:updateRingSelector(shape)
 			if not getVisibility(self.ringSelector) and inDetectionRange then
 				local x, y, z = getWorldTranslation(self.ringSelector)
 
-				if self:isCuttingAllowed(x, y, z) then
+				if self:isCuttingAllowed(x, y, z, shape) then
 					setVisibility(self.ringSelector, true)
 				else
 					setVisibility(self.ringSelector, false)

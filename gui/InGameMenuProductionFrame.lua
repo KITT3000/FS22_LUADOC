@@ -84,7 +84,7 @@ function InGameMenuProductionFrame:initialize()
 		end
 	}
 	self.activateButtonInfo = {
-		profile = "buttonOk",
+		profile = "buttonOK",
 		inputAction = InputAction.MENU_ACCEPT,
 		text = self.i18n:getText("button_activate"),
 		callback = function ()
@@ -92,7 +92,7 @@ function InGameMenuProductionFrame:initialize()
 		end
 	}
 	self.toggleStorageModeButtonInfo = {
-		profile = "buttonOk",
+		profile = "buttonOK",
 		inputAction = InputAction.MENU_ACCEPT,
 		text = self.i18n:getText("ui_production_changeOutputMode"),
 		callback = function ()
@@ -421,6 +421,15 @@ function InGameMenuProductionFrame:onListSelectionChanged(list, section, index)
 end
 
 function InGameMenuProductionFrame:onButtonActivate()
+	if not g_currentMission:getHasPlayerPermission("manageProductions") then
+		g_gui:showInfoDialog({
+			text = g_i18n:getText("shop_messageNoPermissionGeneral"),
+			dialogType = DialogElement.TYPE_WARNING
+		})
+
+		return
+	end
+
 	local production, productionPoint = self:getSelectedProduction()
 
 	if production ~= nil then
@@ -432,6 +441,15 @@ function InGameMenuProductionFrame:onButtonActivate()
 end
 
 function InGameMenuProductionFrame:onButtonToggleOutputMode()
+	if not g_currentMission:getHasPlayerPermission("manageProductions") then
+		g_gui:showInfoDialog({
+			text = g_i18n:getText("shop_messageNoPermissionGeneral"),
+			dialogType = DialogElement.TYPE_WARNING
+		})
+
+		return
+	end
+
 	local _, productionPoint = self:getSelectedProduction()
 	local fillType = self:getSelectedStorageFillType()
 

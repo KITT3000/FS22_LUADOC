@@ -204,7 +204,9 @@ function SoilMap:loadFromXML(xmlFile, key, baseDirectory, configFileName, mapFil
 	return true
 end
 
-function SoilMap:postLoad(xmlFile, key, baseDirectory, configFileName, mapFilename)
+function SoilMap:initTerrain(mission, terrainId, filename)
+	SoilMap:superClass().initTerrain(self, mission, terrainId, filename)
+
 	if self.pHMap ~= nil and self.pHMap.newBitVectorMap then
 		local startTime = getTimeSec()
 
@@ -218,8 +220,6 @@ function SoilMap:postLoad(xmlFile, key, baseDirectory, configFileName, mapFilena
 		self.nitrogenMap:setInitialState(self.bitVectorMap, self.typeFirstChannel, self.typeNumChannels, self.coverChannel)
 		Logging.devInfo("Initialized nitrogen Map in %d ms", (getTimeSec() - startTime) * 1000)
 	end
-
-	return true
 end
 
 function SoilMap:delete()

@@ -136,6 +136,7 @@ function HarvestExtension:updateLatestFactors(pfModule, vehicle, requiresPHFacto
 			vehicle.lastRegularNFactor = regularNFactor
 			vehicle.lastNActualValue = nActualValue
 			vehicle.lastNTargetValue = nTargetValue
+			vehicle.lastIgnoreOverfertilization = lastIgnoreOverfertilization
 
 			if HarvestExtension.YIELD_DEBUG then
 				local debugValues = self.debugValues
@@ -241,7 +242,7 @@ function HarvestExtension:postProcessMowerArea(vehicle, workArea, dt, lastRealAr
 	local farmlandId = g_farmlandManager:getFarmlandIdAtWorldPosition((xs + xw) * 0.5, (zs + zw) * 0.5)
 	local mission = g_missionManager:getMissionAtWorldPosition(xs, zs) or g_missionManager:getMissionAtWorldPosition(xw, zw) or g_missionManager:getMissionAtWorldPosition(xh, zh)
 
-	self:setLastScoringValues(lastRealArea, farmlandId, vehicle.lastNActualValue, vehicle.lastNTargetValue, vehicle.lastPHActualValue, vehicle.lastPHTargetValue)
+	self:setLastScoringValues(lastRealArea, farmlandId, vehicle.lastNActualValue, vehicle.lastNTargetValue, vehicle.lastPHActualValue, vehicle.lastPHTargetValue, vehicle.lastIgnoreOverfertilization)
 
 	if lastRealArea > 0 and self.replaceMowerNewMultiplier ~= nil and self.replaceMowerRegularMultiplier ~= nil and mission == nil then
 		local rawPickupLiters = workArea.lastPickupLiters / self.replaceMowerNewMultiplier
@@ -284,7 +285,7 @@ function HarvestExtension:postProcessMowerArea(vehicle, workArea, dt, lastRealAr
 	end
 end
 
-function HarvestExtension:setLastScoringValues(area, farmlandId, nActual, nTarget, pHActual, pHTarget)
+function HarvestExtension:setLastScoringValues(area, farmlandId, nActual, nTarget, pHActual, pHTarget, ignoreOverfertilization)
 end
 
 function HarvestExtension:overwriteGameFunctions(pfModule)
@@ -311,7 +312,7 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 		local lastRealArea, lastArea = superFunc(vehicle, workArea, dt)
 		self.checkMultiplier = false
 
-		self:setLastScoringValues(lastRealArea, farmlandId, vehicle.lastNActualValue, vehicle.lastNTargetValue, vehicle.lastPHActualValue, vehicle.lastPHTargetValue)
+		self:setLastScoringValues(lastRealArea, farmlandId, vehicle.lastNActualValue, vehicle.lastNTargetValue, vehicle.lastPHActualValue, vehicle.lastPHTargetValue, vehicle.lastIgnoreOverfertilization)
 
 		if lastRealArea > 0 and self.lastMultiplier ~= nil and combine ~= nil and mission == nil then
 			if vehicle.smoothedYieldFactor == nil then
@@ -399,15 +400,19 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 
 		if self.replaceMowerMultiplier then
 			multiplier = 1
-			multiplier = multiplier + plowFactor * 0.15
+			multiplier = multiplier + plowFactor * 0.1
 			multiplier = multiplier + weedFactor * 0.15
+			multiplier = multiplier + stubbleFactor * 0.025
+			multiplier = multiplier + rollerFactor * 0.025
 			multiplier = multiplier + self.replaceMowerMultiplierRegularNFactor * 0.5
 			multiplier = multiplier + self.replaceMowerMultiplierRegularPHFactor * 0.2
 			multiplier = multiplier * self.replaceMowerMultiplierCurrentYieldPotential
 			self.replaceMowerRegularMultiplier = multiplier
 			multiplier = 1
-			multiplier = multiplier + plowFactor * 0.15
+			multiplier = multiplier + plowFactor * 0.1
 			multiplier = multiplier + weedFactor * 0.15
+			multiplier = multiplier + stubbleFactor * 0.025
+			multiplier = multiplier + rollerFactor * 0.025
 			multiplier = multiplier + self.replaceMowerMultiplierNFactor * 0.5
 			multiplier = multiplier + self.replaceMowerMultiplierPHFactor * 0.2
 			multiplier = multiplier * self.replaceMowerMultiplierCurrentYieldPotential

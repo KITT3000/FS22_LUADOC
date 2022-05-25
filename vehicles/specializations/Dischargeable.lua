@@ -4,6 +4,7 @@ Dischargeable = {
 	DISCHARGE_STATE_OFF = 0,
 	DISCHARGE_STATE_OBJECT = 1,
 	DISCHARGE_STATE_GROUND = 2,
+	SEND_NUM_BITS_DISCHARGE_STATE = 2,
 	DISCHARGE_REASON_FILLTYPE_NOT_SUPPORTED = 1,
 	DISCHARGE_REASON_TOOLTYPE_NOT_SUPPORTED = 2,
 	DISCHARGE_REASON_NO_FREE_CAPACITY = 3,
@@ -303,6 +304,8 @@ function Dischargeable:onReadStream(streamId, connection)
 				self:setDischargeEffectActive(dischargeNode, false)
 			end
 		end
+
+		self:setDischargeState(streamReadUIntN(streamId, Dischargeable.SEND_NUM_BITS_DISCHARGE_STATE), true)
 	end
 end
 
@@ -316,6 +319,8 @@ function Dischargeable:onWriteStream(streamId, connection)
 				streamWriteUIntN(streamId, self:getDischargeFillType(dischargeNode), FillTypeManager.SEND_NUM_BITS)
 			end
 		end
+
+		streamWriteUIntN(streamId, spec.currentDischargeState, Dischargeable.SEND_NUM_BITS_DISCHARGE_STATE)
 	end
 end
 

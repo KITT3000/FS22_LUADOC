@@ -335,7 +335,7 @@ function SellingStation:addFillLevelFromTool(farmId, deltaFillLevel, fillType, f
 				end
 			end
 
-			if self.storeSoldGoods then
+			if self.storeSoldGoods and not usedByMission then
 				movedFillLevel = SellingStation:superClass().addFillLevelFromTool(self, farmId, deltaFillLevel, fillType, fillInfo, toolType, extraAttributes)
 			else
 				movedFillLevel = deltaFillLevel

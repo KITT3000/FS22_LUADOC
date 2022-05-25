@@ -11,6 +11,7 @@ function CoverMap.new(pfModule, customMt)
 	addConsoleCommand("pfUncoverAll", "Uncovers all fields", "debugUncoverAll", self)
 	addConsoleCommand("pfReduceCoverState", "Reduces cover State for given field", "debugReduceCoverStateField", self)
 	addConsoleCommand("pfReduceCoverStateAll", "Reduces cover State for all fields", "debugReduceCoverStateAll", self)
+	addConsoleCommand("pfPrepareField", "Sets nitrogen and pH to the optimal levels", "debugPrepareField", self)
 
 	return self
 end
@@ -31,6 +32,7 @@ function CoverMap:delete()
 	removeConsoleCommand("pfUncoverAll")
 	removeConsoleCommand("pfReduceCoverState")
 	removeConsoleCommand("pfReduceCoverStateAll")
+	removeConsoleCommand("pfPrepareField")
 	CoverMap:superClass().delete(self)
 end
 
@@ -388,6 +390,45 @@ function CoverMap:debugReduceCoverStateAll()
 	for i = 1, #g_fieldManager.fields do
 		self:debugReduceCoverStateField(i)
 	end
+end
+
+function CoverMap:debugPrepareField(fieldIndex, resetState)
+	local field = g_fieldManager:getFieldByIndex(tonumber(fieldIndex))
+
+	if field ~= nil and field.fieldDimensions ~= nil then
+		local numDimensions = getNumOfChildren(field.fieldDimensions)
+
+		if resetState == nil or resetState == "true" then
+			local farmlandId = field.farmland.id
+
+			if farmlandId ~= nil then
+				self.pfModule.soilMap:onFarmlandStateChanged(farmlandId, FarmlandManager.NO_OWNER_FARM_ID)
+				self:debugUncoverField(tonumber(fieldIndex))
+			end
+		end
+
+		for i = 1, numDimensions do
+			local startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ = self:getCoordsFromFieldDimensions(field.fieldDimensions, i - 1)
+
+			self.pfModule.nitrogenMap:updateCropSensorArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, true, false)
+		end
+
+		for i = 1, numDimensions do
+			local startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ = self:getCoordsFromFieldDimensions(field.fieldDimensions, i - 1)
+
+			self.pfModule.pHMap:updateSprayArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, SprayType.LIME, true, 0)
+			self.pfModule.nitrogenMap:updateSprayArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, SprayType.FERTILIZER, SprayType.FERTILIZER, true, 0, 0, 0, 1)
+		end
+
+		for i = 1, numDimensions do
+			local startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ = self:getCoordsFromFieldDimensions(field.fieldDimensions, i - 1)
+
+			self.pfModule.pHMap:postUpdateSprayArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, SprayType.LIME, SprayType.LIME, true, 0)
+			self.pfModule.nitrogenMap:postUpdateSprayArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, SprayType.FERTILIZER, SprayType.FERTILIZER, true, 0)
+		end
+	end
+
+	self.pfModule:updatePrecisionFarmingOverlays()
 end
 
 function CoverMap:getCoordsFromFieldDimensions(fieldDimensions, index)

@@ -42,6 +42,12 @@ end
 
 function VehicleAttachEvent:run(connection)
 	if self.vehicle ~= nil and self.vehicle:getIsSynchronized() then
+		if self.implement == nil then
+			Logging.error("Failed to attach unknown implement to vehicle '%s' between joints '%d' and '%d'", self.vehicle.configFileName, self.jointIndex, self.inputJointIndex)
+
+			return
+		end
+
 		self.vehicle:attachImplement(self.implement, self.inputJointIndex, self.jointIndex, true, nil, self.startLowered)
 	end
 

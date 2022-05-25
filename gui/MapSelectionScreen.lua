@@ -40,6 +40,12 @@ function MapSelectionScreen:onOpen()
 	end
 end
 
+function MapSelectionScreen:onClose()
+	self.maps = {}
+
+	MapSelectionScreen:superClass().onClose(self)
+end
+
 function MapSelectionScreen:loadAvailableMaps()
 	self.maps = {}
 	local currentSelection = nil

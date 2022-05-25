@@ -233,6 +233,14 @@ function NitrogenMap:loadFromXML(xmlFile, key, baseDirectory, configFileName, ma
 		i = i + 1
 	end
 
+	self.initialSprayLevelBonus = {
+		string.getVector(getXMLString(xmlFile, key .. ".initialValues#sprayLevelBonus") or "0 0")
+	}
+
+	for j = 1, #self.initialSprayLevelBonus do
+		self.initialSprayLevelBonus[j] = MathUtil.round(self.initialSprayLevelBonus[j] / self.amountPerState)
+	end
+
 	self.fertilizerUsage = {
 		nAmounts = {}
 	}
@@ -417,7 +425,8 @@ function NitrogenMap:loadFromXML(xmlFile, key, baseDirectory, configFileName, ma
 		end
 	end
 
-	self.choppedStrawStateChange = (getXMLInt(xmlFile, key .. ".choppedStraw#increase") or 0) / self.amountPerState
+	self.choppedStrawStateChange = (getXMLInt(xmlFile, key .. ".choppedStraw#increase") or 25) / self.amountPerState
+	self.catchCropsStateChange = (getXMLInt(xmlFile, key .. ".catchCrops#increase") or 25) / self.amountPerState
 	self.outdatedLabel = g_i18n:convertText(getXMLString(xmlFile, key .. ".texts#outdatedLabel") or "$l10n_ui_precisionFarming_outdatedData", NitrogenMap.MOD_NAME)
 	self.minimapGradientLabelName = string.format("%d - %d kg/ha", self:getMinMaxValue())
 	self.coverMap = g_precisionFarming.coverMap
@@ -567,8 +576,10 @@ function NitrogenMap:setInitialState(soilBitVector, soilTypeFirstChannel, soilTy
 	local noiseFilter = self.densityMapModifiersInitialize.noiseFilter
 	local nInitModifier = self.densityMapModifiersInitialize.nInitModifier
 	local nInitMaskFilter = self.densityMapModifiersInitialize.nInitMaskFilter
+	local sprayLevelFilter = self.densityMapModifiersInitialize.sprayLevelFilter
+	local maxSprayLevel = self.densityMapModifiersInitialize.maxSprayLevel
 
-	if modifier == nil or soilFilter == nil or noiseFilter == nil or nInitModifier == nil or nInitMaskFilter == nil then
+	if modifier == nil or soilFilter == nil or noiseFilter == nil or nInitModifier == nil or nInitMaskFilter == nil or sprayLevelFilter == nil or maxSprayLevel == nil then
 		self.densityMapModifiersInitialize.modifier = DensityMapModifier.new(self.bitVectorMap, self.firstChannel, self.numChannels)
 		modifier = self.densityMapModifiersInitialize.modifier
 		self.densityMapModifiersInitialize.soilFilter = DensityMapFilter.new(soilBitVector, soilTypeFirstChannel, soilTypeNumChannels)
@@ -581,27 +592,37 @@ function NitrogenMap:setInitialState(soilBitVector, soilTypeFirstChannel, soilTy
 		nInitMaskFilter = self.densityMapModifiersInitialize.nInitMaskFilter
 
 		nInitMaskFilter:setValueCompareParams(DensityValueCompareType.EQUAL, 1)
+
+		local sprayMapId, sprayLevelFirstChannel, sprayLevelNumChannels = g_currentMission.fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_LEVEL)
+		self.densityMapModifiersInitialize.sprayLevelFilter = DensityMapFilter.new(sprayMapId, sprayLevelFirstChannel, sprayLevelNumChannels)
+		sprayLevelFilter = self.densityMapModifiersInitialize.sprayLevelFilter
+		self.densityMapModifiersInitialize.maxSprayLevel = g_currentMission.fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
+		maxSprayLevel = self.densityMapModifiersInitialize.maxSprayLevel
 	end
 
 	for i = 1, #self.initialValues do
 		local initialValue = self.initialValues[i]
 
-		soilFilter:setValueCompareParams(DensityValueCompareType.EQUAL, initialValue.soilTypeIndex - 1)
+		soilFilter:setValueCompareParams(DensityValueCompareType.NOTEQUAL, initialValue.soilTypeIndex - 1)
+
+		local filter = soilFilter
 
 		if farmlandMask ~= nil then
 			nInitModifier:executeSet(0)
-			nInitModifier:executeSet(1, soilFilter, farmlandMask)
+			nInitModifier:executeSet(1, farmlandMask, soilFilter)
+
+			filter = nInitMaskFilter
 		end
 
 		for j = 1, self.noiseMaxValue + 1 do
 			noiseFilter:setValueCompareParams(DensityValueCompareType.EQUAL, j - 1)
-
-			if farmlandMask ~= nil then
-				modifier:executeSet(initialValue.baseRange[j], nInitMaskFilter, noiseFilter)
-			else
-				modifier:executeSet(initialValue.baseRange[j], soilFilter, noiseFilter)
-			end
+			modifier:executeSet(initialValue.baseRange[j], filter, noiseFilter)
 		end
+	end
+
+	for sprayLevel = 1, maxSprayLevel do
+		sprayLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, sprayLevel)
+		modifier:executeAdd(self.initialSprayLevelBonus[sprayLevel] or 0, sprayLevelFilter)
 	end
 
 	self:setMinimapRequiresUpdate(true)
@@ -1186,10 +1207,10 @@ function NitrogenMap:postUpdateDestroyCommonArea(startWorldX, startWorldZ, width
 			end
 		end
 
-		nFilter:setValueCompareParams(DensityValueCompareType.EQUAL, self.maxValue - 1)
+		nFilter:setValueCompareParams(DensityValueCompareType.EQUAL, self.maxValue - self.catchCropsStateChange)
 		modifier:executeSet(self.maxValue, lockFilter, nFilter)
-		nFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 0, self.maxValue - 1)
-		modifier:executeAdd(2, lockFilter, nFilter)
+		nFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 0, self.maxValue - self.catchCropsStateChange)
+		modifier:executeAdd(self.catchCropsStateChange, lockFilter, nFilter)
 	end
 
 	return 0
@@ -1866,7 +1887,7 @@ function NitrogenMap:updateFieldInfoDisplay(fieldInfo, startWorldX, startWorldZ,
 			local fruitRequirement = self.fruitRequirements[i]
 			local fruitDesc = fruitRequirement.fruitType
 
-			if fruitDesc ~= nil and fruitDesc.terrainDataPlaneId ~= 0 then
+			if fruitDesc ~= nil and fruitDesc.terrainDataPlaneId ~= nil and fruitDesc.terrainDataPlaneId ~= 0 then
 				tempFruitModifier:executeSet(0)
 				fruitFilter:resetDensityMapAndChannels(fruitDesc.terrainDataPlaneId, fruitDesc.startStateChannel, fruitDesc.numStateChannels)
 
@@ -1921,7 +1942,7 @@ function NitrogenMap:updateFieldInfoDisplay(fieldInfo, startWorldX, startWorldZ,
 						local fillType = g_fruitTypeManager:getFillTypeByFruitTypeIndex(fruitDesc.index)
 
 						if fillType ~= nil then
-							fieldInfo.yieldPotentialToHa = soilSettings.yieldPotential * fruitDesc.literPerSqm * 10000 * fillType.massPerLiter / FillTypeManager.MASS_SCALE
+							fieldInfo.yieldPotentialToHa = soilSettings.yieldPotential * fruitDesc.literPerSqm * 10000 * fillType.massPerLiter / FillTypeManager.MASS_SCALE * 2
 						end
 
 						return string.format("%d / %d kg/ha", actualLevelReal, targetLevelReal), color, additionalText

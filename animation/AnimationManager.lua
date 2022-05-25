@@ -197,6 +197,13 @@ function AnimationManager:setPrevShaderParameter(node, parameterName, x, y, z, w
 
 		if not prevShaderParameterData.isValid then
 			slot = prevShaderParameterData
+		elseif prevShaderParameterData.loopIndex == g_updateLoopIndex and prevShaderParameterData.node == node and prevShaderParameterData.parameterNamePrev == parameterNamePrev then
+			prevShaderParameterData.x = x
+			prevShaderParameterData.y = y
+			prevShaderParameterData.z = z
+			prevShaderParameterData.w = w
+
+			return
 		end
 	end
 

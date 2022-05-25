@@ -266,42 +266,49 @@ end
 
 function ConstructionBrushFence:getLimitedSnappedCursorPosition()
 	local x, y, z, snapped, segment = self:getSnappedCursorPosition()
+	local pSegment = self.fence:getPreviewSegment()
 
-	if x ~= nil and self.fence:getPreviewSegment() ~= nil then
-		local panelLength = nil
-		local supportsMultiple = false
+	if x ~= nil and pSegment ~= nil then
+		local dx = x - pSegment.x1
+		local dz = z - pSegment.z1
+		local panelLength = MathUtil.vector2Length(dx, dz)
+		local recalculateY = false
+
+		if panelLength == 0 then
+			dz = 0
+			dx = 1
+		else
+			dx, dz = MathUtil.vector2Normalize(dx, dz)
+		end
 
 		if self.gateIndex ~= nil then
 			panelLength = self.fence:getGate(self.gateIndex).length
+			recalculateY = true
 		elseif self.fence:getIsPanelLengthFixed() then
-			panelLength = self.fence:getPanelLength()
-			supportsMultiple = true
+			local length = self.fence:getPanelLength()
+			panelLength = math.floor(panelLength / length) * length
+			recalculateY = true
 		end
 
-		if panelLength ~= nil then
-			local pSegment = self.fence:getPreviewSegment()
-			local dx = x - pSegment.x1
-			local dz = z - pSegment.z1
+		local prevSeqment = self.attachmentPointSegment
+		local snapAngleDeg = self.fence:getSnapAngle()
 
-			if math.abs(dx) + math.abs(dz) > 0.01 then
-				local newLength = nil
-				local length = math.sqrt(dx * dx + dz * dz)
+		if prevSeqment ~= nil and snapAngleDeg ~= nil then
+			local prevdx = prevSeqment.x2 - prevSeqment.x1
+			local prevdz = prevSeqment.z2 - prevSeqment.z1
+			prevdx, prevdz = MathUtil.vector2Normalize(prevdx, prevdz)
+			local prevRotY = MathUtil.getYRotationFromDirection(prevdx, prevdz)
+			local rotY = MathUtil.getYRotationFromDirection(dx, dz)
+			local diff = prevRotY - rotY
+			local snappedAngle = math.rad(MathUtil.snapValue(math.deg(diff), snapAngleDeg))
+			dx, dz = MathUtil.vector2Rotate(prevdx, prevdz, snappedAngle)
+			recalculateY = true
+		end
 
-				if supportsMultiple then
-					newLength = math.floor(length / panelLength) * panelLength
-				else
-					newLength = panelLength
-				end
+		x = pSegment.x1 + dx * panelLength
+		z = pSegment.z1 + dz * panelLength
 
-				dx = dx / length * newLength
-				dz = dz / length * newLength
-			else
-				dx = panelLength
-				dz = 0
-			end
-
-			z = pSegment.z1 + dz
-			x = pSegment.x1 + dx
+		if recalculateY then
 			y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, 0, z)
 		end
 	end

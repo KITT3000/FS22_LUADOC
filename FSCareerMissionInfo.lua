@@ -56,7 +56,6 @@ function FSCareerMissionInfo:loadDefaults()
 	self.onCreateObjectsXML = nil
 	self.environmentXML = nil
 	self.vehicleSaleXML = nil
-	self.destructibleMapObjectsXML = nil
 	self.economyXML = nil
 	self.farmlandXML = nil
 	self.npcXML = nil
@@ -344,7 +343,6 @@ function FSCareerMissionInfo:saveToXMLFile()
 			g_currentMission.itemSystem:save(self.itemsXML, usedModNames)
 			g_currentMission.aiSystem:save(self.aiSystemXML, usedModNames)
 			g_currentMission.onCreateObjectSystem:save(self.onCreateObjectsXML, usedModNames)
-			g_currentMission.destructibleMapObjectSystem:saveToXMLFile(self.destructibleMapObjectsXML, usedModNames)
 		end
 
 		local economyFile = createXMLFile("economyXML", self.economyXML, "economy")
@@ -429,7 +427,6 @@ function FSCareerMissionInfo:setSavegameDirectory(directory)
 		self.onCreateObjectsXML = self.savegameDirectory .. "/onCreateObjects.xml"
 		self.environmentXML = self.savegameDirectory .. "/environment.xml"
 		self.vehicleSaleXML = self.savegameDirectory .. "/sales.xml"
-		self.destructibleMapObjectsXML = self.savegameDirectory .. "/destructibleMapObjectSystem.xml"
 		self.economyXML = self.savegameDirectory .. "/economy.xml"
 		self.farmlandXML = self.savegameDirectory .. "/farmland.xml"
 		self.npcXML = self.savegameDirectory .. "/npc.xml"
@@ -447,7 +444,6 @@ function FSCareerMissionInfo:setSavegameDirectory(directory)
 		self.onCreateObjectsXML = nil
 		self.environmentXML = nil
 		self.vehicleSaleXML = nil
-		self.destructibleMapObjectsXML = nil
 		self.economyXML = nil
 		self.farmlandXML = nil
 		self.npcXML = nil

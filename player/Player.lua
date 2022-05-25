@@ -447,7 +447,6 @@ function Player:load(creatorConnection, isOwner)
 			addConsoleCommand("gsTip", "Tips a fillType into a trigger", "consoleCommandTip", self)
 			addConsoleCommand("gsPlayerIKChainsReload", "Reloads player IKChains", "Player.consoleCommandReloadIKChains", nil)
 			addConsoleCommand("gsPlayerSuperStrength", "Enables/disables player super strength", "consoleCommandToggleSuperStrongMode", self)
-			addConsoleCommand("gsPlayerRaycastDebug", "Enables/disables player pickup raycast debug information", "consoleCommandTogglePickupRaycastDebug", self)
 			addConsoleCommand("gsPlayerThirdPerson", "Enables/disables player third person view", "consoleCommandThirdPersonView", self)
 		end
 	end
@@ -508,7 +507,6 @@ function Player:delete()
 		removeConsoleCommand("gsPlayerIKChainsReload")
 		removeConsoleCommand("gsTip")
 		removeConsoleCommand("gsPlayerSuperStrength")
-		removeConsoleCommand("gsPlayerRaycastDebug")
 	end
 
 	Player:superClass().delete(self)
@@ -930,7 +928,7 @@ function Player:update(dt)
 		self.model:updateAnimations(dt)
 	end
 
-	if self.allowPlayerPickUp then
+	if self.allowPlayerPickUp and self.isControlled and (self.isServer or self.isEntered) then
 		self:checkObjectInRange()
 	end
 
@@ -994,6 +992,16 @@ function Player:setInputState(inputAction, state)
 
 	g_inputBinding:setActionEventActive(id, state)
 	g_inputBinding:setActionEventTextVisibility(id, state)
+
+	self.inputInformation.registrationList[inputAction].lastState = state
+end
+
+function Player:disableInput(inputAction, currentState)
+	local lastState = self.inputInformation.registrationList[inputAction].lastState
+
+	if not currentState and lastState then
+		self:setInputState(inputAction, false)
+	end
 end
 
 function Player:updateActionEvents()
@@ -1082,6 +1090,14 @@ function Player:updateActionEvents()
 		stateEnter = true
 	end
 
+	self:disableInput(InputAction.SWITCH_HANDTOOL, stateSwitchHandTool)
+	self:disableInput(InputAction.ACTIVATE_HANDTOOL, stateActivateHandTool)
+	self:disableInput(InputAction.INTERACT, stateInteract)
+	self:disableInput(InputAction.ANIMAL_PET, stateAnimalPet)
+	self:disableInput(InputAction.ENTER, stateEnter)
+	self:disableInput(InputAction.THROW_OBJECT, stateThrowObject)
+	self:disableInput(InputAction.ROTATE_OBJECT_LEFT_RIGHT, stateObjectLeftRight)
+	self:disableInput(InputAction.ROTATE_OBJECT_UP_DOWN, stateObjectUpDown)
 	self:setInputState(InputAction.SWITCH_HANDTOOL, stateSwitchHandTool)
 	self:setInputState(InputAction.ACTIVATE_HANDTOOL, stateActivateHandTool)
 	self:setInputState(InputAction.INTERACT, stateInteract)
@@ -1904,34 +1920,32 @@ function Player:onEnterFarmhouse()
 end
 
 function Player:checkObjectInRange()
-	if self.isControlled then
-		if self.isServer then
-			if not self.isCarryingObject then
-				local x, y, z = localToWorld(self.cameraNode, 0, 0, 1)
-				local dx, dy, dz = localDirectionToWorld(self.cameraNode, 0, 0, -1)
-				self.lastFoundObject = nil
-				self.lastFoundObjectHitPoint = nil
-				self.lastFoundAnyObject = nil
-
-				raycastAll(x, y, z, dx, dy, dz, "pickUpObjectRaycastCallback", Player.MAX_PICKABLE_OBJECT_DISTANCE, self)
-
-				self.isObjectInRange = self.lastFoundObject ~= nil
-
-				self.hudUpdater:setCurrentRaycastTarget(self.lastFoundAnyObject)
-			elseif self.pickedUpObject ~= nil and not entityExists(self.pickedUpObject) then
-				Player.PICKED_UP_OBJECTS[self.pickedUpObject] = false
-				self.pickedUpObject = nil
-				self.pickedUpObjectJointId = nil
-				self.isCarryingObject = false
-			end
-		elseif not self.isCarryingObject then
+	if self.isServer then
+		if not self.isCarryingObject then
 			local x, y, z = localToWorld(self.cameraNode, 0, 0, 1)
 			local dx, dy, dz = localDirectionToWorld(self.cameraNode, 0, 0, -1)
+			self.lastFoundObject = nil
+			self.lastFoundObjectHitPoint = nil
 			self.lastFoundAnyObject = nil
 
 			raycastAll(x, y, z, dx, dy, dz, "pickUpObjectRaycastCallback", Player.MAX_PICKABLE_OBJECT_DISTANCE, self)
+
+			self.isObjectInRange = self.lastFoundObject ~= nil
+
 			self.hudUpdater:setCurrentRaycastTarget(self.lastFoundAnyObject)
+		elseif self.pickedUpObject ~= nil and not entityExists(self.pickedUpObject) then
+			Player.PICKED_UP_OBJECTS[self.pickedUpObject] = false
+			self.pickedUpObject = nil
+			self.pickedUpObjectJointId = nil
+			self.isCarryingObject = false
 		end
+	elseif not self.isCarryingObject then
+		local x, y, z = localToWorld(self.cameraNode, 0, 0, 1)
+		local dx, dy, dz = localDirectionToWorld(self.cameraNode, 0, 0, -1)
+		self.lastFoundAnyObject = nil
+
+		raycastAll(x, y, z, dx, dy, dz, "pickUpObjectRaycastCallback", Player.MAX_PICKABLE_OBJECT_DISTANCE, self)
+		self.hudUpdater:setCurrentRaycastTarget(self.lastFoundAnyObject)
 	end
 end
 
@@ -1941,6 +1955,10 @@ function Player:pickUpObjectRaycastCallback(hitObjectId, x, y, z, distance)
 
 		if rigidBodyType == RigidBodyType.DYNAMIC or rigidBodyType == RigidBodyType.KINEMATIC then
 			self.lastFoundAnyObject = hitObjectId
+
+			if not self.isServer then
+				return false
+			end
 		end
 
 		if self.isServer and rigidBodyType == RigidBodyType.DYNAMIC then

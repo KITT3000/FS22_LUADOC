@@ -724,6 +724,8 @@ function AIDrivable:consoleCommandClearPath()
 	if spec.debugVehicle ~= nil then
 		spec.debugVehicle:clear()
 	end
+
+	return string.format("Cleared AI paths of %s", self:getName())
 end
 
 function AIDrivable:consoleCommandSetTurnRadius(turnRadius)

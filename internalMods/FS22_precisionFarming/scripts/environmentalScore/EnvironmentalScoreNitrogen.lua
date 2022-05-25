@@ -116,11 +116,17 @@ end
 
 function EnvironmentalScoreNitrogen:overwriteGameFunctions(pfModule)
 	if g_server ~= nil then
-		pfModule:overwriteGameFunction(HarvestExtension, "setLastScoringValues", function (superFunc, harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget)
-			superFunc(harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget)
+		pfModule:overwriteGameFunction(HarvestExtension, "setLastScoringValues", function (superFunc, harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget, ignoreOverfertilization)
+			superFunc(harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget, ignoreOverfertilization)
 
 			if nActual ~= nil and nTarget ~= nil and area > 0 and farmlandId ~= nil then
-				self:addWorkedArea(farmlandId, area, nActual - nTarget)
+				local difference = nActual - nTarget
+
+				if ignoreOverfertilization then
+					difference = math.min(difference, 0)
+				end
+
+				self:addWorkedArea(farmlandId, area, difference)
 			end
 		end)
 	end

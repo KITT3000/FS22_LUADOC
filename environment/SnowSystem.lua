@@ -15,6 +15,7 @@ function SnowSystem.new(mission, isServer, customMt)
 	self.updateQueue = {}
 	self.height = 0
 	self.exactHeight = 0
+	self.snowShaderValue = 0
 	self.vehicleWakeUpIndex = 0
 	self.vehicleWakeUpDelay = 500
 	self.vehicleWakeUpTimer = 0
@@ -417,9 +418,9 @@ function SnowSystem:setSnowHeight(height)
 end
 
 function SnowSystem:updateSnowShader()
-	local sn = self.exactHeight / self.layerHeight
+	self.snowShaderValue = self.exactHeight / self.layerHeight
 
-	setSharedShaderParameter(Shader.PARAM_SHARED_SNOW, sn)
+	setSharedShaderParameter(Shader.PARAM_SHARED_SNOW, self.snowShaderValue)
 end
 
 function SnowSystem:removeAll()

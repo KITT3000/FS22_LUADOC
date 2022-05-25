@@ -60,6 +60,8 @@ function JoinGameScreen.new(target, custom_mt, startMissionInfo, messageCenter, 
 	self.serverName = ""
 	self.lastUserName = ""
 	self.returnScreenClass = MultiplayerScreen
+	self.lastSelectedServerName = nil
+	self.lastSelectedServerMapName = nil
 
 	if g_isDevelopmentVersion then
 		JoinGameScreen.REFRESH_TIME = 10000
@@ -313,7 +315,8 @@ function JoinGameScreen:buildSortFunc()
 end
 
 function JoinGameScreen:updateDisplayedServers()
-	local selectedServer = self.displayServers[self.serverList.selectedIndex]
+	local lastServerName = self.lastSelectedServerName
+	local lastServerMapName = self.lastSelectedServerMapName
 	self.displayServers = {}
 
 	for _, server in ipairs(self.servers) do
@@ -340,16 +343,18 @@ function JoinGameScreen:updateDisplayedServers()
 
 	self:updateButtons()
 
-	if selectedServer ~= nil then
-		self.serverList:setSelectedIndex(1)
+	if lastServerName ~= nil then
+		local index = 1
 
 		for i, server in ipairs(self.displayServers) do
-			if server.id == selectedServer.id then
-				self.serverList:setSelectedIndex(i)
+			if server.name == lastServerName and server.mapName == lastServerMapName then
+				index = i
 
 				break
 			end
 		end
+
+		self.serverList:setSelectedIndex(index)
 	end
 
 	if g_autoDevMP ~= nil then
@@ -519,6 +524,7 @@ end
 
 function JoinGameScreen:onClickActivate()
 	JoinGameScreen:superClass().onClickActivate(self)
+	self:saveFilterSettings()
 
 	local server = self:getSelectedServer()
 
@@ -593,6 +599,13 @@ function JoinGameScreen:populateCellForItemInSection(list, section, index, cell)
 end
 
 function JoinGameScreen:onListSelectionChanged(list, section, index)
+	local server = self.displayServers[index]
+
+	if server ~= nil then
+		self.lastSelectedServerName = server.name
+		self.lastSelectedServerMapName = server.mapName
+	end
+
 	self:updateButtons()
 end
 

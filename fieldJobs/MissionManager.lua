@@ -963,7 +963,7 @@ function MissionManager:consoleGenerateFieldMission(fieldId)
 	local field = g_fieldManager:getFieldByIndex(fieldId)
 
 	if field == nil then
-		return "Field not found"
+		return "Error: Field not found"
 	end
 
 	g_missionManager:cancelMissionOnField(field)
@@ -971,15 +971,24 @@ function MissionManager:consoleGenerateFieldMission(fieldId)
 	local mission = self:generateNewFieldMission(field)
 
 	if mission == nil then
-		return "Could not generate a mission"
+		return "Error: Could not generate a mission"
 	end
 
 	mission:register()
 	table.insert(self.missions, mission)
 
 	self.fieldToMission[field.fieldId] = mission
+	local vehicles = {}
 
-	return "Generated mission and added to mission list"
+	for _, vehicle in pairs(mission.vehiclesToLoad) do
+		table.insert(vehicles, vehicle.filename)
+
+		for configName, configValue in pairs(vehicle.configurations) do
+			table.insert(vehicles, string.format("  %s: %d", configName, configValue))
+		end
+	end
+
+	return string.format("Generated '%s' mission and added to mission list\n%s", mission.type.name, table.concat(vehicles, "\n"))
 end
 
 function MissionManager:consoleLoadMissionVehicles(missionTypeName, fieldSize, groupIndex)

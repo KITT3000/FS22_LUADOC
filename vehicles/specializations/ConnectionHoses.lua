@@ -43,7 +43,8 @@ end
 
 function ConnectionHoses.registerHoseTargetNodesXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#node", "Target node")
-	schema:register(XMLValueType.VECTOR_N, basePath .. "#attacherJointIndices", "Attacher joint indices")
+	schema:register(XMLValueType.VECTOR_N, basePath .. "#attacherJointIndices", "List of corresponding attacher joint indices")
+	schema:register(XMLValueType.NODE_INDICES, basePath .. "#attacherJointNodes", "List of corresponding attacher joint nodes (i3dIdentifiers or paths separated by space)")
 	schema:register(XMLValueType.STRING, basePath .. "#type", "Hose type")
 	schema:register(XMLValueType.STRING, basePath .. "#specType", "Connection hose specialization type (if defined it needs to match the type of the other tool)")
 	schema:register(XMLValueType.FLOAT, basePath .. "#straighteningFactor", "Straightening Factor", 1)
@@ -55,7 +56,8 @@ function ConnectionHoses.registerHoseTargetNodesXMLPaths(schema, basePath)
 end
 
 function ConnectionHoses.registerHoseNodesXMLPaths(schema, basePath)
-	schema:register(XMLValueType.VECTOR_N, basePath .. "#inputAttacherJointIndices", "Input attacher joint indices")
+	schema:register(XMLValueType.VECTOR_N, basePath .. "#inputAttacherJointIndices", "List of corresponding input attacher joint indices")
+	schema:register(XMLValueType.NODE_INDICES, basePath .. "#inputAttacherJointNodes", "List of corresponding input attacher joint nodes (i3dIdentifiers or paths separated by space)")
 	schema:register(XMLValueType.STRING, basePath .. "#type", "Hose type")
 	schema:register(XMLValueType.STRING, basePath .. "#specType", "Connection hose specialization type (if defined it needs to match the type of the other tool)")
 	schema:register(XMLValueType.STRING, basePath .. "#hoseType", "Hose material type", "DEFAULT")
@@ -673,11 +675,21 @@ function ConnectionHoses:loadHoseTargetNode(xmlFile, targetKey, entry)
 		return false
 	end
 
-	local attacherJointIndices = xmlFile:getValue(targetKey .. "#attacherJointIndices", nil, true)
 	entry.attacherJointIndices = {}
+	local attacherJointIndices = xmlFile:getValue(targetKey .. "#attacherJointIndices", nil, true)
 
-	for _, v in ipairs(attacherJointIndices) do
-		entry.attacherJointIndices[v] = v
+	for _, attacherJointIndex in ipairs(attacherJointIndices) do
+		entry.attacherJointIndices[attacherJointIndex] = attacherJointIndex
+	end
+
+	local attacherJointNodes = xmlFile:getValue(targetKey .. "#attacherJointNodes", nil, self.components, self.i3dMappings, true)
+
+	for _, node in ipairs(attacherJointNodes) do
+		local attacherJointIndex = self:getAttacherJointIndexByNode(node)
+
+		if attacherJointIndex ~= nil then
+			entry.attacherJointIndices[attacherJointIndex] = attacherJointIndex
+		end
 	end
 
 	entry.type = xmlFile:getValue(targetKey .. "#type")
@@ -715,11 +727,21 @@ function ConnectionHoses:loadHoseTargetNode(xmlFile, targetKey, entry)
 end
 
 function ConnectionHoses:loadHoseNode(xmlFile, hoseKey, entry, isBaseHose)
-	local inputAttacherJointIndices = xmlFile:getValue(hoseKey .. "#inputAttacherJointIndices", nil, true)
 	entry.inputAttacherJointIndices = {}
+	local inputAttacherJointIndices = xmlFile:getValue(hoseKey .. "#inputAttacherJointIndices", nil, true)
 
-	for _, v in ipairs(inputAttacherJointIndices) do
-		entry.inputAttacherJointIndices[v] = v
+	for _, inputAttacherJointIndex in ipairs(inputAttacherJointIndices) do
+		entry.inputAttacherJointIndices[inputAttacherJointIndex] = inputAttacherJointIndex
+	end
+
+	local inputAttacherJointNodes = xmlFile:getValue(hoseKey .. "#inputAttacherJointNodes", nil, self.components, self.i3dMappings, true)
+
+	for _, node in ipairs(inputAttacherJointNodes) do
+		local inputAttacherJointIndex = self:getInputAttacherJointIndexByNode(node)
+
+		if inputAttacherJointIndex ~= nil then
+			entry.inputAttacherJointIndices[inputAttacherJointIndex] = inputAttacherJointIndex
+		end
 	end
 
 	entry.type = xmlFile:getValue(hoseKey .. "#type")

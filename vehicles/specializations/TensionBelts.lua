@@ -3,7 +3,7 @@ source("dataS/scripts/vehicles/specializations/events/TensionBeltsRefreshEvent.l
 
 TensionBelts = {
 	debugRendering = false,
-	NUM_SEND_BITS = 4,
+	NUM_SEND_BITS = 5,
 	prerequisitesPresent = function (specializations)
 		return true
 	end,

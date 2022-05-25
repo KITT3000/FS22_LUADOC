@@ -323,7 +323,9 @@ function ReverseDriving:getSteeringDirection(superFunc)
 end
 
 function ReverseDriving:getAllowCharacterVisibilityUpdate(superFunc)
-	return superFunc(self) and not self.spec_reverseDriving.isChangingDirection
+	local spec = self.spec_reverseDriving
+
+	return superFunc(self) and (not spec.hideCharacterOnChange or not spec.isChangingDirection)
 end
 
 function ReverseDriving:getCanStartAIVehicle(superFunc)

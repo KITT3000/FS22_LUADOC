@@ -633,6 +633,20 @@ function GuiElement:draw(clipX1, clipY1, clipX2, clipY2)
 			end
 		end
 	end
+
+	if g_uiFocusDebugEnabled and self.focusId ~= nil and self:canReceiveFocus() then
+		setTextColor(1, 0, 0, 1)
+
+		local size = 0.008
+		local y = self.absPosition[2] + self.absSize[2]
+
+		renderText(self.absPosition[1], y - 1 * size, size, " FocusId: " .. tostring(self.focusId) .. " " .. tostring(ClassUtil.getClassNameByObject(self)))
+		renderText(self.absPosition[1], y - 2 * size, size, " T: " .. tostring(self.focusChangeData[FocusManager.TOP]))
+		renderText(self.absPosition[1], y - 3 * size, size, " B: " .. tostring(self.focusChangeData[FocusManager.BOTTOM]))
+		renderText(self.absPosition[1], y - 4 * size, size, " L: " .. tostring(self.focusChangeData[FocusManager.LEFT]))
+		renderText(self.absPosition[1], y - 5 * size, size, " R: " .. tostring(self.focusChangeData[FocusManager.RIGHT]))
+		setTextColor(1, 1, 1, 1)
+	end
 end
 
 function GuiElement:onOpen()

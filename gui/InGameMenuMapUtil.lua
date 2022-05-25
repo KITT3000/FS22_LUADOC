@@ -100,8 +100,10 @@ function InGameMenuMapUtil.showContextBox(contextBox, hotspot, description, imag
 		if farmId ~= nil and g_currentMission.missionDynamicInfo.isMultiplayer then
 			local farm = g_farmManager:getFarmById(farmId)
 
-			farmElem:setText(farm.name)
-			farmElem:setTextColor(unpack(farm:getColor()))
+			if farm ~= nil then
+				farmElem:setText(farm.name)
+				farmElem:setTextColor(unpack(farm:getColor()))
+			end
 		else
 			farmElem:setText("")
 		end

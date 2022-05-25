@@ -28,6 +28,10 @@ function WeedMission:completeField()
 end
 
 function WeedMission.canRunOnField(field, sprayFactor, fieldSpraySet, fieldPlowFactor, limeFactor, maxWeedState, stubbleFactor, rollerFactor)
+	if maxWeedState ~= 3 then
+		return false
+	end
+
 	local fruitType = field.fruitType
 	local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(fruitType)
 
@@ -45,7 +49,7 @@ function WeedMission.canRunOnField(field, sprayFactor, fieldSpraySet, fieldPlowF
 		return false
 	end
 
-	return maxWeedState == 2, FieldManager.FIELDSTATE_GROWING, maxGrowthState, maxWeedState
+	return true, FieldManager.FIELDSTATE_GROWING, maxGrowthState, maxWeedState
 end
 
 function WeedMission:getData()

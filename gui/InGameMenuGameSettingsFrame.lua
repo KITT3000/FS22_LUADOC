@@ -317,7 +317,7 @@ function InGameMenuGameSettingsFrame:assignDynamicTexts()
 	table.insert(textTable, helperTexts[2])
 
 	for _, station in ipairs(self.liquidManureLoadingStations) do
-		if g_currentMission.accessHandler:canPlayerAccess(station) then
+		if g_currentMission.accessHandler:canPlayerAccess(station) and station:getIsFillAllowedToFarm(g_currentMission:getFarmId()) then
 			table.insert(textTable, station:getName())
 		end
 	end

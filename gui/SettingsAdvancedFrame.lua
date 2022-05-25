@@ -128,8 +128,9 @@ function SettingsAdvancedFrame:updateValues()
 	self.resolutionScale3dElement:setVisible(not GS_PLATFORM_GGP)
 
 	local isFSRActive = self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR) ~= self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF]
+	local isFSR20Active = self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR_20) ~= self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF]
 	local isDLSSActive = self.settingsModel:getValue(SettingsModel.SETTING.DLSS) ~= self.settingsModel.dlssMapping[DLSSQuality.OFF]
-	local isActive = isFSRActive or isDLSSActive
+	local isActive = isFSRActive or isFSR20Active or isDLSSActive
 
 	self.sharpnessElement:setDisabled(not isActive)
 	self:setMenuButtonInfoDirty()

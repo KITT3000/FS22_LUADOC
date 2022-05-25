@@ -184,9 +184,8 @@ function Cylindered.initSpecialization()
 	schema:register(XMLValueType.NODE_INDEX, "vehicle.cylindered.movingTools.easyArmControl.xRotationNodes.xRotationNode2#node", "X translation node")
 	Dashboard.registerDashboardXMLPaths(schema, "vehicle.cylindered.dashboards", "movingTool")
 	schema:register(XMLValueType.STRING, "vehicle.cylindered.dashboards.dashboard(?)#axis", "Moving tool input action name")
-	schema:register(XMLValueType.INT, "vehicle.cylindered.dashboards.dashboard(?)#attacherJointIndex", "Attacher joint index that needs to be active")
-	schema:register(XMLValueType.STRING, "vehicle.cylindered.dashboards.dashboard(?)#axis", "Input action name")
-	schema:register(XMLValueType.INT, "vehicle.cylindered.dashboards.dashboard(?)#attacherJointIndex", "Attacher joint index that needs to be active")
+	schema:register(XMLValueType.INT, "vehicle.cylindered.dashboards.dashboard(?)#attacherJointIndex", "Index of attacher joint that has to be connected")
+	schema:register(XMLValueType.NODE_INDEX, "vehicle.cylindered.dashboards.dashboard(?)#attacherJointNode", "Node of attacher joint that has to be connected")
 	ObjectChangeUtil.addAdditionalObjectChangeXMLPaths(schema, function (_schema, key)
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMaxActive", "Moving tool max. rotation if object change active")
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMaxInactive", "Moving tool max. rotation if object change inactive")
@@ -4127,6 +4126,11 @@ end
 function Cylindered:getMovingToolDashboardState(dashboard)
 	local vehicle = self
 
+	if dashboard.attacherJointNode ~= nil then
+		dashboard.attacherJointIndex = self:getAttacherJointIndexByNode(dashboard.attacherJointNode)
+		dashboard.attacherJointNode = nil
+	end
+
 	if dashboard.attacherJointIndex ~= nil then
 		local implement = self:getImplementFromAttacherJointIndex(dashboard.attacherJointIndex)
 
@@ -4162,6 +4166,7 @@ function Cylindered:movingToolDashboardAttributes(xmlFile, key, dashboard)
 	end
 
 	dashboard.attacherJointIndex = xmlFile:getValue(key .. "#attacherJointIndex")
+	dashboard.attacherJointNode = xmlFile:getValue(key .. "#attacherJointNode", nil, self.components, self.i3dMappings)
 
 	return true
 end

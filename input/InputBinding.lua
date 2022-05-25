@@ -1188,10 +1188,6 @@ function InputBinding:assignLastInputHelpMode(inputHelpMode, force)
 end
 
 function InputBinding:keyEvent(unicode, sym, modifier, isDown)
-	if GS_PLATFORM_GGP and g_isStadiaSimulationActive and sym == Input.KEY_6 then
-		return
-	end
-
 	self:assignLastInputHelpMode(GS_INPUT_HELP_MODE_KEYBOARD)
 end
 

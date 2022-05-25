@@ -26,6 +26,7 @@ InGameMenuMultiplayerUsersFrame.CONTROLS = {
 	"sellPlaceablePermissionCheckbox",
 	"hireAssistantPermissionCheckbox",
 	"manageMissionsPermissionCheckbox",
+	"manageProductionsPermissionCheckbox",
 	"tradeAnimalsPermissionCheckbox",
 	"createFieldsPermissionCheckbox",
 	"landscapingPermissionCheckbox"
@@ -119,6 +120,7 @@ function InGameMenuMultiplayerUsersFrame:initialize()
 		[Farm.PERMISSION.SELL_PLACEABLE] = self.sellPlaceablePermissionCheckbox,
 		[Farm.PERMISSION.HIRE_ASSISTANT] = self.hireAssistantPermissionCheckbox,
 		[Farm.PERMISSION.MANAGE_CONTRACTS] = self.manageMissionsPermissionCheckbox,
+		[Farm.PERMISSION.MANAGE_PRODUCTIONS] = self.manageProductionsPermissionCheckbox,
 		[Farm.PERMISSION.TRADE_ANIMALS] = self.tradeAnimalsPermissionCheckbox,
 		[Farm.PERMISSION.CREATE_FIELDS] = self.createFieldsPermissionCheckbox,
 		[Farm.PERMISSION.LANDSCAPING] = self.landscapingPermissionCheckbox

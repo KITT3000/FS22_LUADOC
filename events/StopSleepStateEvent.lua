@@ -16,6 +16,7 @@ function StopSleepStateEvent.new()
 end
 
 function StopSleepStateEvent:readStream(streamId, connection)
+	assert(connection:getIsServer(), "StopSleepStateEvent is a server to client only event")
 	self:run(connection)
 end
 
@@ -24,20 +25,6 @@ end
 
 function StopSleepStateEvent:run(connection)
 	if g_sleepManager ~= nil then
-		g_sleepManager:stopSleep(true)
-	end
-
-	if not connection:getIsServer() then
-		g_server:broadcastEvent(StopSleepStateEvent.new(), false)
-	end
-end
-
-function StopSleepStateEvent.sendEvent(noEventSend)
-	if noEventSend == nil or noEventSend == false then
-		if g_currentMission:getIsServer() then
-			g_server:broadcastEvent(StopSleepStateEvent.new(), false)
-		else
-			g_client:getServerConnection():sendEvent(StopSleepStateEvent.new())
-		end
+		g_sleepManager:stopSleep()
 	end
 end

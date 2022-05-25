@@ -427,11 +427,27 @@ function SowingMachine:setFillTypeSourceDisplayFillType(fillType)
 	if spec.fillTypeSources[FillType.SEEDS] ~= nil then
 		for _, src in ipairs(spec.fillTypeSources[FillType.SEEDS]) do
 			local vehicle = src.vehicle
+			local fillLevel = vehicle:getFillUnitFillLevel(src.fillUnitIndex)
 
-			if vehicle:getFillUnitFillLevel(src.fillUnitIndex) > 0 and vehicle:getFillUnitFillType(src.fillUnitIndex) == FillType.SEEDS then
+			if fillLevel > 0 and vehicle:getFillUnitFillType(src.fillUnitIndex) == FillType.SEEDS then
 				vehicle:setFillUnitFillTypeToDisplay(src.fillUnitIndex, fillType)
 
 				break
+			elseif fillLevel == 0 then
+				local fillTypes = vehicle:getFillUnitSupportedFillTypes(src.fillUnitIndex)
+				local numFillTypes = 0
+
+				for fillTypeIndex, state in pairs(fillTypes) do
+					if state then
+						numFillTypes = numFillTypes + 1
+					end
+				end
+
+				if numFillTypes == 1 and fillTypes[FillType.SEEDS] == true then
+					vehicle:setFillUnitFillTypeToDisplay(src.fillUnitIndex, fillType)
+
+					break
+				end
 			end
 		end
 	end

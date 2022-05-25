@@ -210,12 +210,9 @@ end
 
 function PlaceablePlacement:getPlacementRotation(x, y, z)
 	local spec = self.spec_placement
-	local snapAngle = math.deg(spec.rotationSnapAngle)
 
-	if snapAngle ~= 0 then
-		snapAngle = 1 / snapAngle
-		local degAngle = math.deg(y)
-		degAngle = math.floor(degAngle * snapAngle) / snapAngle
+	if spec.rotationSnapAngle ~= 0 then
+		local degAngle = MathUtil.snapValue(math.deg(y), math.deg(spec.rotationSnapAngle))
 		y = math.rad(degAngle)
 	end
 
@@ -323,6 +320,23 @@ function PlaceablePlacement:getHasOverlap(x, y, z, rotY, checkFunc)
 		local posX = x + dirX * center.z + normX * center.x
 		local posY = y + center.y
 		local posZ = z + dirZ * center.z + normZ * center.x
+		local sizeXHalf = size.x * 0.5
+		local sizeZHalf = size.z * 0.5
+		local frontLeftX = posX + dirX * sizeZHalf - normX * sizeXHalf
+		local frontLeftZ = posZ + dirZ * sizeZHalf - normZ * sizeXHalf
+		local frontRightX = posX + dirX * sizeZHalf + normX * sizeXHalf
+		local frontRightZ = posZ + dirZ * sizeZHalf + normZ * sizeXHalf
+		local backLeftX = posX - dirX * sizeZHalf - normX * sizeXHalf
+		local backLeftZ = posZ - dirZ * sizeZHalf - normZ * sizeXHalf
+		local backRightX = posX - dirX * sizeZHalf + normX * sizeXHalf
+		local backRightZ = posZ - dirZ * sizeZHalf + normZ * sizeXHalf
+		local frontLeftY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, frontLeftX, 0, frontLeftZ)
+		local frontRightY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, frontRightX, 0, frontRightZ)
+		local backLeftY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, backLeftX, 0, backLeftZ)
+		local backRightY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, backRightX, 0, backRightZ)
+		local centerY = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, posX, 0, posZ)
+		local terrainBasedCenterY = math.min(frontLeftY, frontRightY, backLeftY, backRightY, centerY) + size.y * 0.5 - 0.5
+		posY = math.max(terrainBasedCenterY, posY)
 
 		overlapBox(posX, posY, posZ, 0, rotY + area.rotYOffset, 0, size.x * 0.5, size.y * 0.5, size.z * 0.5, "overlapCallback", callbackTarget, nil, true, true, true, false)
 

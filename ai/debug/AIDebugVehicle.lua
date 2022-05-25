@@ -47,3 +47,9 @@ function AIDebugVehicle:draw(forcedY)
 
 	self.targetFlag:draw()
 end
+
+function AIDebugVehicle:clear()
+	for _, path in ipairs(self.paths) do
+		path:clear()
+	end
+end

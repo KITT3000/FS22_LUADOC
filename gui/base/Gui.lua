@@ -46,7 +46,6 @@ function Gui.new(messageCenter, languageSuffix, inputManager, guiSoundPlayer)
 	self.actionEventIds = {}
 	self.frameInputTarget = nil
 	self.frameInputHandled = false
-	self.networkEventSubscribers = {}
 	self.changeScreenClosure = self:makeChangeScreenClosure()
 	self.toggleCustomInputContextClosure = self:makeToggleCustomInputContextClosure()
 	self.playSampleClosure = self:makePlaySampleClosure()
@@ -756,7 +755,7 @@ function Gui:changeScreen(source, screenClass, returnScreenClass)
 
 	FocusManager:setGui(screenName)
 
-	local screenController = self.screenControllers[screenClass]
+	screenController = self.screenControllers[screenClass]
 
 	if screenElement ~= nil and screenController ~= nil then
 		screenController:setReturnScreenClass(returnScreenClass or screenController.returnScreenClass)

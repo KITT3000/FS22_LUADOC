@@ -107,6 +107,8 @@ function PlaceableHotspots:onPostFinalizePlacement()
 	local spec = self.spec_hotspots
 
 	for _, hotspot in ipairs(spec.mapHotspots) do
+		hotspot:setOwnerFarmId(self.ownerFarmId)
+		hotspot:setVisible(self.ownerFarmId ~= AccessHandler.NOBODY)
 		g_currentMission:addMapHotspot(hotspot)
 	end
 end

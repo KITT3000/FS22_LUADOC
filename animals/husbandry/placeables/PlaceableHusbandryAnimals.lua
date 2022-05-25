@@ -762,8 +762,9 @@ end
 function PlaceableHusbandryAnimals:getConditionInfos(superFunc)
 	local infos = superFunc(self)
 	local spec = self.spec_husbandryAnimals
+	local animalTypeIndex = self:getAnimalTypeIndex()
 
-	if self:getAnimalTypeIndex() ~= AnimalType.HORSE then
+	if animalTypeIndex ~= AnimalType.HORSE and animalTypeIndex ~= AnimalType.PIG then
 		local productivity = self:getGlobalProductionFactor()
 		spec.info.value = productivity
 		spec.info.ratio = productivity

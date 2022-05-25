@@ -235,8 +235,6 @@ function Trailer:onReadStream(streamId, connection)
 		spec.currentTipSideIndex = streamReadUIntN(streamId, Trailer.TIP_SIDE_NUM_BITS)
 	end
 
-	self:setTipState(spec.tipState == Trailer.TIPSTATE_OPENING or spec.tipState == Trailer.TIPSTATE_OPEN)
-
 	if streamReadBool(streamId) then
 		local doorState = streamReadBool(streamId)
 
@@ -244,12 +242,36 @@ function Trailer:onReadStream(streamId, connection)
 	end
 
 	if streamReadBool(streamId) then
+		local tipSide = spec.tipSides[spec.preferedTipSideIndex]
 		local tipAnimationTime = streamReadFloat32(streamId)
 
 		if tipAnimationTime ~= nil then
-			local tipSide = spec.tipSides[spec.preferedTipSideIndex]
-
 			self:setAnimationTime(tipSide.animation.name, tipAnimationTime, true, false)
+		end
+
+		if streamReadBool(streamId) then
+			if streamReadBool(streamId) then
+				self:playAnimation(tipSide.animation.name, tipSide.animation.speedScale, tipAnimationTime, true)
+			else
+				self:playAnimation(tipSide.animation.name, tipSide.animation.closeSpeedScale, tipAnimationTime, true)
+			end
+		end
+	end
+
+	if streamReadBool(streamId) then
+		local tipSide = spec.tipSides[spec.preferedTipSideIndex]
+		local doorAnimationTime = streamReadFloat32(streamId)
+
+		if doorAnimationTime ~= nil then
+			self:setAnimationTime(tipSide.doorAnimation.name, doorAnimationTime, true, false)
+		end
+
+		if streamReadBool(streamId) then
+			if streamReadBool(streamId) then
+				self:playAnimation(tipSide.doorAnimation.name, tipSide.doorAnimation.speedScale, doorAnimationTime, true)
+			else
+				self:playAnimation(tipSide.doorAnimation.name, tipSide.doorAnimation.closeSpeedScale, doorAnimationTime, true)
+			end
 		end
 	end
 end
@@ -275,6 +297,18 @@ function Trailer:onWriteStream(streamId, connection)
 
 	if streamWriteBool(streamId, tipSide ~= nil and tipSide.animation.name ~= nil) then
 		streamWriteFloat32(streamId, self:getAnimationTime(tipSide.animation.name))
+
+		if streamWriteBool(streamId, self:getIsAnimationPlaying(tipSide.animation.name)) then
+			streamWriteBool(streamId, self:getAnimationSpeed(tipSide.animation.name) > 0)
+		end
+	end
+
+	if streamWriteBool(streamId, tipSide ~= nil and not tipSide.manualDoorToggle and tipSide.doorAnimation.name ~= nil) then
+		streamWriteFloat32(streamId, self:getAnimationTime(tipSide.doorAnimation.name))
+
+		if streamWriteBool(streamId, self:getIsAnimationPlaying(tipSide.doorAnimation.name)) then
+			streamWriteBool(streamId, self:getAnimationSpeed(tipSide.doorAnimation.name) > 0)
+		end
 	end
 end
 

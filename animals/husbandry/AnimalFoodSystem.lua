@@ -60,6 +60,9 @@ function AnimalFoodSystem:loadMapData(xmlFile, missionInfo)
 		return false
 	end
 
+	local modMapName, _ = Utils.getModNameAndBaseDirectory(filename)
+	self.customEnvironment = modMapName
+
 	if not self:loadAnimalFood(xmlFileFood, self.mission.baseDirectory) then
 		xmlFileFood:delete()
 
@@ -151,7 +154,7 @@ function AnimalFoodSystem:loadAnimalFoodData(animalFood, xmlFile, key)
 		end
 
 		local foodGroup = {
-			title = g_i18n:convertText(title),
+			title = g_i18n:convertText(title, self.customEnvironment),
 			productionWeight = xmlFile:getValue(foodGroupKey .. "#productionWeight", 0),
 			eatWeight = xmlFile:getValue(foodGroupKey .. "#eatWeight", 1),
 			fillTypes = {}
@@ -307,7 +310,7 @@ function AnimalFoodSystem:loadRecipe(recipe, xmlFile, key)
 	xmlFile:iterate(key .. ".ingredient", function (_, ingredientKey)
 		local ingredient = {
 			name = xmlFile:getValue(ingredientKey .. "#name"),
-			title = g_i18n:convertText(xmlFile:getValue(ingredientKey .. "#title")),
+			title = g_i18n:convertText(xmlFile:getValue(ingredientKey .. "#title"), self.customEnvironment),
 			minPercentage = xmlFile:getValue(ingredientKey .. "#minPercentage", 0) / 100,
 			maxPercentage = xmlFile:getValue(ingredientKey .. "#maxPercentage", 75) / 100
 		}

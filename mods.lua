@@ -10,7 +10,8 @@ local isReloadingDlcs = false
 g_dlcModNameHasPrefix = {}
 g_internalModsDirectory = "dataS/internalMods/"
 local internalScriptMods = {
-	"FS22_precisionFarming"
+	"FS22_precisionFarming",
+	"FS22_lindnerLintracSupercup"
 }
 modOnCreate = {}
 
@@ -202,7 +203,7 @@ local function resolveInternalScriptModFilename(filename, modName, modDir)
 			local internalModName = internalScriptMods[i]
 
 			if (modName == internalModName or modName == internalModName .. "_update") and (not fileExists(filename) or GS_IS_CONSOLE_VERSION) then
-				return "dataS/scripts/internalMods/" .. modName .. "/" .. filename:sub(modDir:len() + 1)
+				return "dataS/scripts/internalMods/" .. internalModName .. "/" .. filename:sub(modDir:len() + 1)
 			end
 		end
 	end

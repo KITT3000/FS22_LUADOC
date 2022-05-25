@@ -66,6 +66,7 @@ function GuidedTour:loadMapData(mapXmlFile, missionInfo, baseDirectory)
 
 	self.startText = g_i18n:convertText(xmlFile:getString("guidedTour.header#startText", "$l10n_tour_text_start"))
 	self.abortText = g_i18n:convertText(xmlFile:getString("guidedTour.header#abortText", "$l10n_tour_text_abort"))
+	self.abortTitle = g_i18n:convertText(xmlFile:getString("guidedTour.header#abortTitle", "$l10n_tour_title_abort"))
 	self.canAbort = xmlFile:getBool("guidedTour.header#tourCanAbort", true)
 	self.allowTimeChange = xmlFile:getBool("guidedTour.header#allowTimeChange", false)
 
@@ -147,6 +148,10 @@ function GuidedTour:loadStepContentsFromXML(xmlFile, key, step, baseDirectory)
 				targetIndicator = xmlFile:getBool(key .. ".activation.triggerMarker#targetIndicator", false)
 			}
 		end
+
+		step.isActivated = false
+	else
+		step.isActivated = true
 	end
 
 	if xmlFile:hasProperty(key .. ".dialog") then
@@ -221,6 +226,10 @@ function GuidedTour:getIsRunning()
 	return self.isRunning
 end
 
+function GuidedTour:getCanAbort()
+	return self.canAbort
+end
+
 function GuidedTour:getBlocksTimeChange()
 	return self.isRunning and not self.allowTimeChange
 end
@@ -246,6 +255,28 @@ function GuidedTour:removeVehicle(name)
 
 	if self.isRunning then
 		self:onFinished()
+	end
+end
+
+function GuidedTour:abort()
+	if self.missionInfo.guidedTourActive and self.canAbort then
+		self.missionInfo.guidedTourActive = false
+		local title = ""
+
+		if self.isRunning then
+			title = self.abortTitle
+
+			self:onFinished()
+		end
+
+		if GS_IS_MOBILE_VERSION then
+			g_gui:showInfoDialog({
+				title = title,
+				text = self.abortText
+			})
+		else
+			self.mission.hud:showInGameMessage(title, self.abortText, -1)
+		end
 	end
 end
 
@@ -327,16 +358,7 @@ function GuidedTour:onReactToDialog(yes)
 	if yes then
 		self:onStarted()
 	else
-		self.missionInfo.guidedTourActive = false
-
-		if GS_IS_MOBILE_VERSION then
-			g_gui:showInfoDialog({
-				title = "",
-				text = self.abortText
-			})
-		else
-			self.mission.hud:showInGameMessage("", self.abortText, -1)
-		end
+		self:abort()
 	end
 end
 
@@ -377,6 +399,7 @@ function GuidedTour:runStep(index, fromTrigger, fromDialog)
 		self:setIcon(true, x, z, step.activation.icon.targetIndicator)
 
 		function self.iconTriggerCallback()
+			step.isActivated = true
 			self.iconTriggerCallback = nil
 
 			self:runStep(index, true, false)
@@ -392,6 +415,7 @@ function GuidedTour:runStep(index, fromTrigger, fromDialog)
 			self:setIcon(true, x, z, step.activation.triggerMarker.targetIndicator, true)
 
 			function self.iconTriggerCallback()
+				step.isActivated = true
 				self.iconTriggerCallback = nil
 
 				self:runStep(index, true, false)
@@ -757,7 +781,7 @@ function GuidedTour:getPassedSteps()
 	for index = 1, self.missionInfo.guidedTourStep do
 		local step = self.steps[index]
 
-		if step.dialog ~= nil then
+		if step.dialog ~= nil and step.isActivated then
 			table.insert(dialogs, step.dialog)
 		end
 	end

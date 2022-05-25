@@ -343,6 +343,10 @@ function XMLSchema:generateSchema()
 	local function addSimpleType(line, indent, name, isBaseType, base, pattern, content)
 		line = add(string.format("<xs:simpleType name=\"%s\">", formatTypeName(name)), line, indent) + 1
 
+		if description ~= nil then
+			line = add(string.format("<xs:annotation><xs:appinfo><typeStr>%s</typeStr></xs:appinfo></xs:annotation>", description), line, indent .. TAB) + 1
+		end
+
 		if not isBaseType then
 			line = add(string.format("<xs:restriction base=\"%s\"%s>", base, pattern ~= nil and "" or "/"), line, indent .. TAB) + 1
 

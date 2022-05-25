@@ -52,6 +52,7 @@ function PlaceableFence.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getSupportsParallelSnapping", PlaceableFence.getSupportsParallelSnapping)
 	SpecializationUtil.registerFunction(placeableType, "getBoundingCheckWidth", PlaceableFence.getBoundingCheckWidth)
 	SpecializationUtil.registerFunction(placeableType, "getSnapDistance", PlaceableFence.getSnapDistance)
+	SpecializationUtil.registerFunction(placeableType, "getSnapAngle", PlaceableFence.getSnapAngle)
 	SpecializationUtil.registerFunction(placeableType, "getSnapCheckDistance", PlaceableFence.getSnapCheckDistance)
 	SpecializationUtil.registerFunction(placeableType, "getAllowExtendingOnly", PlaceableFence.getAllowExtendingOnly)
 	SpecializationUtil.registerFunction(placeableType, "getMaxCornerAngle", PlaceableFence.getMaxCornerAngle)
@@ -84,6 +85,7 @@ function PlaceableFence.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.ANGLE, basePath .. ".fence#maxVerticalGateAngle", "Maximum angle for vertical offset with gates")
 	schema:register(XMLValueType.FLOAT, basePath .. ".fence#boundingCheckWidth", "With of the bounding box used to check collision", 0.25)
 	schema:register(XMLValueType.FLOAT, basePath .. ".fence#snapDistance", "Snap distance", nil)
+	schema:register(XMLValueType.INT, basePath .. ".fence#snapAngle", "Snap angle in degrees", nil)
 	schema:register(XMLValueType.FLOAT, basePath .. ".fence#snapCheckDistance", "Snap distance", nil)
 	schema:register(XMLValueType.BOOL, basePath .. ".fence#extendingOnly", "Whether to only allow extending a segment and no attaching to the center", false)
 	schema:register(XMLValueType.ANGLE, basePath .. ".fence#maxCornerAngle", "Maximum angle between two connected segments", 180)
@@ -129,6 +131,7 @@ function PlaceableFence:onLoad(savegame)
 	spec.supportsParallelSnapping = xmlFile:getValue("placeable.fence#supportsParallelSnapping", false)
 	spec.boundingCheckWidth = xmlFile:getValue("placeable.fence#boundingCheckWidth", 0.25)
 	spec.snapDistance = xmlFile:getValue("placeable.fence#snapDistance", nil)
+	spec.snapAngle = xmlFile:getValue("placeable.fence#snapAngle", nil)
 	spec.snapCheckDistance = xmlFile:getValue("placeable.fence#snapCheckDistance", 0.25)
 	spec.allowExtendingOnly = xmlFile:getValue("placeable.fence#extendingOnly", false)
 	spec.maxCornerAngle = xmlFile:getValue("placeable.fence#maxCornerAngle", 180)
@@ -604,6 +607,10 @@ end
 
 function PlaceableFence:getSnapDistance()
 	return self.spec_fence.snapDistance
+end
+
+function PlaceableFence:getSnapAngle()
+	return self.spec_fence.snapAngle
 end
 
 function PlaceableFence:getSnapCheckDistance()

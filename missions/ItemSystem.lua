@@ -103,7 +103,7 @@ function ItemSystem:loadNextItemsFromSavegame(loadingData)
 	local modName = xmlFile:getValue(key .. "#modName")
 
 	if modName ~= nil and not g_modIsLoaded[modName] then
-		Logging.xmlError(xmlFile, "Could not load item because mod '%s' is not available or loaded for '%s'", key)
+		Logging.xmlError(xmlFile, "Could not load item because mod '%s' is not available or loaded for '%s'", modName, key)
 		self:loadItemsFromSavegameStepFinished(nil, false, loadingData)
 
 		return true

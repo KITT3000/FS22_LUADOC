@@ -122,6 +122,7 @@ function WeedSpotSpray:onLoad(savegame)
 	end
 
 	spec.nozzleNodesToDelete = {}
+	spec.nozzleUpdateFrameDelay = math.ceil(#spec.nozzleNodes / WeedSpotSpray.NOZZLE_UPDATES_PER_FRAME)
 	spec.isAvailable = #spec.nozzleNodes > 0
 	spec.isEnabled = weedSpotSprayConfigurationId > 1
 	spec.currentUpdateIndex = 1
@@ -138,6 +139,10 @@ function WeedSpotSpray:onLoad(savegame)
 			end
 		end
 	end
+
+	spec.weedMapId, spec.weedFirstChannel, spec.weedNumChannels = g_currentMission.weedSystem:getDensityMapData()
+	spec.groundTypeMapId, spec.groundTypeFirstChannel, spec.groundTypeNumChannels = g_currentMission.fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
+	spec.sprayTypeMapId, spec.sprayTypeFirstChannel, spec.sprayTypeNumChannels = g_currentMission.fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_TYPE)
 end
 
 function WeedSpotSpray:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
@@ -146,20 +151,31 @@ function WeedSpotSpray:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 	if spec.isAvailable then
 		local sprayFillType = self.spec_sprayer.workAreaParameters.sprayFillType
 
-		if sprayFillType == FillType.HERBICIDE and spec.isEnabled then
+		if spec.isEnabled then
 			if self:getIsTurnedOn() then
-				local weedSystem = g_currentMission.weedSystem
-				local weedMapId, weedFirstChannel, weedNumChannels = weedSystem:getDensityMapData()
-
 				for i = 1, WeedSpotSpray.NOZZLE_UPDATES_PER_FRAME do
 					local nozzleNode = spec.nozzleNodes[spec.currentUpdateIndex]
-					local x, y, z = localToWorld(nozzleNode.node, 0, 0, nozzleNode.zOffset)
-					local densityBits = getDensityAtWorldPos(weedMapId, x, y, z)
-					local weedState = bitAND(bitShiftRight(densityBits, weedFirstChannel), 2^weedNumChannels - 1)
 
-					if spec.weedDetectionStates[weedState] then
-						nozzleNode.lastActiveTime = g_time
-						spec.effectsDirty = true
+					if sprayFillType == FillType.HERBICIDE then
+						local x, y, z = localToWorld(nozzleNode.node, 0, 0, nozzleNode.zOffset)
+						local densityBits = getDensityAtWorldPos(spec.weedMapId, x, y, z)
+						local weedState = bitAND(bitShiftRight(densityBits, spec.weedFirstChannel), 2^spec.weedNumChannels - 1)
+
+						if spec.weedDetectionStates[weedState] then
+							nozzleNode.lastActiveTime = g_time + spec.nozzleUpdateFrameDelay * dt * 1.5
+							spec.effectsDirty = true
+						end
+					else
+						local x, y, z = localToWorld(nozzleNode.node, 0, 0, nozzleNode.zOffset * 2)
+						local densityBits = getDensityAtWorldPos(spec.sprayTypeMapId, x, y, z)
+						local sprayType = bitAND(bitShiftRight(densityBits, spec.sprayTypeFirstChannel), 2^spec.sprayTypeNumChannels - 1)
+						local densityBitsGround = getDensityAtWorldPos(spec.groundTypeMapId, x, y, z)
+						local groundType = bitAND(bitShiftRight(densityBitsGround, spec.groundTypeFirstChannel), 2^spec.groundTypeNumChannels - 1)
+
+						if groundType ~= 0 and sprayType ~= FieldSprayType.FERTILIZER then
+							nozzleNode.lastActiveTime = g_time + spec.nozzleUpdateFrameDelay * dt * 1.5
+							spec.effectsDirty = true
+						end
 					end
 
 					spec.currentUpdateIndex = spec.currentUpdateIndex + 1
@@ -222,23 +238,19 @@ function WeedSpotSpray:getAreEffectsVisible(superFunc)
 end
 
 function WeedSpotSpray:getSprayerUsage(superFunc, fillType, dt)
-	if fillType == FillType.HERBICIDE then
-		local spec = self.spec_weedSpotSpray
+	local spec = self.spec_weedSpotSpray
 
-		if spec.isAvailable and spec.isEnabled then
-			local usage = superFunc(self, fillType, dt)
-			spec.lastRegularUsage = usage
+	if spec.isAvailable and spec.isEnabled then
+		local usage = superFunc(self, fillType, dt)
+		spec.lastRegularUsage = usage
 
-			return usage * self:getSpotSprayCoverage()
-		else
-			local usage = superFunc(self, fillType, dt)
-			spec.lastRegularUsage = usage
+		return usage * self:getSpotSprayCoverage()
+	else
+		local usage = superFunc(self, fillType, dt)
+		spec.lastRegularUsage = usage
 
-			return usage
-		end
+		return usage
 	end
-
-	return superFunc(self, fillType, dt)
 end
 
 function WeedSpotSpray:getSpotSprayCoverage()
@@ -281,7 +293,7 @@ function WeedSpotSpray:updateNozzleEffects(dt, useSectionState, forceTurnOff)
 		local fadeSpeedScale = 1
 
 		if not useSectionState then
-			nozzleNode.isActive = g_time - nozzleNode.lastActiveTime < 150 and speed > 0.5
+			nozzleNode.isActive = g_time - nozzleNode.lastActiveTime < 0 and speed > 0.5
 		else
 			if sections ~= nil and nozzleNode.sectionIndex ~= nil and sections[nozzleNode.sectionIndex] ~= nil then
 				local section = sections[nozzleNode.sectionIndex]

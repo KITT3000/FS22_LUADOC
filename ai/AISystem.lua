@@ -1,4 +1,5 @@
 AISystem = {
+	xmlSchema = nil,
 	COSTMAP_MAX_VALUE = 16,
 	NEXT_JOB_ID = 0
 }
@@ -22,8 +23,19 @@ function AISystem.new(isServer, mission, customMt)
 	self.activeJobs = {}
 	self.activeJobVehicles = {}
 	self.delayedRoadSplines = {}
+	AISystem.xmlSchema = XMLSchema.new("aiSystem")
+
+	self:registerXMLPaths(AISystem.xmlSchema)
 
 	return self
+end
+
+function AISystem:registerXMLPaths(schema)
+	schema:register(XMLValueType.ANGLE, "aiSystem.maxSlopeAngle", "Maximum terrain angle in degrees which is classified as drivable", 15)
+	schema:register(XMLValueType.STRING, "aiSystem.blockedAreaInfoLayer#name", "Map info layer name defining areas which are blocked for AI driving", "navigationCollision")
+	schema:register(XMLValueType.INT, "aiSystem.blockedAreaInfoLayer#channel", "Map info layer channel defining areas which are blocked for AI driving", 0)
+	schema:register(XMLValueType.FLOAT, "aiSystem.vehicleMaxHeight", "Maximum expected vehicle height used for generating the costmap, e.g. relevant for overhanging collisions", 4)
+	schema:register(XMLValueType.BOOL, "aiSystem.isLeftHandTraffic", "Map has left-hand traffic. This setting will only affect collision avoidance, traffic and ai splines need to be set up as left hand in map itself", false)
 end
 
 function AISystem:delete()
@@ -59,11 +71,14 @@ function AISystem:delete()
 	removeConsoleCommand("gsAICostsExport")
 end
 
-function AISystem:loadMapData(xmlFile)
+function AISystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 	if g_addCheatCommands then
-		addConsoleCommand("gsAISetTarget", "Sets AI Target", "consoleCommandAISetTarget", self)
-		addConsoleCommand("gsAISetLastTarget", "Sets AI Target to last position", "consoleCommandAISetLastTarget", self)
-		addConsoleCommand("gsAIStart", "Starts driving to target", "consoleCommandAIStart", self)
+		if self.isServer then
+			addConsoleCommand("gsAISetTarget", "Sets AI Target", "consoleCommandAISetTarget", self)
+			addConsoleCommand("gsAISetLastTarget", "Sets AI Target to last position", "consoleCommandAISetLastTarget", self)
+			addConsoleCommand("gsAIStart", "Starts driving to target", "consoleCommandAIStart", self)
+		end
+
 		addConsoleCommand("gsAIEnableDebug", "Enables AI debugging", "consoleCommandAIEnableDebug", self)
 		addConsoleCommand("gsAISplinesShow", "Toggle AI system spline visibility", "consoleCommandAIToggleSplineVisibility", self)
 		addConsoleCommand("gsAISplinesCheckInterference", "Check if AI splines interfere with any objects", "consoleCommandAICheckSplineInterference", self)
@@ -84,6 +99,26 @@ function AISystem:loadMapData(xmlFile)
 	self.defaultVehicleMaxWidth = 6
 	self.defaultVehicleMaxTurningRadius = 20
 	self.isLeftHandTraffic = false
+	local relFilename = getXMLString(xmlFile, "map.aiSystem#filename")
+
+	if relFilename ~= nil then
+		local filepath = Utils.getFilename(relFilename, baseDirectory)
+
+		if filepath ~= nil then
+			local xmlFileAISystem = XMLFile.load("mapAISystem", filepath, AISystem.xmlSchema)
+
+			if xmlFileAISystem ~= nil then
+				self.maxSlopeAngle = xmlFileAISystem:getValue("aiSystem.maxSlopeAngle") or self.maxSlopeAngle
+				self.infoLayerName = xmlFileAISystem:getValue("aiSystem.blockedAreaInfoLayer#name") or self.infoLayerName
+				self.infoLayerChannel = xmlFileAISystem:getValue("aiSystem.blockedAreaInfoLayer#channel") or self.infoLayerChannel
+				self.vehicleMaxHeight = xmlFileAISystem:getValue("aiSystem.vehicleMaxHeight") or self.vehicleMaxHeight
+				self.isLeftHandTraffic = Utils.getNoNil(xmlFileAISystem:getValue("aiSystem.isLeftHandTraffic"), self.isLeftHandTraffic)
+
+				xmlFileAISystem:delete()
+			end
+		end
+	end
+
 	self.debugEnabled = g_isDevelopmentVersion
 	self.debug = {
 		target = nil,
@@ -496,48 +531,77 @@ function AISystem:consoleCommandAIShowCosts()
 
 	if self.debug.isCostRenderingActive then
 		self.mission:addDrawable(self)
+
+		return "showCosts=true"
 	else
 		self.mission:removeDrawable(self)
+
+		return "showCosts=false"
 	end
 end
 
 function AISystem:consoleCommandAISetTarget(offsetX, offsetZ)
-	if self.isServer then
-		local x = 0
-		local y = 0
-		local z = 0
-		local dirX = 1
-		local dirY = 0
-		local dirZ = 0
-		local _ = nil
+	if not self.isServer then
+		return "gsAISetTarget is a server-only command"
+	end
 
-		if self.mission.controlPlayer then
-			if self.mission.player ~= nil and self.mission.player.isControlled and self.mission.player.rootNode ~= nil and self.mission.player.rootNode ~= 0 then
-				x, y, z = getWorldTranslation(self.mission.player.rootNode)
-				dirZ = -math.cos(self.mission.player.rotY)
-				dirX = -math.sin(self.mission.player.rotY)
-			end
-		elseif self.mission.controlledVehicle ~= nil then
-			x, y, z = getWorldTranslation(self.mission.controlledVehicle.rootNode)
-			dirX, _, dirZ = localDirectionToWorld(self.mission.controlledVehicle.rootNode, 0, 0, 1)
-		else
-			x, y, z = getWorldTranslation(getCamera())
-			dirX, _, dirZ = localDirectionToWorld(getCamera(), 0, 0, -1)
+	local x = 0
+	local y = 0
+	local z = 0
+	local dirX = 1
+	local dirY = 0
+	local dirZ = 0
+	local _ = nil
+
+	if self.mission.controlPlayer then
+		if self.mission.player ~= nil and self.mission.player.isControlled and self.mission.player.rootNode ~= nil and self.mission.player.rootNode ~= 0 then
+			x, y, z = getWorldTranslation(self.mission.player.rootNode)
+			dirZ = -math.cos(self.mission.player.rotY)
+			dirX = -math.sin(self.mission.player.rotY)
 		end
+	elseif self.mission.controlledVehicle ~= nil then
+		x, y, z = getWorldTranslation(self.mission.controlledVehicle.rootNode)
+		dirX, _, dirZ = localDirectionToWorld(self.mission.controlledVehicle.rootNode, 0, 0, 1)
+	else
+		x, y, z = getWorldTranslation(getCamera())
+		dirX, _, dirZ = localDirectionToWorld(getCamera(), 0, 0, -1)
+	end
 
-		local normX, _, normZ = MathUtil.crossProduct(0, 1, 0, dirX, dirY, dirZ)
-		offsetX = tonumber(offsetX) or 0
-		offsetZ = tonumber(offsetZ) or 0
-		x = x + dirX * offsetZ + normX * offsetX
-		z = z + dirZ * offsetZ + normZ * offsetX
-		self.debug.target = {
-			x = x,
-			y = y,
-			z = z,
-			dirX = dirX,
-			dirY = dirY,
-			dirZ = dirZ
-		}
+	local normX, _, normZ = MathUtil.crossProduct(0, 1, 0, dirX, dirY, dirZ)
+	offsetX = tonumber(offsetX) or 0
+	offsetZ = tonumber(offsetZ) or 0
+	x = x + dirX * offsetZ + normX * offsetX
+	z = z + dirZ * offsetZ + normZ * offsetX
+	self.debug.target = {
+		x = x,
+		y = y,
+		z = z,
+		dirX = dirX,
+		dirY = dirY,
+		dirZ = dirZ
+	}
+	local marker = self.debug.marker
+
+	if marker ~= nil then
+		setWorldTranslation(marker, x, y, z)
+		setDirection(marker, dirX, dirY, dirZ, 0, 1, 0)
+	end
+
+	return "Set AI Target"
+end
+
+function AISystem:consoleCommandAISetLastTarget()
+	if not self.isServer then
+		return "gsAISetLastTarget is a server-only command"
+	end
+
+	if self.debug.target ~= nil then
+		local x = self.debug.target.x
+		local y = self.debug.target.y
+		local z = self.debug.target.z
+		local dirX = self.debug.target.dirX
+		local dirY = self.debug.target.dirY
+		local dirZ = self.debug.target.dirZ
 		local marker = self.debug.marker
 
 		if marker ~= nil then
@@ -545,28 +609,9 @@ function AISystem:consoleCommandAISetTarget(offsetX, offsetZ)
 			setDirection(marker, dirX, dirY, dirZ, 0, 1, 0)
 		end
 
-		return "Set AI Target"
-	end
-end
-
-function AISystem:consoleCommandAISetLastTarget()
-	if self.isServer then
-		if self.debug.target ~= nil then
-			local x = self.debug.target.x
-			local y = self.debug.target.y
-			local z = self.debug.target.z
-			local dirX = self.debug.target.dirX
-			local dirY = self.debug.target.dirY
-			local dirZ = self.debug.target.dirZ
-			local marker = self.debug.marker
-
-			if marker ~= nil then
-				setWorldTranslation(marker, x, y, z)
-				setDirection(marker, dirX, dirY, dirZ, 0, 1, 0)
-			end
-		else
-			return "No last target found"
-		end
+		return "Set target to last target"
+	else
+		return "No last target found"
 	end
 end
 
@@ -711,7 +756,7 @@ function AISystem:consoleCommandAIToggleAINodeDebug()
 	end
 
 	if self.stationsAINodesVisible then
-		Logging.warning("Nodes in reloaded placeables are not updated automatically. Toggle this command again to update the station nodes.")
+		Logging.warning("Nodes in reloaded placeables are not updated automatically. Toggle this command again to update the station nodes if placeables were reloaded.")
 	end
 
 	return "AISystem.stationsAINodesVisible=" .. tostring(self.stationsAINodesVisible)
@@ -725,6 +770,8 @@ function AISystem:consoleCommandAIShowObstacles()
 	self.mapDebugRenderingEnabled = not self.mapDebugRenderingEnabled
 
 	enableVehicleNavigationMapDebugRendering(self.navigationMap, self.mapDebugRenderingEnabled)
+
+	return "AIShowObstacles=" .. tostring(self.mapDebugRenderingEnabled)
 end
 
 function AISystem:consoleCommandAISetAreaDirty(width)

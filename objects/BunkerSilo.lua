@@ -390,10 +390,7 @@ function BunkerSilo:update(dt)
 						local compactedFillLevel = math.min(self.compactedFillLevel + deltaCompact, self.fillLevel)
 
 						if compactedFillLevel ~= self.compactedFillLevel then
-							self.compactedFillLevel = compactedFillLevel
-							self.compactedPercent = MathUtil.getFlooredPercent(math.min(self.compactedFillLevel, self.fillLevel), self.fillLevel)
-
-							self:raiseDirtyFlags(self.bunkerSiloDirtyFlag)
+							self:updateCompacting(compactedFillLevel)
 						end
 					end
 				end
@@ -419,7 +416,7 @@ function BunkerSilo:updateTick(dt)
 			self:updateFillLevel()
 
 			if oldFillLevel ~= self.fillLevel then
-				self:raiseDirtyFlags(self.bunkerSiloDirtyFlag)
+				self:updateCompacting(self.compactedFillLevel)
 			end
 		end
 	end
@@ -428,6 +425,13 @@ function BunkerSilo:updateTick(dt)
 		self.adjustedOpeningLength = true
 		self.openingLength = math.max(self.openingLength, DensityMapHeightUtil.getDefaultMaxRadius(self.outputFillType) + 1)
 	end
+end
+
+function BunkerSilo:updateCompacting(compactedFillLevel)
+	self.compactedFillLevel = compactedFillLevel
+	self.compactedPercent = MathUtil.getFlooredPercent(math.min(self.compactedFillLevel, self.fillLevel), self.fillLevel)
+
+	self:raiseDirtyFlags(self.bunkerSiloDirtyFlag)
 end
 
 function BunkerSilo:updateFillLevel()

@@ -115,6 +115,7 @@ function PrecisionFarmingSettings:overwriteGameFunctions(pfModule)
 					local header = elem:clone(frame.boxLayout)
 
 					header:setText(self.settingsHeadline)
+					header:reloadFocusHandling(true)
 
 					break
 				end
@@ -130,6 +131,7 @@ function PrecisionFarmingSettings:overwriteGameFunctions(pfModule)
 						self:onClickCheckbox(...)
 					end
 
+					setting.element:reloadFocusHandling(true)
 					setting.element:setIsChecked(setting.state)
 				else
 					setting.element = frame.multiRealBeaconLightBrightness:clone(frame.boxLayout)
@@ -140,6 +142,7 @@ function PrecisionFarmingSettings:overwriteGameFunctions(pfModule)
 						self:onClickMultiOption(...)
 					end
 
+					setting.element:reloadFocusHandling(true)
 					setting.element:setState(setting.state)
 				end
 

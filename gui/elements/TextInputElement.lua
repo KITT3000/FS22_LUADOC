@@ -744,7 +744,7 @@ function TextInputElement:updateVisibleTextElements()
 	local displayText = self.text
 
 	if self.isPassword then
-		displayText = string.rep("*", #self.text)
+		displayText = string.rep("*", utf8Strlen(self.text))
 	end
 
 	local textLength = utf8Strlen(displayText)

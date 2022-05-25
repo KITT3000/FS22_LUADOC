@@ -1,6 +1,8 @@
 source("dataS/scripts/vehicles/specializations/events/MixerWagonBaleNotAcceptedEvent.lua")
 
-MixerWagon = {}
+MixerWagon = {
+	HUD_TRIGGER_I3D_FILENAME = "data/shared/mixerWagonHUDTrigger.i3d"
+}
 
 source("dataS/scripts/gui/hud/MixerWagonHUDExtension.lua")
 
@@ -31,6 +33,8 @@ end
 
 function MixerWagon.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "mixerWagonBaleTriggerCallback", MixerWagon.mixerWagonBaleTriggerCallback)
+	SpecializationUtil.registerFunction(vehicleType, "onHUDTriggerCallback", MixerWagon.onHUDTriggerCallback)
+	SpecializationUtil.registerFunction(vehicleType, "getIsPlayerInTrigger", MixerWagon.getIsPlayerInTrigger)
 end
 
 function MixerWagon.registerOverwrittenFunctions(vehicleType)
@@ -144,6 +148,19 @@ function MixerWagon:onLoad(savegame)
 		end
 	end
 
+	local hudTriggerI3d, hudTriggerSharedLoadRequestId = g_i3DManager:loadSharedI3DFile(MixerWagon.HUD_TRIGGER_I3D_FILENAME, false, false)
+
+	if hudTriggerI3d ~= 0 then
+		spec.hudTrigger = getChildAt(hudTriggerI3d, 0)
+		spec.hudTriggerSharedLoadRequestId = hudTriggerSharedLoadRequestId
+
+		link(self.rootNode, spec.hudTrigger)
+		addTrigger(spec.hudTrigger, "onHUDTriggerCallback", self)
+		delete(hudTriggerI3d)
+
+		spec.vehicleToNodeCount = {}
+	end
+
 	spec.dirtyFlag = self:getNextDirtyFlag()
 	spec.effectDirtyFlag = self:getNextDirtyFlag()
 end
@@ -175,6 +192,11 @@ function MixerWagon:onDelete()
 	g_animationManager:deleteAnimations(spec.mixAnimationNodes)
 	g_animationManager:deleteAnimations(spec.pickupAnimationNodes)
 	g_effectManager:deleteEffects(spec.fillEffects)
+
+	if spec.hudTrigger ~= nil then
+		removeTrigger(spec.hudTrigger)
+		g_i3DManager:releaseSharedI3DFile(spec.hudTriggerSharedLoadRequestId)
+	end
 end
 
 function MixerWagon:saveToXMLFile(xmlFile, key, usedModNames)
@@ -526,6 +548,50 @@ function MixerWagon:onTurnedOff()
 
 		g_animationManager:stopAnimations(spec.pickupAnimationNodes)
 	end
+end
+
+function MixerWagon:onHUDTriggerCallback(triggerId, otherActorId, onEnter, onLeave, onStay, otherShapeId)
+	local object = g_currentMission.nodeToObject[otherActorId]
+
+	if object ~= nil and object:isa(Vehicle) and not SpecializationUtil.hasSpecialization(Enterable, object.specializations) then
+		return
+	elseif g_currentMission.player ~= nil and otherActorId == g_currentMission.player.rootNode then
+		object = g_currentMission.player.rootNode
+	end
+
+	if object ~= nil and object ~= self then
+		local spec = self.spec_mixerWagon
+
+		if onEnter then
+			if not g_currentMission.accessHandler:canPlayerAccess(self) then
+				return
+			end
+
+			spec.vehicleToNodeCount[object] = (spec.vehicleToNodeCount[object] or 0) + 1
+		elseif onLeave then
+			spec.vehicleToNodeCount[object] = (spec.vehicleToNodeCount[object] or 0) - 1
+		end
+
+		if spec.vehicleToNodeCount[object] == 1 then
+			g_currentMission.hud.inputHelp:addExtraExtensionVehicleNodeId(self.rootNode)
+		elseif spec.vehicleToNodeCount[object] <= 0 then
+			g_currentMission.hud.inputHelp:removeExtraExtensionVehicleNodeId(self.rootNode)
+
+			spec.vehicleToNodeCount[object] = nil
+		end
+	end
+end
+
+function MixerWagon:getIsPlayerInTrigger()
+	local spec = self.spec_mixerWagon
+
+	if g_currentMission.controlPlayer and g_currentMission.player ~= nil then
+		return spec.vehicleToNodeCount[g_currentMission.player.rootNode] ~= nil
+	elseif g_currentMission.controlledVehicle ~= nil then
+		return spec.vehicleToNodeCount[g_currentMission.controlledVehicle] ~= nil
+	end
+
+	return false
 end
 
 function MixerWagon:updateDebugValues(values)

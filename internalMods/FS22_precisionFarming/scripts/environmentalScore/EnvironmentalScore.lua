@@ -320,20 +320,39 @@ function EnvironmentalScore:getFarmlandScore(farmlandId)
 end
 
 function EnvironmentalScore:getTotalScore(farmId)
-	local sum = 0
-	local numFarmlands = 0
+	local sumFarmlandSize = 0
 
-	for farmlandId, _farmId in pairs(g_farmlandManager.farmlandMapping) do
-		if _farmId == farmId then
-			for i = 1, #self.scoreValues do
-				sum = sum + self.scoreValues[i].object:getScore(farmlandId) * self.scoreValues[i].maxScore
+	if farmId ~= FarmManager.SPECTATOR_FARM_ID then
+		for farmlandId, _farmId in pairs(g_farmlandManager.farmlandMapping) do
+			if _farmId == farmId then
+				local farmland = g_farmlandManager:getFarmlandById(farmlandId)
+
+				if farmland ~= nil and farmland.totalFieldArea ~= nil and farmland.totalFieldArea > 0.01 then
+					sumFarmlandSize = sumFarmlandSize + farmland.totalFieldArea
+				end
+			end
+		end
+
+		if sumFarmlandSize > 0 then
+			local sum = 0
+
+			for farmlandId, _farmId in pairs(g_farmlandManager.farmlandMapping) do
+				if _farmId == farmId then
+					local farmland = g_farmlandManager:getFarmlandById(farmlandId)
+
+					if farmland ~= nil and farmland.totalFieldArea ~= nil and farmland.totalFieldArea > 0.01 then
+						for i = 1, #self.scoreValues do
+							sum = sum + self.scoreValues[i].object:getScore(farmlandId) * self.scoreValues[i].maxScore * farmland.totalFieldArea / sumFarmlandSize
+						end
+					end
+				end
 			end
 
-			numFarmlands = numFarmlands + 1
+			return sum
 		end
 	end
 
-	return sum / numFarmlands
+	return 50
 end
 
 function EnvironmentalScore:getSellPriceFactor(farmId)
@@ -436,7 +455,7 @@ function EnvironmentalScore:onDrawFieldNumber(element, ingameMap, x, y, field)
 	if field.farmland ~= nil then
 		local farmlandId = field.farmland.id
 
-		if g_farmlandManager.farmlandMapping[farmlandId] == g_currentMission:getFarmId() then
+		if field.farmland.totalFieldArea ~= nil and field.farmland.totalFieldArea > 0.01 and g_farmlandManager.farmlandMapping[farmlandId] == g_currentMission:getFarmId() then
 			self:drawFarmlandScore(x, y, field, farmlandId, ingameMap.layout:getIconZoom())
 		end
 	end

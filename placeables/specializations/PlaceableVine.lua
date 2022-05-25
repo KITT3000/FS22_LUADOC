@@ -208,6 +208,20 @@ end
 function PlaceableVine:onCreateSegmentPanel(isPreview, segment, panel, poleIndex, dy, pole)
 	local spec = self.spec_vine
 
+	if not getAllowFoliageShadows() then
+		local function disableShadows(node)
+			if getHasClassId(node, ClassIds.SHAPE) then
+				setShapeCastShadowmap(node, false)
+			end
+		end
+
+		I3DUtil.interateRecursively(panel, disableShadows)
+
+		if pole ~= nil then
+			I3DUtil.interateRecursively(pole, disableShadows)
+		end
+	end
+
 	if not isPreview then
 		local node = getChildAt(panel, 0)
 		local data = {

@@ -246,7 +246,7 @@ function AnimatedObject:load(rootNode, xmlFile, key, xmlFilename, i3dMappings)
 
 	if g_client ~= nil then
 		local soundsKey = key .. ".sounds"
-		self.sampleMoving = g_soundManager:loadSampleFromXML(xmlFile, soundsKey, "moving", self.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
+		self.samplesMoving = g_soundManager:loadSamplesFromXML(xmlFile, soundsKey, "moving", self.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
 		self.samplePosEnd = g_soundManager:loadSampleFromXML(xmlFile, soundsKey, "posEnd", self.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
 		self.sampleNegEnd = g_soundManager:loadSampleFromXML(xmlFile, soundsKey, "negEnd", self.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
 	end
@@ -323,10 +323,10 @@ function AnimatedObject:delete()
 		self.triggerNode = nil
 	end
 
-	if self.sampleMoving ~= nil then
-		g_soundManager:deleteSample(self.sampleMoving)
+	if self.samplesMoving ~= nil then
+		g_soundManager:deleteSamples(self.samplesMoving)
 
-		self.sampleMoving = nil
+		self.samplesMoving = nil
 	end
 
 	if self.samplePosEnd ~= nil then
@@ -491,17 +491,17 @@ function AnimatedObject:update(dt)
 		end
 	end
 
-	if self.sampleMoving ~= nil then
+	if self.samplesMoving ~= nil then
 		if self.isMoving and self.animation.direction ~= 0 then
-			if not self.sampleMoving.isPlaying then
-				g_soundManager:playSample(self.sampleMoving)
+			if not self.samplesMovingArePlaying then
+				g_soundManager:playSamples(self.samplesMoving)
 
-				self.sampleMoving.isPlaying = true
+				self.samplesMovingArePlaying = true
 			end
-		elseif self.sampleMoving.isPlaying then
-			g_soundManager:stopSample(self.sampleMoving)
+		elseif self.samplesMovingArePlaying then
+			g_soundManager:stopSamples(self.samplesMoving)
 
-			self.sampleMoving.isPlaying = false
+			self.samplesMovingArePlaying = false
 		end
 	end
 
@@ -643,7 +643,7 @@ function AnimatedObject.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".controls#posText", "Positive direction text")
 	schema:register(XMLValueType.STRING, basePath .. ".controls#negText", "Negative direction text")
 	schema:register(XMLValueType.STRING, basePath .. ".controls#negAction", "Negative direction action event name")
-	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "moving")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "moving(?)")
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "posEnd")
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "negEnd")
 	schema:setXMLSharedRegistration()
@@ -658,7 +658,7 @@ AnimatedObjectBuilder = {}
 local AnimatedObjectBuilder_mt = Class(AnimatedObjectBuilder)
 
 function AnimatedObjectBuilder.registerXMLPaths(schema, basePath)
-	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "moving")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "moving(?)")
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "posEnd")
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "negEnd")
 end
@@ -801,7 +801,7 @@ end
 function AnimatedObjectBuilder:setSounds(xmlFile, key, rootNode)
 	if g_client ~= nil then
 		local i3dMappings = nil
-		self.animatedObject.sampleMoving = g_soundManager:loadSampleFromXML(xmlFile, key, "moving", self.animatedObject.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
+		self.animatedObject.samplesMoving = g_soundManager:loadSamplesFromXML(xmlFile, key, "moving", self.animatedObject.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
 		self.animatedObject.samplePosEnd = g_soundManager:loadSampleFromXML(xmlFile, key, "posEnd", self.animatedObject.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
 		self.animatedObject.sampleNegEnd = g_soundManager:loadSampleFromXML(xmlFile, key, "negEnd", self.animatedObject.baseDirectory, rootNode, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
 	end

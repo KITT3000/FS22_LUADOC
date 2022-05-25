@@ -23,6 +23,7 @@ function Attachable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "loadAttacherJointHeightNode", Attachable.loadAttacherJointHeightNode)
 	SpecializationUtil.registerFunction(vehicleType, "getIsAttacherJointHeightNodeActive", Attachable.getIsAttacherJointHeightNodeActive)
 	SpecializationUtil.registerFunction(vehicleType, "getInputAttacherJointByJointDescIndex", Attachable.getInputAttacherJointByJointDescIndex)
+	SpecializationUtil.registerFunction(vehicleType, "getInputAttacherJointIndexByNode", Attachable.getInputAttacherJointIndexByNode)
 	SpecializationUtil.registerFunction(vehicleType, "getAttacherVehicle", Attachable.getAttacherVehicle)
 	SpecializationUtil.registerFunction(vehicleType, "getInputAttacherJoints", Attachable.getInputAttacherJoints)
 	SpecializationUtil.registerFunction(vehicleType, "getIsAttachedTo", Attachable.getIsAttachedTo)
@@ -1007,6 +1008,20 @@ end
 
 function Attachable:getInputAttacherJointByJointDescIndex(index)
 	return self.spec_attachable.inputAttacherJoints[index]
+end
+
+function Attachable:getInputAttacherJointIndexByNode(node)
+	local spec = self.spec_attachable
+
+	for i = 1, #spec.inputAttacherJoints do
+		local inputAttacherJoint = spec.inputAttacherJoints[i]
+
+		if inputAttacherJoint.node == node then
+			return i
+		end
+	end
+
+	return nil
 end
 
 function Attachable:getAttacherVehicle()

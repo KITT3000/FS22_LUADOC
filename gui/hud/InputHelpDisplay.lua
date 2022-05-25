@@ -21,6 +21,7 @@ function InputHelpDisplay.new(hudAtlasPath, messageCenter, inputManager, inputDi
 	self.vehicle = nil
 	self.vehicleHudExtensions = {}
 	self.extraHelpTexts = {}
+	self.extraExtensionVehicleNodeIds = {}
 	self.currentAvailableHeight = 0
 	self.comboInputGlyphs = {}
 	self.entries = {}
@@ -57,7 +58,6 @@ function InputHelpDisplay.new(hudAtlasPath, messageCenter, inputManager, inputDi
 	self.extensionsHeight = 0
 	self.extensionsStartY = 0
 	self.comboIterator = {}
-	self.animationEntryCount = 0
 	self.animationAvailableHeight = math.huge
 	self.animationOffsetX = 0
 	self.animationOffsetY = 0
@@ -99,6 +99,18 @@ function InputHelpDisplay:addHelpText(text)
 	table.insert(self.extraHelpTexts, text)
 end
 
+function InputHelpDisplay:addExtraExtensionVehicleNodeId(vehicleNodeId)
+	if table.addElement(self.extraExtensionVehicleNodeIds, vehicleNodeId) then
+		self.requireHudExtensionsRefresh = true
+	end
+end
+
+function InputHelpDisplay:removeExtraExtensionVehicleNodeId(vehicleNodeId)
+	if table.removeElement(self.extraExtensionVehicleNodeIds, vehicleNodeId) then
+		self.requireHudExtensionsRefresh = true
+	end
+end
+
 function InputHelpDisplay:getHidingTranslation()
 	return -0.5, 0
 end
@@ -132,19 +144,10 @@ local function clearTable(table)
 	end
 end
 
-local function getVehicleTypeHash(vehicles)
-	local hash = ""
-
-	for _, vehicleType in pairs(vehicles) do
-		hash = hash .. vehicleType
-	end
-
-	return hash
-end
-
 function InputHelpDisplay:setVehicle(vehicle)
 	self.vehicle = vehicle
 	self.lastVehicleSpecHash = nil
+	self.requireHudExtensionsRefresh = true
 end
 
 function InputHelpDisplay:update(dt)
@@ -211,21 +214,49 @@ function InputHelpDisplay:refreshHUDExtensions()
 	end
 
 	local uiScale = self:getScale()
+	local vehiclesAlreadyAdded = {}
+
+	local function addExtensionForVehicle(vehicle, drawableWhileNotActive)
+		if vehiclesAlreadyAdded[vehicle] ~= nil then
+			return
+		end
+
+		for j = 1, #vehicle.specializations do
+			local spec = vehicle.specializations[j]
+			local hudExtension = self.vehicleHudExtensions[spec]
+
+			if hudExtension == nil and VehicleHUDExtension.hasHUDExtensionForSpecialization(spec) then
+				hudExtension = VehicleHUDExtension.createHUDExtensionForSpecialization(spec, vehicle, uiScale, InputHelpDisplay.COLOR.HELP_TEXT, self.helpTextSize)
+
+				if drawableWhileNotActive then
+					function hudExtension.canDraw()
+						return g_currentMission.accessHandler:canPlayerAccess(hudExtension.vehicle)
+					end
+				end
+
+				table.addElement(self.vehicleHudExtensions, hudExtension)
+
+				vehiclesAlreadyAdded[vehicle] = true
+			end
+		end
+	end
 
 	if self.vehicle ~= nil then
 		local vehicles = self.vehicle.rootVehicle.childVehicles
 
 		for i = 1, #vehicles do
-			for j = 1, #vehicles[i].specializations do
-				local spec = vehicles[i].specializations[j]
-				local hudExtension = self.vehicleHudExtensions[spec]
+			addExtensionForVehicle(vehicles[i])
+		end
+	end
 
-				if hudExtension == nil and VehicleHUDExtension.hasHUDExtensionForSpecialization(spec) then
-					hudExtension = VehicleHUDExtension.createHUDExtensionForSpecialization(spec, vehicles[i], uiScale, InputHelpDisplay.COLOR.HELP_TEXT, self.helpTextSize)
+	for i = #self.extraExtensionVehicleNodeIds, 1, -1 do
+		local vehicleNodeId = self.extraExtensionVehicleNodeIds[i]
+		local vehicle = g_currentMission.nodeToObject[vehicleNodeId]
 
-					table.insert(self.vehicleHudExtensions, hudExtension)
-				end
-			end
+		if vehicle == nil then
+			table.remove(self.extraExtensionVehicleNodeIds, i)
+		elseif self.vehicle ~= vehicle and (vehicle.getIsPlayerInTrigger == nil or vehicle.getIsPlayerInTrigger and vehicle:getIsPlayerInTrigger()) then
+			addExtensionForVehicle(vehicle, true)
 		end
 	end
 
@@ -242,6 +273,23 @@ function InputHelpDisplay:updateHUDExtensions()
 		end
 	else
 		self.lastVehicleSpecHash = nil
+	end
+
+	for i = #self.extraExtensionVehicleNodeIds, 1, -1 do
+		local nodeId = self.extraExtensionVehicleNodeIds[i]
+
+		if g_currentMission.nodeToObject[nodeId] == nil then
+			table.remove(self.extraExtensionVehicleNodeIds, i)
+
+			self.requireHudExtensionsRefresh = true
+		end
+	end
+
+	local count = table.size(self.extraExtensionVehicleNodeIds)
+
+	if self.lastExtraExtensionVehiclesCount ~= count then
+		self.lastExtraExtensionVehiclesCount = count
+		self.requireHudExtensionsRefresh = true
 	end
 
 	if self.requireHudExtensionsRefresh then
@@ -529,8 +577,6 @@ end
 
 function InputHelpDisplay:onAnimateVisibilityFinished(isVisible)
 	InputHelpDisplay:superClass().onAnimateVisibilityFinished(self, isVisible)
-
-	self.animationEntryCount = 0
 end
 
 function InputHelpDisplay:onInputDevicesChanged()

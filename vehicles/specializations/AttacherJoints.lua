@@ -188,6 +188,7 @@ function AttacherJoints.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getAttachedImplements", AttacherJoints.getAttachedImplements)
 	SpecializationUtil.registerFunction(vehicleType, "getAttacherJoints", AttacherJoints.getAttacherJoints)
 	SpecializationUtil.registerFunction(vehicleType, "getAttacherJointByJointDescIndex", AttacherJoints.getAttacherJointByJointDescIndex)
+	SpecializationUtil.registerFunction(vehicleType, "getAttacherJointIndexByNode", AttacherJoints.getAttacherJointIndexByNode)
 	SpecializationUtil.registerFunction(vehicleType, "getImplementFromAttacherJointIndex", AttacherJoints.getImplementFromAttacherJointIndex)
 	SpecializationUtil.registerFunction(vehicleType, "getAttacherJointIndexFromObject", AttacherJoints.getAttacherJointIndexFromObject)
 	SpecializationUtil.registerFunction(vehicleType, "getAttacherJointDescFromObject", AttacherJoints.getAttacherJointDescFromObject)
@@ -1049,6 +1050,20 @@ function AttacherJoints:getAttacherJointByJointDescIndex(jointDescIndex)
 	return self.spec_attacherJoints.attacherJoints[jointDescIndex]
 end
 
+function AttacherJoints:getAttacherJointIndexByNode(node)
+	local spec = self.spec_attacherJoints
+
+	for i = 1, #spec.attacherJoints do
+		local attacherJoint = spec.attacherJoints[i]
+
+		if attacherJoint.jointTransform == node then
+			return i
+		end
+	end
+
+	return nil
+end
+
 function AttacherJoints:getImplementFromAttacherJointIndex(attacherJointIndex)
 	local spec = self.spec_attacherJoints
 
@@ -1550,7 +1565,7 @@ function AttacherJoints:attachImplement(object, inputJointDescIndex, jointDescIn
 	local attacherJointIndex = self:getAttacherJointIndexFromObject(object)
 
 	if attacherJointIndex ~= nil then
-		Logging.info("Cannot attach object. Joint already in use!")
+		Logging.warning("Cannot attach object '%s' to vehicle '%s' between joints '%d' and '%d'. Joint already in use!", object.configFileName, self.configFileName, jointDescIndex, inputJointDescIndex)
 
 		return
 	end

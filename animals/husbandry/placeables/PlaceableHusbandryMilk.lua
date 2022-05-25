@@ -1,4 +1,6 @@
-PlaceableHusbandryMilk = {}
+PlaceableHusbandryMilk = {
+	ROBOT_LOADING_FIX_ENABLED = true
+}
 
 source("dataS/scripts/animals/husbandry/objects/MilkingRobot.lua")
 
@@ -72,14 +74,15 @@ function PlaceableHusbandryMilk:onLoad(savegame)
 			return
 		end
 
-		local args = {}
+		local args = {
+			loadingTask = self:createLoadingTask(self)
+		}
 		local robot = class.new(self, self.baseDirectory)
 
 		if robot:load(linkNode, filename, self.onMilkingRobotLoaded, self, args) then
 			table.insert(spec.milkingRobots, robot)
-
-			args.loadingTask = self:createLoadingTask(self)
 		else
+			self:finishLoadingTask(args.loadingTask)
 			robot:delete()
 		end
 	end)

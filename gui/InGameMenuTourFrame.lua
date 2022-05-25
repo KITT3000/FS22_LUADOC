@@ -12,6 +12,8 @@ function InGameMenuTourFrame.new(subclass_mt)
 
 	self:registerControls(InGameMenuTourFrame.CONTROLS)
 
+	self.hasCustomMenuButtons = true
+
 	return self
 end
 
@@ -24,17 +26,66 @@ end
 function InGameMenuTourFrame:initialize()
 	self.contentItem:unlinkElement()
 	self.controlItem:unlinkElement()
+
+	self.abortButton = {
+		profile = "buttonCancel",
+		inputAction = InputAction.MENU_CANCEL,
+		text = g_i18n:getText("button_abortTour"),
+		callback = function ()
+			self:onButtonCancel()
+		end
+	}
 end
 
 function InGameMenuTourFrame:onFrameOpen()
 	InGameMenuTourFrame:superClass().onFrameOpen(self)
 	self:updateContents()
 	self.layout:registerActionEvents()
+	self:updateMenuButtons()
 end
 
 function InGameMenuTourFrame:onFrameClose()
 	self.layout:removeActionEvents()
 	InGameMenuTourFrame:superClass().onFrameClose(self)
+end
+
+function InGameMenuTourFrame:updateMenuButtons()
+	self.menuButtonInfo = {
+		{
+			inputAction = InputAction.MENU_BACK
+		}
+	}
+	local tour = g_currentMission.guidedTour
+
+	if tour ~= nil and tour:getIsRunning() and tour:getCanAbort() then
+		table.insert(self.menuButtonInfo, self.abortButton)
+	end
+
+	self:setMenuButtonInfoDirty()
+end
+
+function InGameMenuTourFrame:onButtonCancel()
+	local tour = g_currentMission.guidedTour
+
+	if tour ~= nil and tour:getIsRunning() and tour:getCanAbort() then
+		g_gui:showYesNoDialog({
+			title = "",
+			text = g_i18n:getText("tour_abort_question"),
+			callback = self.onAbortTourAnswer,
+			target = self
+		})
+	end
+end
+
+function InGameMenuTourFrame:onAbortTourAnswer(yes)
+	if yes then
+		local tour = g_currentMission.guidedTour
+
+		if tour ~= nil and tour:getIsRunning() and tour:getCanAbort() then
+			tour:abort()
+			g_gui:changeScreen(nil)
+		end
+	end
 end
 
 function InGameMenuTourFrame:updateContents()

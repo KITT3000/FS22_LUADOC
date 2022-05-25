@@ -386,6 +386,10 @@ function Environment:update(dt)
 
 	if self.debugSeasonalShaderParameter then
 		renderText(0.2, 0.05, 0.015, string.format("Season Shader Parameter (cShared3): %s", self:getSeasonShaderValue()))
+
+		if g_currentMission.snowSystem ~= nil then
+			renderText(0.2, 0.035, 0.015, string.format("Snow Shader Parameter (cShared4): %s", g_currentMission.snowSystem.snowShaderValue))
+		end
 	end
 
 	if g_server ~= nil then
@@ -536,7 +540,7 @@ function Environment:updateTimeValues(initialState)
 			ambientSounds.setIsSpring(currentVisualPeriod == period.EARLY_SPRING or currentVisualPeriod == period.MID_SPRING or currentVisualPeriod == period.LATE_SPRING)
 			ambientSounds.setIsSummer(currentVisualPeriod == period.EARLY_SUMMER or currentVisualPeriod == period.MID_SUMMER or currentVisualPeriod == period.LATE_SUMMER)
 			ambientSounds.setIsAutumn(currentVisualPeriod == period.EARLY_AUTUMN or currentVisualPeriod == period.MID_AUTUMN or currentVisualPeriod == period.LATE_AUTUMN)
-			ambientSounds.setIsWinter(currentVisualPeriod == period.EARLY_WINTER or currentVisualPeriod == period.LATE_WINTER or currentVisualPeriod == period.LATE_WINTER)
+			ambientSounds.setIsWinter(currentVisualPeriod == period.EARLY_WINTER or currentVisualPeriod == period.MID_WINTER or currentVisualPeriod == period.LATE_WINTER)
 			self.environmentMaskSystem:setDayOfYear(Environment.PERIOD_DAY_MAPPING[currentVisualPeriod], self.currentVisualSeason)
 		end
 
@@ -810,9 +814,11 @@ function Environment:consoleCommandSetDayTime(dayTime, skipDayOnly)
 
 			return "DayTime = " .. dayTime .. ", Day = " .. newDay .. "[" .. newMonotonicDay .. "]"
 		else
-			return "Invalid arguments. Arguments: dayTime[h] skipDayOnly[true|false]"
+			return "Error: Invalid arguments. Arguments: dayTime[h] skipDayOnly[true|false]"
 		end
 	end
+
+	return "Error: Server only command"
 end
 
 function Environment:consoleCommandSetFixedVisuals(period)
@@ -986,10 +992,15 @@ function Environment:consoleCommandTakeEnvProbes(numIterations, mobile, outputDi
 			cirrusCloudSpeedFactor = cloudUpdater.cirrusCloudSpeedFactor,
 			growthMode = g_currentMission.growthSystem:getGrowthMode(),
 			dayTime = self.dayTime,
+			currentMonotonicDay = self.currentMonotonicDay,
 			currentDay = self.currentDay
 		}
 		self.envMapGeneration.currentData = currentData
 
 		g_currentMission.growthSystem:setGrowthMode(GrowthSystem.MODE.DISABLED, true)
+
+		return "Starting env map generation"
+	else
+		return "Error: no envMapTimes defined in Lighting"
 	end
 end

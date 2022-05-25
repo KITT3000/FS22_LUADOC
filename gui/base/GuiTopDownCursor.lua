@@ -3,6 +3,10 @@ local GuiTopDownCursor_mt = Class(GuiTopDownCursor)
 GuiTopDownCursor.ROTATION_SPEED = 0.002
 GuiTopDownCursor.SHAPES_FILENAME = "dataS/menu/construction/constructionCursorSimple.i3d"
 GuiTopDownCursor.RAYCAST_DISTANCE = 150
+GuiTopDownCursor.SNAP_STATE_INACTIVE = 0
+GuiTopDownCursor.SNAP_STATE_POSITIVE = 1
+GuiTopDownCursor.SNAP_STATE_NEGATIVE = 2
+GuiTopDownCursor.SNAP_STATE_USED = 3
 GuiTopDownCursor.SHAPES = {
 	SQUARE = 2,
 	CIRCLE = 1,
@@ -46,6 +50,8 @@ function GuiTopDownCursor.new(subclass_mt, messageCenter, inputManager)
 	self:setTerrainOnly(false)
 
 	self.shapesLoaded = false
+	self.snapAngle = nil
+	self.snapUpdateState = GuiTopDownCursor.SNAP_STATE_INACTIVE
 
 	return self
 end
@@ -192,7 +198,7 @@ end
 
 function GuiTopDownCursor:getMessagePosition()
 	if self.isCatchingCursor then
-		return nil
+		return self.lockedMousePosX, self.lockedMousePosY
 	end
 
 	return self.mousePosX, self.mousePosY
@@ -274,6 +280,11 @@ function GuiTopDownCursor:setCursorTerrainOffset(isLarge)
 	end
 end
 
+function GuiTopDownCursor:setSnapAngle(angle)
+	self.snapAngle = angle
+	self.snapUpdateState = GuiTopDownCursor.SNAP_STATE_INACTIVE
+end
+
 function GuiTopDownCursor:getHitNode()
 	if self.currentHitId ~= g_currentMission.terrainRootNode then
 		return self.currentHitId
@@ -347,7 +358,27 @@ function GuiTopDownCursor:updateRaycast()
 end
 
 function GuiTopDownCursor:updateRotation(dt)
-	self.targetRotation = self.targetRotation - dt * self.inputRotate * GuiTopDownCursor.ROTATION_SPEED
+	local inputRotate = self.inputRotate
+	self.inputRotate = 0
+
+	if self.snapAngle ~= nil then
+		if self.snapUpdateState == GuiTopDownCursor.SNAP_STATE_USED then
+			return
+		end
+
+		if self.snapUpdateState == GuiTopDownCursor.SNAP_STATE_POSITIVE or self.snapUpdateState == GuiTopDownCursor.SNAP_STATE_NEGATIVE then
+			local dir = self.snapUpdateState == GuiTopDownCursor.SNAP_STATE_POSITIVE and 1 or -1
+			local snappedRotation = math.rad(MathUtil.snapValue(math.deg(self.rotationY + dir * self.snapAngle), math.deg(self.snapAngle)))
+
+			self:setRotation(snappedRotation % (2 * math.pi))
+
+			self.snapUpdateState = GuiTopDownCursor.SNAP_STATE_USED
+
+			return
+		end
+	end
+
+	self.targetRotation = self.targetRotation - dt * inputRotate * GuiTopDownCursor.ROTATION_SPEED
 	local rotateChange = (self.targetRotation - self.rotationY) / dt * 5
 
 	if rotateChange < 0.0001 and rotateChange > -0.0001 then
@@ -356,7 +387,9 @@ function GuiTopDownCursor:updateRotation(dt)
 		self.rotationY = self.rotationY + rotateChange
 	end
 
-	self.inputRotate = 0
+	if self.snapAngle ~= nil then
+		self.rotationY = math.rad(MathUtil.snapValue(math.deg(self.rotationY), math.deg(self.snapAngle)))
+	end
 end
 
 function GuiTopDownCursor:updateCursorHeights(x, y, z, scale)
@@ -420,7 +453,7 @@ function GuiTopDownCursor:mouseEvent(posX, posY, isDown, isUp, button)
 	end
 end
 
-function GuiTopDownCursor:onRotate(_, inputValue, _, isAnalog, isMouse)
+function GuiTopDownCursor:onRotate(_, inputValue, _, isAnalog, isMouse, category, binding)
 	if isMouse and self.mouseDisabled then
 		return
 	end
@@ -436,10 +469,20 @@ function GuiTopDownCursor:onRotate(_, inputValue, _, isAnalog, isMouse)
 
 			self.isCatchingCursor = true
 		end
-	end
 
-	if isMouse and isAnalog then
-		inputValue = inputValue * 3
+		if isAnalog then
+			inputValue = inputValue * 3
+		end
+
+		self.snapUpdateState = GuiTopDownCursor.SNAP_STATE_INACTIVE
+	elseif self.snapAngle ~= nil then
+		if binding.isUp then
+			self.snapUpdateState = GuiTopDownCursor.SNAP_STATE_INACTIVE
+		elseif self.snapUpdateState == GuiTopDownCursor.SNAP_STATE_INACTIVE and binding.isDown then
+			self.snapUpdateState = inputValue > 0 and GuiTopDownCursor.SNAP_STATE_POSITIVE or GuiTopDownCursor.SNAP_STATE_NEGATIVE
+		end
+
+		return
 	end
 
 	self.inputRotate = inputValue

@@ -116,8 +116,8 @@ end
 
 function EnvironmentalScorePH:overwriteGameFunctions(pfModule)
 	if g_server ~= nil then
-		pfModule:overwriteGameFunction(HarvestExtension, "setLastScoringValues", function (superFunc, harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget)
-			superFunc(harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget)
+		pfModule:overwriteGameFunction(HarvestExtension, "setLastScoringValues", function (superFunc, harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget, ignoreOverfertilization)
+			superFunc(harvestExtension, area, farmlandId, nActual, nTarget, pHActual, pHTarget, ignoreOverfertilization)
 
 			if pHActual ~= nil and pHTarget ~= nil and area > 0 and farmlandId ~= nil then
 				self:addWorkedArea(farmlandId, area, pHActual - pHTarget)

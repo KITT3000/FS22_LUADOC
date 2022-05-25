@@ -84,9 +84,6 @@ function HUD.new(isServer, isClient, isConsoleVersion, messageCenter, l10n, inpu
 	self.controlPlayer = true
 	self.isMenuVisible = false
 	self.controlledVehicle = nil
-	self.vehicleSchemaOverlays = {}
-	self.vehicleHudExtensions = {}
-	self.requireHudExtensionsRefresh = false
 	self.displayComponents = {}
 	self.showTime = true
 	self.allowHelpText = false
@@ -317,8 +314,6 @@ function HUD:setScale(scale)
 			element:setScale(scale, scale)
 		end
 	end
-
-	self.requireHudExtensionsRefresh = true
 end
 
 function HUD:drawControlledEntityHUD()

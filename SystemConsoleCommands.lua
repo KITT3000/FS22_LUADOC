@@ -5,6 +5,7 @@ SystemConsoleCommands = {
 		addConsoleCommand("gsSetHighQuality", "Incease draw and LOD distances of foliage, terrain and objects", "setHighQuality", SystemConsoleCommands)
 		addConsoleCommand("gsGuiSafeFrameShow", "", "showSafeFrame", SystemConsoleCommands)
 		addConsoleCommand("gsGuiDebug", "", "toggleUiDebug", SystemConsoleCommands)
+		addConsoleCommand("gsGuiFocusDebug", "", "toggleUiFocusDebug", SystemConsoleCommands)
 		addConsoleCommand("gsRenderColorAndDepthScreenShot", "", "renderColorAndDepthScreenShot", SystemConsoleCommands)
 
 		if g_addCheatCommands then
@@ -34,6 +35,7 @@ SystemConsoleCommands = {
 		removeConsoleCommand("gsSetHighQuality")
 		removeConsoleCommand("gsGuiSafeFrameShow")
 		removeConsoleCommand("gsGuiDebug")
+		removeConsoleCommand("gsGuiFocusDebug")
 		removeConsoleCommand("gsRenderColorAndDepthScreenShot")
 		removeConsoleCommand("gsRenderingDebugMode")
 		removeConsoleCommand("gsInputDrawRaw")
@@ -421,6 +423,17 @@ SystemConsoleCommands = {
 			g_uiDebugEnabled = true
 
 			return "UI Debug enabled"
+		end
+	end,
+	toggleUiFocusDebug = function (self)
+		if g_uiFocusDebugEnabled then
+			g_uiFocusDebugEnabled = false
+
+			return "UI Focus Debug disabled"
+		else
+			g_uiFocusDebugEnabled = true
+
+			return "UI Focus Debug enabled"
 		end
 	end,
 	suspendApp = function (self)

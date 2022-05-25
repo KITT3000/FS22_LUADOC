@@ -65,7 +65,10 @@ function MixerWagonHUDExtension:draw(leftPosX, rightPosX, posY)
 	setTextColor(unpack(self.uiTextColor))
 	setTextBold(true)
 	setTextAlignment(RenderText.ALIGN_LEFT)
-	renderText(leftPosX, posY + self.displayHeight - self.uiTextSize * 1.7, self.uiTextSize, g_i18n:getText("info_mixingRatio"))
+
+	local text = string.format("%s (%s)", g_i18n:getText("info_mixingRatio"), self.vehicle:getFullName())
+
+	renderText(leftPosX, posY + self.displayHeight - self.uiTextSize * 1.5, self.uiTextSize, text)
 	setTextBold(false)
 
 	local totalFillLevel = 0

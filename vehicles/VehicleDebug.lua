@@ -214,16 +214,24 @@ function VehicleDebug:delete()
 					end
 				end
 
-				if motor.debugLoadGraphSmooth ~= nil then
-					motor.debugLoadGraphSmooth:delete()
-				end
-
 				if motor.debugLoadGraph ~= nil then
 					motor.debugLoadGraph:delete()
 				end
 
+				if motor.debugLoadGraphSmooth ~= nil then
+					motor.debugLoadGraphSmooth:delete()
+				end
+
+				if motor.debugLoadGraphSound ~= nil then
+					motor.debugLoadGraphSound:delete()
+				end
+
 				if motor.debugRPMGraphSmooth ~= nil then
 					motor.debugRPMGraphSmooth:delete()
+				end
+
+				if motor.debugRPMGraphSound ~= nil then
+					motor.debugRPMGraphSound:delete()
 				end
 
 				if motor.debugRPMGraph ~= nil then

@@ -36,6 +36,7 @@ function PlaceableInfoDialog:setPlaceable(placeable)
 	local price, forFullPrice = placeable:getSellPrice()
 	local sellPrice = g_i18n:formatMoney(price)
 	local canRename = placeable:getCanBeRenamedByFarm(g_currentMission:getFarmId())
+	local allowedToRename = g_currentMission:getHasPlayerPermission("buyPlaceable")
 	local imageFilename = placeable.storeItem.imageFilename
 	local canSell = placeable:canBeSold() and placeable.storeItem.canBeSold and g_currentMission:getFarmId() == placeable:getOwnerFarmId()
 	local allowedToSell = g_currentMission:getHasPlayerPermission(Farm.PERMISSION.SELL_PLACEABLE)
@@ -51,9 +52,10 @@ function PlaceableInfoDialog:setPlaceable(placeable)
 	self.titleText:setText(name)
 	self.priceText:setText(sellPrice)
 	self.ageText:setText(string.format(g_i18n:getText("shop_age"), string.format("%d", placeable.age)))
-	self.renameButton:setVisible(canRename)
 	self.sellButton:setVisible(canSell)
 	self.sellButton:setDisabled(not allowedToSell)
+	self.renameButton:setVisible(canRename)
+	self.renameButton:setDisabled(not allowedToRename)
 	self.sellButton.parent:invalidateLayout()
 	g_messageCenter:subscribe(SellPlaceableEvent, self.onPlaceableDestroyed, self)
 end
@@ -108,6 +110,15 @@ function PlaceableInfoDialog:onClickRename()
 		defaultText = self.placeable:getName(),
 		callback = function (result, yes)
 			if yes then
+				if not g_currentMission:getHasPlayerPermission("buyPlaceable") then
+					g_gui:showInfoDialog({
+						text = g_i18n:getText("shop_messageNoPermissionGeneral"),
+						dialogType = DialogElement.TYPE_WARNING
+					})
+
+					return
+				end
+
 				if result:len() == 0 then
 					result = nil
 				end
