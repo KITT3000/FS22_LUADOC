@@ -1,5 +1,5 @@
 ConfigurationUtil = {
-	SEND_NUM_BITS = 6,
+	SEND_NUM_BITS = 7,
 	SELECTOR_MULTIOPTION = 0,
 	SELECTOR_COLOR = 1,
 	addBoughtConfiguration = function (object, name, id)

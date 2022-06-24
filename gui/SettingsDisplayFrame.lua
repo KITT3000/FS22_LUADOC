@@ -7,15 +7,16 @@ end
 SettingsDisplayFrame.CONTROLS = {
 	FOV_Y = "fovYElement",
 	HDR_CALIBRATION_BUTTON = "hdrCalibrationButton",
-	V_SYNC = "vSyncElement",
+	RESOLUTION_SCALE = "resolutionScaleElement",
 	UI_SCALE = "uiScaleElement",
+	V_SYNC = "vSyncElement",
 	BOX_LAYOUT = "boxLayout",
 	CAMERA_BOBBING = "cameraBobbingElement",
 	ELEMENT_PERFORMANCE_CLASS = "performanceClassElement",
 	BRIGHTNESS = "brightnessElement",
 	FULLSCREEN_MODE = "fullscreenModeElement",
 	RESOLUTION = "resolutionElement",
-	RESOLUTION_SCALE = "resolutionScaleElement",
+	FRAME_LIMIT = "frameLimitElement",
 	MAIN_CONTAINER = "settingsContainer"
 }
 
@@ -104,6 +105,12 @@ function SettingsDisplayFrame:updateValues()
 	self.uiScaleElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.UI_SCALE))
 	self.resolutionScaleElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.RESOLUTION_SCALE))
 	self.cameraBobbingElement:setIsChecked(self.settingsModel:getValue(SettingsModel.SETTING.CAMERA_BOBBING))
+
+	if Platform.hasAdjustableFrameLimit then
+		self.frameLimitElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.FRAME_LIMIT))
+		self.frameLimitElement:setDisabled(self.settingsModel:getValue(SettingsModel.SETTING.V_SYNC) == 2)
+	end
+
 	self:setMenuButtonInfoDirty()
 end
 
@@ -114,6 +121,7 @@ function SettingsDisplayFrame:onFrameOpen()
 	self.resolutionElement:setVisible(not GS_PLATFORM_GGP)
 	self.fullscreenModeElement:setVisible(not GS_PLATFORM_GGP)
 	self.vSyncElement:setVisible(not GS_PLATFORM_GGP)
+	self.frameLimitElement:setVisible(Platform.hasAdjustableFrameLimit)
 	self:updateHDRFocus()
 	self:updateValues()
 end
@@ -180,6 +188,10 @@ function SettingsDisplayFrame:onCreateResolutionScale(element)
 	element:setTexts(self.settingsModel:getResolutionScaleTexts())
 end
 
+function SettingsDisplayFrame:onCreateFrameLimit(element)
+	element:setTexts(self.settingsModel:getFrameLimitTexts())
+end
+
 function SettingsDisplayFrame:onClickPerformanceClass(state)
 	self.settingsModel:applyPerformanceClass(state)
 	self:updateValues()
@@ -207,6 +219,12 @@ end
 
 function SettingsDisplayFrame:onClickVSync(state)
 	self.settingsModel:setValue(SettingsModel.SETTING.V_SYNC, state)
+	self:setMenuButtonInfoDirty()
+	self:updateValues()
+end
+
+function SettingsDisplayFrame:onClickFrameLimit(state)
+	self.settingsModel:setValue(SettingsModel.SETTING.FRAME_LIMIT, state)
 	self:setMenuButtonInfoDirty()
 end
 

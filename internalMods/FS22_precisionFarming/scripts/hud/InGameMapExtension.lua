@@ -66,6 +66,9 @@ function InGameMapExtension.new(precisionFarming, customMt)
 	self.minimapSoilStateOverlay = createDensityMapVisualizationOverlay("soilStateOverlay", 1024, 1024)
 	self.minimapSoilStateOverlayIsReady = nil
 	self.minimapSoilStateOverlayIsReadyForDisplay = nil
+
+	precisionFarming:registerVisualizationOverlay(self.minimapSoilStateOverlay)
+
 	self.smoothedMapZoomLevel = 1
 	self.smoothedMapZoomTargetLevel = 1
 	self.isColorBlindMode = g_gameSettings:getValue(GameSettings.SETTING.USE_COLORBLIND_MODE) or false

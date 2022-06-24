@@ -95,6 +95,14 @@ function WardrobeItemsFrame:resetList()
 			local item = self.playerStyle[self.configName].items[itemIndex]
 			local isCurrentSelection = itemIndex == self.playerStyle[self.configName].selection
 
+			if item ~= nil and item.brandName ~= nil then
+				item.brand = g_brandManager:getBrandByName(item.brandName)
+
+				if item.brand ~= nil then
+					item.brandName = nil
+				end
+			end
+
 			if isCurrentSelection or item.extraContentId == nil or g_extraContentSystem:getIsItemIdUnlocked(item.extraContentId) then
 				local section = item.brand ~= nil and 2 or 1
 
@@ -130,6 +138,10 @@ function WardrobeItemsFrame:resetList()
 		self:setMenuButtonInfoDirty()
 		self.itemList:reloadData()
 		self.itemList:setSelectedItem(selectedSection, selectedIndex)
+
+		if totalItems > 0 then
+			FocusManager:setFocus(self.itemList)
+		end
 	end
 end
 

@@ -585,7 +585,10 @@ function Utils.getFilenameInfo(filename, excludePath)
 
 		if excludePath ~= nil and excludePath then
 			local lastSlash = cleanFilename:find("/[^/]*$")
-			cleanFilename = string.sub(cleanFilename, lastSlash + 1)
+
+			if lastSlash ~= nil then
+				cleanFilename = string.sub(cleanFilename, lastSlash + 1)
+			end
 		end
 	end
 

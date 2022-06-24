@@ -348,10 +348,12 @@ function ParticleUtil.setParticleSystemSpriteScaleYGain(particleSystem, spriteSc
 	end
 end
 
-function ParticleUtil.setParticleSystemVelocityScale(particleSystem)
+function ParticleUtil.getParticleSystemVelocityScale(particleSystem)
 	if particleSystem ~= nil and particleSystem.isValid then
 		return getEmitterShapeVelocityScale(particleSystem.geometry)
 	end
+
+	return nil
 end
 
 function ParticleUtil.setParticleSystemVelocityScale(particleSystem, velocityScale)

@@ -205,6 +205,10 @@ function PlayerStyle:loadConfigurationXML(xmlFilename)
 			attachNode = attachNode
 		})
 
+		if self.facesByName[name] ~= nil then
+			Logging.devError("Wardrobe face name '%s' already used", name)
+		end
+
 		self.facesByName[name] = #self.faceConfig.items
 
 		if name == restoreSelection then
@@ -225,6 +229,10 @@ function PlayerStyle:loadConfigurationXML(xmlFilename)
 			name = name
 		})
 
+		if self.bodyPartIndexByName[name] ~= nil then
+			Logging.devError("Wardrobe body part name '%s' already used", name)
+		end
+
 		self.bodyPartIndexByName[name] = #self.bodyParts
 	end)
 	self:loadColors(xmlFile, rootKey .. ".colors.hair.color", "hairColors")
@@ -244,14 +252,24 @@ function PlayerStyle:loadConfigurationXML(xmlFilename)
 	self:loadClothing(xmlFile, rootKey .. ".mustaches", "mustache", "mustacheConfig", true, true, true)
 
 	self.presets = {}
+	local presetByName = {}
 
 	xmlFile:iterate(rootKey .. ".presets.preset", function (index, key)
 		local text = xmlFile:getString(key .. "#text")
 		local name = xmlFile:getString(key .. "#name")
 		local brand = nil
+		local brandName = xmlFile:getString(key .. "#brand")
 
-		if g_brandManager ~= nil then
-			brand = g_brandManager:getBrandByName(xmlFile:getString(key .. "#brand"))
+		if brandName ~= nil and g_brandManager ~= nil then
+			brand = g_brandManager:getBrandByName(brandName)
+
+			if brand ~= nil then
+				brandName = nil
+			end
+		end
+
+		if presetByName[name] ~= nil then
+			Logging.devError("Wardrobe preset name '%s' already used", name)
 		end
 
 		local preset = {
@@ -259,9 +277,11 @@ function PlayerStyle:loadConfigurationXML(xmlFilename)
 			text = text,
 			uvSlot = xmlFile:getInt(key .. "#uvSlot"),
 			brand = brand,
+			brandName = brandName,
 			extraContentId = xmlFile:getString(key .. "#extraContentId"),
 			isSelectable = xmlFile:getBool(key .. "#isSelectable", true)
 		}
+		presetByName[name] = preset
 
 		local function getOrNul(list, itemKey)
 			if itemKey == nil then
@@ -338,9 +358,14 @@ function PlayerStyle:loadClothing(xmlFile, rootKey, itemKey, configName, isColor
 		local hideGlasses = xmlFile:getBool(key .. "#hideGlasses", false)
 		local isForestryItem = xmlFile:getBool(key .. "#isForestryItem", false)
 		local brand = nil
+		local brandName = xmlFile:getString(key .. "#brand")
 
-		if g_brandManager ~= nil then
-			brand = g_brandManager:getBrandByName(xmlFile:getString(key .. "#brand"))
+		if brandName ~= nil and g_brandManager ~= nil then
+			brand = g_brandManager:getBrandByName(brandName)
+
+			if brand ~= nil then
+				brandName = nil
+			end
 		end
 
 		local filename = xmlFile:getString(key .. "#filename")
@@ -368,6 +393,7 @@ function PlayerStyle:loadClothing(xmlFile, rootKey, itemKey, configName, isColor
 			itemIndex = #config.items + 1,
 			hideGlasses = hideGlasses,
 			brand = brand,
+			brandName = brandName,
 			extraContentId = extraContentId,
 			isForestryItem = isForestryItem
 		}
@@ -474,6 +500,10 @@ function PlayerStyle:loadClothing(xmlFile, rootKey, itemKey, configName, isColor
 		item.belt = xmlFile:getString(key .. ".belt#node")
 		item.beltHidden = xmlFile:getBool(key .. "#beltHidden")
 
+		if nameToItemList[itemName] ~= nil then
+			Logging.devError("Wardrobe config name '%s' already used", itemName)
+		end
+
 		table.insert(config.items, item)
 
 		nameToItemList[itemName] = #config.items
@@ -545,11 +575,21 @@ end
 
 function PlayerStyle:saveToXMLFile(xmlFile, key)
 	xmlFile:setString(key .. "#filename", self.xmlFilename)
+	self:loadConfigurationIfRequired()
 
 	local function saveConfig(configName)
-		local selection = self[configName].selection
+		local config = self[configName]
+		local selection = config.selection
 
-		xmlFile:setInt(key .. "#" .. configName, selection)
+		xmlFile:removeProperty(key .. "#" .. configName)
+		xmlFile:removeProperty(key .. "#" .. configName .. "Id")
+		xmlFile:removeProperty(key .. "#" .. configName .. "Color")
+
+		if selection ~= 0 then
+			local id = config.items[selection].name
+
+			xmlFile:setString(key .. "#" .. configName .. "Id", id)
+		end
 
 		if selection ~= 0 and self[configName].color ~= nil then
 			xmlFile:setInt(key .. "#" .. configName .. "Color", self[configName].color)
@@ -573,8 +613,26 @@ end
 function PlayerStyle:loadFromXMLFile(xmlFile, key)
 	self.xmlFilename = xmlFile:getString(key .. "#filename")
 
+	self:loadConfigurationIfRequired()
+
 	local function loadConfig(configName)
-		local selection = xmlFile:getInt(key .. "#" .. configName, self[configName].selection)
+		local configId = xmlFile:getString(key .. "#" .. configName .. "Id")
+		local selection = 0
+
+		if configId ~= nil then
+			for k, data in ipairs(self[configName].items) do
+				if data.name == configId then
+					selection = k
+
+					break
+				end
+			end
+		end
+
+		if selection == 0 then
+			selection = xmlFile:getInt(key .. "#" .. configName, self[configName].selection)
+		end
+
 		self[configName].selection = selection
 
 		if selection ~= 0 then

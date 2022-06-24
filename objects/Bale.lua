@@ -314,7 +314,6 @@ end
 
 function Bale:createNode(i3dFilename)
 	self.i3dFilename = i3dFilename
-	self.customEnvironment, self.baseDirectory = Utils.getModNameAndBaseDirectory(i3dFilename)
 	local baleRoot, sharedLoadRequestId = g_i3DManager:loadSharedI3DFile(i3dFilename, false, false)
 	self.sharedLoadRequestId = sharedLoadRequestId
 	local baleId = getChildAt(baleRoot, 0)

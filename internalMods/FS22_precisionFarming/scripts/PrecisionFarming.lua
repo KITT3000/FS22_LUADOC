@@ -53,6 +53,7 @@ function PrecisionFarming.new(customMt)
 	local self = setmetatable({}, customMt or PrecisionFarming_mt)
 	self.overwrittenGameFunctions = {}
 	self.valueMaps = {}
+	self.visualizationOverlays = {}
 	self.precisionFarmingSettings = PrecisionFarmingSettings.new(self)
 
 	self:registerValueMap(SoilMap.new(self))
@@ -160,6 +161,12 @@ end
 
 function PrecisionFarming:deleteMap()
 	if g_modIsLoaded[PrecisionFarming.MOD_NAME] then
+		for i = #self.visualizationOverlays, 1, -1 do
+			resetDensityMapVisualizationOverlay(self.visualizationOverlays[i])
+
+			self.visualizationOverlays[i] = nil
+		end
+
 		for i = 1, #self.valueMaps do
 			self.valueMaps[i]:delete()
 		end
@@ -209,6 +216,10 @@ end
 
 function PrecisionFarming:addSetting(...)
 	self.precisionFarmingSettings:addSetting(...)
+end
+
+function PrecisionFarming:registerVisualizationOverlay(overlay)
+	table.insert(self.visualizationOverlays, overlay)
 end
 
 function PrecisionFarming:update(dt)

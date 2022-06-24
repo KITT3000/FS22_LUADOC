@@ -1,9 +1,5 @@
 MathUtil = {
 	sign = function (x)
-		if type(x) == "table" then
-			printCallstack()
-		end
-
 		if x > 0 then
 			return 1
 		elseif x < 0 then
@@ -40,10 +36,6 @@ MathUtil = {
 	end
 }
 
-function MathUtil.lerp3(x1, y1, z1, x2, y2, z2, alpha)
-	return MathUtil.lerp(x1, x2, alpha), MathUtil.lerp(y1, y2, alpha), MathUtil.lerp(z1, z2, alpha)
-end
-
 function MathUtil.inverseLerp(v1, v2, cv)
 	if math.abs(v1 - v2) < 0.0001 then
 		return 0
@@ -68,14 +60,6 @@ function MathUtil.timeLerp(startTime, endTime, currentTime)
 end
 
 function MathUtil.clamp(value, minVal, maxVal)
-	if value == nil then
-		printCallstack()
-	elseif minVal == nil then
-		printCallstack()
-	elseif maxVal == nil then
-		printCallstack()
-	end
-
 	return math.min(math.max(value, minVal), maxVal)
 end
 
@@ -182,6 +166,8 @@ end
 function MathUtil.vector3Lerp(x1, y1, z1, x2, y2, z2, alpha)
 	return x1 + (x2 - x1) * alpha, y1 + (y2 - y1) * alpha, z1 + (z2 - z1) * alpha
 end
+
+MathUtil.lerp3 = MathUtil.vector3Lerp
 
 function MathUtil.inverseVector3Lerp(x1, y1, z1, x2, y2, z2, c1, c2, c3)
 	local alpha1 = MathUtil.inverseLerp(x1, x2, c1)

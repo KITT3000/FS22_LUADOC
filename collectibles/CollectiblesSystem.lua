@@ -31,6 +31,8 @@ function CollectiblesSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 			return
 		end
 
+		local modName, _ = Utils.getModNameAndBaseDirectory(xmlFilename)
+		local customEnv = modName
 		local totalGroups = 0
 
 		collectiblesFile:iterate("collectibles.group", function (index, key)
@@ -39,19 +41,19 @@ function CollectiblesSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 			local dialogText = collectiblesFile:getString(key .. "#dialogText")
 
 			if dialogText ~= nil then
-				dialogText = g_i18n:convertText(dialogText)
+				dialogText = g_i18n:convertText(dialogText, customEnv)
 			end
 
 			local dialogIntroText = collectiblesFile:getString(key .. "#dialogIntroText")
 
 			if dialogIntroText ~= nil then
-				dialogIntroText = g_i18n:convertText(dialogIntroText)
+				dialogIntroText = g_i18n:convertText(dialogIntroText, customEnv)
 			end
 
 			local dialogTitle = collectiblesFile:getString(key .. "#dialogTitle")
 
 			if dialogTitle ~= nil then
-				dialogTitle = g_i18n:convertText(dialogTitle)
+				dialogTitle = g_i18n:convertText(dialogTitle, customEnv)
 			end
 
 			local incompleteNodeIndex = collectiblesFile:getString("collectibles.target.incompleteNode")
@@ -77,7 +79,7 @@ function CollectiblesSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 			if totalItems == 255 then
 				Logging.warning("No more than 255 collectibles are supported.")
 
-				return true
+				return
 			end
 
 			local name = collectiblesFile:getString(key .. "#name")
@@ -92,13 +94,13 @@ function CollectiblesSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 			local dialogText = collectiblesFile:getString(key .. "#dialogText")
 
 			if dialogText ~= nil then
-				dialogText = g_i18n:convertText(dialogText)
+				dialogText = g_i18n:convertText(dialogText, customEnv)
 			end
 
 			local dialogTitle = collectiblesFile:getString(key .. "#dialogTitle")
 
 			if dialogTitle ~= nil then
-				dialogTitle = g_i18n:convertText(dialogTitle)
+				dialogTitle = g_i18n:convertText(dialogTitle, customEnv)
 			end
 
 			local groupName = collectiblesFile:getString(key .. "#group")

@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 8
-g_gameVersionNotification = "1.5.0.0"
-g_gameVersionDisplay = "1.5.0.0"
+g_gameVersion = 9
+g_gameVersionNotification = "1.6.0.0"
+g_gameVersionDisplay = "1.6.0.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 66
+g_maxModDescVersion = 67
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -31,6 +31,7 @@ g_addTestCommands = false
 g_addCheatCommands = false
 g_showDevelopmentWarnings = false
 g_appIsSuspended = false
+g_defaultFrameLimit = 60
 g_networkDebug = false
 g_networkDebugPrints = false
 g_gameRevision = "000"
@@ -1020,6 +1021,10 @@ function init(args)
 
 	if Platform.needsSignIn and StartParams.getIsSet("autoSignIn") and StartParams.getIsSet("restart") and g_gui.currentGuiName ~= "GamepadSigninScreen" then
 		g_autoSignIn = true
+	end
+
+	if Platform.hasAdjustableFrameLimit then
+		setFramerateLimiter(true, g_defaultFrameLimit)
 	end
 
 	return true

@@ -557,7 +557,7 @@ function Crawlers:validateWashableNode(superFunc, node)
 			function nodeData.loadFromSavegameFunc(xmlFile, key)
 				nodeData.wheel.snowScale = xmlFile:getValue(key .. "#snowScale", 0)
 				local defaultColor, snowColor = g_currentMission.environment:getDirtColors()
-				local r, g, b = MathUtil.lerp3(defaultColor[1], defaultColor[2], defaultColor[3], snowColor[1], snowColor[2], snowColor[3], nodeData.wheel.snowScale)
+				local r, g, b = MathUtil.vector3ArrayLerp(defaultColor, snowColor, nodeData.wheel.snowScale)
 				local washableNode = self:getWashableNodeByCustomIndex(crawler)
 
 				self:setNodeDirtColor(washableNode, r, g, b, true)

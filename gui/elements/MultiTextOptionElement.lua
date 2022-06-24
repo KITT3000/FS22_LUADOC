@@ -117,6 +117,10 @@ end
 function MultiTextOptionElement:addElement(element)
 	MultiTextOptionElement:superClass().addElement(self, element)
 
+	if element.name == "ignore" then
+		return
+	end
+
 	if self.namedComponents then
 		if element.name == "left" then
 			self.leftButtonElement = element

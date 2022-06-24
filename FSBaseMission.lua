@@ -505,6 +505,10 @@ function FSBaseMission:onStartMission()
 
 			self.player:onEnter(true)
 			self.hud:setIsControllingPlayer(true)
+
+			if Platform.hasAdjustableFrameLimit then
+				setFramerateLimiter(true, g_gameSettings:getValue(SettingsModel.SETTING.FRAME_LIMIT))
+			end
 		end
 
 		if not g_gameSettings:getValue("radioVehicleOnly") then
@@ -1435,6 +1439,8 @@ end
 
 function FSBaseMission:onShutdownEvent(connection)
 	if not self:getIsServer() then
+		g_gui:closeAllDialogs()
+
 		self.cleanServerShutDown = true
 
 		setPresenceMode(PresenceModes.PRESENCE_IDLE)
@@ -3150,6 +3156,8 @@ function FSBaseMission:consoleCommandCheatMoney(amount)
 
 		return string.format("Added money %d. Use 'gsMoneyAdd <amount>' to add or remove a custom amount", amount)
 	end
+
+	return "gsMoneyAdd is only available for server and/or admins"
 end
 
 function FSBaseMission:consoleCommandExportStoreItems()
@@ -3379,13 +3387,17 @@ function FSBaseMission:consoleCommandReloadVehicle(resetVehicle, radius)
 
 				i = i + 1
 			end
+
+			return
 		end
+
+		return
 	end
 end
 
-function FSBaseMission:consoleCommandLoadTree(length, treeType, growthState)
+function FSBaseMission:consoleCommandLoadTree(length, treeType, growthState, delimb)
 	length = tonumber(length)
-	local usage = "gsTreeAdd length [type (available: " .. table.concatKeys(g_treePlantManager.nameToTreeType, " ") .. ")] [growthState]"
+	local usage = "gsTreeAdd length [type (available: " .. table.concatKeys(g_treePlantManager.nameToTreeType, " ") .. ")] [growthState] [delimb true/false]"
 
 	if length == nil then
 		return "No length given. " .. usage
@@ -3402,6 +3414,7 @@ function FSBaseMission:consoleCommandLoadTree(length, treeType, growthState)
 	end
 
 	growthState = Utils.getNoNil(growthState, table.getn(treeTypeDesc.treeFilenames))
+	delimb = (delimb or "true"):lower() == "true"
 	local x = 0
 	local y = 0
 	local z = 0
@@ -3425,7 +3438,9 @@ function FSBaseMission:consoleCommandLoadTree(length, treeType, growthState)
 	x = x + dirX * 4
 	y = y + 1
 
-	g_treePlantManager:loadTreeTrunk(treeTypeDesc, x, y, z, dirX, dirY, dirZ, length, growthState)
+	g_treePlantManager:loadTreeTrunk(treeTypeDesc, x, y, z, dirX, dirY, dirZ, length, growthState, delimb)
+
+	return "Loaded tree"
 end
 
 function FSBaseMission:consoleCommandTeleport(fieldIdOrX, zPos, useWorldCoords)
@@ -3529,10 +3544,14 @@ function FSBaseMission:consoleCommandAddDirtAmount(amount)
 					v:addDirtAmount(amount)
 				end
 			end
+
+			return string.format("Added dirt to vehicles (Amount: %.2f)", amount)
 		else
 			return "Enter a vehicle first!"
 		end
 	end
+
+	return "Not available on clients"
 end
 
 function FSBaseMission:consoleCommandAddWearAmount(amount)
@@ -3549,6 +3568,8 @@ function FSBaseMission:consoleCommandAddWearAmount(amount)
 			return "Enter a vehicle first!"
 		end
 	end
+
+	return "Not available on clients"
 end
 
 function FSBaseMission:consoleCommandAddDamageAmount(amount)
@@ -3561,10 +3582,14 @@ function FSBaseMission:consoleCommandAddDamageAmount(amount)
 					v:addDamageAmount(amount)
 				end
 			end
+
+			return string.format("Added damage to vehicles (Amount: %.2f)", amount)
 		else
 			return "Enter a vehicle first!"
 		end
 	end
+
+	return "Not available on clients"
 end
 
 function FSBaseMission:consoleCommandLoadAllVehicles(loadConfigs, modsOnly, palletsOnly, verbose)
@@ -3659,9 +3684,9 @@ function FSBaseMission:consoleCommandLoadAllVehicles(loadConfigs, modsOnly, pall
 	local modStr = modsOnly and "mod " or ""
 
 	if loadConfigs then
-		print(string.format("Loading %i %svehicles with all configs...", numVehicles, modStr))
+		return print(string.format("Loading %i %svehicles with all configs...", numVehicles, modStr))
 	else
-		print(string.format("Loading %i %svehicles (add first param 'true' to include configs, add second param 'true' to only load mods, add third param 'true' to only load pallets, add fourth param 'verbose' to print i3d loading messages)...", numVehicles, modStr))
+		return print(string.format("Loading %i %svehicles (add first param 'true' to include configs, add second param 'true' to only load mods, add third param 'true' to only load pallets, add fourth param 'verbose' to print i3d loading messages)...", numVehicles, modStr))
 	end
 end
 
@@ -3845,14 +3870,20 @@ function FSBaseMission:consoleCommandSetFuel(fuelLevel)
 					local delta = fuelLevel - fillLevel
 
 					vehicle:addFillUnitFillLevel(self:getFarmId(), fillUnitIndex, delta, vehicle:getFillUnitFirstSupportedFillType(fillUnitIndex), ToolType.UNDEFINED, nil)
+
+					return "Added fuel"
 				else
 					return "No Fuel filltype supported!"
 				end
 			end
+
+			return "Vehicle has no consumer"
 		else
 			return "Enter a vehicle first!"
 		end
 	end
+
+	return "Not available on clients"
 end
 
 function FSBaseMission:consoleCommandSetMotorTemperature(temperature)
@@ -3872,10 +3903,14 @@ function FSBaseMission:consoleCommandSetMotorTemperature(temperature)
 
 				return "Set motor temperature to " .. spec.motorTemperature.value
 			end
+
+			return "Vehicle has no motor"
 		else
 			return "Enter a vehicle first!"
 		end
 	end
+
+	return "Not available on clients"
 end
 
 function FSBaseMission:consoleCommandSetOperatingTime(operatingTime)
@@ -3890,11 +3925,17 @@ function FSBaseMission:consoleCommandSetOperatingTime(operatingTime)
 		if self.controlledVehicle ~= nil then
 			if self.controlledVehicle.setOperatingTime ~= nil then
 				self.controlledVehicle:setOperatingTime(operatingTime)
+
+				return string.format("Set operating time to %.1f", operatingTime)
 			end
+
+			return "Vehicle has no operating time"
 		else
 			return "Enter a vehicle first!"
 		end
 	end
+
+	return "Not available on clients"
 end
 
 function FSBaseMission:consoleCommandShowVehicleDistance(active)
@@ -3985,7 +4026,12 @@ function FSBaseMission:consoleCommandAddPallet(palletType)
 			local fillTypeIndex = vehicle:getFillUnitFirstSupportedFillType(1)
 
 			vehicle:addFillUnitFillLevel(1, 1, math.huge, fillTypeIndex, ToolType.UNDEFINED, nil)
+			print("Loaded pallet")
+
+			return
 		end
+
+		print("Failed to load pallet")
 	end
 
 	local farmId = g_currentMission:getFarmId()

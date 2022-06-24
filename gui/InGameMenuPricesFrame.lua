@@ -363,7 +363,7 @@ function InGameMenuPricesFrame:populateCellForItemInSection(list, section, index
 
 			cell:getAttribute("priceTrend"):applyProfile(profile)
 		else
-			cell:getAttribute("buyPrice"):setValue(price * 100)
+			cell:getAttribute("buyPrice"):setValue(price * 1000)
 			cell:getAttribute("priceTrend"):applyProfile("ingameMenuPriceArrow")
 		end
 	end

@@ -130,7 +130,8 @@ function SettingsAdvancedFrame:updateValues()
 	local isFSRActive = self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR) ~= self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF]
 	local isFSR20Active = self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR_20) ~= self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF]
 	local isDLSSActive = self.settingsModel:getValue(SettingsModel.SETTING.DLSS) ~= self.settingsModel.dlssMapping[DLSSQuality.OFF]
-	local isActive = isFSRActive or isFSR20Active or isDLSSActive
+	local isDLAAActive = self.settingsModel:getValue(SettingsModel.SETTING.POST_PROCESS_AA) == self.settingsModel.postProcessAntiAliasingMapping[PostProcessAntiAliasing.DLAA]
+	local isActive = isFSRActive or isFSR20Active or isDLSSActive or isDLAAActive
 
 	self.sharpnessElement:setDisabled(not isActive)
 	self:setMenuButtonInfoDirty()

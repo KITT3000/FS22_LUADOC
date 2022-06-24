@@ -564,6 +564,7 @@ function ConstructionScreen:populateCellForItemInSection(list, section, index, c
 	local item = self.items[self.currentCategory][self.currentTab][index]
 
 	cell:getAttribute("price"):setValue(item.price)
+	cell:getAttribute("modDlc"):setText(item.modDlc)
 
 	if item.brandFilename ~= nil then
 		cell:getAttribute("brand"):setImageFilename(item.brandFilename)
@@ -592,10 +593,12 @@ function ConstructionScreen:onListSelectionChanged(list, section, index)
 
 	self.detailsTitle:setText(selectedBrush.name)
 
-	if selectedBrush.storeItem ~= nil then
+	local storeItem = selectedBrush.storeItem
+
+	if storeItem ~= nil then
 		local descriptionText = ""
 
-		for _, func in pairs(selectedBrush.storeItem.functions) do
+		for _, func in pairs(storeItem.functions) do
 			descriptionText = descriptionText .. func .. " "
 		end
 
@@ -607,7 +610,7 @@ function ConstructionScreen:onListSelectionChanged(list, section, index)
 		self.detailsInfoIcon:setVisible(false)
 	end
 
-	self:setDetailAttributes(selectedBrush.storeItem, selectedBrush.displayItem)
+	self:setDetailAttributes(storeItem, selectedBrush.displayItem)
 end
 
 function ConstructionScreen:onClickItem()
@@ -801,6 +804,16 @@ function ConstructionScreen:rebuildData()
 					brandImage = brand.image
 				end
 
+				local modDlc = ""
+
+				if storeItem.isMod and storeItem.dlcTitle == nil then
+					modDlc = "Mod"
+				elseif storeItem.isMod and storeItem.dlcTitle ~= nil then
+					modDlc = storeItem.dlcTitle .. " (Mod)"
+				elseif storeItem.dlcTitle ~= nil then
+					modDlc = storeItem.dlcTitle
+				end
+
 				table.insert(self.items[storeItem.brush.category.index][storeItem.brush.tab.index], {
 					name = storeItem.name,
 					brushClass = brushClass,
@@ -808,6 +821,7 @@ function ConstructionScreen:rebuildData()
 					price = storeItem.price,
 					imageFilename = storeItem.imageFilename,
 					brandFilename = brandImage,
+					modDlc = modDlc,
 					storeItem = storeItem,
 					displayItem = g_currentMission.shopMenu.shopController:makeDisplayItem(storeItem),
 					uniqueIndex = numItems + 1
@@ -877,6 +891,7 @@ function ConstructionScreen:buildTerrainPaintBrushes(numItems)
 
 		if not knownLayers[layer] then
 			table.insert(paintsTab, {
+				modDlc = "",
 				price = 2,
 				name = g_i18n:convertText(title),
 				brushClass = ConstructionBrushPaint,

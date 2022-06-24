@@ -9,6 +9,9 @@ g_modNameToDirectory = {}
 local isReloadingDlcs = false
 g_dlcModNameHasPrefix = {}
 g_internalModsDirectory = "dataS/internalMods/"
+local internalMods = {
+	"agcoIdealSimulator"
+}
 local internalScriptMods = {
 	"FS22_precisionFarming",
 	"FS22_lindnerLintracSupercup"
@@ -138,21 +141,14 @@ end
 function loadInternalMods()
 	haveModsChanged()
 
-	local files = Files.new(g_internalModsDirectory)
+	for _, modName in pairs(internalMods) do
+		local modDir = g_internalModsDirectory .. modName .. "/"
+		local modFile = modDir .. "modDesc.xml"
 
-	for _, v in pairs(files.files) do
-		local modFileHash, modName = nil
+		if fileExists(modFile) then
+			modFileHash = getMD5("DevInternalMod_" .. modName)
 
-		if v.isDirectory then
-			modName = v.filename
-			modFileHash = getMD5("DevInternalMod_" .. v.filename)
-		end
-
-		if modName ~= nil then
-			local modDir = g_internalModsDirectory .. modName .. "/"
-			local modFile = modDir .. "modDesc.xml"
-
-			loadModDesc(modName, modDir, modFile, modFileHash, g_internalModsDirectory .. v.filename, v.isDirectory, false, true)
+			loadModDesc(modName, modDir, modFile, modFileHash, g_internalModsDirectory .. modName, true, false, true)
 		end
 	end
 end
@@ -322,7 +318,7 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 
 	setmetatable(modEnv, modEnv_mt)
 
-	if not isDLCFile then
+	if not isDLCFile and not isInternalMod then
 		modEnv._G = modEnv
 	end
 
@@ -606,7 +602,7 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	modEnv.g_isDevelopmentVersion = g_isDevelopmentVersion
 	modEnv.GS_IS_CONSOLE_VERSION = GS_IS_CONSOLE_VERSION
 
-	if not isDLCFile then
+	if not isDLCFile and not isInternalMod then
 		modEnv.ClassUtil = {
 			getClassModName = function (self, className)
 				local classModName = _G.ClassUtil.getClassModName(className)
@@ -897,6 +893,16 @@ function loadMod(modName, modDir, modFile, modTitle)
 		end)
 	end
 
+	xmlFile:iterate("modDesc.splitTypes.splitType", function (_, key)
+		local name = xmlFile:getString(key .. "#name")
+		local l10nKey = xmlFile:getString(key .. "#l10nKey")
+		local splitTypeIndex = xmlFile:getInt(key .. "#splitTypeIndex")
+		local pricePerLiter = xmlFile:getFloat(key .. "#pricePerLiter")
+		local woodChipsPerLiter = xmlFile:getFloat(key .. "#woodChipsPerLiter")
+		local allowsWoodHarvester = xmlFile:getBool(key .. "#allowsWoodHarvester")
+
+		g_splitTypeManager:addSplitType(name, l10nKey, splitTypeIndex, pricePerLiter, woodChipsPerLiter, allowsWoodHarvester, modName)
+	end)
 	xmlFile:iterate("modDesc.brands.brand", function (_, key)
 		local name = xmlFile:getString(key .. "#name")
 		local title = xmlFile:getString(key .. "#title")
@@ -908,7 +914,7 @@ function loadMod(modName, modDir, modFile, modTitle)
 
 	if isDLCFile then
 		xmlFile:iterate("modDesc.storeCategories.storeCategory", function (_, key)
-			g_storeManager:loadCategoryFromXML(xmlFile, key, modDir)
+			g_storeManager:loadCategoryFromXML(xmlFile, key, modDir, modName)
 		end)
 	end
 
@@ -1064,7 +1070,7 @@ function reloadDlcsAndMods()
 		loadMods()
 	end
 
-	g_inputBinding:loadModActions()
+	g_inputBinding:reloadModActions()
 
 	isReloadingDlcs = false
 end

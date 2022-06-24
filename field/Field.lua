@@ -87,7 +87,9 @@ function Field:setFarmland(farmland)
 end
 
 function Field:updateOwnership()
-	self:setFieldOwned(g_farmlandManager:getFarmlandOwner(self.farmland.id))
+	if self.farmland ~= nil then
+		self:setFieldOwned(g_farmlandManager:getFarmlandOwner(self.farmland.id))
+	end
 end
 
 function Field:setFieldId(fieldId)

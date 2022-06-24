@@ -384,6 +384,10 @@ function ExtendedSprayer:onVariableWorkWidthSectionChanged()
 			vehicle:updateCropSensorWorkingWidth()
 		end
 	end
+
+	if self.isClient then
+		ExtendedSprayer.updateSprayerEffectState(self, true)
+	end
 end
 
 function ExtendedSprayer:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnoreSelection)

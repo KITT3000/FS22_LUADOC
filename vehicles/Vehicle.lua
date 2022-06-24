@@ -649,8 +649,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 	if i3dNode == 0 then
 		self:setLoadingState(VehicleLoadingUtil.VEHICLE_LOAD_ERROR)
 		Logging.xmlError(self.xmlFile, "Vehicle i3d loading failed!")
-		self.xmlFile:delete()
-		asyncCallbackFunction(asyncCallbackObject, nil, self.loadingState, asyncCallbackArguments)
+		asyncCallbackFunction(asyncCallbackObject, self, self.loadingState, asyncCallbackArguments)
 
 		return
 	end
@@ -774,8 +773,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 	if self.numComponents == 0 then
 		Logging.xmlWarning(self.xmlFile, "No components defined for vehicle!")
 		self:setLoadingState(VehicleLoadingUtil.VEHICLE_LOAD_ERROR)
-		self.xmlFile:delete()
-		asyncCallbackFunction(asyncCallbackObject, nil, self.loadingState, asyncCallbackArguments)
+		asyncCallbackFunction(asyncCallbackObject, self, self.loadingState, asyncCallbackArguments)
 
 		return
 	end
@@ -1016,8 +1014,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 
 	if self.loadingState ~= VehicleLoadingUtil.VEHICLE_LOAD_OK then
 		Logging.xmlError(self.xmlFile, "Vehicle post-loading failed!")
-		self.xmlFile:delete()
-		asyncCallbackFunction(asyncCallbackObject, nil, self.loadingState, asyncCallbackArguments)
+		asyncCallbackFunction(asyncCallbackObject, self, self.loadingState, asyncCallbackArguments)
 
 		return
 	end
@@ -1177,8 +1174,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 					self:setRelativePosition(x, offset, z, yRot)
 				else
 					self:setLoadingState(VehicleLoadingUtil.VEHICLE_LOAD_NO_SPACE)
-					self.xmlFile:delete()
-					asyncCallbackFunction(asyncCallbackObject, nil, self.loadingState, asyncCallbackArguments)
+					asyncCallbackFunction(asyncCallbackObject, self, self.loadingState, asyncCallbackArguments)
 
 					return
 				end

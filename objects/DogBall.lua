@@ -96,7 +96,7 @@ function DogBall:updateTick(dt)
 
 		local parentNode = getParent(self.nodeId)
 
-		if parentNode ~= nil and (parentNode == getRootNode() or parentNode == g_currentMission.terrainRootNode) then
+		if parentNode ~= 0 and (parentNode == getRootNode() or parentNode == g_currentMission.terrainRootNode) then
 			local distSq = MathUtil.vector3LengthSq(x - self.spawnPos[1], y - self.spawnPos[2], z - self.spawnPos[3])
 
 			if distSq > DogBall.RESET_DISTANCE * DogBall.RESET_DISTANCE then

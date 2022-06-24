@@ -5,8 +5,6 @@ DedicatedServer = {
 	MAX_FRAME_LIMIT = 60
 }
 local DedicatedServer_mt = Class(DedicatedServer)
-local localSetFramerateLimiter = setFramerateLimiter
-setFramerateLimiter = nil
 
 function DedicatedServer.new(customMt)
 	local self = setmetatable({}, customMt or DedicatedServer_mt)
@@ -92,11 +90,11 @@ function DedicatedServer:load(filename)
 end
 
 function DedicatedServer:lowerFramerate()
-	localSetFramerateLimiter(true, DedicatedServer.MIN_FRAME_LIMIT)
+	setFramerateLimiter(true, DedicatedServer.MIN_FRAME_LIMIT)
 end
 
 function DedicatedServer:raiseFramerate()
-	localSetFramerateLimiter(true, DedicatedServer.MAX_FRAME_LIMIT)
+	setFramerateLimiter(true, DedicatedServer.MAX_FRAME_LIMIT)
 end
 
 function DedicatedServer:updateServerInfo(serverName, password, capacity)

@@ -34,9 +34,9 @@ function ExtendedSowingMachine:onLoad(savegame)
 	local spec = self.spec_extendedSowingMachine
 	spec.seedRateAutoMode = true
 	spec.manualSeedRate = ExtendedSowingMachine.DEFAULT_SEED_RATE
-	spec.lastSeedUsage = 0
 	spec.lastSeedRate = 0
 	spec.lastSeedRateIndex = 0
+	spec.lastRealChangedArea = 0
 	spec.lastGroundUpdateDistance = math.huge
 	spec.groundUpdateDistance = 4
 	spec.seedRateRecommendation = nil
@@ -95,9 +95,10 @@ function ExtendedSowingMachine:onEndWorkAreaProcessing(dt, hasProcessed)
 
 	if self.isServer and spec.workAreaParameters.lastChangedArea > 0 then
 		local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(spec.workAreaParameters.seedsFruitType)
+		local realHa = MathUtil.areaToHa(self.spec_extendedSowingMachine.lastRealChangedArea, g_currentMission:getFruitPixelsToSqm())
 		local lastHa = MathUtil.areaToHa(spec.workAreaParameters.lastChangedArea, g_currentMission:getFruitPixelsToSqm())
-		local usage = self.spec_extendedSowingMachine.lastSeedUsage * lastHa * 10000
-		local usageRegular = fruitDesc.seedUsagePerSqm * lastHa * 10000
+		local usage = fruitDesc.seedUsagePerSqm * lastHa * 10000
+		local usageRegular = fruitDesc.seedUsagePerSqm * realHa * 10000
 		local damage = self:getVehicleDamage()
 
 		if damage > 0 then
@@ -105,9 +106,9 @@ function ExtendedSowingMachine:onEndWorkAreaProcessing(dt, hasProcessed)
 			usageRegular = usageRegular * (1 + damage * SowingMachine.DAMAGED_USAGE_INCREASE)
 		end
 
-		local farmlandStatistics, isOnField, farmlandId = self:getPFStatisticInfo()
+		local farmlandStatistics, _, farmlandId = self:getPFStatisticInfo()
 
-		if isOnField and farmlandStatistics ~= nil and farmlandId ~= nil then
+		if farmlandStatistics ~= nil and farmlandId ~= nil then
 			farmlandStatistics:updateStatistic(farmlandId, "usedSeeds", usage)
 			farmlandStatistics:updateStatistic(farmlandId, "usedSeedsRegular", usageRegular)
 		end
@@ -181,12 +182,11 @@ function ExtendedSowingMachine:processSowingMachineArea(superFunc, workArea, dt)
 		if realSeedRateIndex ~= nil then
 			local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(fruitType)
 			local usageOffset = realUsage / fruitDesc.seedUsagePerSqm
+			spec.lastRealChangedArea = workAreaParameters.lastChangedArea
 			workAreaParameters.lastChangedArea = workAreaParameters.lastChangedArea * usageOffset
 			spec.lastSeedRate = realSeedRate
 			spec.lastSeedRateIndex = realSeedRateIndex
 		end
-
-		spec.lastSeedUsage = realUsage
 	end
 
 	return changedArea, totalArea

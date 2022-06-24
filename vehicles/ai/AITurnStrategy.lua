@@ -1350,7 +1350,7 @@ function AITurnStrategy:createPointsForSegment(segmentIndex, segmentProgress, po
 				break
 			end
 
-			local x1, _, z1 = MathUtil.lerp3(segment.startPoint[1], segment.startPoint[2], segment.startPoint[3], segment.endPoint[1], segment.endPoint[2], segment.endPoint[3], nextAlpha)
+			local x1, _, z1 = MathUtil.vector3ArrayLerp(segment.startPoint, segment.endPoint, nextAlpha)
 			positions[posIndex + 3] = z1
 			positions[posIndex + 2] = positions[2]
 			positions[posIndex + 1] = x1

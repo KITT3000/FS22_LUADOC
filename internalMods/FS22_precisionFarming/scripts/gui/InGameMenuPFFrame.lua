@@ -237,6 +237,13 @@ function InGameMenuPFFrame:onLoadMapFinished()
 			table.insert(self.coverStateOverlays, coverStateOverlay)
 		end
 	end
+
+	self.precisionFarming:registerVisualizationOverlay(self.soilStateOverlay)
+	self.precisionFarming:registerVisualizationOverlay(self.farmlandSelectionOverlay)
+
+	for i = 1, #self.coverStateOverlays do
+		self.precisionFarming:registerVisualizationOverlay(self.coverStateOverlays[i].overlay)
+	end
 end
 
 function InGameMenuPFFrame:reset()

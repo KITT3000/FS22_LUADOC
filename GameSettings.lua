@@ -20,6 +20,7 @@ GameSettings.SETTING = {
 	USE_MILES = "useMiles",
 	INGAME_MAP_SOIL_FILTER = "ingameMapSoilFilter",
 	INVERT_Y_LOOK = "invertYLook",
+	FRAME_LIMIT = "frameLimit",
 	EASY_ARM_CONTROL = "easyArmControl",
 	SHOW_MULTIPLAYER_NAMES = "showMultiplayerNames",
 	USE_WORLD_CAMERA = "useWorldCamera",
@@ -122,6 +123,15 @@ function GameSettings.new(customMt, messageCenter)
 		end
 	end
 
+	self.frameLimitValues = {
+		30,
+		60,
+		90,
+		120,
+		144,
+		240
+	}
+	self[GameSettings.SETTING.FRAME_LIMIT] = g_defaultFrameLimit
 	self[GameSettings.SETTING.DEFAULT_SERVER_PORT] = 10823
 	self[GameSettings.SETTING.MAX_NUM_MIRRORS] = maxMirrors
 	self[GameSettings.SETTING.LIGHTS_PROFILE] = GS_PROFILE_VERY_HIGH
@@ -499,6 +509,25 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.CAMERA_TILTING, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.cameraTilting"), self[GameSettings.SETTING.CAMERA_TILTING]))
 		self:setValue(GameSettings.SETTING.CAMERA_BOBBING, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.cameraBobbing"), self[GameSettings.SETTING.CAMERA_BOBBING]))
 
+		if Platform.hasAdjustableFrameLimit then
+			local frameLimitValue = getXMLInt(xmlFile, "gameSettings.frameLimit") or self[GameSettings.SETTING.FRAME_LIMIT]
+			local found = false
+
+			for _, value in ipairs(self.frameLimitValues) do
+				if value == frameLimitValue then
+					found = true
+
+					break
+				end
+			end
+
+			if not found then
+				frameLimitValue = self[GameSettings.SETTING.FRAME_LIMIT]
+			end
+
+			self:setValue(GameSettings.SETTING.FRAME_LIMIT, frameLimitValue)
+		end
+
 		local wrapped = XMLFile.wrap(xmlFile)
 		self.lastCreatedLicensePlate = g_licensePlateManager.loadLicensePlateDataFromXML(wrapped, "gameSettings.lastCreatedLicensePlate", true)
 
@@ -538,6 +567,11 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLBool(xmlFile, "gameSettings.gyroscopeSteering", self[GameSettings.SETTING.GYROSCOPE_STEERING])
 		setXMLBool(xmlFile, "gameSettings.hints", self[GameSettings.SETTING.HINTS])
 		setXMLBool(xmlFile, "gameSettings.cameraTilting", self[GameSettings.SETTING.CAMERA_TILTING])
+
+		if Platform.hasAdjustableFrameLimit then
+			setXMLInt(xmlFile, "gameSettings.frameLimit", self[GameSettings.SETTING.FRAME_LIMIT])
+		end
+
 		setXMLBool(xmlFile, "gameSettings.showAllMods", self[GameSettings.SETTING.SHOW_ALL_MODS])
 		setXMLString(xmlFile, "gameSettings.onlinePresenceName", self[GameSettings.SETTING.ONLINE_PRESENCE_NAME])
 		setXMLBool(xmlFile, "gameSettings.player#lastPlayerStyleMale", self[GameSettings.SETTING.LAST_PLAYER_STYLE_MALE])

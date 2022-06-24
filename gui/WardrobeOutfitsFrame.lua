@@ -81,6 +81,14 @@ function WardrobeOutfitsFrame:resetList()
 		local selectedSection = 1
 
 		for i, preset in ipairs(self.playerStyle.presets) do
+			if preset.brandName ~= nil then
+				preset.brand = g_brandManager:getBrandByName(preset.brandName)
+
+				if preset.brand ~= nil then
+					preset.brandName = nil
+				end
+			end
+
 			local section = preset.brand ~= nil and 2 or 1
 			local isCurrentSelection = self.currentlyUsedPreset == i
 

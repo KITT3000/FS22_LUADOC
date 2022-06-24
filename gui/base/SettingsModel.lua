@@ -8,6 +8,7 @@ SettingsModel.SETTING_CLASS = {
 }
 SettingsModel.SETTING = {
 	TERRAIN_QUALITY = "terrainQuality",
+	RESOLUTION = "resolution",
 	SHARPNESS = "sharpness",
 	FIDELITYFX_SR_20 = "fidelityFxSR20",
 	TEXTURE_RESOLUTION = "textureResolution",
@@ -18,7 +19,6 @@ SettingsModel.SETTING = {
 	LANGUAGE = "language",
 	SHADOW_MAP_FILTERING = "shadowMapFiltering",
 	HDR_PEAK_BRIGHTNESS = "hdrPeakBrightness",
-	RESOLUTION = "resolution",
 	RESOLUTION_SCALE = "resolutionScale",
 	SHADOW_QUALITY = "shadowQuality",
 	CONSOLE_RESOLUTION = "consoleResolution",
@@ -55,6 +55,7 @@ SettingsModel.SETTING = {
 	UI_SCALE = GameSettings.SETTING.UI_SCALE,
 	FOV_Y = GameSettings.SETTING.FOV_Y,
 	CAMERA_BOBBING = GameSettings.SETTING.CAMERA_BOBBING,
+	FRAME_LIMIT = GameSettings.SETTING.FRAME_LIMIT,
 	INVERT_Y_LOOK = GameSettings.SETTING.INVERT_Y_LOOK,
 	VOLUME_MASTER = GameSettings.SETTING.VOLUME_MASTER,
 	SHOW_HELP_MENU = GameSettings.SETTING.SHOW_HELP_MENU,
@@ -177,6 +178,7 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.directionChangeModeTexts = {}
 	self.gearShiftModeTexts = {}
 	self.hudSpeedGaugeTexts = {}
+	self.frameLimitTexts = {}
 	self.intialValues = {}
 	self.deviceSettings = {}
 	self.currentDevice = {}
@@ -258,6 +260,10 @@ function SettingsModel:addManagedSettings()
 	self:addGearShiftModeSetting()
 	self:addHudSpeedGaugeSetting()
 	self:addForceFeedbackSetting()
+
+	if Platform.hasAdjustableFrameLimit then
+		self:addFrameLimitSetting()
+	end
 
 	if Platform.isMobile then
 		self:addGyroscopeSteeringSetting()
@@ -707,14 +713,17 @@ function SettingsModel:createControlDisplayValues()
 		table.insert(self.sharpnessTexts, string.format("%.1f", i))
 	end
 
-	self.postProcessAntiAliasingTexts = {
-		self.l10n:getText("ui_off")
-	}
+	self.postProcessAntiAliasingTexts = {}
+	self.postProcessAntiAliasingMapping = {}
+	self.postProcessAntiAliasingMappingReverse = {}
 	self.postProcessAntiAliasingToolTip = self.l10n:getText("toolTip_ppaa")
 
-	for ppaa = 1, PostProcessAntiAliasing.NUM - 1 do
+	for ppaa = 0, PostProcessAntiAliasing.NUM - 1 do
 		if ppaa == PostProcessAntiAliasing.OFF or getSupportsPostProcessAntiAliasing(ppaa) then
-			table.insert(self.postProcessAntiAliasingTexts, getPostProcessAntiAliasingName(ppaa))
+			table.insert(self.postProcessAntiAliasingTexts, ppaa == PostProcessAntiAliasing.OFF and g_i18n:getText("ui_off") or getPostProcessAntiAliasingName(ppaa))
+
+			self.postProcessAntiAliasingMapping[ppaa] = #self.postProcessAntiAliasingTexts
+			self.postProcessAntiAliasingMappingReverse[#self.postProcessAntiAliasingTexts] = ppaa
 
 			if ppaa == PostProcessAntiAliasing.TAA then
 				self.postProcessAntiAliasingToolTip = self.postProcessAntiAliasingToolTip .. "\n" .. self.l10n:getText("toolTip_ppaa_taa")
@@ -812,6 +821,17 @@ function SettingsModel:createControlDisplayValues()
 		self.l10n:getText("ui_keyboard"),
 		self.l10n:getText("ui_gamepad")
 	}
+	self.frameLimitMapping = {}
+	self.frameLimitMappingReverse = {}
+	self.frameLimitTexts = {}
+
+	for _, value in ipairs(g_gameSettings.frameLimitValues) do
+		table.insert(self.frameLimitTexts, tostring(value))
+
+		self.frameLimitMapping[value] = #self.frameLimitTexts
+		self.frameLimitMappingReverse[#self.frameLimitTexts] = value
+	end
+
 	self.directionChangeModeTexts = {
 		[VehicleMotor.DIRECTION_CHANGE_MODE_AUTOMATIC] = self.l10n:getText("ui_directionChangeModeAutomatic"),
 		[VehicleMotor.DIRECTION_CHANGE_MODE_MANUAL] = self.l10n:getText("ui_directionChangeModeManual")
@@ -1181,6 +1201,10 @@ function SettingsModel:getMPLanguageTexts()
 	return self.mpLanguageTexts
 end
 
+function SettingsModel:getFrameLimitTexts()
+	return self.frameLimitTexts
+end
+
 function SettingsModel:getInputHelpModeTexts()
 	return self.inputHelpModeTexts
 end
@@ -1533,11 +1557,15 @@ end
 
 function SettingsModel:addPostProcessAntiAliasingSetting()
 	local function readValue()
-		return getPostProcessAntiAliasing() + 1
+		return self.postProcessAntiAliasingMapping[getPostProcessAntiAliasing()]
 	end
 
 	local function writeValue(value)
-		setPostProcessAntiAliasing(value - 1)
+		local newValue = self.postProcessAntiAliasingMappingReverse[value]
+
+		if getPostProcessAntiAliasing() ~= newValue then
+			setPostProcessAntiAliasing(newValue)
+		end
 	end
 
 	self:addSetting(SettingsModel.SETTING.POST_PROCESS_AA, readValue, writeValue, true)
@@ -1924,6 +1952,18 @@ function SettingsModel:addInputHelpModeSetting()
 	self:addSetting(SettingsModel.SETTING.INPUT_HELP_MODE, readValue, writeValue, true)
 end
 
+function SettingsModel:addFrameLimitSetting()
+	local function readValue()
+		return self.frameLimitMapping[g_gameSettings:getValue(SettingsModel.SETTING.FRAME_LIMIT)]
+	end
+
+	local function writeValue(value)
+		g_gameSettings:setValue(SettingsModel.SETTING.FRAME_LIMIT, self.frameLimitMappingReverse[value])
+	end
+
+	self:addSetting(SettingsModel.SETTING.FRAME_LIMIT, readValue, writeValue, true)
+end
+
 function SettingsModel:addBrightnessSetting()
 	local function readBrightness()
 		local brightness = getBrightness()
@@ -2209,13 +2249,7 @@ end
 
 function SettingsModel:addVoiceInputSensitivitySetting()
 	local function readMode()
-		local value = VoiceChatUtil.getInputSensitivity()
-
-		if value < 0 then
-			return 1
-		else
-			return MathUtil.round(value * 10 + 2)
-		end
+		return g_gameSettings:getValue(SettingsModel.SETTING.VOICE_INPUT_SENSITIVITY)
 	end
 
 	local function writeMode(value)

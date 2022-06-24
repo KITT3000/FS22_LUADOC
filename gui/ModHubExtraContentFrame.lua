@@ -108,13 +108,15 @@ function ModHubExtraContentFrame:onListSelectionChanged(list, section, index)
 end
 
 function ModHubExtraContentFrame:onButtonUnlock(defaultText)
+	local keyLength = GS_PLATFORM_PC and 24 or ExtraContentSystem.KEY_LENGTH
+
 	g_gui:showTextInputDialog({
 		disableFilter = true,
 		callback = self.onExtraContentKeyEntered,
 		target = self,
 		dialogPrompt = g_i18n:getText(ModHubExtraContentFrame.L10N_SYMBOL.UNLOCK_ITEM_KEY),
 		imePrompt = g_i18n:getText(ModHubExtraContentFrame.L10N_SYMBOL.UNLOCK_ITEM_KEY),
-		maxCharacters = ExtraContentSystem.KEY_LENGTH,
+		maxCharacters = keyLength,
 		confirmText = g_i18n:getText(ModHubExtraContentFrame.L10N_SYMBOL.UNLOCK_ITEM),
 		defaultText = defaultText or ""
 	})
@@ -122,7 +124,22 @@ end
 
 function ModHubExtraContentFrame:onExtraContentKeyEntered(text, ok, categoryId)
 	if ok then
-		local upperText = text:upper()
+		local upperText = utf8ToUpper(text)
+		local length = utf8Strlen(text)
+
+		if GS_PLATFORM_PC and length >= 20 and length <= 24 then
+			g_gui:showYesNoDialog({
+				text = g_i18n:getText("extraContent_eshopWarning"),
+				callback = self.onEShopOpen,
+				target = self,
+				yesText = g_i18n:getText("extraContent_eshopVisitShop"),
+				noText = g_i18n:getText("button_back"),
+				args = text
+			})
+
+			return
+		end
+
 		local item, errorCode = g_extraContentSystem:unlockItem(upperText, false)
 		local message = nil
 
@@ -147,6 +164,14 @@ function ModHubExtraContentFrame:onExtraContentKeyEntered(text, ok, categoryId)
 			target = self,
 			args = text
 		})
+	end
+end
+
+function ModHubExtraContentFrame:onEShopOpen(yes, text)
+	if yes then
+		openWebFile("lp/fs22-go-to-eshop.php", "key=" .. text)
+	else
+		self:onButtonUnlock(text)
 	end
 end
 

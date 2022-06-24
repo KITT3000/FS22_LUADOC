@@ -3731,7 +3731,7 @@ function Cylindered:updateMovingPart(part, placeComponents, updateDependentParts
 		end
 
 		local inDirX, inDirY, inDirZ = localDirectionToWorld(getParent(part.node), unpack(part.initialDirection))
-		dirX, dirY, dirZ = MathUtil.lerp3(inDirX, inDirY, inDirZ, dirX, dirY, dirZ, part.smoothedDirectionScaleAlpha)
+		dirX, dirY, dirZ = MathUtil.vector3Lerp(inDirX, inDirY, inDirZ, dirX, dirY, dirZ, part.smoothedDirectionScaleAlpha)
 	end
 
 	if (part.doDirectionAlignment or applyDirection) and (dirX ~= 0 or dirY ~= 0 or dirZ ~= 0) then

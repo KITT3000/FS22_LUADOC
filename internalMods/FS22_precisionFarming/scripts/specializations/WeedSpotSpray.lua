@@ -111,14 +111,20 @@ function WeedSpotSpray:onLoad(savegame)
 
 					table.insert(spec.nozzleNodes, entry)
 				else
-					table.insert(spec.nozzleNodesToDelete, entry.node)
+					spec.nozzleNodesToDelete[entry.node] = true
 				end
 			end
 		end)
 	end)
 
+	for i = 1, #spec.nozzleNodes do
+		spec.nozzleNodesToDelete[spec.nozzleNodes[i].node] = nil
+	end
+
 	for i = 1, #spec.nozzleNodesToDelete do
-		delete(spec.nozzleNodesToDelete[i])
+		if entityExists(spec.nozzleNodesToDelete[i]) then
+			delete(spec.nozzleNodesToDelete[i])
+		end
 	end
 
 	spec.nozzleNodesToDelete = {}

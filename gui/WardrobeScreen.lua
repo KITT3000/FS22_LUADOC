@@ -555,6 +555,14 @@ function WardrobeScreen:updateBrandIcon()
 		local index = self.temporaryPlayerStyle[configName].selection
 		local item = self.temporaryPlayerStyle[configName].items[index]
 
+		if item ~= nil and item.brandName ~= nil then
+			item.brand = g_brandManager:getBrandByName(item.brandName)
+
+			if item.brand ~= nil then
+				item.brandName = nil
+			end
+		end
+
 		if item ~= nil and item.brand ~= nil then
 			brandImage = item.brand.image
 		elseif fallbackConfigName ~= nil then

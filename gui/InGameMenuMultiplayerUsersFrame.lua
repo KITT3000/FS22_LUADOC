@@ -28,6 +28,7 @@ InGameMenuMultiplayerUsersFrame.CONTROLS = {
 	"manageMissionsPermissionCheckbox",
 	"manageProductionsPermissionCheckbox",
 	"tradeAnimalsPermissionCheckbox",
+	"cutTreesPermissionCheckbox",
 	"createFieldsPermissionCheckbox",
 	"landscapingPermissionCheckbox"
 }
@@ -122,6 +123,7 @@ function InGameMenuMultiplayerUsersFrame:initialize()
 		[Farm.PERMISSION.MANAGE_CONTRACTS] = self.manageMissionsPermissionCheckbox,
 		[Farm.PERMISSION.MANAGE_PRODUCTIONS] = self.manageProductionsPermissionCheckbox,
 		[Farm.PERMISSION.TRADE_ANIMALS] = self.tradeAnimalsPermissionCheckbox,
+		[Farm.PERMISSION.CUT_TREES] = self.cutTreesPermissionCheckbox,
 		[Farm.PERMISSION.CREATE_FIELDS] = self.createFieldsPermissionCheckbox,
 		[Farm.PERMISSION.LANDSCAPING] = self.landscapingPermissionCheckbox
 	}

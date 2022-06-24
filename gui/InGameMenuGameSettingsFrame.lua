@@ -93,6 +93,13 @@ function InGameMenuGameSettingsFrame:initialize(pageMapOverview, onClickBackCall
 	FocusManager:linkElements(self.buttonPauseGame, FocusManager.BOTTOM, firstSettingElement)
 	FocusManager:linkElements(firstSettingElement, FocusManager.TOP, self.buttonPauseGame)
 	FocusManager:linkElements(self.buttonPauseGame, FocusManager.TOP, lastSettingElement)
+
+	local old = self.textSavegameName.onFocusLeave
+
+	function self.textSavegameName.onFocusLeave(...)
+		old(...)
+		self:updateSavegameName()
+	end
 end
 
 function InGameMenuGameSettingsFrame:setMissionInfo(missionInfo)
@@ -326,6 +333,10 @@ function InGameMenuGameSettingsFrame:assignDynamicTexts()
 end
 
 function InGameMenuGameSettingsFrame:onEnterPressedSavegameName()
+	self:updateSavegameName()
+end
+
+function InGameMenuGameSettingsFrame:updateSavegameName()
 	local newName = self.textSavegameName.text
 
 	if newName ~= self.savegameName then

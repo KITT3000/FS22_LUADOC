@@ -88,7 +88,7 @@ BigBag = {
 
 			if self.isServer and math.abs(spec.lastJointLimitAlpha - alpha) > 0.05 then
 				if spec.minRotLimit ~= nil and spec.maxRotLimit ~= nil then
-					local rx, ry, rz = MathUtil.lerp3(spec.minRotLimit[1], spec.minRotLimit[2], spec.minRotLimit[3], spec.maxRotLimit[1], spec.maxRotLimit[2], spec.maxRotLimit[3], alpha)
+					local rx, ry, rz = MathUtil.vector3ArrayLerp(spec.minRotLimit, spec.maxRotLimit, alpha)
 
 					self:setComponentJointRotLimit(spec.componentJoint, 1, -rx, rx)
 					self:setComponentJointRotLimit(spec.componentJoint, 2, -ry, ry)
@@ -118,7 +118,7 @@ BigBag = {
 			self:setAnimationTime(spec.sizeAnimationName, spec.currentAnimationTime)
 
 			if self.isServer and spec.minTransLimit ~= nil and spec.maxTransLimit ~= nil then
-				local x, y, z = MathUtil.lerp3(spec.minTransLimit[1], spec.minTransLimit[2], spec.minTransLimit[3], spec.maxTransLimit[1], spec.maxTransLimit[2], spec.maxTransLimit[3], fillLevelPct)
+				local x, y, z = MathUtil.vector3ArrayLerp(spec.minTransLimit, spec.maxTransLimit, fillLevelPct)
 
 				self:setComponentJointTransLimit(spec.componentJoint, 1, -x, x)
 				self:setComponentJointTransLimit(spec.componentJoint, 2, -y, y)

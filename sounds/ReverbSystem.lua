@@ -104,6 +104,18 @@ function ReverbSystem:loadSettings()
 		referenceHF = xmlFile:getFloat(settingKey .. ".reference#referenceHF", referenceHF)
 		referenceLF = xmlFile:getFloat(settingKey .. ".reference#referenceLF", referenceLF)
 
+		if referenceHF <= 0 then
+			Logging.xmlError(xmlFile, "Reverb setting 'referenceHF' at '%s' needs to be bigger than 0", settingKey)
+
+			return true
+		end
+
+		if referenceLF <= 0 then
+			Logging.xmlError(xmlFile, "Reverb setting 'referenceLF' at '%s' needs to be bigger than 0", settingKey)
+
+			return true
+		end
+
 		setReverbPreset(presetId, gain, gainHF, gainLF, decayTime, decayHFRatio, reflectionsGain, reflectionsDelay, lateReverbGain, lateReverbDelay, referenceHF, referenceLF)
 
 		return true

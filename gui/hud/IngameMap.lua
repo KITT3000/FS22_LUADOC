@@ -120,7 +120,7 @@ function IngameMap:toggleSize(state, force)
 
 	self.layout:activate()
 	g_inputBinding:setActionEventTextVisibility(self.toggleMapSizeEventId, self.layout:getShowsToggleActionText())
-	g_gameSettings:setValue("ingameMapState", self.state, true)
+	g_gameSettings:setValue("ingameMapState", self.state)
 end
 
 function IngameMap:turnSmall()

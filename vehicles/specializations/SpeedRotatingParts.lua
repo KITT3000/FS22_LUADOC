@@ -300,7 +300,7 @@ function SpeedRotatingParts:loadSpeedRotatingPartFromXML(speedRotatingPart, xmlF
 					return self:getIsSpeedRotatingPartActive(speedRotatingPart)
 				end
 
-				speedRotatingPart.tireTrackNodeIndex = self:addTireTrackNode(wheel, true, speedRotatingPart.componentNode, speedRotatingPart.repr, speedRotatingPart.tireTrackAtlasIndex, speedRotatingPart.tireTrackWidth, wheel.radius, 0, speedRotatingPart.tireTrackInverted, activeFunc)
+				speedRotatingPart.tireTrackNodeIndex = self:addTireTrackNode(wheel, true, speedRotatingPart.componentNode, speedRotatingPart.driveNode, speedRotatingPart.tireTrackAtlasIndex, speedRotatingPart.tireTrackWidth, wheel.radius, 0, speedRotatingPart.tireTrackInverted, activeFunc)
 			end
 		end
 	end
@@ -323,13 +323,21 @@ function SpeedRotatingParts:loadSpeedRotatingPartFromXML(speedRotatingPart, xmlF
 	speedRotatingPart.maxYRot = xmlFile:getValue(key .. "#maxYRot")
 	speedRotatingPart.steeringAngle = 0
 	speedRotatingPart.steeringAngleSent = 0
+	speedRotatingPart.speedReferenceNode = xmlFile:getValue(key .. "#speedReferenceNode", nil, self.components, self.i3dMappings)
+
+	if speedRotatingPart.speedReferenceNode ~= nil and speedRotatingPart.speedReferenceNode == speedRotatingPart.driveNode then
+		Logging.xmlWarning(self.xmlFile, "Ignoring speedRotationPart '%s' because speedReferenceNode is identical with driveNode. Need to be different!", key)
+
+		return false
+	end
+
 	speedRotatingPart.wheelScale = xmlFile:getValue(key .. "#wheelScale")
 
 	if speedRotatingPart.wheelScale == nil then
 		local baseRadius = 1
 		local radius = 1
 
-		if speedRotatingPart.wheel ~= nil then
+		if speedRotatingPart.wheel ~= nil and speedRotatingPart.speedReferenceNode == nil then
 			baseRadius = speedRotatingPart.wheel.radius
 			radius = speedRotatingPart.wheel.radius
 		end
@@ -342,14 +350,6 @@ function SpeedRotatingParts:loadSpeedRotatingPartFromXML(speedRotatingPart, xmlF
 	speedRotatingPart.stopIfNotActive = xmlFile:getValue(key .. "#stopIfNotActive", false)
 	speedRotatingPart.fadeOutTime = xmlFile:getValue(key .. "#fadeOutTime", 3) * 1000
 	speedRotatingPart.activationSpeed = xmlFile:getValue(key .. "#activationSpeed", 1)
-	speedRotatingPart.speedReferenceNode = xmlFile:getValue(key .. "#speedReferenceNode", nil, self.components, self.i3dMappings)
-
-	if speedRotatingPart.speedReferenceNode ~= nil and speedRotatingPart.speedReferenceNode == speedRotatingPart.driveNode then
-		Logging.xmlWarning(self.xmlFile, "Ignoring speedRotationPart '%s' because speedReferenceNode is identical with driveNode. Need to be different!", key)
-
-		return false
-	end
-
 	speedRotatingPart.lastSpeed = 0
 	speedRotatingPart.lastDir = 1
 	speedRotatingPart.maxUpdateDistance = xmlFile:getValue(key .. "#maxUpdateDistance", SpeedRotatingParts.DEFAULT_MAX_UPDATE_DISTANCE)
@@ -384,25 +384,7 @@ function SpeedRotatingParts:updateSpeedRotatingPart(speedRotatingPart, dt, isPar
 	end
 
 	if isPartActive then
-		if speedRotatingPart.wheel ~= nil then
-			if speedRotatingPart.lastWheelXRot == nil then
-				speedRotatingPart.lastWheelXRot = speedRotatingPart.wheel.netInfo.xDrive
-			end
-
-			local rotDiff = speedRotatingPart.wheel.netInfo.xDrive - speedRotatingPart.lastWheelXRot
-
-			if math.pi < rotDiff then
-				rotDiff = rotDiff - 2 * math.pi
-			elseif rotDiff < -math.pi then
-				rotDiff = rotDiff + 2 * math.pi
-			end
-
-			speed = math.abs(rotDiff)
-			dir = MathUtil.sign(rotDiff)
-			speedRotatingPart.lastWheelXRot = speedRotatingPart.wheel.netInfo.xDrive
-			local _ = nil
-			_, speedRotatingPart.steeringAngle, _ = getRotation(speedRotatingPart.wheel.repr)
-		elseif speedRotatingPart.speedReferenceNode ~= nil then
+		if speedRotatingPart.speedReferenceNode ~= nil then
 			local newX, newY, newZ = getWorldTranslation(speedRotatingPart.speedReferenceNode)
 
 			if speedRotatingPart.lastPosition == nil then
@@ -427,6 +409,24 @@ function SpeedRotatingParts:updateSpeedRotatingPart(speedRotatingPart, dt, isPar
 			speedRotatingPart.lastPosition[3] = newZ
 			speedRotatingPart.lastPosition[2] = newY
 			speedRotatingPart.lastPosition[1] = newX
+		elseif speedRotatingPart.wheel ~= nil then
+			if speedRotatingPart.lastWheelXRot == nil then
+				speedRotatingPart.lastWheelXRot = speedRotatingPart.wheel.netInfo.xDrive
+			end
+
+			local rotDiff = speedRotatingPart.wheel.netInfo.xDrive - speedRotatingPart.lastWheelXRot
+
+			if math.pi < rotDiff then
+				rotDiff = rotDiff - 2 * math.pi
+			elseif rotDiff < -math.pi then
+				rotDiff = rotDiff + 2 * math.pi
+			end
+
+			speed = math.abs(rotDiff)
+			dir = MathUtil.sign(rotDiff)
+			speedRotatingPart.lastWheelXRot = speedRotatingPart.wheel.netInfo.xDrive
+			local _ = nil
+			_, speedRotatingPart.steeringAngle, _ = getRotation(speedRotatingPart.wheel.repr)
 		else
 			speed = self.lastSpeedReal * dt
 			dir = self.movingDirection

@@ -331,7 +331,7 @@ function VariableWorkWidth:setSectionNodePercentage(sectionNodes, percentage)
 		local sectionNode = sectionNodes[i]
 
 		if sectionNode.startTrans ~= nil and sectionNode.endTrans ~= nil then
-			setTranslation(sectionNode.node, MathUtil.lerp3(sectionNode.startTrans[1], sectionNode.startTrans[2], sectionNode.startTrans[3], sectionNode.endTrans[1], sectionNode.endTrans[2], sectionNode.endTrans[3], percentage))
+			setTranslation(sectionNode.node, MathUtil.vector3ArrayLerp(sectionNode.startTrans, sectionNode.endTrans, percentage))
 		end
 
 		if sectionNode.startTransX ~= nil and sectionNode.endTransX ~= nil then
@@ -342,7 +342,7 @@ function VariableWorkWidth:setSectionNodePercentage(sectionNodes, percentage)
 		end
 
 		if sectionNode.startRot ~= nil and sectionNode.endRot ~= nil then
-			setRotation(sectionNode.node, MathUtil.lerp3(sectionNode.startRot[1], sectionNode.startRot[2], sectionNode.startRot[3], sectionNode.endRot[1], sectionNode.endRot[2], sectionNode.endRot[3], percentage))
+			setRotation(sectionNode.node, MathUtil.vector3ArrayLerp(sectionNode.startRot, sectionNode.endRot, percentage))
 		end
 
 		if sectionNode.workAreaIndex ~= nil then

@@ -191,7 +191,7 @@ function WoodHarvester:onLoad(savegame)
 		warningTreeTooThick = g_i18n:getText("warning_treeTooThick"),
 		warningTreeTooThickAtPosition = g_i18n:getText("warning_treeTooThickAtPosition"),
 		warningTreeTypeNotSupported = g_i18n:getText("warning_treeTypeNotSupported"),
-		warningYouDontHaveAccessToThisLand = g_i18n:getText("warning_youDontHaveAccessToThisLand")
+		warningYouDontHaveAccessToThisLand = g_i18n:getText("warning_youAreNotAllowedToCutThisTree")
 	}
 
 	if self.loadDashboardsFromXML ~= nil then
@@ -759,7 +759,7 @@ function WoodHarvester:onStateChange(state, data)
 end
 
 function WoodHarvester:getCanSplitShapeBeAccessed(x, z, shape)
-	return g_currentMission.accessHandler:canFarmAccessLand(self:getActiveFarm(), x, z)
+	return g_currentMission.accessHandler:canFarmAccessLand(self:getActiveFarm(), x, z) and g_currentMission:getHasPlayerPermission("cutTrees", self:getOwner())
 end
 
 function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)

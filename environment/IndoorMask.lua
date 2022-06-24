@@ -82,7 +82,7 @@ function IndoorMask:visualize()
 		local minZi = math.max(zI - 20, 0)
 		local maxXi = math.min(xI + 20, self.maskSize - 1)
 		local maxZi = math.min(zI + 20, self.maskSize - 1)
-		local areaSize = 0.5
+		local areaSize = self.terrainSize / self.maskSize
 
 		for zi = minZi, maxZi do
 			for xi = minXi, maxXi do
@@ -97,8 +97,8 @@ function IndoorMask:visualize()
 					r = 1
 				end
 
-				local xt = xi * densityToWorldMap - terrainSizeHalf - areaSize * 0.25
-				local zt = zi * densityToWorldMap - terrainSizeHalf - areaSize * 0.25
+				local xt = xi * densityToWorldMap - terrainSizeHalf
+				local zt = zi * densityToWorldMap - terrainSizeHalf
 
 				DebugUtil.drawDebugAreaRectangleFilled(xt, 0, zt, xt + areaSize, 0, zt, xt, 0, zt + areaSize, true, r, g, b, 0.2)
 			end

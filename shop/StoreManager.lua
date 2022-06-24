@@ -137,7 +137,7 @@ function StoreManager:loadItemsFromXML(filename, baseDirectory, customEnvironmen
 	xmlFile:delete()
 end
 
-function StoreManager:loadCategoryFromXML(xmlFile, key, baseDir)
+function StoreManager:loadCategoryFromXML(xmlFile, key, baseDir, customEnv)
 	local name = xmlFile:getString(key .. "#name")
 	local title = xmlFile:getString(key .. "#title")
 	local imageFilename = xmlFile:getString(key .. "#image")
@@ -145,7 +145,7 @@ function StoreManager:loadCategoryFromXML(xmlFile, key, baseDir)
 	local orderId = xmlFile:getInt(key .. "#orderId")
 
 	if title ~= nil and title:sub(1, 6) == "$l10n_" then
-		title = g_i18n:getText(title:sub(7))
+		title = g_i18n:getText(title:sub(7), customEnv)
 	end
 
 	self:addCategory(name, title, imageFilename, type, baseDir, orderId)

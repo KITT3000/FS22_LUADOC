@@ -64,3 +64,9 @@ function SplineUtil.getSplineTimeFromNode(spline, node, checkDistance)
 
 	return closestTime
 end
+
+function SplineUtil.getSlopeAngle(spline, splineTime)
+	local dx, dy, dz = getSplineDirection(spline, splineTime)
+
+	return math.acos(dy / MathUtil.vector3Length(dx, dy, dz)) - 0.5 * math.pi
+end

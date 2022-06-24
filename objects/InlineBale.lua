@@ -591,13 +591,13 @@ function InlineBale:updateBaleJoints(dt)
 end
 
 function InlineBale:setBaleJointLimits(jointIndex, alpha)
-	local x, y, z = MathUtil.lerp3(self.startRotLimit[1], self.startRotLimit[2], self.startRotLimit[3], self.endRotLimit[1], self.endRotLimit[2], self.endRotLimit[3], alpha)
+	local x, y, z = MathUtil.vector3ArrayLerp(self.startRotLimit, self.endRotLimit, alpha)
 
 	setJointRotationLimit(jointIndex, 0, true, -x, x)
 	setJointRotationLimit(jointIndex, 1, true, -y, y)
 	setJointRotationLimit(jointIndex, 2, true, -z, z)
 
-	x, y, z = MathUtil.lerp3(self.startTransLimit[1], self.startTransLimit[2], self.startTransLimit[3], self.endTransLimit[1], self.endTransLimit[2], self.endTransLimit[3], alpha)
+	x, y, z = MathUtil.vector3ArrayLerp(self.startTransLimit, self.endTransLimit, alpha)
 
 	setJointTranslationLimit(jointIndex, 0, true, -x, x)
 	setJointTranslationLimit(jointIndex, 1, true, -y, y)

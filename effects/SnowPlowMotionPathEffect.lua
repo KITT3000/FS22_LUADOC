@@ -55,7 +55,7 @@ function SnowPlowMotionPathEffect:update(dt)
 			self.motionPathEffectManager:setEffectShaderParameter(self.currentEffectNode, "scrollPosition", nil, 0, 1, alpha, false)
 
 			if self.shaderPlaneNode ~= nil then
-				local sx, sy, sz = MathUtil.lerp3(self.shaderPlaneMinScale[1], self.shaderPlaneMinScale[2], self.shaderPlaneMinScale[3], self.shaderPlaneMaxScale[1], self.shaderPlaneMaxScale[2], self.shaderPlaneMaxScale[3], alpha)
+				local sx, sy, sz = MathUtil.vector3ArrayLerp(self.shaderPlaneMinScale, self.shaderPlaneMaxScale, alpha)
 
 				setScale(self.shaderPlaneNode, sx, sy, sz)
 

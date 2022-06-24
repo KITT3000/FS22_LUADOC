@@ -92,7 +92,7 @@ function InGameMenuMapFrameExtension:overwriteGameFunctions(pfModule)
 		local oldFarmland = self.selectedFarmland
 
 		function self.farmlandValueText.setValue(text, price)
-			local selectedFarmland = self.farmlandManager:getFarmlandAtWorldPosition(worldX, worldZ)
+			local selectedFarmland = g_farmlandManager:getFarmlandAtWorldPosition(worldX, worldZ)
 
 			if selectedFarmland.totalFieldArea ~= nil then
 				text:setText(string.format("%s (%s / ha)", g_i18n:formatMoney(price, 0, true, false), g_i18n:formatMoney(price / selectedFarmland.totalFieldArea, 0, true, false)))

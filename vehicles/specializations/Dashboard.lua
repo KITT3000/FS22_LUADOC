@@ -932,9 +932,7 @@ function Dashboard:defaultRotationDashboardStateFunc(dashboard, newValue, minVal
 			self:setMovingToolDirty(dashboard.node)
 		end
 	else
-		local x1, y1, z1 = unpack(dashboard.minRot)
-		local x2, y2, z2 = unpack(dashboard.maxRot)
-		local x, y, z = MathUtil.lerp3(x1, y1, z1, x2, y2, z2, alpha)
+		local x, y, z = MathUtil.vector3ArrayLerp(dashboard.minRot, dashboard.maxRot, alpha)
 
 		setRotation(dashboard.node, x, y, z)
 

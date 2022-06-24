@@ -559,7 +559,7 @@ function Chainsaw:update(dt, allowInput)
 		end
 
 		if self.showNotOwnedWarning then
-			g_currentMission:showBlinkingWarning(g_i18n:getText("warning_youDontHaveAccessToThisLand"), 2000)
+			g_currentMission:showBlinkingWarning(g_i18n:getText("warning_youAreNotAllowedToCutThisTree"), 2000)
 
 			self.showNotOwnedWarning = false
 		end
@@ -714,7 +714,7 @@ function Chainsaw:update(dt, allowInput)
 end
 
 function Chainsaw:isCuttingAllowed(x, y, z, shape)
-	return g_currentMission.accessHandler:canFarmAccessLand(self.player.farmId, x, z)
+	return g_currentMission.accessHandler:canFarmAccessLand(self.player.farmId, x, z) and g_currentMission:getHasPlayerPermission("cutTrees")
 end
 
 function Chainsaw:updateDelimb()

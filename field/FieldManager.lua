@@ -126,7 +126,7 @@ function FieldManager:loadMapData(xmlFile)
 			local index = 1
 
 			for _, field in pairs(self.fields) do
-				if field:getIsAIActive() and field.fieldMissionAllowed and not field.farmland.isOwned then
+				if field:getIsAIActive() and field.fieldMissionAllowed and field.farmland ~= nil and not field.farmland.isOwned then
 					local fruitIndex = self.availableFruitTypeIndices[math.random(1, #self.availableFruitTypeIndices)]
 
 					if field.fieldGrassMission then

@@ -47,6 +47,7 @@ function Platform.Default:apply()
 	self.hasExtraContent = true
 	self.hasWardrobe = true
 	self.hasMapSelection = true
+	self.hasAdjustableFrameLimit = true
 	self.guiPrefixes = {}
 	self.supportsMods = true
 	self.allowsScriptMods = true
@@ -159,6 +160,7 @@ Platform.Console = {
 		self.hasFriendFilter = true
 		self.hasNativeProfiles = true
 		self.hasNetworkSettings = false
+		self.hasAdjustableFrameLimit = false
 		self.supportsPushToTalk = false
 		self.hasTextChat = false
 		self.hasAudioChat = true
@@ -232,6 +234,7 @@ Platform.Mobile = {
 		self.hasExtraContent = false
 		self.hasWardrobe = false
 		self.hasMapSelection = false
+		self.hasAdjustableFrameLimit = false
 		self.canQuitApplication = false
 		self.supportsMultiplayer = false
 		self.hasPlayer = true
@@ -316,6 +319,7 @@ Platform.Stadia = {
 		self.hasFriendInvitation = true
 		self.hasNativeProfiles = true
 		self.hasNetworkSettings = false
+		self.hasAdjustableFrameLimit = false
 		self.maxFovY = 90
 
 		table.insert(self.blockedKeyboardCombos, {

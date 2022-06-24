@@ -317,6 +317,8 @@ function FarmlandStatistics:openStatistics(farmlandId, noEventSend)
 
 					if showDetailedLiters then
 						valueText = "%.1f" .. unitStr
+					else
+						value = MathUtil.round(value)
 					end
 
 					if showWeight then
@@ -355,7 +357,7 @@ function FarmlandStatistics:openStatistics(farmlandId, noEventSend)
 			costs, regularCosts = buildValueDisplay(mapFrame, statistic, 3, self.showTotal, "usedMineralFertilizer", "usedMineralFertilizerRegular", FillType.FERTILIZER, true, true, true, false)
 			totalCosts = totalCosts + costs
 			totalRegularCosts = totalRegularCosts + regularCosts
-			costs, regularCosts = buildValueDisplay(mapFrame, statistic, 4, self.showTotal, "usedLiquidFertilizer", "usedLiquidFertilizerRegular", FillType.LIQUID_FERTILIZER, false, true, true, false)
+			costs, regularCosts = buildValueDisplay(mapFrame, statistic, 4, self.showTotal, "usedLiquidFertilizer", "usedLiquidFertilizerRegular", FillType.LIQUIDFERTILIZER, false, true, true, false)
 			totalCosts = totalCosts + costs
 			totalRegularCosts = totalRegularCosts + regularCosts
 

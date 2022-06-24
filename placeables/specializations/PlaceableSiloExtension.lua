@@ -145,7 +145,7 @@ function PlaceableSiloExtension:canBeSold(superFunc)
 		return true, nil
 	end
 
-	local warning = g_i18n:getText("info_siloExtensionNotEmpty")
+	local warning = g_i18n:getText("info_siloExtensionNotEmpty") .. "\n"
 	local totalFillLevel = 0
 	spec.totalFillTypeSellPrice = 0
 
@@ -171,7 +171,7 @@ function PlaceableSiloExtension:canBeSold(superFunc)
 
 			local price = fillLevel * lowestSellPrice * PlaceableSiloExtension.PRICE_SELL_FACTOR
 			local fillType = g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
-			warning = string.format("%s%s (%d %s) - %s: %s\n", warning, fillType.nameI18N, g_i18n:getFluid(fillLevel), g_i18n:getText("unit_literShort"), g_i18n:getText("ui_sellValue"), g_i18n:formatMoney(price, 0, true, true))
+			warning = string.format("%s%s (%d %s) - %s: %s\n", warning, fillType.title, g_i18n:getFluid(fillLevel), g_i18n:getText("unit_literShort"), g_i18n:getText("ui_sellValue"), g_i18n:formatMoney(price, 0, true, true))
 			spec.totalFillTypeSellPrice = spec.totalFillTypeSellPrice + price
 		end
 	end

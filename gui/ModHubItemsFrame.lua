@@ -124,7 +124,7 @@ function ModHubItemsFrame:getMenuButtonInfo()
 		table.insert(buttons, self.searchButtonInfo)
 	end
 
-	if self.notifyToggleBetaCallback ~= NO_CALLBACK and self.forcedModItems == nil then
+	if Platform.allowsScriptMods and self.notifyToggleBetaCallback ~= NO_CALLBACK and self.forcedModItems == nil then
 		self.toggleTopButtonInfo.text = self.getBetaToggleText()
 
 		table.insert(buttons, self.toggleTopButtonInfo)

@@ -148,7 +148,7 @@ function EnvironmentAreaSystem.new(mission, customMt)
 	}
 	self.tileSize = 4
 	self.dataGrid = DynamicDataGrid.new(60, self.tileSize)
-	self.treeCheckRadius = 15
+	self.treeCheckRadius = 25
 	self.maxNumForestThreshold = 10
 	self.minNumForestThreshold = 3
 	self.minTopCollisionDistanceThreshold = 10

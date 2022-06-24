@@ -151,6 +151,7 @@ function InGameMenuGeneralSettingsFrame:onFrameOpen(element)
 	self.checkShowMultiplayerNames:setVisible(isMultiplayer and not GS_IS_CONSOLE_VERSION)
 	self.multiRealBeaconLightBrightness:setVisible(GS_PLATFORM_PC)
 	self.checkCameraCheckCollision:setVisible(g_modIsLoaded.FS22_disableVehicleCameraCollision)
+	self.multiVoiceInputSensitivity:setVisible(isMultiplayer)
 	self.boxLayout:invalidateLayout()
 
 	if FocusManager:getFocusedElement() == nil then

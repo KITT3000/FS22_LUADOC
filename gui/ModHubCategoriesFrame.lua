@@ -105,9 +105,11 @@ function ModHubCategoriesFrame:getMenuButtonInfo()
 	table.insert(buttons, self.backButtonInfo)
 	table.insert(buttons, self.searchButtonInfo)
 
-	self.toggleTopButtonInfo.text = self.getBetaToggleText()
+	if Platform.allowsScriptMods then
+		self.toggleTopButtonInfo.text = self.getBetaToggleText()
 
-	table.insert(buttons, self.toggleTopButtonInfo)
+		table.insert(buttons, self.toggleTopButtonInfo)
+	end
 
 	return buttons
 end

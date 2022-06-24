@@ -15,13 +15,13 @@ end
 function Logging.xmlWarning(xmlFile, warningMessage, ...)
 	local filename = getFilename(xmlFile)
 
-	print(string.format("  Warning (%s): " .. warningMessage, filename, ...))
+	printWarning(string.format("  Warning (%s): " .. warningMessage, filename, ...))
 end
 
 function Logging.xmlError(xmlFile, errorMessage, ...)
 	local filename = getFilename(xmlFile)
 
-	print(string.format("  Error (%s): " .. errorMessage, filename, ...))
+	printError(string.format("  Error (%s): " .. errorMessage, filename, ...))
 end
 
 function Logging.xmlInfo(xmlFile, infoMessage, ...)
@@ -34,7 +34,7 @@ function Logging.xmlDevWarning(xmlFile, warningMessage, ...)
 	if g_isDevelopmentVersion then
 		local filename = getFilename(xmlFile)
 
-		print(string.format("  DevWarning (%s): " .. warningMessage, filename, ...))
+		printWarning(string.format("  DevWarning (%s): " .. warningMessage, filename, ...))
 	end
 end
 
@@ -42,7 +42,7 @@ function Logging.xmlDevError(xmlFile, errorMessage, ...)
 	if g_isDevelopmentVersion then
 		local filename = getFilename(xmlFile)
 
-		print(string.format("  DevError (%s): " .. errorMessage, filename, ...))
+		printError(string.format("  DevError (%s): " .. errorMessage, filename, ...))
 	end
 end
 
@@ -55,11 +55,11 @@ function Logging.xmlDevInfo(xmlFile, infoMessage, ...)
 end
 
 function Logging.warning(warningMessage, ...)
-	print(string.format("  Warning: " .. warningMessage, ...))
+	printWarning(string.format("  Warning: " .. warningMessage, ...))
 end
 
 function Logging.error(errorMessage, ...)
-	print(string.format("  Error: " .. errorMessage, ...))
+	printError(string.format("  Error: " .. errorMessage, ...))
 end
 
 function Logging.info(infoMessage, ...)
@@ -76,13 +76,13 @@ end
 
 function Logging.devWarning(warningMessage, ...)
 	if g_showDevelopmentWarnings then
-		print(string.format("  DevWarning: " .. warningMessage, ...))
+		printWarning(string.format("  DevWarning: " .. warningMessage, ...))
 	end
 end
 
 function Logging.devError(errorMessage, ...)
 	if g_showDevelopmentWarnings then
-		print(string.format("  DevError: " .. errorMessage, ...))
+		printError(string.format("  DevError: " .. errorMessage, ...))
 	end
 end
 

@@ -334,14 +334,14 @@ function Foldable:onLoad(savegame)
 		i = i + 1
 	end
 
-	if #spec.foldingParts > 0 then
-		self.isSelectable = true
-	end
-
 	spec.actionEventsLowering = {}
 
-	if savegame ~= nil and not savegame.resetVehicles then
-		spec.loadedFoldAnimTime = savegame.xmlFile:getValue(savegame.key .. ".foldable#foldAnimTime")
+	if #spec.foldingParts > 0 then
+		self.isSelectable = true
+
+		if savegame ~= nil and not savegame.resetVehicles then
+			spec.loadedFoldAnimTime = savegame.xmlFile:getValue(savegame.key .. ".foldable#foldAnimTime")
+		end
 	end
 
 	if spec.loadedFoldAnimTime == nil then
@@ -378,7 +378,9 @@ end
 function Foldable:saveToXMLFile(xmlFile, key, usedModNames)
 	local spec = self.spec_foldable
 
-	xmlFile:setValue(key .. "#foldAnimTime", spec.foldAnimTime)
+	if #spec.foldingParts > 0 then
+		xmlFile:setValue(key .. "#foldAnimTime", spec.foldAnimTime)
+	end
 end
 
 function Foldable:onReadStream(streamId, connection)
@@ -1982,21 +1984,24 @@ function Foldable:actionEventFoldAll(actionName, inputValue, callbackState, isAn
 
 			if vehicle.setFoldState ~= nil then
 				local spec2 = vehicle.spec_foldable
-				local toggleDirection2 = vehicle:getToggledFoldDirection()
-				local allowed2, warning2 = vehicle:getIsFoldAllowed(toggleDirection, false)
 
-				if allowed2 then
-					if toggleDirection == spec.turnOnFoldDirection == (toggleDirection2 == spec2.turnOnFoldDirection) then
-						if toggleDirection2 == spec2.turnOnFoldDirection then
-							vehicle:setFoldState(toggleDirection2, true)
-						else
-							vehicle:setFoldState(toggleDirection2, false)
+				if #spec2.foldingParts > 0 then
+					local toggleDirection2 = vehicle:getToggledFoldDirection()
+					local allowed2, warning2 = vehicle:getIsFoldAllowed(toggleDirection, false)
+
+					if allowed2 then
+						if toggleDirection == spec.turnOnFoldDirection == (toggleDirection2 == spec2.turnOnFoldDirection) then
+							if toggleDirection2 == spec2.turnOnFoldDirection then
+								vehicle:setFoldState(toggleDirection2, true)
+							else
+								vehicle:setFoldState(toggleDirection2, false)
+							end
+
+							displayWarning = false
 						end
-
-						displayWarning = false
+					elseif warning2 ~= nil then
+						warningToDisplay = warning2
 					end
-				elseif warning2 ~= nil then
-					warningToDisplay = warning2
 				end
 			end
 		end

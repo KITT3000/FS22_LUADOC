@@ -561,6 +561,12 @@ function NitrogenMap:postLoad(xmlFile, key, baseDirectory, configFileName, mapFi
 		end
 
 		Logging.devInfo("Initialized Nitrogen Offset Map in %dms", (getTimeSec() - startTime) * 1000)
+	else
+		local modifier = DensityMapModifier.new(self.bitVectorMap, self.firstChannel, self.numChannels)
+		local filter = DensityMapFilter.new(self.bitVectorMap, self.firstChannel, self.numChannels)
+
+		filter:setValueCompareParams(DensityValueCompareType.GREATER, self.maxValue)
+		modifier:executeSet(math.floor(self.maxValue * 0.75), filter)
 	end
 
 	return true
@@ -622,7 +628,7 @@ function NitrogenMap:setInitialState(soilBitVector, soilTypeFirstChannel, soilTy
 
 	for sprayLevel = 1, maxSprayLevel do
 		sprayLevelFilter:setValueCompareParams(DensityValueCompareType.EQUAL, sprayLevel)
-		modifier:executeAdd(self.initialSprayLevelBonus[sprayLevel] or 0, sprayLevelFilter)
+		modifier:executeAdd(self.initialSprayLevelBonus[sprayLevel] or 0, sprayLevelFilter, farmlandMask)
 	end
 
 	self:setMinimapRequiresUpdate(true)

@@ -16,30 +16,30 @@ end
 
 function SplitTypeManager:loadMapData()
 	SplitTypeManager:superClass().loadMapData(self)
-	self:addSplitType("SPRUCE", "treeType_spruce", 1, 0.7, 3, true)
-	self:addSplitType("PINE", "treeType_pine", 2, 0.7, 3, true)
-	self:addSplitType("LARCH", "treeType_larch", 3, 0.7, 3, true)
-	self:addSplitType("BIRCH", "treeType_birch", 4, 0.85, 3.2, false)
-	self:addSplitType("BEECH", "treeType_beech", 5, 0.9, 3.4, false)
-	self:addSplitType("MAPLE", "treeType_maple", 6, 0.9, 3.4, false)
-	self:addSplitType("OAK", "treeType_oak", 7, 0.9, 3.4, false)
-	self:addSplitType("ASH", "treeType_ash", 8, 0.9, 3.4, false)
-	self:addSplitType("LOCUST", "treeType_locust", 9, 1, 3.8, false)
-	self:addSplitType("MAHOGANY", "treeType_mahogany", 10, 1.1, 3, false)
-	self:addSplitType("POPLAR", "treeType_poplar", 11, 0.7, 7.5, false)
-	self:addSplitType("AMERICANELM", "treeType_americanElm", 12, 0.7, 3.5, false)
-	self:addSplitType("CYPRESS", "treeType_cypress", 13, 0.7, 3.5, false)
-	self:addSplitType("DOWNYSERVICEBERRY", "treeType_downyServiceberry", 14, 0.7, 3.5, false)
-	self:addSplitType("PAGODADOGWOOD", "treeType_pagodaDogwood", 15, 0.7, 3.5, false)
-	self:addSplitType("SHAGBARKHICKORY", "treeType_shagbarkHickory", 16, 0.7, 3.5, false)
-	self:addSplitType("STONEPINE", "treeType_stonePine", 17, 0.7, 3.5, false)
-	self:addSplitType("WILLOW", "treeType_willow", 18, 0.7, 3.5, false)
-	self:addSplitType("OLIVETREE", "treeType_oliveTree", 19, 0.6, 3.5, false)
+	self:addSplitType("SPRUCE", "treeType_spruce", 1, 0.7, 3, true, nil)
+	self:addSplitType("PINE", "treeType_pine", 2, 0.7, 3, true, nil)
+	self:addSplitType("LARCH", "treeType_larch", 3, 0.7, 3, true, nil)
+	self:addSplitType("BIRCH", "treeType_birch", 4, 0.85, 3.2, false, nil)
+	self:addSplitType("BEECH", "treeType_beech", 5, 0.9, 3.4, false, nil)
+	self:addSplitType("MAPLE", "treeType_maple", 6, 0.9, 3.4, false, nil)
+	self:addSplitType("OAK", "treeType_oak", 7, 0.9, 3.4, false, nil)
+	self:addSplitType("ASH", "treeType_ash", 8, 0.9, 3.4, false, nil)
+	self:addSplitType("LOCUST", "treeType_locust", 9, 1, 3.8, false, nil)
+	self:addSplitType("MAHOGANY", "treeType_mahogany", 10, 1.1, 3, false, nil)
+	self:addSplitType("POPLAR", "treeType_poplar", 11, 0.7, 7.5, false, nil)
+	self:addSplitType("AMERICANELM", "treeType_americanElm", 12, 0.7, 3.5, false, nil)
+	self:addSplitType("CYPRESS", "treeType_cypress", 13, 0.7, 3.5, false, nil)
+	self:addSplitType("DOWNYSERVICEBERRY", "treeType_downyServiceberry", 14, 0.7, 3.5, false, nil)
+	self:addSplitType("PAGODADOGWOOD", "treeType_pagodaDogwood", 15, 0.7, 3.5, false, nil)
+	self:addSplitType("SHAGBARKHICKORY", "treeType_shagbarkHickory", 16, 0.7, 3.5, false, nil)
+	self:addSplitType("STONEPINE", "treeType_stonePine", 17, 0.7, 3.5, false, nil)
+	self:addSplitType("WILLOW", "treeType_willow", 18, 0.7, 3.5, false, nil)
+	self:addSplitType("OLIVETREE", "treeType_oliveTree", 19, 0.6, 3.5, false, nil)
 
 	return true
 end
 
-function SplitTypeManager:addSplitType(name, l10nKey, splitTypeIndex, pricePerLiter, woodChipsPerLiter, allowsWoodHarvester)
+function SplitTypeManager:addSplitType(name, l10nKey, splitTypeIndex, pricePerLiter, woodChipsPerLiter, allowsWoodHarvester, customEnvironment)
 	if self.typesByIndex[splitTypeIndex] ~= nil then
 		Logging.error("SplitTypeManager:addSplitType(): SplitTypeIndex '%d' is already in use for '%s'", splitTypeIndex, name)
 
@@ -56,7 +56,7 @@ function SplitTypeManager:addSplitType(name, l10nKey, splitTypeIndex, pricePerLi
 
 	local desc = {
 		name = name,
-		title = g_i18n:getText(l10nKey),
+		title = g_i18n:getText(l10nKey, customEnvironment),
 		splitTypeIndex = splitTypeIndex,
 		pricePerLiter = pricePerLiter,
 		woodChipsPerLiter = woodChipsPerLiter,

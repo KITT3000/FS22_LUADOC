@@ -316,7 +316,7 @@ function CropSensor:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 end
 
 function CropSensor:onDraw()
-	if self.isClient then
+	if self.isClient and not self:getIsAIActive() then
 		local spec = self.spec_cropSensor
 
 		if spec.isAvailable and spec.isActive then

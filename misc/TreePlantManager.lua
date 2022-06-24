@@ -274,7 +274,7 @@ function TreePlantManager:loadTreeNode(treeTypeDesc, x, y, z, rx, ry, rz, growth
 	return treeId, splitShapeFileId
 end
 
-function TreePlantManager:loadTreeTrunk(treeTypeDesc, x, y, z, dirX, dirY, dirZ, length, growthState)
+function TreePlantManager:loadTreeTrunk(treeTypeDesc, x, y, z, dirX, dirY, dirZ, length, growthState, delimb)
 	local treeId, splitShapeFileId = g_treePlantManager:loadTreeNode(treeTypeDesc, x, y, z, 0, 0, 0, growthState)
 
 	if treeId ~= 0 then
@@ -289,7 +289,8 @@ function TreePlantManager:loadTreeTrunk(treeTypeDesc, x, y, z, dirX, dirY, dirZ,
 				length = length,
 				dirX = dirX,
 				dirY = dirY,
-				dirZ = dirZ
+				dirZ = dirZ,
+				delimb = delimb
 			}
 		else
 			delete(treeId)
@@ -459,6 +460,10 @@ function TreePlantManager:updateTrees(dt, dtGame)
 				end
 
 				if finalShape ~= nil then
+					if self.loadTreeTrunkData.delimb then
+						removeSplitShapeAttachments(finalShape, x, y + self.loadTreeTrunkData.offset, z, nx, ny, nz, yx, yy, yz, self.loadTreeTrunkData.length, 4, 4)
+					end
+
 					removeFromPhysics(finalShape)
 					setDirection(finalShape, 0, -1, 0, self.loadTreeTrunkData.dirX, self.loadTreeTrunkData.dirY, self.loadTreeTrunkData.dirZ)
 					addToPhysics(finalShape)

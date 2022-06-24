@@ -13,10 +13,11 @@ Farm = {
 		MANAGE_PRODUCTIONS = "manageProductions",
 		RESET_VEHICLE = "resetVehicle",
 		TRANSFER_MONEY = "transferMoney",
-		HIRE_ASSISTANT = "hireAssistant",
+		CUT_TREES = "cutTrees",
 		TRADE_ANIMALS = "tradeAnimals",
-		MANAGE_CONTRACTING = "manageContracting",
+		HIRE_ASSISTANT = "hireAssistant",
 		LANDSCAPING = "landscaping",
+		MANAGE_CONTRACTING = "manageContracting",
 		UPDATE_FARM = "updateFarm",
 		MANAGE_RIGHTS = "manageRights"
 	}
@@ -33,9 +34,9 @@ Farm.PERMISSIONS = {
 	Farm.PERMISSION.HIRE_ASSISTANT,
 	Farm.PERMISSION.RESET_VEHICLE,
 	Farm.PERMISSION.MANAGE_PRODUCTIONS,
+	Farm.PERMISSION.CUT_TREES,
 	Farm.PERMISSION.MANAGE_RIGHTS,
 	Farm.PERMISSION.TRANSFER_MONEY,
-	Farm.PERMISSION.MANAGE_CONTRACTS,
 	Farm.PERMISSION.UPDATE_FARM,
 	Farm.PERMISSION.MANAGE_CONTRACTING
 }

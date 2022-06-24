@@ -48,7 +48,7 @@ end
 function AIHotspot:getWorldPosition()
 	local x, _, z = nil
 
-	if self.vehicle ~= nil then
+	if self.vehicle ~= nil and entityExists(self.vehicle.rootNode) then
 		x, _, z = getWorldTranslation(self.vehicle.rootNode)
 	end
 

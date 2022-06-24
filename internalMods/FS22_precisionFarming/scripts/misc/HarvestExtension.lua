@@ -258,7 +258,6 @@ function HarvestExtension:postProcessMowerArea(vehicle, workArea, dt, lastRealAr
 
 		if fillTypeIndex ~= nil and fillTypeIndex ~= FillType.UNKNOWN then
 			if pfModule.yieldMap ~= nil then
-				DebugUtil.drawDebugAreaRectangle(xs, 0, zs, xw, 0, zw, xh, 0, zh, true, 0, 1, 0)
 				pfModule.yieldMap:setAreaYield(xs, zs, xw, zw, xh, zh, self.replaceMowerRegularMultiplier)
 			end
 

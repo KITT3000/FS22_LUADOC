@@ -11,11 +11,6 @@ function PlaceableFarmhouse.registerFunctions(placeableType)
 	SpecializationUtil.registerFunction(placeableType, "getSpawnPoint", PlaceableFarmhouse.getSpawnPoint)
 end
 
-function PlaceableFarmhouse.registerOverwrittenFunctions(placeableType)
-	SpecializationUtil.registerOverwrittenFunction(placeableType, "getCanBePlacedAt", PlaceableFarmhouse.getCanBePlacedAt)
-	SpecializationUtil.registerOverwrittenFunction(placeableType, "canBuy", PlaceableFarmhouse.canBuy)
-end
-
 function PlaceableFarmhouse.registerEventListeners(placeableType)
 	SpecializationUtil.registerEventListener(placeableType, "onLoad", PlaceableFarmhouse)
 	SpecializationUtil.registerEventListener(placeableType, "onDelete", PlaceableFarmhouse)
@@ -77,22 +72,6 @@ function PlaceableFarmhouse:onDelete()
 	if spec.sleepingTrigger ~= nil then
 		removeTrigger(spec.sleepingTrigger)
 	end
-end
-
-function PlaceableFarmhouse:getCanBePlacedAt(superFunc, x, y, z, farmId)
-	if g_farmManager:getFarmById(g_currentMission.player.farmId):getFarmhouse() ~= nil then
-		return false, g_i18n:getText("warning_onlyOneOfThisItemAllowedPerFarm")
-	end
-
-	return superFunc(self, x, y, z, farmId)
-end
-
-function PlaceableFarmhouse:canBuy(superFunc)
-	if g_farmManager:getFarmById(g_currentMission.player.farmId):getFarmhouse() ~= nil then
-		return false, g_i18n:getText("warning_onlyOneOfThisItemAllowedPerFarm")
-	end
-
-	return superFunc(self)
 end
 
 function PlaceableFarmhouse:getSpawnPoint()

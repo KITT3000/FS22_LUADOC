@@ -220,6 +220,7 @@ function InputBinding.new(modManager, messageCenter, isConsoleVersion)
 	local self = setmetatable({}, InputBinding_mt)
 	self.debugEnabled = false
 	self.debugContextEnabled = false
+	self.debugRegisteredActions = false
 	self.modManager = modManager
 	self.messageCenter = messageCenter
 	self.isConsoleVersion = isConsoleVersion
@@ -302,6 +303,7 @@ function InputBinding.new(modManager, messageCenter, isConsoleVersion)
 	addConsoleCommand("gsInputDebug", "", "consoleCommandEnableInputDebug", self)
 	addConsoleCommand("gsInputContextPrint", "", "consoleCommandPrintInputContext", self)
 	addConsoleCommand("gsInputContextShow", "", "consoleCommandShowInputContext", self)
+	addConsoleCommand("gsInputRegisteredActionsShow", "", "consoleCommandShowRegisteredActions", self)
 
 	return self
 end
@@ -469,6 +471,10 @@ function InputBinding:getAllDeviceIdsWithBindings()
 	end
 
 	return deviceIds
+end
+
+function InputBinding:reloadModActions()
+	self:load()
 end
 
 function InputBinding:loadModActions()
@@ -1601,6 +1607,10 @@ function InputBinding:loadActionsFromXMLPath(xmlFile, rootPath, i18n, modName)
 					local action2 = self.actions[i]
 
 					if action2.name == action.name then
+						action.bindings = action2.bindings
+
+						action:resetActiveBindings()
+
 						self.actions[i] = action
 
 						break
@@ -2683,6 +2693,10 @@ function InputBinding:update(dt)
 	if self.debugContextEnabled then
 		self:debugRenderInputContext()
 	end
+
+	if self.debugRegisteredActions then
+		self:debugRenderRegisteredActions()
+	end
 end
 
 function InputBinding:checkGamepadsChanged()
@@ -3089,28 +3103,24 @@ function InputBinding:saveToXMLFile()
 			local actionName = getXMLString(xmlFile, actionBindingElement .. "#action")
 
 			if actionName and InputAction[actionName] then
-				local firstElement = string.format("%s.binding(0)", actionBindingElement)
+				if self.nameActions[actionName] ~= nil then
+					local firstElement = string.format("%s.binding(0)", actionBindingElement)
 
-				while hasXMLProperty(xmlFile, firstElement) do
-					removeXMLProperty(xmlFile, firstElement)
+					while hasXMLProperty(xmlFile, firstElement) do
+						removeXMLProperty(xmlFile, firstElement)
+					end
+
+					local action = self.nameActions[actionName]
+					local bindings = action:getBindings()
+
+					for j, binding in ipairs(bindings) do
+						local bindingElement = string.format("%s.binding(%d)", actionBindingElement, j - 1)
+
+						binding:saveToXMLFile(xmlFile, bindingElement)
+					end
 				end
 
-				local action = self.nameActions[actionName]
-
-				if action == nil then
-					log(actionName)
-					printCallstack()
-				end
-
-				local bindings = action:getBindings()
-
-				for j, binding in ipairs(bindings) do
-					local bindingElement = string.format("%s.binding(%d)", actionBindingElement, j - 1)
-
-					binding:saveToXMLFile(xmlFile, bindingElement)
-				end
-
-				storedActions[action] = true
+				storedActions[actionName] = true
 			end
 		end
 
@@ -3118,7 +3128,7 @@ function InputBinding:saveToXMLFile()
 	end
 
 	for _, action in ipairs(self.actions) do
-		if not storedActions[action] then
+		if not storedActions[action.name] then
 			local actionBindingElement = string.format("inputBinding.actionBinding(%d)", i - 1)
 
 			setXMLString(xmlFile, actionBindingElement .. "#action", action.name)
@@ -3652,6 +3662,44 @@ function InputBinding:debugPrintInputContext(contextName)
 	end
 end
 
+function InputBinding:debugRenderRegisteredActions()
+	local xPos = 0.01
+	local yPos = 0.98
+	local textSize = 0.012
+	local spacing = 0.0005
+	local xPixel = 1 / g_screenWidth
+	local yPixel = 1 / g_screenHeight
+	local actions = {}
+
+	for _, action in ipairs(self.actions) do
+		table.insert(actions, action)
+	end
+
+	table.sort(actions, function (a, b)
+		return a.name < b.name
+	end)
+
+	for _, action in ipairs(actions) do
+		local bindings = action:getBindings()
+		local text = string.format("%s (%d Bindings)", action.name, #bindings)
+
+		setTextBold(true)
+		setTextColor(0, 0, 0, 1)
+		renderText(xPos, yPos, textSize, text)
+		setTextColor(1, 1, 1, 1)
+		renderText(xPos + xPixel, yPos + yPixel, textSize, string.format("%s (%d Bindings)", action.name, #bindings))
+
+		yPos = yPos - textSize - spacing
+
+		if yPos < 0 then
+			yPos = 0.98
+			xPos = xPos + 0.2
+		end
+	end
+
+	setTextColor(1, 1, 1, 1)
+end
+
 function InputBinding:debugRenderInputContext(contextName)
 	contextName = contextName or self.currentContextName
 	local context = self.contexts[contextName] or {}
@@ -3716,4 +3764,8 @@ end
 
 function InputBinding:consoleCommandShowInputContext(enable)
 	self.debugContextEnabled = not self.debugContextEnabled
+end
+
+function InputBinding:consoleCommandShowRegisteredActions(enable)
+	self.debugRegisteredActions = not self.debugRegisteredActions
 end
