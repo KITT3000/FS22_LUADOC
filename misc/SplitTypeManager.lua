@@ -70,4 +70,19 @@ function SplitTypeManager:getSplitTypeByIndex(index)
 	return self.typesByIndex[index]
 end
 
+function SplitTypeManager:getSplitTypeIndexByName(name)
+	if name == nil then
+		return nil
+	end
+
+	name = string.upper(name)
+	local splitType = self.typesByName[name]
+
+	if splitType == nil then
+		return nil
+	end
+
+	return splitType.splitTypeIndex
+end
+
 g_splitTypeManager = SplitTypeManager.new()

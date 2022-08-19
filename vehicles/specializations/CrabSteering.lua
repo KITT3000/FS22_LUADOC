@@ -44,11 +44,11 @@ end
 function CrabSteering.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getCanToggleCrabSteering", CrabSteering.getCanToggleCrabSteering)
 	SpecializationUtil.registerFunction(vehicleType, "setCrabSteering", CrabSteering.setCrabSteering)
-	SpecializationUtil.registerFunction(vehicleType, "updateSteeringAngle", CrabSteering.updateSteeringAngle)
 	SpecializationUtil.registerFunction(vehicleType, "updateArticulatedAxisRotation", CrabSteering.updateArticulatedAxisRotation)
 end
 
 function CrabSteering.registerOverwrittenFunctions(vehicleType)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateSteeringAngle", CrabSteering.updateSteeringAngle)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeSelected", CrabSteering.getCanBeSelected)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadWheelsFromXML", CrabSteering.loadWheelsFromXML)
 end
@@ -200,6 +200,8 @@ function CrabSteering:onLoad(savegame)
 	spec.hasSteeringModes = spec.stateMax > 0
 
 	if spec.hasSteeringModes then
+		self.customSteeringAngleFunction = true
+
 		self:setCrabSteering(1, true)
 
 		if self.loadDashboardsFromXML ~= nil then
@@ -334,12 +336,12 @@ function CrabSteering:setCrabSteering(state, noEventSend)
 	end
 end
 
-function CrabSteering:updateSteeringAngle(wheel, dt, steeringAngle)
+function CrabSteering:updateSteeringAngle(superFunc, wheel, dt, steeringAngle)
 	local spec = self.spec_crabSteering
 	local specDriveable = self.spec_drivable
 
 	if spec.stateMax == 0 then
-		return steeringAngle
+		return superFunc(self, wheel, dt, steeringAngle)
 	end
 
 	local currentMode = spec.steeringModes[spec.state]

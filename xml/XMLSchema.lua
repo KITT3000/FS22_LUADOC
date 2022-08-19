@@ -340,7 +340,7 @@ function XMLSchema:generateSchema()
 		return "g_" .. name:lower()
 	end
 
-	local function addSimpleType(line, indent, name, isBaseType, base, pattern, content)
+	local function addSimpleType(line, indent, name, description, isBaseType, base, pattern, content)
 		line = add(string.format("<xs:simpleType name=\"%s\">", formatTypeName(name)), line, indent) + 1
 
 		if description ~= nil then
@@ -358,6 +358,10 @@ function XMLSchema:generateSchema()
 			line = add(content, line, indent .. TAB) + 1
 		end
 
+		if description ~= nil then
+			line = add(string.format("<xs:annotation><xs:appinfo><typeStr>%s</typeStr></xs:appinfo></xs:annotation>", description), line, indent .. TAB) + 1
+		end
+
 		line = add("</xs:simpleType>", line, indent) + 1
 		line = add("", line, "") + 1
 
@@ -365,11 +369,11 @@ function XMLSchema:generateSchema()
 	end
 
 	for _, xmlBaseValueType in ipairs(XMLValueType.BASE_TYPES) do
-		currentLine, currentIndent = addSimpleType(currentLine, currentIndent, xmlBaseValueType.name, true, nil, nil, xmlBaseValueType.content)
+		currentLine, currentIndent = addSimpleType(currentLine, currentIndent, xmlBaseValueType.name, xmlBaseValueType.description, true, nil, nil, xmlBaseValueType.content)
 	end
 
 	for _, xmlValueType in ipairs(XMLValueType.TYPES) do
-		currentLine, currentIndent = addSimpleType(currentLine, currentIndent, xmlValueType.name, false, xmlValueType.xsdBase, xmlValueType.xsdPattern)
+		currentLine, currentIndent = addSimpleType(currentLine, currentIndent, xmlValueType.name, xmlValueType.description, false, xmlValueType.xsdBase, xmlValueType.xsdPattern)
 	end
 
 	function self.checkForSharedNames(data, isSub)
@@ -408,6 +412,7 @@ function XMLSchema:generateSchema()
 		end
 
 		local defaultValue = data.data.defaultValue
+		local defaultStr = nil
 
 		if defaultValue ~= nil and type(defaultValue) == valueType.luaType then
 			local allowed = true
@@ -430,11 +435,24 @@ function XMLSchema:generateSchema()
 
 			if allowed then
 				additional = additional .. string.format(" default=\"%s\"", defaultValue)
+			else
+				defaultStr = defaultValue
 			end
 		end
 
+		local appInfo = ""
+		local appInfoDefault = ""
+
+		if defaultStr ~= nil then
+			appInfoDefault = string.format("<defaultStr>%s</defaultStr>", defaultStr)
+		end
+
+		if appInfoDefault ~= "" then
+			appInfo = string.format("<xs:appinfo>%s</xs:appinfo>", appInfoDefault)
+		end
+
 		line = add(string.format("<xs:attribute name=\"%s\" type=\"%s\"%s>", data.tag, valueTypeName, additional), line, indent) + 1
-		line = add(string.format("<xs:annotation><xs:documentation xml:lang=\"en\">%s</xs:documentation></xs:annotation>", generateDescription(data.data)), line, indent .. TAB) + 1
+		line = add(string.format("<xs:annotation><xs:documentation xml:lang=\"en\">%s</xs:documentation>%s</xs:annotation>", generateDescription(data.data), appInfo), line, indent .. TAB) + 1
 		line = add(string.format("</xs:attribute>"), line, indent) + 1
 
 		return line

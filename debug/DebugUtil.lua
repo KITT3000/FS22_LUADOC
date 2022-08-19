@@ -170,7 +170,19 @@ function DebugUtil.drawDebugRectangle(node, minX, maxX, minZ, maxZ, yOffset, r, 
 	drawDebugLine(leftBackX, leftBackY, leftBackZ, r, g, b, leftFrontX, leftFrontY, leftFrontZ, r, g, b)
 end
 
-function DebugUtil.drawDebugCircle(x, y, z, radius, steps, color)
+function DebugUtil.drawDebugCircle(x, y, z, radius, steps, color, alignToTerrain, filled)
+	local r = 1
+	local g = 0
+	local b = 0
+
+	if color ~= nil then
+		b = color[3]
+		g = color[2]
+		r = color[1]
+	end
+
+	local terrainNode = g_currentMission.terrainRootNode
+
 	for i = 1, steps do
 		local a1 = (i - 1) / steps * 2 * math.pi
 		local a2 = i / steps * 2 * math.pi
@@ -185,10 +197,16 @@ function DebugUtil.drawDebugCircle(x, y, z, radius, steps, color)
 		local y2 = y
 		local z2 = z + s
 
-		if color == nil then
-			drawDebugLine(x1, y1, z1, 1, 0, 0, x2, y2, z2, 1, 0, 0)
-		else
-			drawDebugLine(x1, y1, z1, color[1], color[2], color[3], x2, y2, z2, color[1], color[2], color[3])
+		if alignToTerrain then
+			y = getTerrainHeightAtWorldPos(terrainNode, x, y, z) + 0.25
+			y1 = getTerrainHeightAtWorldPos(terrainNode, x1, y, z1) + 0.25
+			y2 = getTerrainHeightAtWorldPos(terrainNode, x2, y, z2) + 0.25
+		end
+
+		drawDebugLine(x1, y1, z1, r, g, b, x2, y2, z2, r, g, b)
+
+		if filled then
+			drawDebugTriangle(x, y, z, x2, y2, z2, x1, y1, z1, r, g, b, 0.3, true)
 		end
 	end
 end

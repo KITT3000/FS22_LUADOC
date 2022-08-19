@@ -1106,7 +1106,7 @@ function NitrogenMap:postUpdateSprayArea(startWorldX, startWorldZ, widthWorldX, 
 	return 0
 end
 
-function NitrogenMap:updateDestroyCommonArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, limitToField, addFertilizerLock)
+function NitrogenMap:updateDestroyCommonArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 	local soilMap = self.soilMap
 
 	if soilMap ~= nil and soilMap.bitVectorMap ~= nil then
@@ -1165,7 +1165,7 @@ function NitrogenMap:updateDestroyCommonArea(startWorldX, startWorldZ, widthWorl
 		for index, desc in pairs(g_fruitTypeManager:getFruitTypes()) do
 			if desc.weed == nil then
 				fruitFilter:resetDensityMapAndChannels(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
-				fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, desc.cutState)
+				fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, desc.numGrowthStates)
 
 				local _, numPixels = modifierLock:executeSet(1, fruitFilter)
 
@@ -1187,7 +1187,7 @@ function NitrogenMap:updateDestroyCommonArea(startWorldX, startWorldZ, widthWorl
 	return 0
 end
 
-function NitrogenMap:postUpdateDestroyCommonArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, limitToField, addFertilizerLock)
+function NitrogenMap:postUpdateDestroyCommonArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 	local soilMap = self.soilMap
 
 	if soilMap ~= nil and soilMap.bitVectorMap ~= nil then
@@ -1206,7 +1206,7 @@ function NitrogenMap:postUpdateDestroyCommonArea(startWorldX, startWorldZ, width
 				local desc = g_fruitTypeManager:getFruitTypeByIndex(fruitIndices[i].index)
 
 				fruitFilter:resetDensityMapAndChannels(fruitIndices[i].terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
-				fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, desc.cutState)
+				fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, desc.numGrowthStates)
 				modifierLock:executeSet(2, fruitFilter)
 			else
 				break

@@ -227,11 +227,31 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
+		c = "Bao-Anh Dang-Vu",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Bojan Kerec",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Gino van den Bergen",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Jan Dellsperger",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Jos Kuijpers",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Laura Jenkins",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Lukas Nussbaumer",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -247,19 +267,7 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Gino van den Bergen",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
-		c = "Jan Dellsperger",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
 		c = "Travis Gesslein",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
-		c = "Bao-Anh Dang-Vu",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -277,11 +285,15 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.SEPARATOR
 	})
 	table.insert(creditsTexts, {
-		c = "Lead Character Artist",
+		c = "Lead Character Artists",
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
 		c = "Mike Wasilewski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Roman Pelypenko",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -324,6 +336,10 @@ function CreditsScreen:loadCredits()
 	})
 	table.insert(creditsTexts, {
 		c = "Florian Busse",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Gabriel Hubli",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -371,6 +387,14 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Kevin Ellersiek",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Maksim Povstugar",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Marek Klofera",
 		t = CreditsScreen.TEXT
 	})
@@ -379,7 +403,15 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Miroslav Halfar",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Maximilian Frömter",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Natalia Tkach",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -399,10 +431,6 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Roman Pelypenko",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
 		c = "Siddhant Patni",
 		t = CreditsScreen.TEXT
 	})
@@ -411,11 +439,19 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Vilen Saatsazov",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Vladimír Soukup",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
 		c = "Vladimir Silkin",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Vladyslav Vershytskyi",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -447,7 +483,15 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Jozef Rolincin",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Maria Panfilova",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Richard Vavruša",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -456,14 +500,6 @@ function CreditsScreen:loadCredits()
 	})
 	table.insert(creditsTexts, {
 		c = "Tomáš Bujňák",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
-		c = "Jozef Rolincin",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
-		c = "Richard Vavruša",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -478,7 +514,7 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
-		c = "Chris Wachter",
+		c = "Christian Wachter",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -490,6 +526,14 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Simon Nussel",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Stephan Bongartz",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		t = CreditsScreen.SEPARATOR
 	})
 	table.insert(creditsTexts, {
@@ -497,7 +541,7 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
-		c = "Anett Jaschke",
+		c = "Sandra Meier",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -508,11 +552,11 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
-		c = "Emelie Rissling",
+		c = "Anett Jaschke",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Michael Karg",
+		c = "Emelie Rissling",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -520,7 +564,7 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Sandra Meier",
+		c = "Michael Karg",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -568,6 +612,10 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
+		c = "Adrien Brüllmann",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Benjamin Neußinger",
 		t = CreditsScreen.TEXT
 	})
@@ -584,11 +632,11 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Martin Schücker",
+		c = "Mario Vortkamp",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Stephan Bongartz",
+		c = "Martin Schücker",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -729,6 +777,14 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
+		c = "Fabian Seitz",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Felix Grelka",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Marten Boessenkool",
 		t = CreditsScreen.TEXT
 	})
@@ -737,11 +793,14 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Felix Grelka",
-		t = CreditsScreen.TEXT
+		t = CreditsScreen.SEPARATOR
 	})
 	table.insert(creditsTexts, {
-		c = "Fabian Seitz",
+		c = "Lead Video Artist",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Michael Schraut",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -752,19 +811,15 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
-		c = "Michael Schraut",
-		t = CreditsScreen.TEXT
-	})
-	table.insert(creditsTexts, {
 		c = "Marco Riccardi",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Timon Chevalier",
+		c = "Patrick Sander",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Patrick Sander",
+		c = "Timon Chevalier",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -794,11 +849,11 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
-		c = "Chodon Fürer-Rikyog",
+		c = "Adéla Štrajtová",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Kevin Ellersiek",
+		c = "Chodon Fürer-Rikyog",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -818,6 +873,457 @@ function CreditsScreen:loadCredits()
 	})
 	table.insert(creditsTexts, {
 		c = "Audio Network GmbH",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "External QA",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Testronic",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Chief Service Officer",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Erik Hittenhausen",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Director of QA",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Adam Biwojno",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Director of Localisation QA",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Gaëlle Caballero",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Functionality QA",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "QA Project Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Sebastian “Pablot” Kurek",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "QA Lead",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Tomasz Lewandowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Associate QA Leads",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Anna Dąbrowska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Dawid Szeliga",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Maria Koc",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Functionality QA Technicians",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Kacper Szczytowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Krzysztof Sowa",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Łukasz Miecznikowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Maciej Powała",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Maciej Stępień",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Magdalena Bednarska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Michał Pielech",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Natalia Krzewińska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Paweł Pielech",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Shoakhmad Nazarov",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Compliance QA",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Technical QA Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Paweł “Piekarz” Kołnierzak",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Technical Department Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Iwona Szarzyńska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Senior Technical Project Lead",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Małgorzata Twarogal",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Technical Project Lead",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Michał “Bobson” Radłowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Senior Technical QA Analysts",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Adrian “Dorian” Strzelecki",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Dorian “Tradey” Geisler",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Technical QA Analysts",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Adam Marczak",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Jakub Neyman",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Justyna Fundowicz",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Krzysztof Skóra",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Compliance QA Technicians",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Agata Dylak",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Aneta Majek",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Jakub Babula",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Katarzyna Kalbarczyk",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Łukasz Korolkiewicz",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Compatibility QA",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Technical QA Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Paweł “Piekarz” Kołnierzak",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Technical Department Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Iwona Szarzyńska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Associate Technical QA Leads",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Alan Parsons",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Michał Soral",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Compatibility QA Technicians",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Bartłomiej “Akur” Stajkowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Dorian “Tradey” Geisler",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Łukasz Sobolewski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Paweł Kandyba",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Localisation QA",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Senior Localisation QA Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Valentina Mollica",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Localisation QA Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Jouhaina Ramy",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Localisation QA Project Manager",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Krzysztof Orlikowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Localisation QA Lead",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Jamie Kelly-Warwick",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Senior Localisation QA Technicians",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Anthony Brian Yuen",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Charlotte Cameron",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Dennis Born",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Jefta de Cock",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Keiko Naito",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Morten Østergaard",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Piotr Rokitnicki",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "Localisation QA Technicians",
+		t = CreditsScreen.TITLE
+	})
+	table.insert(creditsTexts, {
+		c = "Álvaro Saavedra Jeno",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Brice José Fajardo Ory",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Cristina Baleanu",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Davide Fanni",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Jaehun Bae",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Kan Cheng",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Katarzyna Maciejewska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Marcela Ostrochovska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Marilia Stieven Sonza",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Pál Veres Kovács",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Roksolana Krushenytska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Stephen Bubenheim",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {

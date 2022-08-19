@@ -4000,7 +4000,7 @@ function Wheels.loadBrandName(xmlFile, key, baseDir, customEnvironment, isMod, c
 
 			table.insert(configItem.nameCompareParams, "wheelBrandName")
 		else
-			Logging.warning("Wheel brand '%s' is not defined for '%s'!", name, key)
+			Logging.xmlWarning(xmlFile, "Wheel brand '%s' is not defined for '%s'!", name, key)
 		end
 	end
 end

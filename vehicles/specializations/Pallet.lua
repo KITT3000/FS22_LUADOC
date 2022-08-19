@@ -23,9 +23,14 @@ function Pallet.registerOverwrittenFunctions(vehicleType)
 end
 
 function Pallet.registerEventListeners(vehicleType)
+	SpecializationUtil.registerEventListener(vehicleType, "onPreLoad", Pallet)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", Pallet)
 	SpecializationUtil.registerEventListener(vehicleType, "onDelete", Pallet)
 	SpecializationUtil.registerEventListener(vehicleType, "onFillUnitFillLevelChanged", Pallet)
+end
+
+function Pallet:onPreLoad(savegame)
+	self.isPallet = true
 end
 
 function Pallet:onLoad(savegame)

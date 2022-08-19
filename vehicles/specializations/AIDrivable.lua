@@ -23,6 +23,7 @@ function AIDrivable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.ai.agent#frontOffset", "AI vehicle front offset")
 	schema:register(XMLValueType.FLOAT, "vehicle.ai.agent#maxBrakeAcceleration", "AI vehicle max brake acceleration")
 	schema:register(XMLValueType.FLOAT, "vehicle.ai.agent#maxCentripedalAcceleration", "AI vehicle max centripedal acceleration")
+	schema:register(XMLValueType.FLOAT, "vehicle.ai.agent#maxTurningRadius", "Max. turning radius (overwrites value detected from ackermann steering)")
 	schema:setXMLSpecializationType()
 end
 
@@ -49,6 +50,7 @@ function AIDrivable.postInitSpecialization()
 		schema:register(XMLValueType.FLOAT, configrationKey .. ".aiAgent#frontOffset", "front offset")
 		schema:register(XMLValueType.FLOAT, configrationKey .. ".aiAgent#maxBrakeAcceleration", "AI vehicle max brake acceleration")
 		schema:register(XMLValueType.FLOAT, configrationKey .. ".aiAgent#maxCentripedalAcceleration", "AI vehicle max centripedal acceleration")
+		schema:register(XMLValueType.FLOAT, configrationKey .. ".aiAgent#maxTurningRadius", "Max. turning radius (overwrites value detected from ackermann steering)")
 		schema:setXMLSharedRegistration()
 	end
 end
@@ -273,7 +275,7 @@ function AIDrivable:createAgent(helperIndex)
 		local width, length, lengthOffset, frontOffset = self:getAIAgentSize()
 		local maxBrakeAcceleration = self:getAIAgentMaxBrakeAcceleration()
 		local maxCentripedalAcceleration = agent.maxCentripedalAcceleration
-		local minTurningRadius = self:getAITurningRadius(self.maxTurningRadius)
+		local minTurningRadius = self:getAITurningRadius(agent.maxTurningRadius or self.maxTurningRadius)
 		local minLandingTurningRadius = minTurningRadius
 		local allowBackwards = self:getAIAllowsBackwards()
 		spec.agentId = createVehicleNavigationAgent(navigationMapId, minTurningRadius, minLandingTurningRadius, allowBackwards, width, length, lengthOffset, frontOffset, maxBrakeAcceleration, maxCentripedalAcceleration, trailerData)
@@ -525,6 +527,7 @@ function AIDrivable:loadAgentInfoFromXML(xmlFile, agent)
 	agent.frontOffset = xmlFile:getValue(baseSizeKey .. "#frontOffset", 3)
 	agent.maxBrakeAcceleration = xmlFile:getValue(baseSizeKey .. "#maxBrakeAcceleration", 5)
 	agent.maxCentripedalAcceleration = xmlFile:getValue(baseSizeKey .. "#maxCentripedalAcceleration", 1)
+	agent.maxTurningRadius = xmlFile:getValue(baseSizeKey .. "#maxTurningRadius")
 
 	for name, id in pairs(self.configurations) do
 		local specializationKey = g_configurationManager:getConfigurationAttribute(name, "xmlKey")
@@ -543,6 +546,7 @@ function AIDrivable:loadAgentInfoFromXML(xmlFile, agent)
 		agent.frontOffset = xmlFile:getValue(key .. "#frontOffset", agent.frontOffset)
 		agent.maxBrakeAcceleration = math.min(xmlFile:getValue(key .. "#maxBrakeAcceleration", agent.maxBrakeAcceleration))
 		agent.maxCentripedalAcceleration = math.min(xmlFile:getValue(key .. "#maxCentripedalAcceleration", agent.maxCentripedalAcceleration))
+		agent.maxTurningRadius = xmlFile:getValue(key .. "#maxTurningRadius", agent.maxTurningRadius)
 	end
 end
 

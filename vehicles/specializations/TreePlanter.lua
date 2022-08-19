@@ -798,7 +798,7 @@ function TreePlanter:palletTriggerCallback(triggerId, otherId, onEnter, onLeave,
 	if otherId ~= 0 then
 		local object = g_currentMission:getNodeObject(otherId)
 
-		if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.typeName:lower():contains("pallet") and g_currentMission.accessHandler:canFarmAccess(self:getActiveFarm(), object) then
+		if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.isPallet and g_currentMission.accessHandler:canFarmAccess(self:getActiveFarm(), object) then
 			local currentValue = Utils.getNoNil(spec.palletsInTrigger[object], 0)
 
 			if onEnter then

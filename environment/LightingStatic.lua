@@ -34,6 +34,8 @@ function LightingStatic:load(xmlFile, baseKey)
 	local suffix = GS_IS_MOBILE_VERSION and "_uncompressed" or ""
 	self.envMap = basePath .. "/" .. Lighting.getEnvMapBaseFilename(0, 1) .. suffix .. ".png"
 	self.albedoGroundColor = string.getVectorN(Utils.getNoNil(getXMLString(xmlFile, baseKey .. ".envAlbedoGroundColor#value"), "0 0 0"), 3)
+	self.bloomMagnitude = getXMLFloat(xmlFile, baseKey .. ".bloom#magnitude") or 0.5
+	self.bloomThreshold = getXMLFloat(xmlFile, baseKey .. ".bloom#threshold") or 2
 
 	return true
 end
@@ -61,6 +63,8 @@ function LightingStatic:update(dt, force)
 		setEnvAlbedoGroundColor(unpack(self.albedoGroundColor))
 		self:updateAtmosphere()
 		self:updateExposureSettings()
+		setBloomMagnitude(self.bloomMagnitude)
+		setBloomMaskThreshold(self.bloomThreshold)
 	end
 end
 

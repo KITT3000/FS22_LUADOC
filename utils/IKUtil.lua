@@ -234,7 +234,7 @@ function IKUtil.updateIKChains(ikChains)
 		end
 	end
 
-	if VehicleDebug.state == VehicleDebug.DEBUG_ATTRIBUTES then
+	if VehicleDebug ~= nil and VehicleDebug.state == VehicleDebug.DEBUG_ATTRIBUTES then
 		IKUtil.debugDrawChains(ikChains, true)
 	end
 end

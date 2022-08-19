@@ -279,7 +279,7 @@ function WheelsUtil:updateWheelsPhysics(dt, currentSpeed, acceleration, doHandbr
 	local motor = self.spec_motorized.motor
 	local isManualTransmission = motor.backwardGears ~= nil or motor.forwardGears ~= nil
 	local useManualDirectionChange = isManualTransmission and motor.gearShiftMode ~= VehicleMotor.SHIFT_MODE_AUTOMATIC or motor.directionChangeMode == VehicleMotor.DIRECTION_CHANGE_MODE_MANUAL
-	useManualDirectionChange = useManualDirectionChange and not self:getIsAIActive()
+	useManualDirectionChange = useManualDirectionChange and self:getIsManualDirectionChangeAllowed()
 
 	if useManualDirectionChange then
 		acceleration = acceleration * motor.currentDirection
@@ -464,7 +464,7 @@ function WheelsUtil:updateWheelSteeringAngle(wheel, dt)
 			steeringAngle = wheel.rotMin
 		end
 
-		if self.updateSteeringAngle ~= nil then
+		if self.customSteeringAngleFunction then
 			steeringAngle = self:updateSteeringAngle(wheel, dt, steeringAngle)
 		end
 	end

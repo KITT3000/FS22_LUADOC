@@ -253,7 +253,6 @@ function AttacherJoints.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "collectAIAgentAttachments", AttacherJoints.collectAIAgentAttachments)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "setAIVehicleObstacleStateDirty", AttacherJoints.setAIVehicleObstacleStateDirty)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getDirectionSnapAngle", AttacherJoints.getDirectionSnapAngle)
-	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAICollisionTriggers", AttacherJoints.getAICollisionTriggers)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getFillLevelInformation", AttacherJoints.getFillLevelInformation)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "attachableAddToolCameras", AttacherJoints.attachableAddToolCameras)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "attachableRemoveToolCameras", AttacherJoints.attachableRemoveToolCameras)
@@ -461,7 +460,7 @@ end
 function AttacherJoints:onPostLoad(savegame)
 	local spec = self.spec_attacherJoints
 
-	for _, attacherJoint in pairs(spec.attacherJoints) do
+	for attacherJointIndex, attacherJoint in pairs(spec.attacherJoints) do
 		attacherJoint.jointOrigRot = {
 			getRotation(attacherJoint.jointTransform)
 		}
@@ -470,6 +469,7 @@ function AttacherJoints:onPostLoad(savegame)
 		}
 
 		if attacherJoint.transNode ~= nil then
+			local _ = nil
 			attacherJoint.transNodeMinY = Utils.getNoNil(attacherJoint.transNodeMinY, attacherJoint.jointOrigTrans[2])
 			attacherJoint.transNodeMaxY = Utils.getNoNil(attacherJoint.transNodeMaxY, attacherJoint.jointOrigTrans[2])
 			_, attacherJoint.transNodeOffsetY, _ = localToLocal(attacherJoint.jointTransform, attacherJoint.transNode, 0, 0, 0)
@@ -549,6 +549,13 @@ function AttacherJoints:onPostLoad(savegame)
 				yNorm,
 				zNorm
 			}
+		end
+
+		if attacherJoint.comboTime ~= nil then
+			table.insert(spec.attacherJointCombos.joints, {
+				jointIndex = attacherJointIndex,
+				time = MathUtil.clamp(attacherJoint.comboTime, 0, 1) * spec.attacherJointCombos.duration
+			})
 		end
 	end
 
@@ -906,6 +913,7 @@ function AttacherJoints:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnor
 
 				if implement ~= nil and implement.object.setLoweredAll ~= nil then
 					implement.object:setLoweredAll(doLowering, joint.jointIndex)
+					log("set lowered", doLowering, joint.jointIndex)
 				end
 			end
 		end
@@ -1820,7 +1828,7 @@ function AttacherJoints:createAttachmentJoint(implement, noSmoothAttach)
 	local objectAttacherJoint = implement.object.spec_attachable.attacherJoint
 
 	if self.isServer and objectAttacherJoint ~= nil then
-		if getRigidBodyType(jointDesc.rootNode) ~= RigidBodyType.DYNAMIC or getRigidBodyType(objectAttacherJoint.rootNode) ~= RigidBodyType.DYNAMIC then
+		if getRigidBodyType(jointDesc.rootNode) ~= RigidBodyType.DYNAMIC and getRigidBodyType(jointDesc.rootNode) ~= RigidBodyType.KINEMATIC or getRigidBodyType(objectAttacherJoint.rootNode) ~= RigidBodyType.DYNAMIC and getRigidBodyType(objectAttacherJoint.rootNode) ~= RigidBodyType.KINEMATIC then
 			return
 		end
 
@@ -2681,23 +2689,24 @@ end
 
 function AttacherJoints:setJointMoveDown(jointDescIndex, moveDown, noEventSend)
 	local spec = self.spec_attacherJoints
-
-	VehicleLowerImplementEvent.sendEvent(self, jointDescIndex, moveDown, noEventSend)
-
 	local jointDesc = spec.attacherJoints[jointDescIndex]
 
-	if jointDesc.allowsLowering then
-		jointDesc.moveDown = moveDown
-		jointDesc.isMoving = true
-		local implementIndex = self:getImplementIndexByJointDescIndex(jointDescIndex)
+	if moveDown ~= jointDesc.moveDown then
+		if jointDesc.allowsLowering then
+			jointDesc.moveDown = moveDown
+			jointDesc.isMoving = true
+			local implementIndex = self:getImplementIndexByJointDescIndex(jointDescIndex)
 
-		if implementIndex ~= nil then
-			local implement = spec.attachedImplements[implementIndex]
+			if implementIndex ~= nil then
+				local implement = spec.attachedImplements[implementIndex]
 
-			if implement.object ~= nil then
-				implement.object:setLowered(moveDown)
+				if implement.object ~= nil then
+					implement.object:setLowered(moveDown)
+				end
 			end
 		end
+
+		VehicleLowerImplementEvent.sendEvent(self, jointDescIndex, moveDown, noEventSend)
 	end
 
 	return true
@@ -3135,15 +3144,7 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 	attacherJoint.rootNode = xmlFile:getValue(baseName .. "#rootNode", self.components[1].node, self.components, self.i3dMappings)
 	attacherJoint.rootNodeBackup = attacherJoint.rootNode
 	attacherJoint.jointIndex = 0
-	local t = xmlFile:getValue(baseName .. "#comboTime")
-
-	if t ~= nil then
-		table.insert(spec.attacherJointCombos.joints, {
-			jointIndex = index + 1,
-			time = MathUtil.clamp(t, 0, 1) * spec.attacherJointCombos.duration
-		})
-	end
-
+	attacherJoint.comboTime = xmlFile:getValue(baseName .. "#comboTime")
 	local schemaKey = baseName .. ".schema"
 
 	if xmlFile:hasProperty(schemaKey) then
@@ -3469,24 +3470,6 @@ function AttacherJoints:getDirectionSnapAngle(superFunc)
 	end
 
 	return maxAngle
-end
-
-function AttacherJoints:getAICollisionTriggers(superFunc, collisionTriggers)
-	local spec = self.spec_attacherJoints
-
-	for _, implement in pairs(spec.attachedImplements) do
-		local object = implement.object
-
-		if object ~= nil and object.getAIImplementCollisionTriggers ~= nil then
-			object:getAIImplementCollisionTriggers(collisionTriggers)
-		end
-
-		if object ~= nil and object.getAICollisionTriggers ~= nil then
-			object:getAICollisionTriggers(collisionTriggers)
-		end
-	end
-
-	return superFunc(self)
 end
 
 function AttacherJoints:getFillLevelInformation(superFunc, display)

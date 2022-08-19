@@ -39,6 +39,7 @@ function SnowSystem:delete()
 		removeConsoleCommand("gsSnowAdd")
 		removeConsoleCommand("gsSnowSet")
 		removeConsoleCommand("gsSnowReset")
+		removeConsoleCommand("gsSnowShaderSet")
 		removeConsoleCommand("gsSnowAddSalt")
 	end
 end
@@ -52,6 +53,7 @@ function SnowSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 		addConsoleCommand("gsSnowAdd", "Add snow", "consoleCommandAddSnow", self)
 		addConsoleCommand("gsSnowSet", "Set snow", "consoleCommandSetSnow", self)
 		addConsoleCommand("gsSnowReset", "Reset snow", "consoleCommandResetSnow", self)
+		addConsoleCommand("gsSnowShaderSet", "Force snow shader value for map objects", "consoleCommandSetSnowShader", self)
 		addConsoleCommand("gsSnowAddSalt", "Salt around player", "consoleCommandSalt", self)
 	end
 end
@@ -420,7 +422,11 @@ end
 function SnowSystem:updateSnowShader()
 	self.snowShaderValue = self.exactHeight / self.layerHeight
 
-	setSharedShaderParameter(Shader.PARAM_SHARED_SNOW, self.snowShaderValue)
+	setSharedShaderParameter(Shader.PARAM_SHARED_SNOW, self.debug_forcedSnowShaderValue or self.snowShaderValue)
+end
+
+function SnowSystem:getSnowShaderValue()
+	return self.debug_forcedSnowShaderValue or self.snowShaderValue
 end
 
 function SnowSystem:removeAll()
@@ -459,7 +465,8 @@ function SnowSystem:consoleCommandAddSnow(layers)
 	local height = self.height + layers * self.layerHeight
 
 	self:setSnowHeight(height)
-	log("New height is", height)
+
+	return string.format("New height is %.3f", height)
 end
 
 function SnowSystem:consoleCommandSetSnow(height)
@@ -470,11 +477,28 @@ function SnowSystem:consoleCommandSetSnow(height)
 	height = tonumber(height)
 
 	self:setSnowHeight(height)
-	log("New height is", height)
+
+	return string.format("New height is %.3f", height)
 end
 
 function SnowSystem:consoleCommandResetSnow()
 	self:removeAll()
+end
+
+function SnowSystem:consoleCommandSetSnowShader(snowShaderValue)
+	self.debug_forcedSnowShaderValue = tonumber(snowShaderValue)
+
+	self:updateSnowShader()
+
+	local returnStr = "forcedSnowShaderValue=" .. tostring(self.debug_forcedSnowShaderValue)
+
+	if self.debug_forcedSnowShaderValue ~= nil then
+		returnStr = returnStr .. "\nUse gsSnowShaderSet without parameter to use weather again"
+	else
+		returnStr = returnStr .. "\nUsing value from weather simulation"
+	end
+
+	return returnStr
 end
 
 function SnowSystem:consoleCommandSalt(radius)

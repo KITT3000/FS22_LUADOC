@@ -24,9 +24,13 @@ Drivable = {
 		schema:register(XMLValueType.ANGLE, "vehicle.drivable.steeringWheel#outdoorRotation", "Steering wheel outdoor rotation", 0)
 		schema:register(XMLValueType.BOOL, "vehicle.drivable.idleTurning#allowed", "When vehicle is not moving and steering keys are pressed turns on the same spot", false)
 		schema:register(XMLValueType.BOOL, "vehicle.drivable.idleTurning#updateSteeringWheel", "Update steering wheel", true)
+		schema:register(XMLValueType.BOOL, "vehicle.drivable.idleTurning#lockDirection", "Defines if the direction is locked until player accelerates again", true)
 		schema:register(XMLValueType.INT, "vehicle.drivable.idleTurning#direction", "Driving direction [-1, 1]", 1)
 		schema:register(XMLValueType.FLOAT, "vehicle.drivable.idleTurning#maxSpeed", "Max. speed while turning", 10)
 		schema:register(XMLValueType.FLOAT, "vehicle.drivable.idleTurning#steeringFactor", "Steering speed factor", 100)
+		schema:register(XMLValueType.NODE_INDEX, "vehicle.drivable.idleTurning.wheel(?)#node", "Wheel node to change")
+		schema:register(XMLValueType.ANGLE, "vehicle.drivable.idleTurning.wheel(?)#steeringAngle", "Steering angle while idle turning")
+		schema:register(XMLValueType.BOOL, "vehicle.drivable.idleTurning.wheel(?)#inverted", "Acceleration is inverted", false)
 		Dashboard.registerDashboardXMLPaths(schema, "vehicle.drivable.dashboards", "cruiseControl | directionForward | directionBackward | movingDirection | cruiseControlActive | accelerationAxis | decelerationAxis | ac_decelerationAxis | steeringAngle")
 		SoundManager.registerSampleXMLPaths(schema, "vehicle.drivable.sounds", "waterSplash")
 		schema:setXMLSpecializationType()
@@ -65,6 +69,11 @@ function Drivable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "setTargetSpeedAndDirection", Drivable.setTargetSpeedAndDirection)
 	SpecializationUtil.registerFunction(vehicleType, "setSteeringInput", Drivable.setSteeringInput)
 	SpecializationUtil.registerFunction(vehicleType, "brakeToStop", Drivable.brakeToStop)
+	SpecializationUtil.registerFunction(vehicleType, "updateSteeringAngle", Drivable.updateSteeringAngle)
+end
+
+function Drivable.registerOverwrittenFunctions(vehicleType)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsManualDirectionChangeAllowed", Drivable.getIsManualDirectionChangeAllowed)
 end
 
 function Drivable.registerEvents(vehicleType)
@@ -146,11 +155,29 @@ function Drivable:onLoad(savegame)
 
 	spec.idleTurningAllowed = self.xmlFile:getValue("vehicle.drivable.idleTurning#allowed", false)
 	spec.idleTurningUpdateSteeringWheel = self.xmlFile:getValue("vehicle.drivable.idleTurning#updateSteeringWheel", true)
+	spec.idleTurningLockDirection = self.xmlFile:getValue("vehicle.drivable.idleTurning#lockDirection", true)
 	spec.idleTurningDrivingDirection = self.xmlFile:getValue("vehicle.drivable.idleTurning#direction", 1)
 	spec.idleTurningMaxSpeed = self.xmlFile:getValue("vehicle.drivable.idleTurning#maxSpeed", 10)
 	spec.idleTurningSteeringFactor = self.xmlFile:getValue("vehicle.drivable.idleTurning#steeringFactor", 100)
+	spec.idleTurningWheels = {}
+
+	self.xmlFile:iterate("vehicle.drivable.idleTurning.wheel", function (index, key)
+		local wheelNode = self.xmlFile:getValue(key .. "#node", nil, self.components, self.i3dMappings)
+
+		if wheelNode ~= nil then
+			local entry = {
+				wheelNode = wheelNode,
+				steeringAngle = self.xmlFile:getValue(key .. "#steeringAngle", 0),
+				inverted = self.xmlFile:getValue(key .. "#inverted", false)
+			}
+
+			table.insert(spec.idleTurningWheels, entry)
+		end
+	end)
+
 	spec.idleTurningActive = false
 	spec.idleTurningDirection = 0
+	self.customSteeringAngleFunction = self.customSteeringAngleFunction or #spec.idleTurningWheels > 0
 	spec.forceFeedback = {
 		isActive = false,
 		device = nil,
@@ -393,12 +420,19 @@ function Drivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 
 						if axisForward ~= 0 and spec.idleTurningActive then
 							spec.idleTurningActive = false
-							spec.lastInputValues.targetSpeed = nil
+						end
+
+						if spec.idleTurningActive and not spec.idleTurningLockDirection then
+							spec.idleTurningDirection = spec.idleTurningDrivingDirection
+
+							if axisSteer == 0 then
+								spec.idleTurningActive = false
+								spec.axisSide = 0
+							end
 						end
 
 						if spec.idleTurningActive then
-							spec.lastInputValues.targetSpeed = spec.idleTurningMaxSpeed
-							spec.lastInputValues.targetDirection = spec.idleTurningDirection * MathUtil.sign(axisSteer)
+							spec.axisForward = spec.idleTurningDirection * MathUtil.sign(axisSteer)
 							axisSteer = math.abs(axisSteer) * spec.idleTurningDirection
 							speedFactor = speedFactor * spec.idleTurningSteeringFactor
 						end
@@ -547,6 +581,10 @@ function Drivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 
 			local maxSpeed, _ = self:getSpeedLimit(true)
 			maxSpeed = math.min(maxSpeed, cruiseControlSpeed)
+
+			if spec.idleTurningAllowed and spec.idleTurningActive then
+				maxSpeed = math.min(maxSpeed, spec.idleTurningMaxSpeed)
+			end
 
 			self:getMotor():setSpeedLimit(maxSpeed)
 			self:updateVehiclePhysics(spec.axisForward, spec.axisSide, spec.doHandbrake, dt)
@@ -761,6 +799,12 @@ function Drivable:getAcDecelerationAxis()
 end
 
 function Drivable:getDashboardSteeringAxis()
+	local spec = self.spec_drivable
+
+	if spec.idleTurningAllowed and spec.idleTurningActive and not spec.idleTurningUpdateSteeringWheel then
+		return 0
+	end
+
 	return self.rotatedTime * self:getReverserDirection()
 end
 
@@ -976,6 +1020,38 @@ end
 function Drivable:brakeToStop()
 	local spec = self.spec_drivable
 	spec.brakeToStop = true
+end
+
+function Drivable:updateSteeringAngle(wheel, dt, steeringAngle)
+	local spec = self.spec_drivable
+
+	if spec.idleTurningAllowed then
+		for i = 1, #spec.idleTurningWheels do
+			local wheelData = spec.idleTurningWheels[i]
+
+			if wheel.repr == wheel or wheel.driveNode == wheelData.wheelNode then
+				local idleTurnAngle = wheelData.steeringAngle
+
+				if wheelData.inverted then
+					idleTurnAngle = wheelData.steeringAngle + math.pi
+				end
+
+				return spec.idleTurningActive and idleTurnAngle or steeringAngle
+			end
+		end
+	end
+
+	return steeringAngle
+end
+
+function Drivable:getIsManualDirectionChangeAllowed(superFunc)
+	local spec = self.spec_drivable
+
+	if spec.idleTurningAllowed and spec.idleTurningActive then
+		return false
+	end
+
+	return superFunc(self)
 end
 
 function Drivable:actionEventAccelerate(actionName, inputValue, callbackState, isAnalog)

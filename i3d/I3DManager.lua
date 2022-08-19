@@ -324,7 +324,7 @@ function I3DManager:setupDebugLoading()
 
 		if nodeId > 0 then
 			for _, data in ipairs(I3DManager.DEBUG_LOADING_CHECKS) do
-				local numMatches = I3DManager.checkRecursive(params[1] or "", nodeId, data.checkFunc)
+				local numMatches = I3DManager.checkRecursive(arguments.filename or "", nodeId, data.checkFunc)
 
 				if numMatches > 0 then
 					Logging.devInfo("Finished '%s' check with '%d' matches for '%s'", data.name, numMatches, arguments.filename or "")
@@ -341,6 +341,7 @@ function I3DManager:setupDebugLoading()
 		local newParams = {
 			target = target,
 			callbackFunc = callbackFunc,
+			filename = filename,
 			params = params
 		}
 
@@ -354,10 +355,10 @@ function I3DManager:setupDebugLoading()
 
 		if nodeId > 0 then
 			for _, data in ipairs(I3DManager.DEBUG_LOADING_CHECKS) do
-				local numMatches = I3DManager.checkRecursive(params[1] or "", nodeId, data.checkFunc)
+				local numMatches = I3DManager.checkRecursive(arguments.filename or "", nodeId, data.checkFunc)
 
 				if numMatches > 0 then
-					Logging.devWarning("Finished '%s' check with '%d' matches for '%s'", data.name, numMatches, params[1] or "")
+					Logging.devInfo("Finished '%s' check with '%d' matches for '%s'", data.name, numMatches, arguments.filename or "")
 				end
 			end
 		end
@@ -405,10 +406,10 @@ I3DManager.addDebugLoadingCheck("tip col properties", function (filename, node)
 	return hasError
 end)
 I3DManager.addDebugLoadingCheck("LOD Checks", function (filename, node)
-	local nodeName = getName(node)
+	local lodNode = getLODTransformGroup(node)
 
-	if string.contains(nodeName, "LOD") and (not getVisibility(node) or not getVisibility(getParent(node))) then
-		Logging.warning("LOD not visisble - Node: %s", I3DUtil.getNodePath(node))
+	if lodNode ~= 0 and lodNode == getParent(node) and (not getVisibility(node) or not getVisibility(getParent(node))) then
+		Logging.warning("LOD is hidden - Node: %s   NodeIndex: %s", I3DUtil.getNodePath(node), I3DUtil.getNodePathIndices(node))
 
 		return true
 	end

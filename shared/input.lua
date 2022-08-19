@@ -265,19 +265,6 @@ Input.addMouseButtonDefine("MOUSE_BUTTON_WHEEL_UP", 4)
 Input.addMouseButtonDefine("MOUSE_BUTTON_WHEEL_DOWN", 5)
 Input.addMouseButtonDefine("MOUSE_BUTTON_X1", 6)
 Input.addMouseButtonDefine("MOUSE_BUTTON_X2", 7)
-
-function Input.addKeyDefine(idName, id, isModifier)
-	if Input[idName] ~= nil or Input.keyIdToIdName[id] ~= nil then
-		print("Error: duplicate key define " .. idName .. " = " .. id)
-
-		return
-	end
-
-	Input.keyIdToIdName[id] = idName
-	Input.keyIdIsModifier[id] = isModifier
-	Input[idName] = id
-end
-
 Input.addFullAxisDefine("AXIS_X", 0)
 Input.addFullAxisDefine("AXIS_1", 0, true)
 Input.addFullAxisDefine("AXIS_Y", 1)

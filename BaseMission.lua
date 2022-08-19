@@ -1782,7 +1782,7 @@ function BaseMission:consoleCommandVehicleRemoveAll()
 	for i = #self.vehicles, 1, -1 do
 		local vehicle = self.vehicles[i]
 
-		if vehicle.isa ~= nil and vehicle:isa(Vehicle) and vehicle.trainSystem == nil and vehicle.typeName ~= "pallet" then
+		if vehicle.isa ~= nil and vehicle:isa(Vehicle) and vehicle.trainSystem == nil and not vehicle.isPallet then
 			self:removeVehicle(vehicle)
 
 			numDeleted = numDeleted + 1
@@ -1798,7 +1798,7 @@ function BaseMission:consoleCommandItemRemoveAll()
 	for i = #self.vehicles, 1, -1 do
 		local vehicle = self.vehicles[i]
 
-		if vehicle.isa ~= nil and vehicle:isa(Vehicle) and vehicle.typeName == "pallet" then
+		if vehicle.isa ~= nil and vehicle:isa(Vehicle) and vehicle.isPallet then
 			self:removeVehicle(vehicle)
 
 			numDeleted = numDeleted + 1

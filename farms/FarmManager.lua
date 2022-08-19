@@ -18,6 +18,7 @@ end
 function FarmManager:initDataStructures()
 	self.farms = {}
 	self.farmIdToFarm = {}
+	self.defaultHandtools = {}
 	self.spFarmWasMerged = false
 	self.debug_hasAskedCreate = false
 end
@@ -39,6 +40,12 @@ function FarmManager:loadMapData(xmlFile)
 		self.farmIdToFarm[spectatorFarm.farmId] = spectatorFarm
 	end
 
+	local xmlFileObj = XMLFile.wrap(xmlFile)
+
+	xmlFileObj:iterate("map.farms.defaultHandTools.handTool", function (_, key)
+		table.insert(self.defaultHandtools, xmlFileObj:getString(key .. "#filename"))
+	end)
+	xmlFileObj:delete()
 	addConsoleCommand("gsFarmSet", "Set farm for current player or vehicle", "consoleCommandSetFarm", self)
 end
 
@@ -111,6 +118,16 @@ function FarmManager:loadDefaults()
 		local farm = self:createFarm(g_i18n:getText("ui_defaultFarmName"), 1)
 
 		farm:addUser(g_currentMission:getServerUserId(), FarmManager.SINGLEPLAYER_UUID, true)
+
+		for _, handToolXmlFilename in ipairs(self.defaultHandtools) do
+			local storeItem = g_storeManager:getItemByXMLFilename(handToolXmlFilename)
+
+			if storeItem ~= nil then
+				farm:addHandTool(handToolXmlFilename)
+			else
+				Logging.warning("Default handtool '%s' not defined", handToolXmlFilename)
+			end
+		end
 	end
 
 	g_fieldManager:updateFieldOwnership()

@@ -670,23 +670,21 @@ function InputBinding:registerActionEvent(actionName, targetObject, eventCallbac
 			end
 		end
 
-		if valid then
-			table.insert(actionEventList, event)
+		table.insert(actionEventList, event)
 
-			self.events[event.id] = event
-			eventId = event.id
-			event.displayIsVisible = isFirstEventOnAction
+		self.events[event.id] = event
+		eventId = event.id
+		event.displayIsVisible = isFirstEventOnAction
 
-			event:initializeDisplayText(action)
-			event:setIgnoreComboMask(action:getIgnoreComboMask())
+		event:initializeDisplayText(action)
+		event:setIgnoreComboMask(action:getIgnoreComboMask())
 
-			if self.registrationContext == InputBinding.NO_REGISTRATION_CONTEXT then
-				self:refreshEventCollections()
+		if self.registrationContext == InputBinding.NO_REGISTRATION_CONTEXT then
+			self:refreshEventCollections()
 
-				self.contexts[self.currentContextName].eventOrderCounter = eventOrderCounter + 1
-			else
-				self.registrationContext.eventOrderCounter = eventOrderCounter + 1
-			end
+			self.contexts[self.currentContextName].eventOrderCounter = eventOrderCounter + 1
+		else
+			self.registrationContext.eventOrderCounter = eventOrderCounter + 1
 		end
 	end
 
@@ -2685,7 +2683,9 @@ function InputBinding:update(dt)
 	self:updateMouseInput()
 	self:updateInput()
 	self:finalizeMouseInput()
+end
 
+function InputBinding:draw()
 	if self.debugEnabled then
 		self:updateDebugDisplay()
 	end
@@ -3708,6 +3708,9 @@ function InputBinding:debugRenderInputContext(contextName)
 
 	local posX = 0.01
 	local posY = 0.96
+	local textSize = 0.01
+	local textOffset = 0.011
+	local numColumns = 1
 
 	for action, events in pairs(context.actionEvents) do
 		local neededLines = 1 + #action:getBindings() + #events
@@ -3715,10 +3718,15 @@ function InputBinding:debugRenderInputContext(contextName)
 		if posY - neededLines * 0.013 < 0 then
 			posY = 0.96
 			posX = posX + 0.35
+			numColumns = numColumns + 1
+
+			if numColumns > 2 then
+				new2DLayer()
+			end
 		end
 
 		setTextColor(1, 1, 1, 1)
-		renderText(posX, posY, 0.012, "Action " .. action.name .. " (" .. tostring(action) .. ")")
+		renderText(posX, posY, textSize, "Action " .. action.name .. " (" .. tostring(action) .. ")")
 
 		posY = posY - 0.013
 
@@ -3731,23 +3739,23 @@ function InputBinding:debugRenderInputContext(contextName)
 				setTextColor(0, 1, 0, 1)
 			end
 
-			renderText(posX + 0.005, posY, 0.012, "B: Active: " .. tostring(binding.isActive))
-			renderText(posX + 0.05, posY, 0.012, "Shadowed: " .. tostring(binding.isShadowed))
-			renderText(posX + 0.105, posY, 0.012, "Value: " .. string.format("%.4f", binding.inputValue))
-			renderText(posX + 0.16, posY, 0.012, "[" .. table.concat(binding.axisNames, ", ") .. "] " .. tostring(binding.axisComponent) .. " | " .. tostring(binding.deviceId) .. " | " .. tostring(binding.index))
+			renderText(posX + 0.005, posY, textSize, "B: Active: " .. tostring(binding.isActive))
+			renderText(posX + 0.05, posY, textSize, "Shadowed: " .. tostring(binding.isShadowed))
+			renderText(posX + 0.105, posY, textSize, "Value: " .. string.format("%.4f", binding.inputValue))
+			renderText(posX + 0.16, posY, textSize, "[" .. table.concat(binding.axisNames, ", ") .. "] " .. tostring(binding.axisComponent) .. " | " .. tostring(binding.deviceId) .. " | " .. tostring(binding.index))
 
-			posY = posY - 0.013
+			posY = posY - textOffset
 		end
 
 		setTextColor(1, 1, 1, 1)
 
 		for _, event in ipairs(events) do
-			renderText(posX + 0.005, posY, 0.012, "E: Active: " .. tostring(event.isActive))
-			renderText(posX + 0.05, posY, 0.012, "Visible: " .. tostring(event.displayIsVisible))
-			renderText(posX + 0.105, posY, 0.012, "Triggered: " .. tostring(event.hasFrameTriggered))
-			renderText(posX + 0.16, posY, 0.012, "Target: " .. tostring(event.targetObject) .. " | " .. tostring(event))
+			renderText(posX + 0.005, posY, textSize, "E: Active: " .. tostring(event.isActive))
+			renderText(posX + 0.05, posY, textSize, "Visible: " .. tostring(event.displayIsVisible))
+			renderText(posX + 0.105, posY, textSize, "Triggered: " .. tostring(event.hasFrameTriggered))
+			renderText(posX + 0.16, posY, textSize, "Target: " .. tostring(event.targetObject))
 
-			posY = posY - 0.013
+			posY = posY - textOffset
 		end
 
 		posY = posY - 0.005

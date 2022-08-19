@@ -160,6 +160,10 @@ end
 function LicensePlates:onPostLoad(savegame)
 	local spec = self.spec_licensePlates
 
+	for i = 1, #spec.licensePlates do
+		ObjectChangeUtil.setObjectChanges(spec.licensePlates[i].changeObjects, false, self, self.setMovingToolDirty)
+	end
+
 	if savegame ~= nil and self:getHasLicensePlates() then
 		local variation = savegame.xmlFile:getValue(savegame.key .. ".licensePlates#variation", 1)
 		local characters = savegame.xmlFile:getValue(savegame.key .. ".licensePlates#characters")

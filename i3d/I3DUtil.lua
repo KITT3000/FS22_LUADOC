@@ -342,6 +342,16 @@ function I3DUtil.getNodePath(node)
 	return getName(node)
 end
 
+function I3DUtil.getNodePathIndices(node)
+	local parent = getParent(node)
+
+	if parent ~= 0 and parent ~= nil and getChildIndex(parent) ~= -1 then
+		return I3DUtil.getNodePathIndices(parent) .. "|" .. getChildIndex(node)
+	end
+
+	return getChildIndex(node)
+end
+
 function I3DUtil.checkForChildCollisions(node, errorFunc, ...)
 	local rigidBodyType = getRigidBodyType(node)
 

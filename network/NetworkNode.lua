@@ -472,7 +472,7 @@ function NetworkNode:draw()
 
 		for _, object in pairs(self.objects) do
 			object.serverId = self.objectIds[object] or 0
-			object.debugClassName = tostring(ClassUtil.getClassNameByObject(object))
+			object.debugClassName = object.debugClassName or tostring(ClassUtil.getClassNameByObject(object))
 
 			table.insert(allObjects, object)
 		end
@@ -499,7 +499,7 @@ function NetworkNode:draw()
 		renderText(posX, 0.98, 0.013, title)
 
 		for _, object in ipairs(allObjects) do
-			local path = object.configFileName
+			local path = object.configFileName or object.xmlFilename
 
 			if path ~= nil then
 				path = Utils.getFilenameFromPath(path)

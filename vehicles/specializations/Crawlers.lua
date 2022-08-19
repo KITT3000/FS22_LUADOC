@@ -121,9 +121,7 @@ function Crawlers:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 	for _, crawler in pairs(spec.crawlers) do
 		crawler.movedDistance = 0
 
-		if crawler.wheel ~= nil then
-			crawler.movedDistance = self:getCrawlerWheelMovedDistance(crawler, "lastRotationScroll", false)
-		else
+		if crawler.speedReferenceNode ~= nil then
 			local newX, newY, newZ = getWorldTranslation(crawler.speedReferenceNode)
 
 			if crawler.lastPosition == nil then
@@ -147,6 +145,8 @@ function Crawlers:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 			crawler.lastPosition[1] = newX
 			crawler.lastPosition[2] = newY
 			crawler.lastPosition[3] = newZ
+		else
+			crawler.movedDistance = self:getCrawlerWheelMovedDistance(crawler, "lastRotationScroll", false)
 		end
 
 		for _, scrollerNode in pairs(crawler.scrollerNodes) do
@@ -215,13 +215,9 @@ function Crawlers:loadCrawlerFromXML(xmlFile, key)
 	local crawler = {
 		linkNode = linkNode,
 		isLeft = xmlFile:getValue(key .. "#isLeft", false),
-		trackWidth = xmlFile:getValue(key .. "#trackWidth", 1)
+		trackWidth = xmlFile:getValue(key .. "#trackWidth", 1),
+		translationOffset = xmlFile:getValue(key .. "#offset", nil, true)
 	}
-	local offset = xmlFile:getValue(key .. "#offset", nil, true)
-
-	if offset ~= nil then
-		setTranslation(crawler.loadedCrawler, unpack(offset))
-	end
 
 	XMLUtil.checkDeprecatedXMLElements(xmlFile, key .. "#speedRefWheel", key .. "#wheelIndex")
 
@@ -259,7 +255,7 @@ function Crawlers:loadCrawlerFromXML(xmlFile, key)
 
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, self.configFileName, key .. "#speedRefNode", key .. "#speedReferenceNode")
 
-	crawler.speedReferenceNode = xmlFile:getValue(key .. "#speedReferenceNode", linkNode, self.components, self.i3dMappings)
+	crawler.speedReferenceNode = xmlFile:getValue(key .. "#speedReferenceNode", nil, self.components, self.i3dMappings)
 	crawler.movedDistance = 0
 	crawler.fieldDirtMultiplier = xmlFile:getValue(key .. "#fieldDirtMultiplier", 75)
 	crawler.streetDirtMultiplier = xmlFile:getValue(key .. "#streetDirtMultiplier", -150)
@@ -309,6 +305,10 @@ function Crawlers:onCrawlerI3DLoaded(i3dNode, failedReason, args)
 
 		if crawler.loadedCrawler ~= nil then
 			link(crawler.linkNode, crawler.loadedCrawler)
+
+			if crawler.translationOffset ~= nil then
+				setTranslation(crawler.loadedCrawler, unpack(crawler.translationOffset))
+			end
 
 			crawler.scrollerNodes = {}
 			local j = 0
@@ -507,6 +507,10 @@ function Crawlers:getCrawlerWheelMovedDistance(crawler, lastName, useOnlyRotatio
 			end
 
 			local distance = wheelData.wheel.radius * (newX - lastRotation)
+
+			if math.abs(wheelData.wheel.steeringAngle) > math.pi * 0.5 then
+				distance = -distance
+			end
 
 			if useOnlyRotation then
 				distance = newX - lastRotation

@@ -103,10 +103,9 @@ function VehicleSellingPoint:determineCurrentVehicles()
 			local vehicle = g_currentMission.nodeToObject[shapeId]
 
 			if vehicle ~= nil then
-				local isPallet = vehicle.typeName == "pallet"
 				local isRidable = SpecializationUtil.hasSpecialization(Rideable, vehicle.specializations)
 
-				if not isRidable and not isPallet and vehicle.getSellPrice ~= nil and vehicle.price ~= nil then
+				if not isRidable and not vehicle.isPallet and vehicle.getSellPrice ~= nil and vehicle.price ~= nil then
 					local items = vehicle.rootVehicle:getChildVehicles()
 
 					for i = 1, #items do

@@ -201,7 +201,7 @@ end
 function PalletSpawner:onFindExistingPallet(node)
 	local object = g_currentMission.nodeToObject[node]
 
-	if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.typeName == "pallet" and object:getFillUnitSupportsFillType(1, self.getOrSpawnPalletFilltype) and object:getFillUnitFreeCapacity(1, self.getOrSpawnPalletFilltype) > 0 then
+	if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.isPallet and object:getFillUnitSupportsFillType(1, self.getOrSpawnPalletFilltype) and object:getFillUnitFreeCapacity(1, self.getOrSpawnPalletFilltype) > 0 then
 		self.foundExistingPallet = object
 
 		return false
@@ -211,7 +211,7 @@ end
 function PalletSpawner:onFindPallet(node)
 	local object = g_currentMission.nodeToObject[node]
 
-	if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.typeName == "pallet" and object:getFillUnitFillType(1) == self.getAllPalletsFilltype then
+	if object ~= nil and object.isa ~= nil and object:isa(Vehicle) and object.isPallet and object:getFillUnitFillType(1) == self.getAllPalletsFilltype then
 		self.getAllPalletsFoundPallets[object] = true
 	end
 end

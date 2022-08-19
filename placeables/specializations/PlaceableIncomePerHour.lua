@@ -40,11 +40,15 @@ end
 
 function PlaceableIncomePerHour:onHourChanged()
 	if self.isServer then
-		local spec = self.spec_incomePerHour
-		local incomePerHour = spec.incomePerHour * self:getIncomePerHourFactor() * g_currentMission.environment.timeAdjustment
+		local ownerFarmId = self:getOwnerFarmId()
 
-		if incomePerHour ~= 0 then
-			g_currentMission:addMoney(incomePerHour, self:getOwnerFarmId(), MoneyType.PROPERTY_INCOME, true)
+		if ownerFarmId ~= FarmlandManager.NO_OWNER_FARM_ID then
+			local spec = self.spec_incomePerHour
+			local incomePerHour = spec.incomePerHour * self:getIncomePerHourFactor() * g_currentMission.environment.timeAdjustment
+
+			if incomePerHour ~= 0 then
+				g_currentMission:addMoney(incomePerHour, ownerFarmId, MoneyType.PROPERTY_INCOME, true)
+			end
 		end
 	end
 end

@@ -77,6 +77,7 @@ function ParticleEffect:stop()
 end
 
 function ParticleEffect:reset()
+	ParticleUtil.resetNumOfEmittedParticles(self.particleSystem)
 end
 
 function ParticleEffect:setFruitType(fruitType)

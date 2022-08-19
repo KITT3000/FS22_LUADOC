@@ -38,11 +38,11 @@ end
 
 function ActivatableObjectsSystem:update(dt)
 	if self.isActive then
-		self:updateObjects()
+		self:updateObjects(dt)
 	end
 end
 
-function ActivatableObjectsSystem:updateObjects()
+function ActivatableObjectsSystem:updateObjects(dt)
 	local nearestObject = nil
 	local nearestDistance = math.huge
 	local farmId = g_currentMission:getFarmId()
@@ -80,8 +80,14 @@ function ActivatableObjectsSystem:updateObjects()
 		end
 	end
 
-	if nearestObject ~= nil and self.actionEventId ~= nil then
-		g_inputBinding:setActionEventText(self.actionEventId, nearestObject.activateText)
+	if nearestObject ~= nil then
+		if self.actionEventId ~= nil then
+			g_inputBinding:setActionEventText(self.actionEventId, nearestObject.activateText)
+		end
+
+		if nearestObject.update ~= nil then
+			nearestObject:update(dt)
+		end
 	end
 end
 

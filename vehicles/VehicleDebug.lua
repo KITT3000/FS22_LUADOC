@@ -507,6 +507,12 @@ function VehicleDebug:drawWheelInfoRendering(x, y)
 					wheelsStrs[9] = wheelsStrs[9] .. string.format("%.2f\n", wheel.radius)
 					wheelsStrs[10] = wheelsStrs[10] .. string.format("%.2f\n", wheel.sinkFrictionScaleFactor * wheel.maxLongStiffness)
 					wheelsStrs[11] = wheelsStrs[11] .. string.format("%.2f\n", wheel.sinkLatStiffnessFactor * wheel.maxLatStiffness)
+
+					if #specWheels.wheels > 4 and DebugUtil.isNodeInCameraRange(wheel.repr, 30) then
+						local wx, wy, wz = getWorldTranslation(wheel.repr)
+
+						Utils.renderTextAtWorldPosition(wx, wy, wz, string.format("%d\n%s", i, getName(wheel.driveNode or wheel.linkNode)), getCorrectTextSize(0.008))
+					end
 				end
 			end
 

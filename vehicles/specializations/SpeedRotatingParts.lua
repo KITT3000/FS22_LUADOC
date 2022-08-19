@@ -130,7 +130,9 @@ function SpeedRotatingParts:onWriteStream(streamId, connection)
 		local speedRotatingPart = spec.speedRotatingParts[i]
 
 		if speedRotatingPart.versatileYRot then
-			streamWriteUIntN(streamId, MathUtil.clamp(math.floor(speedRotatingPart.steeringAngle / (math.pi * 2) * 511), 0, 511), 9)
+			local yRot = speedRotatingPart.steeringAngle % (math.pi * 2)
+
+			streamWriteUIntN(streamId, MathUtil.clamp(math.floor(yRot / (math.pi * 2) * 511), 0, 511), 9)
 		end
 	end
 end
@@ -354,6 +356,10 @@ function SpeedRotatingParts:loadSpeedRotatingPartFromXML(speedRotatingPart, xmlF
 	speedRotatingPart.lastDir = 1
 	speedRotatingPart.maxUpdateDistance = xmlFile:getValue(key .. "#maxUpdateDistance", SpeedRotatingParts.DEFAULT_MAX_UPDATE_DISTANCE)
 
+	if self.isServer and speedRotatingPart.versatileYRot then
+		speedRotatingPart.maxUpdateDistance = math.huge
+	end
+
 	return true
 end
 
@@ -378,7 +384,7 @@ function SpeedRotatingParts:updateSpeedRotatingPart(speedRotatingPart, dt, isPar
 	local speed = speedRotatingPart.lastSpeed
 	local dir = speedRotatingPart.lastDir
 
-	if speedRotatingPart.repr ~= nil then
+	if speedRotatingPart.repr ~= nil and (self.isServer or not speedRotatingPart.versatileYRot) then
 		local _ = nil
 		_, speedRotatingPart.steeringAngle, _ = getRotation(speedRotatingPart.repr)
 	end
@@ -425,8 +431,11 @@ function SpeedRotatingParts:updateSpeedRotatingPart(speedRotatingPart, dt, isPar
 			speed = math.abs(rotDiff)
 			dir = MathUtil.sign(rotDiff)
 			speedRotatingPart.lastWheelXRot = speedRotatingPart.wheel.netInfo.xDrive
-			local _ = nil
-			_, speedRotatingPart.steeringAngle, _ = getRotation(speedRotatingPart.wheel.repr)
+
+			if not speedRotatingPart.versatileYRot then
+				local _ = nil
+				_, speedRotatingPart.steeringAngle, _ = getRotation(speedRotatingPart.wheel.repr)
+			end
 		else
 			speed = self.lastSpeedReal * dt
 			dir = self.movingDirection
@@ -449,9 +458,10 @@ function SpeedRotatingParts:updateSpeedRotatingPart(speedRotatingPart, dt, isPar
 		if speed > 0.0017 and self.isServer and speedRotatingPart.activationSpeed < self:getLastSpeed(true) then
 			local posX, posY, posZ = localToLocal(speedRotatingPart.repr, speedRotatingPart.componentNode, 0, 0, 0)
 			speedRotatingPart.steeringAngle = Utils.getVersatileRotation(speedRotatingPart.repr, speedRotatingPart.componentNode, dt, posX, posY, posZ, speedRotatingPart.steeringAngle, speedRotatingPart.minYRot, speedRotatingPart.maxYRot)
+			local steeringAngleSent = math.floor(speedRotatingPart.steeringAngle % (math.pi * 2) / (math.pi * 2) * 511)
 
-			if math.abs(speedRotatingPart.steeringAngleSent - speedRotatingPart.steeringAngle) > 0.1 then
-				speedRotatingPart.steeringAngleSent = speedRotatingPart.steeringAngle
+			if steeringAngleSent ~= speedRotatingPart.steeringAngleSent then
+				speedRotatingPart.steeringAngleSent = steeringAngleSent
 
 				self:raiseDirtyFlags(spec.dirtyFlag)
 			end

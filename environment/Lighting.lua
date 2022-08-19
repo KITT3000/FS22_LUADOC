@@ -56,6 +56,12 @@ function Lighting:load(xmlFile, baseKey)
 		self.colorGradingNight = self.colorGradingDay
 	end
 
+	self.bloomMagnitude = xmlFile:getFloat(baseKey .. ".bloom#magnitude") or 0.5
+	self.bloomThreshold = xmlFile:getFloat(baseKey .. ".bloom#threshold") or 2
+
+	setBloomMagnitude(self.bloomMagnitude)
+	setBloomMaskThreshold(self.bloomThreshold)
+
 	if g_currentMission.xmlFile ~= nil then
 		self.envMapBasePath = xmlFile:getString(baseKey .. ".envMap#basePath")
 
@@ -150,6 +156,11 @@ function Lighting:setCloudEnvMapInfo(cloudEnvMapIndex1, cloudEnvMapIndex2, alpha
 end
 
 function Lighting:update(dt, force)
+	if force then
+		setBloomMagnitude(self.bloomMagnitude)
+		setBloomMaskThreshold(self.bloomThreshold)
+	end
+
 	local dayTime = self.environment.dayTime
 
 	if force or g_sleepManager.isSleeping or self.updateInterval < math.abs(dayTime - self.lastUpdateDayTime) then

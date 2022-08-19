@@ -11,11 +11,12 @@ function SlopeCompensation.initSpecialization()
 
 	schema:setXMLSpecializationType("SlopeCompensation")
 	schema:register(XMLValueType.FLOAT, "vehicle.slopeCompensation#threshold", "Update threshold for animation", 0.002)
+	schema:register(XMLValueType.BOOL, "vehicle.slopeCompensation#highUpdateFrequency", "Defines if the angle is updated every frame or every seconds frame", false)
 	schema:register(XMLValueType.INT, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#wheel1", "Wheel index 1")
 	schema:register(XMLValueType.INT, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#wheel2", "Wheel index 2")
-	schema:register(XMLValueType.ANGLE, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#maxAngle", "Max. angle")
-	schema:register(XMLValueType.ANGLE, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#minAngle", "Min. angle")
-	schema:register(XMLValueType.FLOAT, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#speed", "Move speed")
+	schema:register(XMLValueType.ANGLE, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#maxAngle", "Max. angle", 5)
+	schema:register(XMLValueType.ANGLE, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#minAngle", "Min. angle", "Negative #maxAngle")
+	schema:register(XMLValueType.FLOAT, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#speed", "Move speed", 1)
 	schema:register(XMLValueType.STRING, SlopeCompensation.COMPENSATION_NODE_XML_KEY .. "#animationName", "Animation name")
 	schema:setXMLSpecializationType()
 end
@@ -29,6 +30,7 @@ end
 
 function SlopeCompensation.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostLoad", SlopeCompensation)
+	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", SlopeCompensation)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", SlopeCompensation)
 end
 
@@ -57,11 +59,16 @@ function SlopeCompensation:onPostLoad(savegame)
 	spec.threshold = self.xmlFile:getValue("vehicle.slopeCompensation#threshold", 0.002)
 
 	if #spec.nodes == 0 then
+		SpecializationUtil.removeEventListener(self, "onUpdate", SlopeCompensation)
 		SpecializationUtil.removeEventListener(self, "onUpdateTick", SlopeCompensation)
+	elseif self.xmlFile:getValue("vehicle.slopeCompensation#highUpdateFrequency", false) then
+		SpecializationUtil.removeEventListener(self, "onUpdateTick", SlopeCompensation)
+	else
+		SpecializationUtil.removeEventListener(self, "onUpdate", SlopeCompensation)
 	end
 end
 
-function SlopeCompensation:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+function SlopeCompensation:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	local spec = self.spec_slopeCompensation
 
 	for _, compensationNode in ipairs(spec.nodes) do
@@ -85,6 +92,10 @@ function SlopeCompensation:onUpdateTick(dt, isActiveForInput, isActiveForInputIg
 			end
 		end
 	end
+end
+
+function SlopeCompensation:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	SlopeCompensation.onUpdate(self, dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 end
 
 function SlopeCompensation:loadCompensationNodeFromXML(compensationNode, xmlFile, key)

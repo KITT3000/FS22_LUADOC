@@ -242,6 +242,8 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 			}
 			production.animationNodes = g_animationManager:loadAnimations(xmlFile, productionKey .. ".animationNodes", components, self, i3dMappings)
 			production.effects = g_effectManager:loadEffect(xmlFile, productionKey .. ".effectNodes", components, self, i3dMappings)
+
+			g_effectManager:setFillType(production.effects, FillType.UNKNOWN)
 		end
 
 		if self.productionsIdToObj[production.id] ~= nil then
@@ -280,6 +282,8 @@ function ProductionPoint:load(components, xmlFile, key, customEnv, i3dMappings)
 		}
 		self.animationNodes = g_animationManager:loadAnimations(xmlFile, key .. ".animationNodes", components, self, i3dMappings)
 		self.effects = g_effectManager:loadEffect(xmlFile, key .. ".effectNodes", components, self, i3dMappings)
+
+		g_effectManager:setFillType(self.effects, FillType.UNKNOWN)
 	end
 
 	self.unloadingStation = SellingStation.new(self.isServer, self.isClient)
@@ -671,12 +675,20 @@ function ProductionPoint:updateFxState()
 	if self.isClient then
 		if #self.activeProductions > 0 then
 			g_soundManager:stopSample(self.samples.idle)
-			g_soundManager:playSample(self.samples.active)
+
+			if not g_soundManager:getIsSamplePlaying(self.samples.active) then
+				g_soundManager:playSample(self.samples.active)
+			end
+
 			g_animationManager:startAnimations(self.animationNodes)
 			g_effectManager:startEffects(self.effects)
 		else
-			g_soundManager:playSample(self.samples.idle)
 			g_soundManager:stopSample(self.samples.active)
+
+			if not g_soundManager:getIsSamplePlaying(self.samples.idle) then
+				g_soundManager:playSample(self.samples.idle)
+			end
+
 			g_animationManager:stopAnimations(self.animationNodes)
 			g_effectManager:stopEffects(self.effects)
 		end

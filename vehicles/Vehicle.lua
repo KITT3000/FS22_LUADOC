@@ -709,7 +709,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 	self.typeDesc = self.xmlFile:getValue("vehicle.base.typeDesc", "TypeDescription", self.customEnvironment, true)
 	self.synchronizePosition = self.xmlFile:getValue("vehicle.base.synchronizePosition", true)
 	self.highPrecisionPositionSynchronization = false
-	self.supportsPickUp = self.xmlFile:getValue("vehicle.base.supportsPickUp", self.typeName == "pallet")
+	self.supportsPickUp = self.xmlFile:getValue("vehicle.base.supportsPickUp", self.isPallet)
 	self.canBeReset = self.xmlFile:getValue("vehicle.base.canBeReset", true)
 	self.showInVehicleMenu = self.xmlFile:getValue("vehicle.base.showInVehicleMenu", true)
 	self.rootNode = getChildAt(i3dNode, 0)

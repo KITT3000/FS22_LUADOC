@@ -651,9 +651,6 @@ function Farm:addUser(userId, uniqueUserId, isFarmManager, user)
 	isFarmManager = isFarmManager or false
 	player.isFarmManager = isFarmManager
 	player.userId = userId
-
-	self:updateLastNickname(player, userId, user)
-
 	player.permissions = {}
 
 	for _, permission in ipairs(Farm.PERMISSIONS) do
@@ -675,6 +672,8 @@ function Farm:addUser(userId, uniqueUserId, isFarmManager, user)
 	table.insert(self.activeUsers, player)
 
 	self.userIdToPlayer[userId] = player
+
+	self:updateLastNickname(userId, user)
 end
 
 function Farm:removeUser(userId)
@@ -703,7 +702,7 @@ function Farm:onUserJoinGame(uniqueUserId, userId, user)
 		player.userId = userId
 		self.userIdToPlayer[userId] = player
 
-		self:updateLastNickname(player, userId, user)
+		self:updateLastNickname(userId, user)
 		table.insert(self.activeUsers, player)
 
 		return true
@@ -723,12 +722,13 @@ function Farm:onUserQuitGame(userId)
 	end
 end
 
-function Farm:updateLastNickname(player, userId, user)
+function Farm:updateLastNickname(userId, user)
 	if user == nil then
 		user = g_currentMission.userManager:getUserByUserId(userId)
 	end
 
 	if user ~= nil then
+		local player = self.userIdToPlayer[userId]
 		player.lastNickname = user:getNickname()
 	end
 end

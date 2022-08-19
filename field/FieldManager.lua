@@ -549,34 +549,54 @@ function FieldManager:updateNPCField(field, allowUpdates)
 				g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_WITHERED)
 
 				if allowUpdates then
-					local plowState = FieldUtil.getPlowFactor(field, true)
-
-					if plowState == 0 then
+					if math.random() > 0.2 then
+						local plowState = fruitDesc.increasesSoilDensity and 0 or FieldUtil.getPlowFactor(field, true) * self.plowLevelMaxValue
+						local limeState = fruitDesc.consumesLime and 0 or FieldUtil.getLimeFactor(field) * self.limeLevelMaxValue
 						self.fieldStatusParametersToSet = {
 							field,
 							field.setFieldStatusPartitions,
 							1,
-							nil,
-							FieldManager.FIELDSTATE_PLOWED,
+							field.fruitType,
+							FieldManager.FIELDSTATE_HARVESTED,
+							fruitDesc.cutState,
 							0,
-							nil,
-							false
+							false,
+							plowState,
+							0,
+							limeState
 						}
 
-						g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_PLOWED)
+						g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_HARVESTED)
 					else
-						self.fieldStatusParametersToSet = {
-							field,
-							field.setFieldStatusPartitions,
-							1,
-							nil,
-							FieldManager.FIELDSTATE_CULTIVATED,
-							0,
-							nil,
-							false
-						}
+						local plowState = FieldUtil.getPlowFactor(field, true)
 
-						g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_CULTIVATED)
+						if plowState == 0 then
+							self.fieldStatusParametersToSet = {
+								field,
+								field.setFieldStatusPartitions,
+								1,
+								nil,
+								FieldManager.FIELDSTATE_PLOWED,
+								0,
+								nil,
+								false
+							}
+
+							g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_PLOWED)
+						else
+							self.fieldStatusParametersToSet = {
+								field,
+								field.setFieldStatusPartitions,
+								1,
+								nil,
+								FieldManager.FIELDSTATE_CULTIVATED,
+								0,
+								nil,
+								false
+							}
+
+							g_missionManager:validateMissionOnField(field, FieldManager.FIELDEVENT_CULTIVATED)
+						end
 					end
 				end
 
@@ -593,7 +613,7 @@ function FieldManager:updateNPCField(field, allowUpdates)
 		local maxHarvestState = FieldUtil.getMaxHarvestState(field, field.fruitType)
 
 		if maxHarvestState == harvestReadyState then
-			if allowUpdates and math.random() < 0.95 then
+			if allowUpdates and math.random() < 0.1 then
 				local plowState = fruitDesc.increasesSoilDensity and 0 or FieldUtil.getPlowFactor(field, true) * self.plowLevelMaxValue
 				local limeState = fruitDesc.consumesLime and 0 or FieldUtil.getLimeFactor(field) * self.limeLevelMaxValue
 				self.fieldStatusParametersToSet = {

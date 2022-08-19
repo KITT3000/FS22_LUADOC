@@ -31,6 +31,7 @@ function Player.new(isServer, isClient)
 
 	self.model:loadEmpty()
 
+	self.cctMovementCollisionMask = CollisionMask.PLAYER_MOVEMENT
 	self.networkInformation = {
 		creatorConnection = nil,
 		history = {},
@@ -100,6 +101,7 @@ function Player.new(isServer, isClient)
 		isOnGroundPhysics = true,
 		isCloseToGround = true,
 		isInWater = false,
+		waterDepth = 0,
 		wasInWater = false,
 		waterLevel = -1.4,
 		waterCameraOffset = 0.3,
@@ -442,6 +444,7 @@ function Player:load(creatorConnection, isOwner)
 		addConsoleCommand("gsPlayerFlightMode", "Enables/disables the flight mode toggle (key J). Use keys Q and E to change altitude", "consoleCommandToggleFlightMode", self)
 		addConsoleCommand("gsWoodCuttingMarkerVisiblity", "Enables/disables chainsaw woodcutting marker", "Player.consoleCommandToggleWoodCuttingMaker", nil)
 		addConsoleCommand("gsPlayerDebug", "Enables/disables player debug information", "consoleCommandTogglePlayerDebug", self)
+		addConsoleCommand("gsPlayerNoClip", "Enables/disables player no clip/collision mode. Use 'gsPlayerNoClip true' to also turn of terrain collision", "consoleCommandToggleNoClipMode", self)
 
 		if g_addTestCommands then
 			addConsoleCommand("gsTip", "Tips a fillType into a trigger", "consoleCommandTip", self)
@@ -503,6 +506,7 @@ function Player:delete()
 		removeConsoleCommand("gsPlayerFlightMode")
 		removeConsoleCommand("gsWoodCuttingMarkerVisiblity")
 		removeConsoleCommand("gsPlayerDebug")
+		removeConsoleCommand("gsPlayerNoClip")
 		removeConsoleCommand("gsPlayerThirdPerson")
 		removeConsoleCommand("gsPlayerIKChainsReload")
 		removeConsoleCommand("gsTip")
@@ -616,7 +620,7 @@ function Player:readUpdateStream(streamId, timestamp, connection)
 
 			if numHistory <= 5 then
 				for i = 1, numHistory do
-					moveCCT(self.controllerIndex, history[i].movementX, history[i].movementY, history[i].movementZ, CollisionMask.PLAYER_MOVEMENT)
+					moveCCT(self.controllerIndex, history[i].movementX, history[i].movementY, history[i].movementZ, self.cctMovementCollisionMask)
 				end
 			else
 				local accumSizeSmall = math.floor(numHistory / 5)
@@ -642,7 +646,7 @@ function Player:readUpdateStream(streamId, timestamp, connection)
 						movementZ = movementZ + history[j].movementZ
 					end
 
-					moveCCT(self.controllerIndex, movementX, movementY, movementZ, CollisionMask.PLAYER_MOVEMENT)
+					moveCCT(self.controllerIndex, movementX, movementY, movementZ, self.cctMovementCollisionMask)
 
 					startI = endI + 1
 				end
@@ -690,7 +694,7 @@ function Player:readUpdateStream(streamId, timestamp, connection)
 		local index = streamReadInt32(streamId)
 		local isControlled = streamReadBool(streamId)
 
-		moveCCT(self.controllerIndex, movementX, movementY, movementZ, CollisionMask.PLAYER_MOVEMENT)
+		moveCCT(self.controllerIndex, movementX, movementY, movementZ, self.cctMovementCollisionMask)
 		self.networkInformation.interpolationTime:startNewPhaseNetwork()
 		self.networkInformation.interpolatorQuaternion:setTargetQuaternion(qx, qy, qz, qw)
 
@@ -820,12 +824,14 @@ end
 
 function Player:updateWaterParams()
 	local x, y, z = getWorldTranslation(self.rootNode)
+	local yw = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, y, z)
 
 	g_currentMission.environmentAreaSystem:getWaterYAtWorldPositionAsync(x, y, z, function (_, waterY)
 		self.waterY = waterY or -2000
 	end, nil, nil)
 
-	local deltaWater = y - self.waterY - self.model.capsuleTotalHeight * 0.5
+	local playerY = y - self.model.capsuleTotalHeight * 0.5
+	local deltaWater = playerY - self.waterY
 	local waterLevel = self.baseInformation.waterLevel
 	local velocityY = nil
 
@@ -841,6 +847,7 @@ function Player:updateWaterParams()
 
 	self.baseInformation.wasInWater = self.baseInformation.isInWater
 	self.baseInformation.isInWater = deltaWater <= waterLevel
+	self.baseInformation.waterDepth = math.max(0, self.waterY - playerY)
 
 	if not self.baseInformation.wasInWater and self.baseInformation.isInWater and velocityY < self.baseInformation.plungedYVelocityThreshold then
 		self.baseInformation.plungedInWater = true
@@ -974,7 +981,7 @@ function Player:updateTick(dt)
 		end
 	end
 
-	if self.isControlled then
+	if self.isControlled and not self.noClipEnabled then
 		local px, py, pz = getTranslation(self.rootNode)
 		local dy = DensityMapHeightUtil.getCollisionHeightAtWorldPos(px, py, pz)
 		local heightOffset = 0.5 * self.model.capsuleHeight
@@ -1593,6 +1600,25 @@ function Player:consoleCommandToggleFlightMode()
 	return "PlayerFlightMode = " .. tostring(g_flightModeEnabled)
 end
 
+function Player:consoleCommandToggleNoClipMode(disableTerrainCollision)
+	local usage = "Usage: gsPlayerNoClip [disableTerrainCollision]"
+	local ret = nil
+	disableTerrainCollision = Utils.stringToBoolean(disableTerrainCollision)
+	self.noClipEnabled = not self.noClipEnabled
+
+	if self.noClipEnabled then
+		self.cctMovementCollisionMaskBackup = self.cctMovementCollisionMask
+		self.cctMovementCollisionMask = disableTerrainCollision and 0 or CollisionFlag.TERRAIN
+		ret = string.format("Enabled player noClip mode (%s)", disableTerrainCollision and "including terrain" or "excluding terrain")
+	else
+		self.cctMovementCollisionMask = self.cctMovementCollisionMaskBackup
+		self.cctMovementCollisionMaskBackup = nil
+		ret = "Disabled player noClip mode"
+	end
+
+	return string.format("%s\n%s", ret, usage)
+end
+
 function Player.consoleCommandToggleWoodCuttingMaker(unusedSelf)
 	g_woodCuttingMarkerEnabled = not g_woodCuttingMarkerEnabled
 
@@ -2007,7 +2033,7 @@ function Player:pickUpObject(state, noEventSend)
 		if state and self.isObjectInRange and self.lastFoundObject ~= nil and entityExists(self.lastFoundObject) and not self.isCarryingObject then
 			local constr = JointConstructor.new()
 			self.pickedUpObjectCollisionMask = getCollisionMask(self.lastFoundObject)
-			local newPickedUpObjectCollisionFlag = bitXOR(bitAND(self.pickedUpObjectCollisionMask, CollisionMask.PLAYER_MOVEMENT), self.pickedUpObjectCollisionMask)
+			local newPickedUpObjectCollisionFlag = bitXOR(bitAND(self.pickedUpObjectCollisionMask, self.cctMovementCollisionMask), self.pickedUpObjectCollisionMask)
 
 			setCollisionMask(self.lastFoundObject, newPickedUpObjectCollisionFlag)
 
@@ -2225,7 +2251,7 @@ function Player:movePlayer(dt, movementX, movementY, movementZ)
 	self.networkInformation.tickTranslation[2] = self.networkInformation.tickTranslation[2] + movementY
 	self.networkInformation.tickTranslation[3] = self.networkInformation.tickTranslation[3] + movementZ
 
-	moveCCT(self.controllerIndex, movementX, movementY, movementZ, CollisionMask.PLAYER_MOVEMENT)
+	moveCCT(self.controllerIndex, movementX, movementY, movementZ, self.cctMovementCollisionMask)
 
 	self.networkInformation.index = self.networkInformation.index + 1
 
@@ -2550,9 +2576,12 @@ function Player:updatePlayerStates()
 		self.playerStateMachine:activateState("fall")
 	end
 
+	if self.baseInformation.waterDepth > 0.4 then
+		self.playerStateMachine:deactivateState("crouch")
+	end
+
 	if self.baseInformation.isInWater and self.playerStateMachine:isAvailable("swim") then
 		self.playerStateMachine:activateState("swim")
-		self.playerStateMachine:deactivateState("crouch")
 	end
 
 	if self.inputInformation.moveForward ~= 0 or self.inputInformation.moveRight ~= 0 then

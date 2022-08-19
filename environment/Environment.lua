@@ -113,6 +113,7 @@ function Environment.new(mission)
 	end
 
 	addConsoleCommand("gsSetFixedExposureSettings", "Sets fixed exposure settings", "consoleCommandSetFixedExposureSettings", self)
+	addConsoleCommand("gsEnvironmentAutoExposureToggle", "Toggles auto exposure", "consoleCommandToggleAutoExposure", self)
 	addConsoleCommand("gsEnvironmentSeasonalShaderSet", "Sets the seasonal shader to a forced value", "consoleCommandSetSeasonalShader", self)
 	addConsoleCommand("gsEnvironmentSeasonalShaderDebug", "Shows the current seasonal shader parameter", "consoleCommandSeasonalShaderDebug", self)
 	addConsoleCommand("gsEnvironmentFixedVisualsSet", "Sets the visual seasons to a fixed period", "consoleCommandSetFixedVisuals", self)
@@ -255,6 +256,7 @@ function Environment:delete()
 	removeConsoleCommand("gsTimeSet")
 	removeConsoleCommand("gsEnvironmentReload")
 	removeConsoleCommand("gsSetFixedExposureSettings")
+	removeConsoleCommand("gsEnvironmentAutoExposureToggle")
 	removeConsoleCommand("gsEnvironmentSeasonalShaderSet")
 	removeConsoleCommand("gsEnvironmentSeasonalShaderDebug")
 	removeConsoleCommand("gsEnvironmentFixedVisualsSet")
@@ -388,7 +390,7 @@ function Environment:update(dt)
 		renderText(0.2, 0.05, 0.015, string.format("Season Shader Parameter (cShared3): %s", self:getSeasonShaderValue()))
 
 		if g_currentMission.snowSystem ~= nil then
-			renderText(0.2, 0.035, 0.015, string.format("Snow Shader Parameter (cShared4): %s", g_currentMission.snowSystem.snowShaderValue))
+			renderText(0.2, 0.035, 0.015, string.format("Snow Shader Parameter (cShared4): %s", g_currentMission.snowSystem:getSnowShaderValue()))
 		end
 	end
 
@@ -879,6 +881,28 @@ function Environment:consoleCommandSetFixedExposureSettings(keyValue, minExposur
 	end
 
 	return ret
+end
+
+function Environment:consoleCommandToggleAutoExposure(reset)
+	if self.setExposureRange_backup ~= nil then
+		setExposureRange = self.setExposureRange_backup
+		self.setExposureRange_backup = nil
+
+		return "Reenabled auto exposure"
+	else
+		self.setExposureRange_backup = setExposureRange
+
+		function setExposureRange()
+		end
+
+		if Utils.stringToBoolean(reset) then
+			resetAutoExposure()
+
+			return string.format("Disabled + reset auto exposure, current settings: middleGrayValue=%.4f  min=%.4f  max=%.4f", getExposureRange())
+		else
+			return string.format("Paused exposure at current settings: middleGrayValue=%.4f  min=%.4f  max=%.4f", getExposureRange())
+		end
+	end
 end
 
 function Environment:consoleCommandSetSeasonalShader(val)

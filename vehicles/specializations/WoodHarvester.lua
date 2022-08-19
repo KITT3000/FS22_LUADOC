@@ -347,7 +347,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 		end
 
 		if lostShape then
-			SpecializationUtil.raiseEvent(self, "onCutTree", 0)
+			SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
 
 			if g_server ~= nil then
 				g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
@@ -416,6 +416,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 
 				self.shapeBeingCut = currentSplitShape
 				self.shapeBeingCutIsTree = getRigidBodyType(currentSplitShape) == RigidBodyType.STATIC
+				self.shapeBeingCutIsNew = newTreeCut
 
 				splitShape(currentSplitShape, x, y, z, nx, ny, nz, yx, yy, yz, spec.cutSizeY, spec.cutSizeZ, "woodHarvesterSplitShapeCallback", self)
 				g_treePlantManager:removingSplitShape(currentSplitShape)
@@ -424,7 +425,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 			end
 
 			if spec.attachedSplitShape == nil then
-				SpecializationUtil.raiseEvent(self, "onCutTree", 0)
+				SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
 
 				if g_server ~= nil then
 					g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
@@ -480,7 +481,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 						g_server:broadcastEvent(WoodHarvesterOnDelimbTreeEvent.new(self, false), nil, nil, self)
 					end
 
-					SpecializationUtil.raiseEvent(self, "onCutTree", 0)
+					SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
 
 					if g_server ~= nil then
 						g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
@@ -603,7 +604,7 @@ function WoodHarvester:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 		end
 
 		if spec.curSplitShape == nil and spec.cutTimer > -1 then
-			SpecializationUtil.raiseEvent(self, "onCutTree", 0)
+			SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
 
 			if g_server ~= nil then
 				g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
@@ -845,7 +846,7 @@ function WoodHarvester:cutTree(length, noEventSend)
 	end
 end
 
-function WoodHarvester:onCutTree(radius)
+function WoodHarvester:onCutTree(radius, isNewTree)
 	local spec = self.spec_woodHarvester
 
 	if radius > 0 then
@@ -967,7 +968,7 @@ function WoodHarvester:woodHarvesterSplitShapeCallback(shape, isBelow, isAbove, 
 		spec.attachedSplitShapeTargetY = spec.attachedSplitShapeY
 		local radius = (maxY - minY + maxZ - minZ) / 4
 
-		SpecializationUtil.raiseEvent(self, "onCutTree", radius)
+		SpecializationUtil.raiseEvent(self, "onCutTree", radius, self.shapeBeingCutIsNew)
 
 		if g_server ~= nil then
 			g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, radius), nil, nil, self)

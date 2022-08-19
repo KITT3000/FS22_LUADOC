@@ -437,10 +437,16 @@ function PlaceableSystem:consoleCommandLoadAllPlaceables()
 
 		for _, storeItem in ipairs(g_storeManager:getItems()) do
 			if storeItem.brush ~= nil and storeItem.brush.type ~= "" then
-				if storeItem.rawXMLFilename ~= "$data/placeables/lizard/doghouse/doghouse.xml" then
-					table.insert(placeablesToLoad, storeItem.xmlFilename)
+				if storeItem.brush.type == "fence" then
+					local singletonFilename = storeItem.brush.parameters[1]
+
+					if singletonFilename ~= nil then
+						table.insert(placeablesToLoad, singletonFilename)
+					else
+						Logging.error("No fence singleton filename found for '%s'", storeItem.xmlFilename)
+					end
 				else
-					Logging.devWarning("Skipped doghouse")
+					table.insert(placeablesToLoad, storeItem.xmlFilename)
 				end
 			end
 		end

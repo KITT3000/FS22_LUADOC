@@ -34,6 +34,7 @@ function Foldable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_TOOL_XML_KEY .. "#foldMinLimit", "Fold min. time", 0)
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_TOOL_XML_KEY .. "#foldMaxLimit", "Fold max. time", 1)
 	schema:register(XMLValueType.INT, Cylindered.MOVING_TOOL_XML_KEY .. "#foldingConfigurationIndex", "Index of folding configuration to activate the moving tool")
+	schema:register(XMLValueType.VECTOR_N, Cylindered.MOVING_TOOL_XML_KEY .. "#foldingConfigurationIndices", "List of folding configuration indices to activate the moving tool")
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_PART_XML_KEY .. "#foldMinLimit", "Fold min. time", 0)
 	schema:register(XMLValueType.FLOAT, Cylindered.MOVING_PART_XML_KEY .. "#foldMaxLimit", "Fold max. time", 1)
 	schema:register(XMLValueType.FLOAT, GroundAdjustedNodes.GROUND_ADJUSTED_NODE_XML_KEY .. ".foldable#minLimit", "Fold min. time", 0)
@@ -41,6 +42,7 @@ function Foldable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, Sprayer.SPRAY_TYPE_XML_KEY .. "#foldMinLimit", "Fold min. time", 0)
 	schema:register(XMLValueType.FLOAT, Sprayer.SPRAY_TYPE_XML_KEY .. "#foldMaxLimit", "Fold max. time", 1)
 	schema:register(XMLValueType.INT, Sprayer.SPRAY_TYPE_XML_KEY .. "#foldingConfigurationIndex", "Index of folding configuration to activate spray type")
+	schema:register(XMLValueType.VECTOR_N, Sprayer.SPRAY_TYPE_XML_KEY .. "#foldingConfigurationIndices", "List of folding configuration indices to activate spray type")
 	schema:register(XMLValueType.FLOAT, Attachable.INPUT_ATTACHERJOINT_XML_KEY .. "#foldMinLimit", "Fold min. time", 0)
 	schema:register(XMLValueType.FLOAT, Attachable.INPUT_ATTACHERJOINT_XML_KEY .. "#foldMaxLimit", "Fold max. time", 1)
 	schema:register(XMLValueType.FLOAT, Attachable.INPUT_ATTACHERJOINT_CONFIG_XML_KEY .. "#foldMinLimit", "Fold min. time", 0)
@@ -126,6 +128,7 @@ function Foldable.registerFoldingXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. ".foldingPart(?)#previousDuration", "lowering duration if previous part", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. ".foldingPart(?)#loweringDuration", "lowering duration if folding part", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. ".foldingPart(?)#maxDelayDuration", "Max. duration of distance delay until movement is forced. Decreases by half when not moving", 7.5)
+	schema:register(XMLValueType.BOOL, basePath .. ".foldingPart(?)#aiSkipDelay", "Defines if the AI uses the delayed lowering/lifting or is controls all parts synchronized", false)
 end
 
 function Foldable.registerEvents(vehicleType)
@@ -501,6 +504,10 @@ function Foldable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 			local distance = delayedLowering.distance + prevDistance - lowerDistance
 			local force = g_time > delayedLowering.startTime + delayedLowering.maxDelayDuration * MathUtil.clamp(delayedLowering.currentDistance / distance * 0.5 + 0.5, 0, 1)
 
+			if delayedLowering.aiSkipDelay then
+				force = force or self:getIsAIActive()
+			end
+
 			if distance <= delayedLowering.currentDistance or force then
 				self:playAnimation(foldingPart.animationName, delayedLowering.speedScale, delayedLowering.animTime, true)
 
@@ -616,6 +623,7 @@ function Foldable:loadFoldingPartFromXML(xmlFile, baseKey, foldingPart)
 			previousDuration = xmlFile:getValue(baseKey .. "#previousDuration", 1) * 1000,
 			loweringDuration = xmlFile:getValue(baseKey .. "#loweringDuration", 1) * 1000,
 			maxDelayDuration = xmlFile:getValue(baseKey .. "#maxDelayDuration", 7.5) * 1000,
+			aiSkipDelay = xmlFile:getValue(baseKey .. "#aiSkipDelay", false),
 			currentDistance = -1,
 			startTime = math.huge,
 			speedScale = 0,
@@ -1018,19 +1026,41 @@ function Foldable:loadMovingToolFromXML(superFunc, xmlFile, key, entry)
 
 	entry.foldMinLimit = xmlFile:getValue(key .. "#foldMinLimit", 0)
 	entry.foldMaxLimit = xmlFile:getValue(key .. "#foldMaxLimit", 1)
-	entry.foldingConfigurationIndex = xmlFile:getValue(key .. "#foldingConfigurationIndex")
+	entry.hasRequiredFoldingConfiguration = true
+
+	if self.configurations.folding ~= nil then
+		local foldingConfigurationIndex = xmlFile:getValue(key .. "#foldingConfigurationIndex")
+
+		if foldingConfigurationIndex ~= nil and self.configurations.folding ~= foldingConfigurationIndex then
+			entry.hasRequiredFoldingConfiguration = false
+		end
+
+		local foldingConfigurationIndices = xmlFile:getValue(key .. "#foldingConfigurationIndices", nil, true)
+
+		if #foldingConfigurationIndices > 0 then
+			entry.hasRequiredFoldingConfiguration = false
+
+			for i = 1, #foldingConfigurationIndices do
+				if self.configurations.folding == foldingConfigurationIndices[i] then
+					entry.hasRequiredFoldingConfiguration = true
+
+					break
+				end
+			end
+		end
+	end
 
 	return true
 end
 
 function Foldable:getIsMovingToolActive(superFunc, movingTool)
-	local foldAnimTime = self:getFoldAnimTime()
-
-	if movingTool.foldMaxLimit < foldAnimTime or foldAnimTime < movingTool.foldMinLimit then
+	if not movingTool.hasRequiredFoldingConfiguration then
 		return false
 	end
 
-	if movingTool.foldingConfigurationIndex ~= nil and self.configurations.folding ~= nil and self.configurations.folding ~= movingTool.foldingConfigurationIndex then
+	local foldAnimTime = self:getFoldAnimTime()
+
+	if movingTool.foldMaxLimit < foldAnimTime or foldAnimTime < movingTool.foldMinLimit then
 		return false
 	end
 
@@ -1215,9 +1245,31 @@ function Foldable:getIsGroundAdjustedNodeActive(superFunc, adjustedNode)
 end
 
 function Foldable:loadSprayTypeFromXML(superFunc, xmlFile, key, sprayType)
-	sprayType.foldMinLimit = self.xmlFile:getValue(key .. "#foldMinLimit")
-	sprayType.foldMaxLimit = self.xmlFile:getValue(key .. "#foldMaxLimit")
-	sprayType.foldingConfigurationIndex = self.xmlFile:getValue(key .. "#foldingConfigurationIndex")
+	sprayType.foldMinLimit = xmlFile:getValue(key .. "#foldMinLimit")
+	sprayType.foldMaxLimit = xmlFile:getValue(key .. "#foldMaxLimit")
+	sprayType.hasRequiredFoldingConfiguration = true
+
+	if self.configurations.folding ~= nil then
+		local foldingConfigurationIndex = xmlFile:getValue(key .. "#foldingConfigurationIndex")
+
+		if foldingConfigurationIndex ~= nil and self.configurations.folding ~= foldingConfigurationIndex then
+			sprayType.hasRequiredFoldingConfiguration = false
+		end
+
+		local foldingConfigurationIndices = xmlFile:getValue(key .. "#foldingConfigurationIndices", nil, true)
+
+		if #foldingConfigurationIndices > 0 then
+			sprayType.hasRequiredFoldingConfiguration = false
+
+			for i = 1, #foldingConfigurationIndices do
+				if self.configurations.folding == foldingConfigurationIndices[i] then
+					sprayType.hasRequiredFoldingConfiguration = true
+
+					break
+				end
+			end
+		end
+	end
 
 	return superFunc(self, xmlFile, key, sprayType)
 end
@@ -1233,7 +1285,7 @@ function Foldable:getIsSprayTypeActive(superFunc, sprayType)
 		end
 	end
 
-	if sprayType.foldingConfigurationIndex ~= nil and (self.configurations.folding or 1) ~= sprayType.foldingConfigurationIndex then
+	if not sprayType.hasRequiredFoldingConfiguration then
 		return false
 	end
 

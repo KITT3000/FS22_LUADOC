@@ -357,15 +357,21 @@ function KioskMode:loadProfileConfig(configFileName)
 
 	local xmlFile = XMLFile.load("KioskMode Profile", configFileName)
 	local path = Utils.getDirectory(configFileName)
-	local savegamePath = xmlFile:getString("config.savegame")
+	self.settings.canSelectSavegame = xmlFile:getBool("config.canSelectSavegame", false)
+	self.settings.canSelectMods = xmlFile:getBool("config.canSelectMods", false)
 
-	if savegamePath ~= nil then
-		savegamePath = Utils.getFilename(savegamePath, path)
+	if not self.settings.canSelectSavegame then
+		local savegamePath = xmlFile:getString("config.savegame")
+
+		if savegamePath ~= nil then
+			savegamePath = Utils.getFilename(savegamePath, path)
+		end
+
+		self:setSavegame(savegamePath)
+
+		self.settings.savegame = savegamePath
 	end
 
-	self:setSavegame(savegamePath)
-
-	self.settings.savegame = savegamePath
 	local logo = xmlFile:getString("config.logo")
 
 	if logo ~= nil then
@@ -995,6 +1001,10 @@ function KioskMode.inj_careerScreen_updateButtons(screen)
 end
 
 function KioskMode.inj_modSelectionScreenn_update(screen, dt)
+	if g_kioskMode:getSetting("canSelectMods") then
+		return
+	end
+
 	for _, modItem in pairs(screen.selectedMods) do
 		screen:setItemState(modItem, false)
 	end
@@ -1030,6 +1040,10 @@ function KioskMode.inj_mapSelectionScreen_update(screen, dt)
 end
 
 function KioskMode.inj_careerScreen_update(screen, dt)
+	if g_kioskMode:getSetting("canSelectSavegame") then
+		return
+	end
+
 	screen.selectedIndex = 1
 	local savegame = screen.savegameController:getSavegame(screen.selectedIndex)
 

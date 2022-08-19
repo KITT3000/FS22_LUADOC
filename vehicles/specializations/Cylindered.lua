@@ -272,6 +272,7 @@ function Cylindered.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getTranslatingPartByNode", Cylindered.getTranslatingPartByNode)
 	SpecializationUtil.registerFunction(vehicleType, "getIsMovingToolActive", Cylindered.getIsMovingToolActive)
 	SpecializationUtil.registerFunction(vehicleType, "getIsMovingPartActive", Cylindered.getIsMovingPartActive)
+	SpecializationUtil.registerFunction(vehicleType, "getMovingToolMoveValue", Cylindered.getMovingToolMoveValue)
 	SpecializationUtil.registerFunction(vehicleType, "setDelayedData", Cylindered.setDelayedData)
 	SpecializationUtil.registerFunction(vehicleType, "updateDelayedTool", Cylindered.updateDelayedTool)
 	SpecializationUtil.registerFunction(vehicleType, "updateEasyControl", Cylindered.updateEasyControl)
@@ -1084,7 +1085,7 @@ function Cylindered:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 			local rotSpeed = 0
 			local transSpeed = 0
 			local animSpeed = 0
-			local move = tool.move + tool.externalMove
+			local move = self:getMovingToolMoveValue(tool)
 
 			if math.abs(move) > 0 then
 				tool.externalMove = 0
@@ -2927,6 +2928,10 @@ end
 
 function Cylindered:getIsMovingPartActive(movingPart)
 	return movingPart.isActive
+end
+
+function Cylindered:getMovingToolMoveValue(movingTool)
+	return movingTool.move + movingTool.externalMove
 end
 
 function Cylindered:isDetachAllowed(superFunc)

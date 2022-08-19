@@ -279,6 +279,22 @@ function TreePlantManager:loadTreeTrunk(treeTypeDesc, x, y, z, dirX, dirY, dirZ,
 
 	if treeId ~= 0 then
 		if getFileIdHasSplitShapes(splitShapeFileId) then
+			local tree = {
+				node = treeId,
+				growthState = growthState,
+				z = z,
+				y = y,
+				x = x,
+				rz = 0,
+				ry = 0,
+				rx = 0,
+				treeType = treeTypeDesc.index,
+				splitShapeFileId = splitShapeFileId,
+				hasSplitShapes = getFileIdHasSplitShapes(splitShapeFileId)
+			}
+
+			table.insert(self.treesData.splitTrees, tree)
+
 			self.loadTreeTrunkData = {
 				offset = 0.5,
 				framesLeft = 2,

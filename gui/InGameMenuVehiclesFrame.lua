@@ -150,9 +150,8 @@ function InGameMenuVehiclesFrame:updateVehicles()
 		for _, vehicle in ipairs(g_currentMission.vehicles) do
 			local hasAccess = g_currentMission.accessHandler:canPlayerAccess(vehicle)
 			local isProperty = vehicle.propertyState == Vehicle.PROPERTY_STATE_OWNED or vehicle.propertyState == Vehicle.PROPERTY_STATE_LEASED
-			local isPallet = vehicle.typeName == "pallet"
 
-			if hasAccess and vehicle.getSellPrice ~= nil and vehicle.price ~= nil and isProperty and not isPallet and not SpecializationUtil.hasSpecialization(Rideable, vehicle.specializations) then
+			if hasAccess and vehicle.getSellPrice ~= nil and vehicle.price ~= nil and isProperty and not vehicle.isPallet and not SpecializationUtil.hasSpecialization(Rideable, vehicle.specializations) then
 				table.insert(self.vehicles, vehicle)
 			end
 		end

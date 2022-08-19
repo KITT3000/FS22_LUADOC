@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 9
-g_gameVersionNotification = "1.6.0.0"
-g_gameVersionDisplay = "1.6.0.0"
+g_gameVersion = 10
+g_gameVersionNotification = "1.7.0.0"
+g_gameVersionDisplay = "1.7.0.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 67
+g_maxModDescVersion = 68
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -1175,6 +1175,10 @@ function draw()
 		g_currentMission:draw()
 	end
 
+	if g_inputBinding ~= nil then
+		g_inputBinding:draw()
+	end
+
 	if g_kioskMode ~= nil then
 		g_kioskMode:draw()
 	end
@@ -1597,6 +1601,10 @@ function registerGlobalActionEvents(inputManager)
 	_, eventId = inputManager:registerActionEvent(InputAction.PUSH_TO_TALK, InputBinding.NO_EVENT_TARGET, onPushToTalk, true, true, false, true)
 
 	inputManager:setActionEventTextVisibility(eventId, false)
+
+	if g_addTestCommands and Platform.isPC then
+		g_noteManager:registerInputActionEvent()
+	end
 end
 
 function updateAspectRatio(aspect)

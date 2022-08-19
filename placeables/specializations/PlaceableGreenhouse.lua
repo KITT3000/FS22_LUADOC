@@ -53,7 +53,9 @@ function PlaceableGreenhouse.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".greenhouse.plants.plant(?)#fillType", "FillType of plant")
 	schema:register(XMLValueType.STRING, basePath .. ".greenhouse.plants.plant(?)#xmlFilename", "xml file of greenhouse plant")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".greenhouse.plantSpaces.space(?)#node", "node where plant is placed")
+	schema:register(XMLValueType.BOOL, basePath .. ".greenhouse.plantSpaces.space(?)#useRandomYRot", "node is randomly rotated on the y axis", true)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".greenhouse.plantSpaces.spacesParent(?)#node", "parent node of nodes where plants are placed")
+	schema:register(XMLValueType.BOOL, basePath .. ".greenhouse.plantSpaces.spacesParent(?)#useRandomYRot", "node is randomly rotated on the y axis", true)
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".greenhouse.sounds", "watering")
 	EffectManager.registerEffectXMLPaths(schema, basePath .. ".greenhouse.effectNodes")
 	schema:setXMLSpecializationType()
@@ -89,18 +91,20 @@ function PlaceableGreenhouse:onLoad(savegame)
 	end)
 	xmlFile:iterate(key .. ".plantSpaces.space", function (index, plantSpaceKey)
 		local plantPlaceNode = self.xmlFile:getValue(plantSpaceKey .. "#node", nil, self.components, self.i3dMappings)
+		local useRandomYRot = self.xmlFile:getValue(plantSpaceKey .. "#useRandomYRot", true)
 
 		if plantPlaceNode ~= nil then
-			self:addPlantPlace(plantPlaceNode)
+			self:addPlantPlace(plantPlaceNode, useRandomYRot)
 		end
 	end)
 	xmlFile:iterate(key .. ".plantSpaces.spacesParent", function (index, plantParentKey)
 		local parentNode = self.xmlFile:getValue(plantParentKey .. "#node", nil, self.components, self.i3dMappings)
+		local useRandomYRot = self.xmlFile:getValue(plantParentKey .. "#useRandomYRot", true)
 		local numChildren = getNumOfChildren(parentNode)
 
 		if numChildren > 0 then
 			for i = 0, numChildren - 1 do
-				self:addPlantPlace(getChildAt(parentNode, i))
+				self:addPlantPlace(getChildAt(parentNode, i), useRandomYRot)
 			end
 		else
 			Logging.xmlWarning(xmlFile, "No i3d child nodes for '%s'", plantParentKey)
@@ -136,10 +140,14 @@ function PlaceableGreenhouse:onLoad(savegame)
 	end)
 end
 
-function PlaceableGreenhouse:addPlantPlace(node)
+function PlaceableGreenhouse:addPlantPlace(node, useRandomYRot)
 	local spec = self.spec_greenhouse
+	useRandomYRot = Utils.getNoNil(useRandomYRot, true)
 
-	setRotation(node, 0, math.random() * math.pi * 2, 0)
+	if useRandomYRot then
+		setRotation(node, 0, math.random() * math.pi * 2, 0)
+	end
+
 	table.insert(spec.plantPlaces, {
 		node = node
 	})

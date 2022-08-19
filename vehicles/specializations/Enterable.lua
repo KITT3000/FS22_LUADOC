@@ -39,7 +39,7 @@ function Enterable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.enterable.characterTargetNodeModifier(?)#transitionIdleDelay", "State is changed after this delay", 0.5)
 	schema:register(XMLValueType.NODE_INDEX, "vehicle.enterable.mirrors.mirror(?)#node", "Mirror node")
 	schema:register(XMLValueType.INT, "vehicle.enterable.mirrors.mirror(?)#prio", "Priority", 2)
-	Dashboard.registerDashboardXMLPaths(schema, "vehicle.enterable.dashboards", "time | operatingTime")
+	Dashboard.registerDashboardXMLPaths(schema, "vehicle.enterable.dashboards", "time | operatingTime | outsideTemperature")
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.enterable.sounds", "rain(?)")
 	schema:register(XMLValueType.BOOL, Dashboard.GROUP_XML_KEY .. "#isEntered", "Is entered")
 	schema:register(XMLValueType.BOOL, Cylindered.MOVING_TOOL_XML_KEY .. "#updateCharacterTargetModifier", "Update character target modifier state", false)
@@ -299,6 +299,11 @@ function Enterable:onLoad(savegame)
 			valueFunc = "getFormattedOperatingTime",
 			valueTypeToLoad = "operatingTime",
 			valueObject = self
+		})
+		self:loadDashboardsFromXML(self.xmlFile, "vehicle.enterable.dashboards", {
+			valueFunc = "getCurrentTemperature",
+			valueTypeToLoad = "outsideTemperature",
+			valueObject = g_currentMission.environment.weather
 		})
 	end
 

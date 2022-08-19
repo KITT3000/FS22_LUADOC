@@ -156,7 +156,14 @@ function PlayerStyle:loadConfigurationXML(xmlFilename)
 	local xmlFile = XMLFile.load("player", xmlFilename)
 
 	if xmlFile == nil then
-		Logging.fatal("Player config does not exist at %s", xmlFilename)
+		Logging.error("Player config does not exist at %s. Loading default instead", xmlFilename)
+
+		xmlFilename = "dataS/character/humans/player/player01.xml"
+		xmlFile = XMLFile.load("player", xmlFilename)
+
+		if xmlFile == nil then
+			Logging.fatal("Default player config does not exist at %s", xmlFilename)
+		end
 	end
 
 	local restoreSelection = nil

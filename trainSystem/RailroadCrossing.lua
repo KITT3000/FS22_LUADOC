@@ -251,7 +251,7 @@ function RailroadCrossing:findTrafficSystemBlockingPositions()
 			local splineIndex, splineTime = findTrafficSystemBlockingPositionInformation(trafficSystem.trafficSystemId, wx, wy, wz, dx, dy, dz, RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE)
 
 			if splineIndex == -1 then
-				Logging.warning("Unable to find spline for traffic blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
+				Logging.warning("Unable to find traffic spline for traffic blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
 			else
 				table.insert(self.trafficBlockers, {
 					blockerNode = blockerNode,
@@ -277,7 +277,7 @@ function RailroadCrossing:findVehicleNavigationMapBlockingPositions()
 			local splineId, splineTime = findVehicleNavigationMapBlockingPositionInformation(aiSystem.navigationMap, wx, wy, wz, dx, dy, dz, RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE)
 
 			if not entityExists(splineId) then
-				Logging.warning("Unable to find spline for ai navigation blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
+				Logging.warning("Unable to find ai navigation spline for ai navigation blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
 			else
 				table.insert(self.aiNavigationBlockers, {
 					blockerNode = blockerNode,
@@ -302,7 +302,7 @@ function RailroadCrossing:findPedestrianSystemBlockingPositions()
 		local splineIndex, splineTime, direction = findPedestrianSystemBlockingPositionInformation(pedestrianSystem.pedestrianSystemId, wx, wy, wz, dx, dy, dz, RailroadCrossing.TRAFFIC_BLOCKING_NODE_MAX_DISTANCE)
 
 		if splineIndex == -1 then
-			Logging.warning("Unable to find spline for pedestrian blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
+			Logging.warning("Unable to find pedestrian spline for pedestrian blocker (%s) %s at %.1f %.1f %.1f", blockerKey, getName(blockerNode), getWorldTranslation(blockerNode))
 		else
 			table.insert(self.pedestrianBlockers, {
 				blockerNode = blockerNode,

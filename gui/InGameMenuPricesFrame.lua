@@ -328,7 +328,7 @@ function InGameMenuPricesFrame:populateCellForItemInSection(list, section, index
 	else
 		local station = self.currentStations[index]
 		local fillTypeDesc = self.fillTypes[self.productList.selectedIndex]
-		local hasHotspot = station.owningPlaceable:getHotspot(1) ~= nil
+		local hasHotspot = station.owningPlaceable ~= nil and station.owningPlaceable:getHotspot(1) ~= nil
 
 		cell:getAttribute("hotspot"):setVisible(hasHotspot)
 

@@ -297,7 +297,7 @@ function WrapEngineFunctions.wrapEngineFunctions()
 end
 
 function WrapEngineFunctions.customWrappers()
-	local function debugSplitFindTest(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ)
+	local function debugSplitFindTest(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ, r, g, b, a)
 		local zx, zy, zz = MathUtil.crossProduct(nx, ny, nz, yx, yy, yz)
 		local x2 = x + yx * cutSizeY
 		local y2 = y + yy * cutSizeY
@@ -309,16 +309,16 @@ function WrapEngineFunctions.customWrappers()
 		local y4 = y + zy * cutSizeZ + yy * cutSizeY
 		local z4 = z + zz * cutSizeZ + yz * cutSizeY
 
-		drawDebugTriangle(x3, y3, z3, x, y, z, x2, y2, z2, 0, 0, 1, 0.5, true)
-		drawDebugTriangle(x4, y4, z4, x3, y3, z3, x2, y2, z2, 0, 0, 1, 0.5, true)
-		drawDebugTriangle(x4, y4, z4, x, y, z, x3, y3, z3, 1, 0, 0, 0.5, true)
-		drawDebugTriangle(x4, y4, z4, x2, y2, z2, x, y, z, 1, 0, 0, 0.5, true)
+		drawDebugTriangle(x3, y3, z3, x, y, z, x2, y2, z2, r, g, b, a, true)
+		drawDebugTriangle(x4, y4, z4, x3, y3, z3, x2, y2, z2, r, g, b, a, true)
+		drawDebugTriangle(x4, y4, z4, x, y, z, x3, y3, z3, r, g, b, a, true)
+		drawDebugTriangle(x4, y4, z4, x2, y2, z2, x, y, z, r, g, b, a, true)
 	end
 
 	local engineFindSplitShape = findSplitShape
 
 	function findSplitShape(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ)
-		debugSplitFindTest(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ)
+		debugSplitFindTest(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ, 1, 0, 0, 0.5)
 
 		local shape, minY, maxY, minZ, maxZ = engineFindSplitShape(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ)
 
@@ -334,7 +334,7 @@ function WrapEngineFunctions.customWrappers()
 	local engineTestSplitShape = testSplitShape
 
 	function testSplitShape(splitShape, x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ)
-		debugSplitFindTest(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ)
+		debugSplitFindTest(x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ, 0, 1, 0, 0.5)
 
 		local minY, maxY, minZ, maxZ = engineTestSplitShape(splitShape, x, y, z, nx, ny, nz, yx, yy, yz, cutSizeY, cutSizeZ)
 

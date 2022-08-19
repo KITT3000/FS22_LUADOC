@@ -262,7 +262,7 @@ function Mission00:loadAdditionalFilesFinished()
 	end)
 	g_asyncTaskManager:addTask(function ()
 		self.hud:loadIngameMap(self.mapImageFilename, self.mapWidth, self.mapHeight, self.mapFieldColor, self.mapGrassFieldColor)
-		self:loadHotspots(self.xmlFile, g_currentModDirectory)
+		self:loadHotspots(self.xmlFile, self.missionInfo.customEnvironment)
 	end)
 	g_asyncTaskManager:addTask(function ()
 		self.showWeatherForecast = true

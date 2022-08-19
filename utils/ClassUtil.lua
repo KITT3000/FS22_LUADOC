@@ -54,6 +54,16 @@ function ClassUtil.getClassName(classObject)
 			return k
 		end
 	end
+
+	for customEnv, _ in pairs(g_modIsLoaded) do
+		for k, v in pairs(_G[customEnv]) do
+			if v == classObject then
+				return customEnv .. "." .. k
+			end
+		end
+	end
+
+	return nil
 end
 
 function ClassUtil.getClassNameByObject(object)

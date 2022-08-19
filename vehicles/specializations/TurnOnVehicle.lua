@@ -47,6 +47,13 @@ function TurnOnVehicle.initSpecialization()
 	schema:register(XMLValueType.BOOL, Dischargeable.DISCHARGE_NODE_CONFIG_XML_PATH .. "#needsSetIsTurnedOn", "Vehicle needs to be turned on to activate discharge node", false)
 	schema:register(XMLValueType.BOOL, Dischargeable.DISCHARGE_NODE_CONFIG_XML_PATH .. "#turnOnActivateNode", "Discharge node is set active when vehicle is turned on", false)
 	schema:register(XMLValueType.FLOAT, BunkerSiloCompacter.XML_PATH .. "#turnedOnCompactingScale", "Compacting scale which is used while vehicle is turned on", "normal scale")
+	schema:register(XMLValueType.TIME, "vehicle.turnOnVehicle.turnedOnSpeed#fadeInTime", "(Turned on speed simulation - used as sound modifer and for rpm dashboards) Time to reach max. turned on speed", 1)
+	schema:register(XMLValueType.TIME, "vehicle.turnOnVehicle.turnedOnSpeed#fadeOutTime", "(Turned on speed simulation - used as sound modifer and for rpm dashboards) Time to reach the turned off speed again", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.turnOnVehicle.turnedOnSpeed#variance", "Variation value at max. speed", 0.02)
+	schema:register(XMLValueType.FLOAT, "vehicle.turnOnVehicle.turnedOnSpeed#varianceSpeed", "Speed factor of variance change", 1)
+	Dashboard.registerDashboardXMLPaths(schema, "vehicle.turnOnVehicle.dashboards", "turnedOn | rpm")
+	schema:register(XMLValueType.FLOAT, "vehicle.turnOnVehicle.dashboards.dashboard(?)#minRpm", "Rpm value if vehicle is turned off", 0)
+	schema:register(XMLValueType.FLOAT, "vehicle.turnOnVehicle.dashboards.dashboard(?)#maxRpm", "Rpm value if vehicle is turned on", 1000)
 	schema:setXMLSpecializationType()
 end
 
@@ -67,6 +74,7 @@ function TurnOnVehicle.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getAIRequiresTurnOffOnHeadland", TurnOnVehicle.getAIRequiresTurnOffOnHeadland)
 	SpecializationUtil.registerFunction(vehicleType, "loadTurnedOnAnimationFromXML", TurnOnVehicle.loadTurnedOnAnimationFromXML)
 	SpecializationUtil.registerFunction(vehicleType, "getIsTurnedOnAnimationActive", TurnOnVehicle.getIsTurnedOnAnimationActive)
+	SpecializationUtil.registerFunction(vehicleType, "getTurnedOnSpeedFactor", TurnOnVehicle.getTurnedOnSpeedFactor)
 end
 
 function TurnOnVehicle.registerOverwrittenFunctions(vehicleType)
@@ -192,6 +200,28 @@ function TurnOnVehicle:onLoad(savegame)
 			stop = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.turnOnVehicle.sounds", "stop", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self),
 			work = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.turnOnVehicle.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
 		}
+		spec.turnedOnSpeed = {
+			isActive = self.xmlFile:hasProperty("vehicle.turnOnVehicle.turnedOnSpeed"),
+			alpha = 0,
+			fadeInTime = self.xmlFile:getValue("vehicle.turnOnVehicle.turnedOnSpeed#fadeInTime", 1),
+			fadeOutTime = self.xmlFile:getValue("vehicle.turnOnVehicle.turnedOnSpeed#fadeOutTime", 1),
+			variance = self.xmlFile:getValue("vehicle.turnOnVehicle.turnedOnSpeed#variance", 0.02),
+			varianceSpeed = self.xmlFile:getValue("vehicle.turnOnVehicle.turnedOnSpeed#varianceSpeed", 0.01)
+		}
+
+		if self.loadDashboardsFromXML ~= nil then
+			self:loadDashboardsFromXML(self.xmlFile, "vehicle.turnOnVehicle.dashboards", {
+				valueFunc = "isTurnedOn",
+				valueTypeToLoad = "turnedon",
+				valueObject = spec
+			})
+			self:loadDashboardsFromXML(self.xmlFile, "vehicle.turnOnVehicle.dashboards", {
+				valueTypeToLoad = "rpm",
+				valueObject = self,
+				valueFunc = TurnOnVehicle.dashboardRpmValue,
+				additionalAttributesFunc = TurnOnVehicle.dashboardRpmAttributes
+			})
+		end
 	end
 
 	if not self.isClient then
@@ -261,6 +291,23 @@ function TurnOnVehicle:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 			if turnedOnAnimation.currentSpeed == 1 or turnedOnAnimation.currentSpeed == 0 then
 				turnedOnAnimation.speedDirection = 0
 			end
+		end
+	end
+
+	if self.isClient and spec.turnedOnSpeed.isActive then
+		local targetAlpha = 0
+
+		if self:getIsTurnedOn() then
+			local time = g_time * spec.turnedOnSpeed.varianceSpeed * 0.05
+			local modValue = math.sin(time) * math.sin((time + 2) * 0.3) * 0.8 + math.cos(time * 5) * 0.2
+			targetAlpha = 1 + modValue * spec.turnedOnSpeed.variance
+		end
+
+		if targetAlpha ~= spec.turnedOnSpeed.alpha then
+			local dir = MathUtil.sign(targetAlpha - spec.turnedOnSpeed.alpha)
+			local limitFunc = dir < 0 and math.max or math.min
+			local fadeTime = dir < 0 and spec.turnedOnSpeed.fadeOutTime or spec.turnedOnSpeed.fadeInTime
+			spec.turnedOnSpeed.alpha = limitFunc(spec.turnedOnSpeed.alpha + 1 / fadeTime * dir * dt, targetAlpha)
 		end
 	end
 end
@@ -794,4 +841,21 @@ function TurnOnVehicle:updateActionEvents()
 
 		g_inputBinding:setActionEventActive(actionEvent.actionEventId, state)
 	end
+end
+
+function TurnOnVehicle:getTurnedOnSpeedFactor()
+	return self.spec_turnOnVehicle.turnedOnSpeed.alpha
+end
+
+g_soundManager:registerModifierType("TURNED_ON_SPEED", TurnOnVehicle.getTurnedOnSpeedFactor)
+
+function TurnOnVehicle:dashboardRpmAttributes(xmlFile, key, dashboard, isActive)
+	dashboard.minRpm = xmlFile:getValue(key .. "#minRpm", 0)
+	dashboard.maxRpm = xmlFile:getValue(key .. "#maxRpm", 1000)
+
+	return true
+end
+
+function TurnOnVehicle:dashboardRpmValue(dashboard)
+	return dashboard.minRpm + (dashboard.maxRpm - dashboard.minRpm) * self.spec_turnOnVehicle.turnedOnSpeed.alpha
 end

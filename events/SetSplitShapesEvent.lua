@@ -68,7 +68,7 @@ function SetSplitShapesEvent:readStream(streamId, connection)
 
 		streamWriteStream(event.streamId, streamId, SetSplitShapesEvent.PartSizeBits, true)
 		g_currentMission:onSplitShapesProgress(connection, (currentPartIndex + 1) / event.numParts)
-		connection:sendEvent(SetSplitShapesEvent.newAck(currentPartIndex))
+		connection:sendEvent(SetSplitShapesEvent.newAck(currentPartIndex), true)
 
 		if currentPartIndex == event.numParts - 1 then
 			event:processReadData()

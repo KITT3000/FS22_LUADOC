@@ -93,7 +93,7 @@ function PlayerHUDUpdater:updateRaycastObject()
 	self.object = object
 
 	if object:isa(Vehicle) then
-		if object.typeName == "pallet" or object.typeName == "treeSaplingPallet" or object.typeName == "bigBag" then
+		if object.isPallet then
 			self.isPallet = true
 		else
 			self.isVehicle = true

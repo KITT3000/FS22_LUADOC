@@ -220,6 +220,7 @@ function Motorized.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getMotorRpmReal", Motorized.getMotorRpmReal)
 	SpecializationUtil.registerFunction(vehicleType, "getMotorLoadPercentage", Motorized.getMotorLoadPercentage)
 	SpecializationUtil.registerFunction(vehicleType, "getMotorBlowOffValveState", Motorized.getMotorBlowOffValveState)
+	SpecializationUtil.registerFunction(vehicleType, "getMotorDifferentialSpeed", Motorized.getMotorDifferentialSpeed)
 	SpecializationUtil.registerFunction(vehicleType, "getConsumerFillUnitIndex", Motorized.getConsumerFillUnitIndex)
 	SpecializationUtil.registerFunction(vehicleType, "getAirConsumerUsage", Motorized.getAirConsumerUsage)
 	SpecializationUtil.registerFunction(vehicleType, "getTraveledDistanceStatsActive", Motorized.getTraveledDistanceStatsActive)
@@ -228,6 +229,7 @@ function Motorized.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getGearInfoToDisplay", Motorized.getGearInfoToDisplay)
 	SpecializationUtil.registerFunction(vehicleType, "setTransmissionDirection", Motorized.setTransmissionDirection)
 	SpecializationUtil.registerFunction(vehicleType, "getDirectionChangeMode", Motorized.getDirectionChangeMode)
+	SpecializationUtil.registerFunction(vehicleType, "getIsManualDirectionChangeAllowed", Motorized.getIsManualDirectionChangeAllowed)
 	SpecializationUtil.registerFunction(vehicleType, "getGearShiftMode", Motorized.getGearShiftMode)
 	SpecializationUtil.registerFunction(vehicleType, "stopVehicle", Motorized.stopVehicle)
 end
@@ -2068,6 +2070,18 @@ end
 
 g_soundManager:registerModifierType("BLOW_OFF_VALVE_STATE", Motorized.getMotorBlowOffValveState)
 
+function Motorized:getMotorDifferentialSpeed()
+	if self.spec_motorized == nil then
+		Logging.error("Sound modifier 'DIFFERENTIAL_SPEED' used on non motorized vehicle '%s'", self.configFileName)
+
+		return 0
+	end
+
+	return math.abs(self.spec_motorized.motor.differentialRotSpeed * 3.6)
+end
+
+g_soundManager:registerModifierType("DIFFERENTIAL_SPEED", Motorized.getMotorDifferentialSpeed)
+
 function Motorized:getConsumerFillUnitIndex(fillTypeIndex)
 	local spec = self.spec_motorized
 	local consumer = spec.consumersByFillType[fillTypeIndex]
@@ -2632,6 +2646,10 @@ end
 
 function Motorized:getDirectionChangeMode()
 	return self.spec_motorized.directionChangeMode
+end
+
+function Motorized:getIsManualDirectionChangeAllowed()
+	return not self:getIsAIActive()
 end
 
 function Motorized:getGearShiftMode()

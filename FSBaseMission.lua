@@ -292,6 +292,7 @@ function FSBaseMission:delete()
 	g_gui:unloadMapData()
 	g_xmlManager:unloadMapData()
 	g_debugManager:unloadMapData()
+	g_noteManager:unloadMapData()
 	FSBaseMission:superClass().delete(self)
 
 	if AIFieldWorker ~= nil then
@@ -762,6 +763,12 @@ function FSBaseMission:setPlayerNickname(player, nickname, userId, noEventSend)
 			end
 
 			g_messageCenter:publish(MessageType.PLAYER_NICKNAME_CHANGED, player)
+
+			local farm = g_farmManager:getFarmByUserId(player.userId)
+
+			if farm ~= nil then
+				farm:updateLastNickname(player.userId, user)
+			end
 
 			if noEventSend == nil or noEventSend == false then
 				g_server:broadcastEvent(PlayerSetNicknameEvent.new(player, nickname, player.userId), false, nil, player)
@@ -3166,7 +3173,7 @@ function FSBaseMission:consoleCommandExportStoreItems()
 	local file = io.open(csvFile, "w")
 
 	if file ~= nil then
-		local header = "xmlFilename;category;brand;name;price;lifetime;dailyUpkeep;showInStore;"
+		local header = "xmlFilename;category;brand;brandTitle;name;price;lifetime;dailyUpkeep;showInStore;"
 
 		for _, spec in pairs(specTypes) do
 			header = header .. spec.name .. ";"
@@ -3178,7 +3185,7 @@ function FSBaseMission:consoleCommandExportStoreItems()
 
 		for _, storeItem in pairs(storeItems) do
 			local brand = g_brandManager:getBrandByIndex(storeItem.brandIndex)
-			local data = string.format("%s;%s;%s;%s;%s;%s;%s;%s;", storeItem.xmlFilename, storeItem.categoryName, brand.name, storeItem.name, storeItem.price, storeItem.lifetime, storeItem.dailyUpkeep, storeItem.showInStore)
+			local data = string.format("%s;%s;%s;%s;%s;%s;%s;%s;%s;", storeItem.xmlFilename, storeItem.categoryName, brand.name, brand.title, storeItem.name, storeItem.price, storeItem.lifetime, storeItem.dailyUpkeep, storeItem.showInStore)
 
 			StoreItemUtil.loadSpecsFromXML(storeItem)
 
@@ -3404,7 +3411,8 @@ function FSBaseMission:consoleCommandLoadTree(length, treeType, growthState, del
 	end
 
 	if treeType == nil then
-		treeType = "SPRUCE1"
+		treeType = "SPRUCE2"
+		growthState = 3
 	end
 
 	local treeTypeDesc = g_treePlantManager:getTreeTypeDescFromName(treeType)
@@ -3413,7 +3421,7 @@ function FSBaseMission:consoleCommandLoadTree(length, treeType, growthState, del
 		return "Invalid tree type. " .. usage
 	end
 
-	growthState = Utils.getNoNil(growthState, table.getn(treeTypeDesc.treeFilenames))
+	growthState = Utils.getNoNil(tonumber(growthState), table.getn(treeTypeDesc.treeFilenames))
 	delimb = (delimb or "true"):lower() == "true"
 	local x = 0
 	local y = 0
@@ -3547,11 +3555,11 @@ function FSBaseMission:consoleCommandAddDirtAmount(amount)
 
 			return string.format("Added dirt to vehicles (Amount: %.2f)", amount)
 		else
-			return "Enter a vehicle first!"
+			return "Error: Enter a vehicle first!"
 		end
 	end
 
-	return "Not available on clients"
+	return "Error: Not available on clients"
 end
 
 function FSBaseMission:consoleCommandAddWearAmount(amount)
@@ -3564,12 +3572,14 @@ function FSBaseMission:consoleCommandAddWearAmount(amount)
 					v:addWearAmount(amount)
 				end
 			end
+
+			return string.format("Added wear to vehicles (Amount: %.2f)", amount)
 		else
-			return "Enter a vehicle first!"
+			return "Error: Enter a vehicle first!"
 		end
 	end
 
-	return "Not available on clients"
+	return "Error: Not available on clients"
 end
 
 function FSBaseMission:consoleCommandAddDamageAmount(amount)
@@ -3585,11 +3595,11 @@ function FSBaseMission:consoleCommandAddDamageAmount(amount)
 
 			return string.format("Added damage to vehicles (Amount: %.2f)", amount)
 		else
-			return "Enter a vehicle first!"
+			return "Error: Enter a vehicle first!"
 		end
 	end
 
-	return "Not available on clients"
+	return "Error: Not available on clients"
 end
 
 function FSBaseMission:consoleCommandLoadAllVehicles(loadConfigs, modsOnly, palletsOnly, verbose)
@@ -3598,7 +3608,7 @@ function FSBaseMission:consoleCommandLoadAllVehicles(loadConfigs, modsOnly, pall
 	end
 
 	if self.debugVehiclesToBeLoaded ~= nil then
-		return "Loading task is currently running!"
+		return "Error: Loading task is currently running!"
 	end
 
 	loadConfigs = string.lower(loadConfigs or "false") == "true"

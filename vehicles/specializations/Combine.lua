@@ -1204,10 +1204,13 @@ function Combine:addCutterArea(area, realArea, inputFruitType, outputFillType, s
 
 				if additivesFillLevel > 0 then
 					local usage = spec.additives.usage * deltaFillLevel
-					local availableUsage = usage / additivesFillLevel
-					deltaFillLevel = deltaFillLevel * (1 + 0.05 * availableUsage)
 
-					self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.additives.fillUnitIndex, -usage, self:getFillUnitFillType(spec.additives.fillUnitIndex), ToolType.UNDEFINED)
+					if usage > 0 then
+						local availableUsage = math.min(additivesFillLevel / usage, 1)
+						deltaFillLevel = deltaFillLevel * (1 + 0.05 * availableUsage)
+
+						self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.additives.fillUnitIndex, -usage, self:getFillUnitFillType(spec.additives.fillUnitIndex), ToolType.UNDEFINED)
+					end
 				end
 			end
 		end

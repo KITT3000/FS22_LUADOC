@@ -557,9 +557,10 @@ function I18N:getCurrentDate()
 	return dateString
 end
 
-function I18N:consoleCommandVerifyAll(ignoreTodos, l10nDir)
+function I18N:consoleCommandVerifyAll(ignoreTodos, l10nDir, l10nFilePrefix)
 	ignoreTodos = Utils.stringToBoolean(ignoreTodos)
 	l10nDir = l10nDir or "dataS/"
+	l10nFilePrefix = l10nFilePrefix or "l10n_"
 
 	print("Verifying i18n files:")
 	setFileLogPrefixTimestamp(false)
@@ -571,7 +572,7 @@ function I18N:consoleCommandVerifyAll(ignoreTodos, l10nDir)
 	local function formatsFromString(str)
 		local result = ""
 
-		for formatIdentifier, _ in str:gmatch("%%%.?%d*%a") do
+		for formatIdentifier, _ in str:gmatch("%%%d?%.?%d*%a") do
 			result = result .. formatIdentifier
 		end
 
@@ -594,7 +595,7 @@ function I18N:consoleCommandVerifyAll(ignoreTodos, l10nDir)
 
 	for langIndex = 0, numL - 1 do
 		local code = getLanguageCode(langIndex)
-		local filenameShort = "l10n_" .. code .. ".xml"
+		local filenameShort = l10nFilePrefix .. code .. ".xml"
 
 		if code == "en" then
 			masterLang = filenameShort
@@ -652,7 +653,11 @@ function I18N:consoleCommandVerifyAll(ignoreTodos, l10nDir)
 
 	for lang, keys in pairs(langToKeys) do
 		if lang ~= masterLang then
+			print(lang)
+
 			for key, text in pairs(keys) do
+				getTextHeight(1, text)
+
 				local formatStringText, countText = formatsFromString(text)
 				local formatStringEn = enFormatStrings[key] and enFormatStrings[key][1]
 				local countEn = enFormatStrings[key] and enFormatStrings[key][2]

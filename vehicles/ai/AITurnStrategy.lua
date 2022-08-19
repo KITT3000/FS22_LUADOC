@@ -1371,11 +1371,22 @@ function AITurnStrategy:createPointsForSegment(segmentIndex, segmentProgress, po
 
 			if segment.isCurve then
 				local dir = MathUtil.sign(segment.endAngle - segment.startAngle)
-				local preAngle = curAngle + math.rad(10) * -dir
-				local nextAngle = curAngle + math.rad(10) * dir
-				local x1, y1, z1 = localToWorld(segment.o, segment.radius * math.cos(preAngle), 0, segment.radius * math.sin(preAngle))
-				local x2, y2, z2 = localToWorld(segment.o, segment.radius * math.cos(nextAngle), 0, segment.radius * math.sin(nextAngle))
-				dirX, dirY, dirZ = MathUtil.vector3Normalize(x1 - x2, y1 - y2, z1 - z2)
+
+				if dir ~= 0 then
+					local preAngle = curAngle + math.rad(10) * -dir
+					local nextAngle = curAngle + math.rad(10) * dir
+					local x1, y1, z1 = localToWorld(segment.o, segment.radius * math.cos(preAngle), 0, segment.radius * math.sin(preAngle))
+					local x2, y2, z2 = localToWorld(segment.o, segment.radius * math.cos(nextAngle), 0, segment.radius * math.sin(nextAngle))
+					dirX, dirY, dirZ = MathUtil.vector3Normalize(x1 - x2, y1 - y2, z1 - z2)
+				else
+					local x1 = positions[posIndex - 5]
+					local y1 = positions[posIndex - 4]
+					local z1 = positions[posIndex - 3]
+					local x2 = positions[posIndex - 2]
+					local y2 = positions[posIndex - 1]
+					local z2 = positions[posIndex - 0]
+					dirX, dirY, dirZ = MathUtil.vector3Normalize(x1 - x2, y1 - y2, z1 - z2)
+				end
 			else
 				dirX, dirY, dirZ = MathUtil.vector3Normalize(segment.startPoint[1] - segment.endPoint[1], 0, segment.startPoint[3] - segment.endPoint[3])
 			end

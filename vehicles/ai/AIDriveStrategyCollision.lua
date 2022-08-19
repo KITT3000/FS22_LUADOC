@@ -24,11 +24,18 @@ function AIDriveStrategyCollision:setAIVehicle(vehicle)
 
 	if self.vehicle.isServer then
 		self.collisionTriggerByVehicle = {}
+		local vehicles = self.vehicle.rootVehicle.childVehicles
 
-		vehicle:getAICollisionTriggers(self.collisionTriggerByVehicle)
+		for i = 1, #vehicles do
+			local subVehicle = vehicles[i]
 
-		if vehicle.getAIImplementCollisionTriggers ~= nil then
-			vehicle:getAIImplementCollisionTriggers(self.collisionTriggerByVehicle)
+			if subVehicle.getAICollisionTriggers ~= nil then
+				subVehicle:getAICollisionTriggers(self.collisionTriggerByVehicle)
+			end
+
+			if subVehicle.getAIImplementCollisionTriggers ~= nil then
+				subVehicle:getAIImplementCollisionTriggers(self.collisionTriggerByVehicle)
+			end
 		end
 
 		self.rootVehicle = vehicle:getRootVehicle()
