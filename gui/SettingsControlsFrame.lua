@@ -103,6 +103,19 @@ end
 
 function SettingsControlsFrame:onGuiSetupFinished()
 	SettingsControlsFrame:superClass().onGuiSetupFinished(self)
+
+	local old = self.gamepadTable.shouldFocusChange
+
+	function self.gamepadTable.shouldFocusChange(...)
+		local res = old(...)
+
+		if not getIsKeyboardAvailable() then
+			return false
+		end
+
+		return res
+	end
+
 	self.keyboardMouseTable:setDataSource(self)
 	self.gamepadTable:setDataSource(self)
 end
@@ -110,7 +123,16 @@ end
 function SettingsControlsFrame:onFrameOpen()
 	SettingsControlsFrame:superClass().onFrameOpen(self)
 	self:updateDisplay()
-	self:setDevicePage(true)
+
+	local hasKeyboard = getIsKeyboardAvailable()
+	local hasGamepads = getNumOfGamepads() > 0
+
+	if hasKeyboard then
+		self:setDevicePage(true)
+	elseif hasGamepads then
+		self:setDevicePage(false)
+	end
+
 	self.controlsMessage:setText("")
 	self.controlsMessageWarningIcon:setVisible(false)
 	self:updateHeader()
@@ -199,7 +221,7 @@ function SettingsControlsFrame:updateMenuButtons()
 		}
 	end
 
-	if getNumOfGamepads() > 0 then
+	if getNumOfGamepads() > 0 and getIsKeyboardAvailable() then
 		self.menuButtonInfo = self.gamepadPresentMenuButtonInfo
 	else
 		self.menuButtonInfo = self.keyboardOnlyMenuButtonInfo
@@ -210,12 +232,22 @@ end
 
 function SettingsControlsFrame:updateHeader()
 	local hasGamepads = getNumOfGamepads() > 0
+	local hasKeyboard = getIsKeyboardAvailable()
 
 	self.gamepadHeaderText:setVisible(hasGamepads)
-	self.keyboardHiddenButton:setOverlayState(GuiOverlay.STATE_NORMAL)
-	self.keyboardHeaderText:setDisabled(false)
+	self.keyboardHeaderText:setVisible(hasKeyboard)
 	self.gamepadHiddenButton:setOverlayState(GuiOverlay.STATE_DISABLED)
 	self.gamepadHeaderText:setDisabled(true)
+	self.keyboardHiddenButton:setOverlayState(GuiOverlay.STATE_DISABLED)
+	self.keyboardHeaderText:setDisabled(true)
+
+	if hasKeyboard then
+		self.keyboardHiddenButton:setOverlayState(GuiOverlay.STATE_NORMAL)
+		self.keyboardHeaderText:setDisabled(false)
+	elseif hasGamepads then
+		self.gamepadHiddenButton:setOverlayState(GuiOverlay.STATE_NORMAL)
+		self.gamepadHeaderText:setDisabled(false)
+	end
 end
 
 function SettingsControlsFrame:setDevicePage(toKeyboard)
@@ -251,16 +283,27 @@ function SettingsControlsFrame:switchDevice()
 	self:playSample(GuiSoundPlayer.SOUND_SAMPLES.PAGING)
 
 	local hasGamepads = getNumOfGamepads() > 0
+	local hasKeyboard = getIsKeyboardAvailable()
 	local isShowingKeyboard = self.activeControlsTable == self.keyboardMouseTable
-	local switchToKeyboard = not hasGamepads or hasGamepads and not isShowingKeyboard
+	local switchToKeyboard = not hasGamepads or hasKeyboard and not isShowingKeyboard
 
 	self:setDevicePage(switchToKeyboard)
 end
 
 function SettingsControlsFrame:setupControlsView()
-	self.deviceCategoryTables[InputDevice.CATEGORY.KEYBOARD_MOUSE] = self.keyboardMouseTable
+	local kbPageId = self.pagingElement:getPageIdByElement(self.keyboardMousePage)
+	local hasKeyboard = getIsKeyboardAvailable()
 
-	self:bindControls(SettingsControlsFrame.KB_MOUSE_BOUND_CONTROLS, InputDevice.CATEGORY.KEYBOARD_MOUSE)
+	if hasKeyboard then
+		self.deviceCategoryTables[InputDevice.CATEGORY.KEYBOARD_MOUSE] = self.keyboardMouseTable
+
+		self:bindControls(SettingsControlsFrame.KB_MOUSE_BOUND_CONTROLS, InputDevice.CATEGORY.KEYBOARD_MOUSE)
+	else
+		self.deviceCategoryTables[InputDevice.CATEGORY.KEYBOARD_MOUSE] = nil
+		self.deviceCategoryDataBindings[InputDevice.CATEGORY.KEYBOARD_MOUSE] = nil
+	end
+
+	self.pagingElement:setPageIdDisabled(kbPageId, not hasKeyboard)
 
 	local gpPageId = self.pagingElement:getPageIdByElement(self.gamepadPage)
 	local hasGamepads = getNumOfGamepads() > 0

@@ -1044,7 +1044,7 @@ end
 
 function InGameMenu:makeIsControlsSettingsEnabledPredicate()
 	return function ()
-		return not self.isConsoleVersion and not GS_IS_MOBILE_VERSION
+		return not self.isConsoleVersion and not GS_IS_MOBILE_VERSION and (getNumOfGamepads() > 0 or getIsKeyboardAvailable())
 	end
 end
 

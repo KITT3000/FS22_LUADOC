@@ -487,7 +487,7 @@ function VehicleMotor:getGearToDisplay()
 end
 
 function VehicleMotor:getDrivingDirection()
-	if self.directionChangeMode == VehicleMotor.DIRECTION_CHANGE_MODE_MANUAL then
+	if self.directionChangeMode == VehicleMotor.DIRECTION_CHANGE_MODE_MANUAL or self.gearShiftMode ~= VehicleMotor.SHIFT_MODE_AUTOMATIC then
 		return self.currentDirection
 	elseif self.vehicle:getLastSpeed() > 0.95 then
 		return self.vehicle.movingDirection

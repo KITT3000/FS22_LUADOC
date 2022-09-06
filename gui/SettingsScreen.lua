@@ -68,7 +68,7 @@ function SettingsScreen:setupPages()
 		},
 		{
 			self.pageSettingsControls,
-			self:makeIsVisibleOnPCOnlyPredicate(),
+			self:makeHasInputDevices(),
 			SettingsScreen.TAB_UV.CONTROLS_SETTINGS
 		},
 		{
@@ -172,6 +172,12 @@ end
 
 function SettingsScreen:onClickHDRSettings()
 	self:pushDetail(self.pageSettingsHDR)
+end
+
+function SettingsScreen:makeHasInputDevices()
+	return function ()
+		return not GS_IS_CONSOLE_VERSION and (getNumOfGamepads() > 0 or getIsKeyboardAvailable())
+	end
 end
 
 function SettingsScreen:makeIsAlwaysVisiblePredicate()

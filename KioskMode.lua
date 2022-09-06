@@ -300,6 +300,7 @@ function KioskMode:init()
 	LoanTrigger.new = Utils.overwrittenFunction(LoanTrigger.new, KioskMode.inj_loanTrigger_new)
 	Environment.load = Utils.overwrittenFunction(Environment.load, KioskMode.inj_environment_load)
 	StoreManager.getDefaultStoreItemsFilename = Utils.overwrittenFunction(StoreManager.getDefaultStoreItemsFilename, KioskMode.inj_storeManager_getDefaultStoreItemsFilename)
+	ProductionPointActivatable.run = Utils.overwrittenFunction(ProductionPointActivatable.run, KioskMode.inj_productionPointActivatable_run)
 	Farm.setInitialEconomy = Utils.appendedFunction(Farm.setInitialEconomy, KioskMode.inj_Farm_setInitialEconomy)
 
 	function MissionManager.update(dt)
@@ -392,11 +393,39 @@ function KioskMode:loadProfileConfig(configFileName)
 	self.settings.farmlandShopEnabled = xmlFile:getBool("config.shopsEnabled.farmlands", false)
 	self.settings.placeableShopEnabled = xmlFile:getBool("config.shopsEnabled.placeables", false)
 	self.settings.wardrobeShopEnabled = xmlFile:getBool("config.shopsEnabled.wardrobe", false)
+	self.settings.productionEnabled = xmlFile:getBool("config.productionEnabled", true)
+	self.settings.helpLineTriggerEnabled = xmlFile:getBool("config.helpLineTriggerEnabled", true)
 	self.settings.extendedDrivingHelp = xmlFile:getBool("config.extendedDrivingHelp", false)
 	self.settings.alwaysDay = xmlFile:getBool("config.alwaysDay", false)
 	self.settings.startMoney = xmlFile:getInt("config.startMoney", 1000000)
 	self.settings.skipMainMenu = xmlFile:getBool("config.skipMainMenu", false)
 	self.settings.startVehicleIndex = xmlFile:getInt("config.startVehicleIndex", nil)
+
+	if KioskMode.TIMESCALE_BACKUP == nil then
+		KioskMode.TIMESCALE_BACKUP = Platform.gameplay.timeScaleSettings
+		KioskMode.TIMESCALE_DEV_BACKUP = Platform.gameplay.timeScaleDevSettings
+	end
+
+	Platform.gameplay.timeScaleSettings = KioskMode.TIMESCALE_BACKUP
+	Platform.gameplay.timeScaleDevSettings = KioskMode.TIMESCALE_DEV_BACKUP
+	local timescales = xmlFile:getString("config.timescales", nil)
+
+	if timescales ~= nil then
+		local newTimescales = {}
+		local parts = {
+			string.getVector(timescales)
+		}
+
+		for _, part in ipairs(parts) do
+			table.insert(newTimescales, tonumber(part))
+		end
+
+		if #newTimescales > 0 then
+			Platform.gameplay.timeScaleSettings = newTimescales
+			Platform.gameplay.timeScaleDevSettings = {}
+		end
+	end
+
 	local mapsStr = xmlFile:getString("config.maps", "")
 	local mapIds = string.split(mapsStr, " ")
 	self.settings.maps = nil
@@ -656,6 +685,8 @@ function KioskMode:setupMainMenu()
 
 	if not Platform.isConsole then
 		g_mainScreen.settingsButton:setDisabled(areButtonsDisabled)
+	else
+		g_mainScreen.settingsButton:setDisabled(true)
 	end
 
 	g_mainScreen.quitButton:setDisabled(areButtonsDisabled)
@@ -877,6 +908,10 @@ function KioskMode.inj_mission00_onStartMission()
 			g_kioskMode.tryToEnterVehicle = vehicle
 		end
 	end
+
+	if not g_kioskMode:getSetting("helpLineTriggerEnabled") then
+		g_currentMission:setShowHelpTrigger(false)
+	end
 end
 
 function KioskMode.inj_inGameMenu_makeIsAIEnabledPredicate(ingameMenu)
@@ -923,6 +958,18 @@ end
 
 function KioskMode.inj_inGameMenuGameSettingsFrame_initializeButtons(frame)
 	frame.saveButton = nil
+end
+
+function KioskMode:inj_productionPointActivatable_run(superFunc)
+	if not g_kioskMode:getSetting("productionEnabled") then
+		g_gui:showInfoDialog({
+			text = g_i18n:getText("ui_featureDisabled")
+		})
+
+		return
+	end
+
+	superFunc(self)
 end
 
 function KioskMode.inj_specializationManager_addSpecialization(specializationManager, name, className, ...)
@@ -1025,15 +1072,17 @@ function KioskMode.inj_modSelectionScreenn_update(screen, dt)
 end
 
 function KioskMode.inj_difficultyScreen_update(screen, dt)
-	screen.startMissionInfo.difficulty = 1
+	local info = screen.startMissionInfo or g_startMissionInfo
+	info.difficulty = 1
 
 	screen:onClickOk()
 end
 
 function KioskMode.inj_mapSelectionScreen_update(screen, dt)
 	if g_mapManager:getNumOfMaps() == 1 then
+		local info = screen.startMissionInfo or g_startMissionInfo
 		local map = g_mapManager:getMapDataByIndex(1)
-		screen.startMissionInfo.mapId = map.id
+		info.mapId = map.id
 
 		screen:onClickOk()
 	end
@@ -1045,7 +1094,8 @@ function KioskMode.inj_careerScreen_update(screen, dt)
 	end
 
 	screen.selectedIndex = 1
-	local savegame = screen.savegameController:getSavegame(screen.selectedIndex)
+	local savegameController = screen.savegameController or g_savegameController
+	local savegame = savegameController:getSavegame(screen.selectedIndex)
 
 	screen:startSavegame(savegame)
 end
