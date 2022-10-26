@@ -47,23 +47,27 @@ end
 function AIDischargeable:onPostLoad()
 	local spec = self.spec_aiDischargeable
 
-	if spec.aiDischargeNodes ~= nil and self.getInputAttacherJoints ~= nil then
+	if spec.aiDischargeNodes ~= nil then
 		for _, dischargeNode in ipairs(spec.aiDischargeNodes) do
 			dischargeNode.inputAttacherJointOffsets = {}
 
-			for _, inputAttacherJoint in ipairs(self:getInputAttacherJoints()) do
-				local x, y, z = localToLocal(dischargeNode.node, inputAttacherJoint.node, 0, 0, 0)
+			if self.getInputAttacherJoints ~= nil then
+				for _, inputAttacherJoint in ipairs(self:getInputAttacherJoints()) do
+					local x, y, z = localToLocal(dischargeNode.node, inputAttacherJoint.node, 0, 0, 0)
 
-				table.insert(dischargeNode.inputAttacherJointOffsets, {
-					x,
-					y,
-					z
-				})
+					table.insert(dischargeNode.inputAttacherJointOffsets, {
+						x,
+						y,
+						z
+					})
+				end
 			end
 
 			if self.getAIRootNode ~= nil then
 				local aiRootNode = self:getAIRootNode()
-				dischargeNode.aiRootNodeOffsets = localToLocal(dischargeNode.node, aiRootNode, 0, 0, 0)
+				dischargeNode.aiRootNodeOffsets = {
+					localToLocal(dischargeNode.node, aiRootNode, 0, 0, 0)
+				}
 			end
 		end
 	end
@@ -122,11 +126,14 @@ end
 
 function AIDischargeable:getAIDischargeNodeZAlignedOffset(dischargeNode, targetVehicle)
 	if targetVehicle == self then
-		return unpack(dischargeNode.aiRootNodeOffsets)
+		return dischargeNode.aiRootNodeOffsets[1], dischargeNode.aiRootNodeOffsets[2], dischargeNode.aiRootNodeOffsets[3]
 	end
 
 	local index = self:getActiveInputAttacherJointDescIndex()
-	local offsetX, offsetY, offsetZ = unpack(dischargeNode.inputAttacherJointOffsets[index])
+	local inputAttacherOffsets = dischargeNode.inputAttacherJointOffsets[index]
+	local offsetX = inputAttacherOffsets[1]
+	local offsetY = inputAttacherOffsets[2]
+	local offsetZ = inputAttacherOffsets[3]
 	local currentVehicle = self
 	local nextVehicle = currentVehicle:getAttacherVehicle()
 

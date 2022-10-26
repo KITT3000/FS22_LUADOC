@@ -1169,6 +1169,11 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 
 				if x ~= nil then
 					local yRot = MathUtil.getYRotationFromDirection(place.dirPerpX, place.dirPerpZ)
+					local storeItem = g_storeManager:getItemByXMLFilename(self.configFileName)
+
+					if storeItem ~= nil then
+						yRot = yRot + storeItem.rotation
+					end
 
 					PlacementUtil.markPlaceUsed(g_currentMission.usedLoadPlaces, place, width)
 					self:setRelativePosition(x, offset, z, yRot)
@@ -1998,6 +2003,7 @@ function Vehicle:updateEnd(dt)
 	local isActiveForInput = self:getIsActiveForInput()
 	local isActiveForInputIgnoreSelection = self:getIsActiveForInput(true)
 	local isSelected = self:getIsSelected()
+	self.currentUpdateDistance = 0
 
 	SpecializationUtil.raiseEvent(self, "onUpdateEnd", dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 end
@@ -2593,6 +2599,10 @@ function Vehicle:addSubselection(subSelection)
 	table.insert(self.selectionObject.subSelections, subSelection)
 
 	return #self.selectionObject.subSelections
+end
+
+function Vehicle:clearSubselections()
+	self.selectionObject.subSelections = {}
 end
 
 function Vehicle:getCanBeSelected()

@@ -137,6 +137,12 @@ function AISystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 		0,
 		1
 	}
+	self.debug.colors.spline = {
+		0,
+		0,
+		1,
+		1
+	}
 	self.activeJobs = {}
 	self.jobsToRemove = {}
 	self.roadSplines = {}
@@ -814,6 +820,34 @@ function AISystem:consoleCommandAICostmapExport(imageFormatStr)
 	local imageSize = self.mission.terrainSize
 	local isGreymap = imageFormat == BitmapUtil.FORMAT.GREYMAP
 	local colorBlocking = self.debug.colors.blocking
+	local colorSpline = self.debug.colors.spline
+	local splines = {}
+
+	for _, roadSplineOrTG in ipairs(self.roadSplines) do
+		if I3DUtil.getIsSpline(roadSplineOrTG) then
+			splines[roadSplineOrTG] = true
+		end
+
+		I3DUtil.interateRecursively(roadSplineOrTG, function (node)
+			if I3DUtil.getIsSpline(node) then
+				splines[node] = true
+			end
+		end)
+	end
+
+	local posToHasSpline = {}
+
+	for spline in pairs(splines) do
+		local splineLength = getSplineLength(spline)
+
+		for splineTime = 0, 1, 1 / splineLength do
+			local wx, _, wz = getSplinePosition(spline, splineTime)
+			local xInt = MathUtil.round(wx)
+			local zInt = MathUtil.round(wz)
+			posToHasSpline[xInt] = posToHasSpline[xInt] or {}
+			posToHasSpline[xInt][zInt] = true
+		end
+	end
 
 	local function getPixelsIterator()
 		local stepZ = -terrainSizeHalf + cellSizeHalf
@@ -831,11 +865,24 @@ function AISystem:consoleCommandAICostmapExport(imageFormatStr)
 
 			local worldPosY = getTerrainHeightAtWorldPos(self.mission.terrainRootNode, stepX, 0, stepZ)
 			local cost, isBlocking = getVehicleNavigationMapCostAtWorldPos(self.navigationMap, stepX, worldPosY, stepZ)
+			local xInt = MathUtil.round(stepX)
+			local zInt = MathUtil.round(stepZ)
+			local posHasSpline = posToHasSpline[xInt] and posToHasSpline[xInt][zInt]
 
 			if isGreymap then
-				pixel[1] = cost
+				if posHasSpline then
+					pixel[1] = 1
+				else
+					pixel[1] = cost
+				end
+
+				pixel[1] = pixel[1] / AISystem.COSTMAP_MAX_VALUE * 255
 			else
-				if isBlocking then
+				if posHasSpline then
+					pixel[3] = colorSpline[3]
+					pixel[2] = colorSpline[2]
+					pixel[1] = colorSpline[1]
+				elseif isBlocking then
 					pixel[3] = colorBlocking[3]
 					pixel[2] = colorBlocking[2]
 					pixel[1] = colorBlocking[1]

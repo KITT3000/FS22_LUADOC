@@ -14,7 +14,16 @@ local internalMods = {
 }
 local internalScriptMods = {
 	"FS22_precisionFarming",
-	"FS22_lindnerLintracSupercup"
+	"FS22_lindnerLintracSupercup",
+	"FS22_GrimmePack"
+}
+local outdatedMods = {
+	FS22_BetterContracts = {
+		1,
+		2,
+		4,
+		0
+	}
 }
 modOnCreate = {}
 
@@ -289,6 +298,34 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 		xmlFile:delete()
 
 		return
+	end
+
+	local outdatedModData = outdatedMods[modName]
+
+	if outdatedModData ~= nil then
+		local versionParts = string.split(modVersion, ".")
+		local isOutdated = true
+
+		for k, part in ipairs(versionParts) do
+			if k > 4 then
+				break
+			end
+
+			local number = tonumber(part) or 0
+
+			if number ~= nil and outdatedModData[k] ~= nil and outdatedModData[k] < number then
+				isOutdated = false
+
+				break
+			end
+		end
+
+		if isOutdated then
+			print("Error: Mod '" .. modName .. "' in version '" .. modVersion .. "' and lower is not supported anymore. Please update the mod!")
+			xmlFile:delete()
+
+			return
+		end
 	end
 
 	if isDLCFile then
@@ -900,8 +937,9 @@ function loadMod(modName, modDir, modFile, modTitle)
 		local pricePerLiter = xmlFile:getFloat(key .. "#pricePerLiter")
 		local woodChipsPerLiter = xmlFile:getFloat(key .. "#woodChipsPerLiter")
 		local allowsWoodHarvester = xmlFile:getBool(key .. "#allowsWoodHarvester")
+		local volumeToLiter = xmlFile:getInt(key .. "#volumeToLiter")
 
-		g_splitTypeManager:addSplitType(name, l10nKey, splitTypeIndex, pricePerLiter, woodChipsPerLiter, allowsWoodHarvester, modName)
+		g_splitTypeManager:addSplitType(name, l10nKey, splitTypeIndex, pricePerLiter, woodChipsPerLiter, allowsWoodHarvester, modName, volumeToLiter)
 	end)
 	xmlFile:iterate("modDesc.brands.brand", function (_, key)
 		local name = xmlFile:getString(key .. "#name")
@@ -910,6 +948,9 @@ function loadMod(modName, modDir, modFile, modTitle)
 		local offset = xmlFile:getFloat(key .. "#imageOffset")
 
 		g_brandManager:addBrand(name, title, image, modDir, true, nil, offset)
+	end)
+	xmlFile:iterate("modDesc.helpLines.category", function (_, key)
+		g_helpLineManager:addModCategory(xmlFile, key, modName, modDir)
 	end)
 
 	if isDLCFile then

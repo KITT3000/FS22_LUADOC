@@ -39,6 +39,9 @@ function CrabSteering.registerSteeringModeXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".animation(?)#name", "Change animation name")
 	schema:register(XMLValueType.FLOAT, basePath .. ".animation(?)#speed", "Animation speed", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. ".animation(?)#stopTime", "Animation stop time")
+	schema:register(XMLValueType.NODE_INDEX, basePath .. ".steeringWheel#node", "Steering wheel node")
+	schema:register(XMLValueType.ANGLE, basePath .. ".steeringWheel#indoorRotation", "Steering wheel indoor rotation", 0)
+	schema:register(XMLValueType.ANGLE, basePath .. ".steeringWheel#outdoorRotation", "Steering wheel outdoor rotation", 0)
 end
 
 function CrabSteering.registerFunctions(vehicleType)
@@ -51,6 +54,7 @@ function CrabSteering.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateSteeringAngle", CrabSteering.updateSteeringAngle)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeSelected", CrabSteering.getCanBeSelected)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadWheelsFromXML", CrabSteering.loadWheelsFromXML)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateSteeringWheel", CrabSteering.updateSteeringWheel)
 end
 
 function CrabSteering.registerEventListeners(vehicleType)
@@ -184,6 +188,18 @@ function CrabSteering:onLoad(savegame)
 			end
 
 			j = j + 1
+		end
+
+		local node = self.xmlFile:getValue(key .. ".steeringWheel#node", nil, self.components, self.i3dMappings)
+
+		if node ~= nil then
+			entry.steeringWheel = {
+				node = node
+			}
+			local _, ry, _ = getRotation(entry.steeringWheel.node)
+			entry.steeringWheel.lastRotation = ry
+			entry.steeringWheel.indoorRotation = self.xmlFile:getValue(key .. ".steeringWheel#indoorRotation", 0)
+			entry.steeringWheel.outdoorRotation = self.xmlFile:getValue(key .. ".steeringWheel#outdoorRotation", 0)
 		end
 
 		table.insert(spec.steeringModes, entry)
@@ -526,6 +542,19 @@ function CrabSteering:loadWheelsFromXML(superFunc, xmlFile, key, wheelConfigurat
 	superFunc(self, xmlFile, key, wheelConfigurationI)
 
 	self.spec_crabSteering.configurationIndex = xmlFile:getValue(key .. ".wheels#crabSteeringIndex")
+end
+
+function CrabSteering:updateSteeringWheel(superFunc, steeringWheel, dt, direction)
+	if self.spec_crabSteering.hasSteeringModes then
+		local spec = self.spec_crabSteering
+		local currentMode = spec.steeringModes[spec.state]
+
+		if currentMode.steeringWheel ~= nil then
+			steeringWheel = currentMode.steeringWheel
+		end
+	end
+
+	superFunc(self, steeringWheel, dt, direction)
 end
 
 function CrabSteering:onAIImplementStart()

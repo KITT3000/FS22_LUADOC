@@ -23,7 +23,8 @@ function PlaceableTriggerMarkers.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".triggerMarkers.triggerMarker(?)#filename", "Trigger marker config file")
 	schema:register(XMLValueType.STRING, basePath .. ".triggerMarkers.triggerMarker(?)#id", "Trigger marker config file identifier")
 	schema:register(XMLValueType.BOOL, basePath .. ".triggerMarkers.triggerMarker(?)#adjustToGround", "Trigger marker adjusted to ground")
-	schema:register(XMLValueType.FLOAT, basePath .. ".triggerMarkers.triggerMarker(?)#groundOffset", "Hight of the trigger marker above the ground if adjustToGround is enabled", 0.03)
+	schema:register(XMLValueType.FLOAT, basePath .. ".triggerMarkers.triggerMarker(?)#groundOffset", "Height of the trigger marker above the ground if adjustToGround is enabled", 0.03)
+	schema:register(XMLValueType.BOOL, basePath .. ".triggerMarkers.triggerMarker(?)#showAllPlayers", "Show marker for all players even if they do not have access to the placeable", false)
 	schema:setXMLSpecializationType()
 end
 
@@ -88,11 +89,14 @@ function PlaceableTriggerMarkers:onLoad(savegame)
 				table.insert(spec.sharedLoadRequestIds, sharedLoadRequestId)
 			end
 
+			local showAllPlayers = self.xmlFile:getValue(key .. "#showAllPlayers", false)
+
 			table.insert(spec.triggerMarkers, {
 				node = node,
 				i3dFilename = i3dFilename,
 				adjustToGround = adjustToGround,
-				groundOffset = groundOffset
+				groundOffset = groundOffset,
+				showAllPlayers = showAllPlayers
 			})
 		else
 			Logging.xmlWarning(xmlFile, "Missing trigger marker node for '%s'", key)
@@ -192,7 +196,7 @@ function PlaceableTriggerMarkers:setShowMarkers(doShow)
 	local spec = self.spec_triggerMarkers
 
 	for _, marker in ipairs(spec.triggerMarkers) do
-		if doShow then
+		if doShow or marker.showAllPlayers then
 			g_currentMission:addTriggerMarker(marker.node)
 		else
 			g_currentMission:removeTriggerMarker(marker.node)
@@ -207,4 +211,6 @@ function PlaceableTriggerMarkers:getTriggerMarkerPosition(index)
 	if marker ~= nil then
 		return getWorldTranslation(marker.node)
 	end
+
+	return nil
 end

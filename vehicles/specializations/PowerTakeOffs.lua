@@ -844,16 +844,19 @@ end
 function PowerTakeOffs:updateDoubleJointPowerTakeOff(powerTakeOff, dt)
 	local x, y, z = getWorldTranslation(powerTakeOff.startNode)
 	local dx, dy, dz = worldToLocal(getParent(powerTakeOff.endJoint2), x, y, z)
+	dx, dy, dz = MathUtil.vector3Normalize(dx, dy, dz)
 
-	I3DUtil.setDirection(powerTakeOff.endJoint2, dx * 0.5, dy * 0.5, dz, 0, 1, 0)
+	I3DUtil.setDirection(powerTakeOff.endJoint2, dx * 0.5, dy * 0.5, (dz + 1) * 0.5, 0, 1, 0)
 
 	x, y, z = getWorldTranslation(powerTakeOff.endJoint1Ref)
 	dx, dy, dz = worldToLocal(getParent(powerTakeOff.startJoint1), x, y, z)
+	dx, dy, dz = MathUtil.vector3Normalize(dx, dy, dz)
 
-	I3DUtil.setDirection(powerTakeOff.startJoint1, dx * 0.5, dy * 0.5, dz, 0, 1, 0)
+	I3DUtil.setDirection(powerTakeOff.startJoint1, dx * 0.5, dy * 0.5, (dz + 1) * 0.5, 0, 1, 0)
 
 	x, y, z = getWorldTranslation(powerTakeOff.endJoint1Ref)
 	dx, dy, dz = worldToLocal(getParent(powerTakeOff.startJoint2), x, y, z)
+	dx, dy, dz = MathUtil.vector3Normalize(dx, dy, dz)
 
 	I3DUtil.setDirection(powerTakeOff.startJoint2, dx, dy, dz, 0, 1, 0)
 

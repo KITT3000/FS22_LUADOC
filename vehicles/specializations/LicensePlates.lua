@@ -154,6 +154,8 @@ function LicensePlates:onLoad(savegame)
 				variation = 1
 			}
 		end
+	else
+		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.licensePlates.licensePlate", -1, self.components, self)
 	end
 end
 

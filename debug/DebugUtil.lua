@@ -52,6 +52,13 @@ function DebugUtil.drawDebugNode(node, text, alignToGround, offsetY)
 	DebugUtil.drawDebugGizmoAtWorldPos(x, y + offsetY, z, dirX, dirY, dirZ, upX, upY, upZ, text, alignToGround)
 end
 
+function DebugUtil.renderTextAtNode(node, text, textSize)
+	textSize = textSize or 0.02
+	local x, y, z = getWorldTranslation(node)
+
+	Utils.renderTextAtWorldPosition(x, y, z, text, textSize)
+end
+
 function DebugUtil.drawDebugGizmoAtWorldPos(x, y, z, dirX, dirY, dirZ, upX, upY, upZ, text, alignToGround, color)
 	local sideX, sideY, sideZ = MathUtil.crossProduct(upX, upY, upZ, dirX, dirY, dirZ)
 
@@ -158,7 +165,7 @@ function DebugUtil.drawDebugAreaRectangleFilled(x, y, z, x1, y1, z1, x2, y2, z2,
 	drawDebugTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3, r, g, b, a, false)
 end
 
-function DebugUtil.drawDebugRectangle(node, minX, maxX, minZ, maxZ, yOffset, r, g, b)
+function DebugUtil.drawDebugRectangle(node, minX, maxX, minZ, maxZ, yOffset, r, g, b, a, filled)
 	local leftFrontX, leftFrontY, leftFrontZ = localToWorld(node, minX, yOffset, maxZ)
 	local rightFrontX, rightFrontY, rightFrontZ = localToWorld(node, maxX, yOffset, maxZ)
 	local leftBackX, leftBackY, leftBackZ = localToWorld(node, minX, yOffset, minZ)
@@ -168,6 +175,11 @@ function DebugUtil.drawDebugRectangle(node, minX, maxX, minZ, maxZ, yOffset, r, 
 	drawDebugLine(rightFrontX, rightFrontY, rightFrontZ, r, g, b, rightBackX, rightBackY, rightBackZ, r, g, b)
 	drawDebugLine(rightBackX, rightBackY, rightBackZ, r, g, b, leftBackX, leftBackY, leftBackZ, r, g, b)
 	drawDebugLine(leftBackX, leftBackY, leftBackZ, r, g, b, leftFrontX, leftFrontY, leftFrontZ, r, g, b)
+
+	if filled then
+		drawDebugTriangle(leftFrontX, leftFrontY, leftFrontZ, rightFrontX, rightFrontY, rightFrontZ, rightBackX, rightBackY, rightBackZ, r, g, b, a, true)
+		drawDebugTriangle(rightBackX, rightBackY, rightBackZ, leftBackX, leftBackY, leftBackZ, leftFrontX, leftFrontY, leftFrontZ, r, g, b, a, true)
+	end
 end
 
 function DebugUtil.drawDebugCircle(x, y, z, radius, steps, color, alignToTerrain, filled)
@@ -386,6 +398,16 @@ function DebugUtil.drawArea(area, r, g, b, a)
 	DebugUtil.drawDebugParallelogram(x, z, widthX, widthZ, heightX, heightZ, r, g, b, a)
 end
 
+function DebugUtil.drawCutNodeArea(node, sizeY, sizeZ, r, g, b)
+	if node ~= nil then
+		local x, y, z = getWorldTranslation(node)
+		local x2, y2, z2 = localToWorld(node, 0, sizeY or 1, 0)
+		local x3, y3, z3 = localToWorld(node, 0, 0, sizeZ or 1)
+
+		DebugUtil.drawDebugAreaRectangle(x, y, z, x2, y2, z2, x3, y3, z3, false, r or 0, g or 1, b or 0)
+	end
+end
+
 function DebugUtil.printTableRecursively(inputTable, inputIndent, depth, maxDepth)
 	inputIndent = inputIndent or "  "
 	depth = depth or 0
@@ -562,4 +584,32 @@ function DebugUtil.setNodeEffectivelyVisible(node)
 
 		parent = getParent(parent)
 	end
+end
+
+function DebugUtil.getVehicleOrPlayerPosAndDir()
+	local x = 0
+	local y = 0
+	local z = 0
+	local dirX = 1
+	local _ = 0
+	local dirZ = 0
+
+	if g_currentMission then
+		local player = g_currentMission.player
+		local controlledVehicle = g_currentMission.controlledVehicle
+
+		if g_currentMission.controlPlayer then
+			if player ~= nil and player.isControlled and player.rootNode ~= nil and player.rootNode ~= 0 then
+				x, y, z = getWorldTranslation(player.rootNode)
+				dirZ = -math.cos(player.rotY)
+				_ = 0
+				dirX = -math.sin(player.rotY)
+			end
+		elseif controlledVehicle ~= nil then
+			x, y, z = getWorldTranslation(controlledVehicle.rootNode)
+			dirX, _, dirZ = localDirectionToWorld(controlledVehicle.rootNode, 0, 0, 1)
+		end
+	end
+
+	return x, y, z, dirX, 0, dirZ
 end

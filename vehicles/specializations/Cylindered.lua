@@ -1,5 +1,6 @@
 Cylindered = {
 	DIRTY_COLLISION_UPDATE_CHECK = false,
+	MOVING_TOOL_SEND_MIN_RESOLUTION = math.rad(0.4),
 	MOVING_TOOL_XML_KEY = "vehicle.cylindered.movingTools.movingTool(?)",
 	MOVING_PART_XML_KEY = "vehicle.cylindered.movingParts.movingPart(?)",
 	SOUND_TYPE_EVENT = 0,
@@ -91,6 +92,7 @@ function Cylindered.initSpecialization()
 	schema:register(XMLValueType.STRING, partKey .. "#wheelNodes", "List of wheel nodes to update")
 	schema:register(XMLValueType.BOOL, partKey .. ".inputAttacherJoint#value", "Update input attacher joint")
 	schema:register(XMLValueType.VECTOR_N, partKey .. ".attacherJoint#jointIndices", "List of attacher joints to update")
+	schema:register(XMLValueType.BOOL, partKey .. ".attacherJoint#ignoreWarning", "No warning is printed if the joint index is not available (due to configurations)", false)
 	Cylindered.registerDependentComponentJointXMLPaths(schema, partKey)
 	Cylindered.registerCopyLocalDirectionXMLPaths(schema, partKey)
 	Cylindered.registerDependentAnimationXMLPaths(schema, partKey)
@@ -107,7 +109,7 @@ function Cylindered.initSpecialization()
 	schema:register(XMLValueType.ANGLE, toolKey .. ".rotation#startRot", "Start rotation")
 	schema:register(XMLValueType.BOOL, toolKey .. ".rotation#syncMaxRotLimits", "Synchronize max. rotation limits", false)
 	schema:register(XMLValueType.BOOL, toolKey .. ".rotation#syncMinRotLimits", "Synchronize min. rotation limits", false)
-	schema:register(XMLValueType.INT, toolKey .. ".rotation#rotSendNumBits", "Number of bits to synchronize", 8)
+	schema:register(XMLValueType.INT, toolKey .. ".rotation#rotSendNumBits", "Number of bits to synchronize", "automatically calculated by rotation range")
 	schema:register(XMLValueType.ANGLE, toolKey .. ".rotation#attachRotMax", "Max. rotation value set during attach")
 	schema:register(XMLValueType.ANGLE, toolKey .. ".rotation#attachRotMin", "Min. rotation value set during attach")
 	schema:register(XMLValueType.ANGLE, toolKey .. ".rotation#detachingRotMaxLimit", "Max. rotation to detach vehicle")
@@ -146,6 +148,7 @@ function Cylindered.initSpecialization()
 	schema:register(XMLValueType.STRING, toolKey .. "#wheelNodes", "List of wheel nodes to update")
 	schema:register(XMLValueType.BOOL, toolKey .. ".inputAttacherJoint#value", "Update input attacher joint")
 	schema:register(XMLValueType.VECTOR_N, toolKey .. ".attacherJoint#jointIndices", "List of attacher joints to update")
+	schema:register(XMLValueType.BOOL, toolKey .. ".attacherJoint#ignoreWarning", "No warning is printed if the joint index is not available (due to configurations)", false)
 	schema:register(XMLValueType.INT, toolKey .. "#fillUnitIndex", "Fill unit index")
 	schema:register(XMLValueType.FLOAT, toolKey .. "#minFillLevel", "Min. fill level")
 	schema:register(XMLValueType.FLOAT, toolKey .. "#maxFillLevel", "Max. fill level")
@@ -191,10 +194,14 @@ function Cylindered.initSpecialization()
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMaxInactive", "Moving tool max. rotation if object change inactive")
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMinActive", "Moving tool min. rotation if object change active")
 		_schema:register(XMLValueType.ANGLE, key .. "#movingToolRotMinInactive", "Moving tool min. rotation if object change inactive")
+		_schema:register(XMLValueType.ANGLE, key .. "#movingToolStartRotActive", "Moving tool start rotation if object change inactive")
+		_schema:register(XMLValueType.ANGLE, key .. "#movingToolStartRotInactive", "Moving tool start rotation if object change inactive")
 		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMaxActive", "Moving tool max. translation if object change active")
 		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMaxInactive", "Moving tool max. translation if object change inactive")
 		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMinActive", "Moving tool min. translation if object change active")
 		_schema:register(XMLValueType.FLOAT, key .. "#movingToolTransMinInactive", "Moving tool min. translation if object change inactive")
+		_schema:register(XMLValueType.FLOAT, key .. "#movingToolStartTransActive", "Moving tool start translation if object change inactive")
+		_schema:register(XMLValueType.FLOAT, key .. "#movingToolStartTransInactive", "Moving tool start translation if object change inactive")
 		_schema:register(XMLValueType.BOOL, key .. "#movingPartUpdateActive", "moving part active state if object change active")
 		_schema:register(XMLValueType.BOOL, key .. "#movingPartUpdateInactive", "moving part active state if object change inactive")
 	end)
@@ -282,6 +289,7 @@ function Cylindered.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "updateDependentToolLimits", Cylindered.updateDependentToolLimits)
 	SpecializationUtil.registerFunction(vehicleType, "onMovingPartSoundEvent", Cylindered.onMovingPartSoundEvent)
 	SpecializationUtil.registerFunction(vehicleType, "updateMovingToolSoundEvents", Cylindered.updateMovingToolSoundEvents)
+	SpecializationUtil.registerFunction(vehicleType, "updateControlGroups", Cylindered.updateControlGroups)
 end
 
 function Cylindered.registerOverwrittenFunctions(vehicleType)
@@ -1534,18 +1542,20 @@ function Cylindered:updateEasyControl(dt, updateDelayedNodes)
 	if easyArmControl ~= nil then
 		local targetYTool = self:getMovingToolByNode(easyArmControl.targetNodeY)
 		local targetZTool = self:getMovingToolByNode(easyArmControl.targetNodeZ)
+		local moveInputY = self:getMovingToolMoveValue(targetYTool)
+		local moveInputZ = self:getMovingToolMoveValue(targetZTool)
 		local hasChanged = false
 
-		if targetYTool.move ~= 0 or targetZTool.move ~= 0 then
+		if moveInputY ~= 0 or moveInputZ ~= 0 then
 			hasChanged = true
 
-			if targetYTool.move ~= 0 and targetYTool.isConsumingPower or targetZTool.move ~= 0 and targetZTool.isConsumingPower then
+			if moveInputY ~= 0 and targetYTool.isConsumingPower or moveInputZ ~= 0 and targetZTool.isConsumingPower then
 				spec.powerConsumingTimer = spec.powerConsumingActiveTimeOffset
 			end
 		end
 
 		if self.isServer and easyArmControl.state and hasChanged then
-			local transSpeedY = targetYTool.move * easyArmControl.moveSpeed
+			local transSpeedY = moveInputY * easyArmControl.moveSpeed
 
 			if easyArmControl.moveAcceleration ~= nil and math.abs(transSpeedY - easyArmControl.lastSpeedY) >= easyArmControl.moveAcceleration * dt then
 				if easyArmControl.lastSpeedY < transSpeedY then
@@ -1555,7 +1565,7 @@ function Cylindered:updateEasyControl(dt, updateDelayedNodes)
 				end
 			end
 
-			local transSpeedZ = targetZTool.move * easyArmControl.moveSpeed
+			local transSpeedZ = moveInputZ * easyArmControl.moveSpeed
 
 			if easyArmControl.moveAcceleration ~= nil and math.abs(transSpeedZ - easyArmControl.lastSpeedZ) >= easyArmControl.moveAcceleration * dt then
 				if easyArmControl.lastSpeedZ < transSpeedZ then
@@ -1667,42 +1677,45 @@ end
 
 function Cylindered:setIsEasyControlActive(state)
 	local spec = self.spec_cylindered
+	local easyArmControl = spec.easyArmControl
 
-	if self.isServer then
-		local easyArmControl = spec.easyArmControl
+	if easyArmControl ~= nil then
+		if self.isServer then
+			if easyArmControl ~= nil then
+				local targetYTool = self:getMovingToolByNode(easyArmControl.targetNodeY)
+				local targetZTool = self:getMovingToolByNode(easyArmControl.targetNodeZ)
 
-		if easyArmControl ~= nil then
-			local targetYTool = self:getMovingToolByNode(easyArmControl.targetNodeY)
-			local targetZTool = self:getMovingToolByNode(easyArmControl.targetNodeZ)
+				if state then
+					local origin = getParent(easyArmControl.targetNodeY)
 
-			if state then
-				local origin = getParent(easyArmControl.targetNodeY)
+					if origin == easyArmControl.targetNodeZ then
+						origin = getParent(easyArmControl.targetNodeZ)
+					end
 
-				if origin == easyArmControl.targetNodeZ then
-					origin = getParent(easyArmControl.targetNodeZ)
+					local _, y, _ = localToLocal(easyArmControl.targetRefNode, origin, 0, 0, 0)
+					local _, oldY, _ = getTranslation(easyArmControl.targetNodeY)
+
+					if Cylindered.setToolTranslation(self, targetYTool, nil, 0, y - oldY) then
+						Cylindered.setDirty(self, targetYTool)
+					end
+
+					local z = nil
+					_, _, z = localToLocal(easyArmControl.targetRefNode, origin, 0, 0, 0)
+					local _, _, oldZ = getTranslation(easyArmControl.targetNodeZ)
+
+					if Cylindered.setToolTranslation(self, targetZTool, nil, 0, z - oldZ) then
+						Cylindered.setDirty(self, targetZTool)
+					end
+
+					easyArmControl.lastValidPositionY[1], easyArmControl.lastValidPositionY[2], easyArmControl.lastValidPositionY[3] = getTranslation(easyArmControl.targetNodeY)
+					easyArmControl.lastValidPositionZ[1], easyArmControl.lastValidPositionZ[2], easyArmControl.lastValidPositionZ[3] = getTranslation(easyArmControl.targetNodeZ)
+
+					self:raiseDirtyFlags(spec.cylinderedDirtyFlag)
 				end
 
-				local _, y, _ = localToLocal(easyArmControl.targetRefNode, origin, 0, 0, 0)
-				local _, oldY, _ = getTranslation(easyArmControl.targetNodeY)
-
-				if Cylindered.setToolTranslation(self, targetYTool, nil, 0, y - oldY) then
-					Cylindered.setDirty(self, targetYTool)
-				end
-
-				local z = nil
-				_, _, z = localToLocal(easyArmControl.targetRefNode, origin, 0, 0, 0)
-				local _, _, oldZ = getTranslation(easyArmControl.targetNodeZ)
-
-				if Cylindered.setToolTranslation(self, targetZTool, nil, 0, z - oldZ) then
-					Cylindered.setDirty(self, targetZTool)
-				end
-
-				easyArmControl.lastValidPositionY[1], easyArmControl.lastValidPositionY[2], easyArmControl.lastValidPositionY[3] = getTranslation(easyArmControl.targetNodeY)
-				easyArmControl.lastValidPositionZ[1], easyArmControl.lastValidPositionZ[2], easyArmControl.lastValidPositionZ[3] = getTranslation(easyArmControl.targetNodeZ)
-
-				self:raiseDirtyFlags(spec.cylinderedDirtyFlag)
+				easyArmControl.state = state
 			end
-
+		else
 			easyArmControl.state = state
 		end
 	end
@@ -1880,18 +1893,67 @@ function Cylindered:updateMovingToolSoundEvents(tool, direction, hitLimit, wasAt
 	end
 end
 
+function Cylindered:updateControlGroups()
+	local spec = self.spec_cylindered
+
+	self:clearSubselections()
+
+	for k, _ in pairs(spec.controlGroupMapping) do
+		spec.controlGroupMapping[k] = nil
+	end
+
+	for _, groupIndex in ipairs(spec.controlGroups) do
+		local isActive = false
+
+		for _, movingTool in pairs(spec.movingTools) do
+			if movingTool.axisActionIndex ~= nil and movingTool.controlGroupIndex == groupIndex and movingTool.lastIsActiveState then
+				isActive = true
+
+				break
+			end
+		end
+
+		if isActive then
+			local subSelectionIndex = self:addSubselection(groupIndex)
+			spec.controlGroupMapping[subSelectionIndex] = groupIndex
+		end
+	end
+
+	self.rootVehicle:updateSelectableObjects()
+
+	local vehicle = self.rootVehicle:getSelectedVehicle()
+
+	if vehicle == self then
+		self.rootVehicle:setSelectedVehicle(self, 99999, false)
+	end
+end
+
 function Cylindered:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	if self.isClient then
 		local spec = self.spec_cylindered
+		local movingToolStateChanged = false
 
 		for _, movingTool in pairs(spec.movingTools) do
-			if movingTool.axisActionIndex ~= nil and spec.currentControlGroupIndex == movingTool.controlGroupIndex then
-				local actionEvent = spec.actionEvents[movingTool.axisActionIndex]
+			if movingTool.axisActionIndex ~= nil then
+				local isActive = self:getIsMovingToolActive(movingTool)
 
-				if actionEvent ~= nil then
-					g_inputBinding:setActionEventActive(actionEvent.actionEventId, self:getIsMovingToolActive(movingTool))
+				if isActive ~= movingTool.lastIsActiveState then
+					movingTool.lastIsActiveState = isActive
+					movingToolStateChanged = true
+				end
+
+				if spec.currentControlGroupIndex == movingTool.controlGroupIndex then
+					local actionEvent = spec.actionEvents[movingTool.axisActionIndex]
+
+					if actionEvent ~= nil then
+						g_inputBinding:setActionEventActive(actionEvent.actionEventId, isActive)
+					end
 				end
 			end
+		end
+
+		if movingToolStateChanged then
+			self:updateControlGroups()
 		end
 
 		for i = #spec.activeSamples, 1, -1 do
@@ -2230,9 +2292,29 @@ function Cylindered:loadMovingToolFromXML(xmlFile, key, entry)
 		entry.rotMin = xmlFile:getValue(key .. ".rotation#rotMin")
 		entry.syncMaxRotLimits = xmlFile:getValue(key .. ".rotation#syncMaxRotLimits", false)
 		entry.syncMinRotLimits = xmlFile:getValue(key .. ".rotation#syncMinRotLimits", false)
-		entry.rotSendNumBits = xmlFile:getValue(key .. ".rotation#rotSendNumBits", 8)
+		entry.rotSendNumBits = xmlFile:getValue(key .. ".rotation#rotSendNumBits")
 		entry.attachRotMax = xmlFile:getValue(key .. ".rotation#attachRotMax")
 		entry.attachRotMin = xmlFile:getValue(key .. ".rotation#attachRotMin")
+
+		if entry.rotSendNumBits == nil then
+			if entry.rotMin ~= nil and entry.rotMax ~= nil then
+				local range = entry.rotMax - entry.rotMin
+				local requiredMinValues = math.ceil(range / Cylindered.MOVING_TOOL_SEND_MIN_RESOLUTION)
+				local bitsToUse = 11
+
+				for i = 11, 1, -1 do
+					local availableValues = 2^i - 1
+
+					if requiredMinValues <= availableValues then
+						bitsToUse = i
+					end
+				end
+
+				entry.rotSendNumBits = bitsToUse
+			else
+				entry.rotSendNumBits = 11
+			end
+		end
 
 		XMLUtil.checkDeprecatedXMLElements(xmlFile, key .. "#transSpeed", key .. ".rotation#transSpeed")
 
@@ -2597,6 +2679,7 @@ function Cylindered:loadDependentAttacherJoints(xmlFile, baseName, entry)
 	local indices = xmlFile:getValue(baseName .. ".attacherJoint#jointIndices", nil, true)
 
 	if indices ~= nil then
+		local ignoreWarning = xmlFile:getValue(baseName .. ".attacherJoint#ignoreWarning", false)
 		entry.attacherJoints = {}
 		local availableAttacherJoints = nil
 
@@ -2608,7 +2691,7 @@ function Cylindered:loadDependentAttacherJoints(xmlFile, baseName, entry)
 			for i = 1, #indices do
 				if availableAttacherJoints[indices[i]] ~= nil then
 					table.insert(entry.attacherJoints, availableAttacherJoints[indices[i]])
-				else
+				elseif not ignoreWarning then
 					Logging.xmlWarning(xmlFile, "Invalid attacher joint index '%s' for '%s'!", indices[i], baseName)
 				end
 			end
@@ -2976,14 +3059,18 @@ function Cylindered:loadObjectChangeValuesFromXML(superFunc, xmlFile, key, node,
 
 	if spec.nodesToMovingTools ~= nil and spec.nodesToMovingTools[node] ~= nil then
 		local movingTool = spec.nodesToMovingTools[node]
-		object.movingToolRotMaxActive = xmlFile:getValue(key .. "#movingToolRotMaxActive", movingTool.rotMax)
-		object.movingToolRotMaxInactive = xmlFile:getValue(key .. "#movingToolRotMaxInactive", movingTool.rotMax)
-		object.movingToolRotMinActive = xmlFile:getValue(key .. "#movingToolRotMinActive", movingTool.rotMin)
-		object.movingToolRotMinInactive = xmlFile:getValue(key .. "#movingToolRotMinInactive", movingTool.rotMin)
+		object.movingToolRotMaxActive = xmlFile:getValue(key .. "#movingToolRotMaxActive", math.deg(movingTool.rotMax or 0))
+		object.movingToolRotMaxInactive = xmlFile:getValue(key .. "#movingToolRotMaxInactive", math.deg(movingTool.rotMax or 0))
+		object.movingToolRotMinActive = xmlFile:getValue(key .. "#movingToolRotMinActive", math.deg(movingTool.rotMin or 0))
+		object.movingToolRotMinInactive = xmlFile:getValue(key .. "#movingToolRotMinInactive", math.deg(movingTool.rotMin or 0))
+		object.movingToolStartRotActive = xmlFile:getValue(key .. "#movingToolStartRotActive")
+		object.movingToolStartRotInactive = xmlFile:getValue(key .. "#movingToolStartRotInactive")
 		object.movingToolTransMaxActive = xmlFile:getValue(key .. "#movingToolTransMaxActive", movingTool.transMax)
 		object.movingToolTransMaxInactive = xmlFile:getValue(key .. "#movingToolTransMaxInactive", movingTool.transMax)
 		object.movingToolTransMinActive = xmlFile:getValue(key .. "#movingToolTransMinActive", movingTool.transMin)
 		object.movingToolTransMinInactive = xmlFile:getValue(key .. "#movingToolTransMinInactive", movingTool.transMin)
+		object.movingToolStartTransActive = xmlFile:getValue(key .. "#movingToolStartTransActive")
+		object.movingToolStartTransInactive = xmlFile:getValue(key .. "#movingToolStartTransInactive")
 	end
 
 	ObjectChangeUtil.loadValueType(object.values, xmlFile, key, "movingPartUpdate", nil, function (state)
@@ -3010,11 +3097,15 @@ function Cylindered:setObjectChangeValues(superFunc, object, isActive)
 			movingTool.rotMin = object.movingToolRotMinActive
 			movingTool.transMax = object.movingToolTransMaxActive
 			movingTool.transMin = object.movingToolTransMinActive
+			movingTool.startRot = object.movingToolStartRotActive or movingTool.startRot
+			movingTool.startTrans = object.movingToolStartTransActive or movingTool.startTrans
 		else
 			movingTool.rotMax = object.movingToolRotMaxInactive
 			movingTool.rotMin = object.movingToolRotMinInactive
 			movingTool.transMax = object.movingToolTransMaxInactive
 			movingTool.transMin = object.movingToolTransMinInactive
+			movingTool.startRot = object.movingToolStartRotInactive or movingTool.startRot
+			movingTool.startTrans = object.movingToolStartTransInactive or movingTool.startTrans
 		end
 	end
 end
@@ -3207,7 +3298,8 @@ function Cylindered:onRegisterActionEvents(isActiveForInput, isActiveForInputIgn
 			for i = 1, #spec.movingTools do
 				local movingTool = spec.movingTools[i]
 				local isSelectedGroup = movingTool.controlGroupIndex == 0 or movingTool.controlGroupIndex == spec.currentControlGroupIndex
-				local canBeControlled = not g_gameSettings:getValue("easyArmControl") and not movingTool.isEasyControlTarget or movingTool.easyArmControlActive
+				local easyArmControlActive = g_gameSettings:getValue("easyArmControl")
+				local canBeControlled = easyArmControlActive and movingTool.easyArmControlActive or not easyArmControlActive and not movingTool.isEasyControlTarget
 
 				if movingTool.axisActionIndex ~= nil and isSelectedGroup and canBeControlled then
 					local _, actionEventId = self:addPoweredActionEvent(spec.actionEvents, movingTool.axisActionIndex, self, Cylindered.actionEventInput, false, false, true, true, i, movingTool.axisActionIcon)
@@ -4152,7 +4244,18 @@ function Cylindered:getMovingToolDashboardState(dashboard)
 		if spec ~= nil then
 			for _, movingTool in ipairs(spec.movingTools) do
 				if movingTool.axis == dashboard.axis then
-					return (movingTool.smoothedMove + 1) / 2
+					local isSelectedGroup = movingTool.controlGroupIndex == 0 or movingTool.controlGroupIndex == spec.currentControlGroupIndex
+					local easyArmControlActive = false
+
+					if spec.easyArmControl ~= nil then
+						easyArmControlActive = spec.easyArmControl.state
+					end
+
+					local canBeControlled = easyArmControlActive and movingTool.easyArmControlActive or not easyArmControlActive and not movingTool.isEasyControlTarget
+
+					if isSelectedGroup and canBeControlled then
+						return (movingTool.smoothedMove + 1) / 2
+					end
 				end
 			end
 		end

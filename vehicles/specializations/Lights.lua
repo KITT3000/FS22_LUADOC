@@ -1359,6 +1359,11 @@ function Lights:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnoreS
 				end
 			end
 
+			if g_beaconLightManager:getNumOfLights() > 0 and getPlatformId() == PlatformId.PS4 then
+				g_inputBinding:setActionEventTextPriority(actionEventIdBeacon, GS_PRIO_VERY_LOW)
+				g_inputBinding:setActionEventTextVisibility(actionEventIdBeacon, true)
+			end
+
 			g_inputBinding:setActionEventTextVisibility(spec.actionEventIdLight, not g_currentMission.environment.isSunOn)
 			g_inputBinding:setActionEventTextVisibility(actionEventIdReverse, false)
 		end

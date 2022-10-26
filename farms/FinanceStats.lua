@@ -45,6 +45,8 @@ else
 		"purchaseFertilizer",
 		"purchaseSaplings",
 		"purchaseWater",
+		"purchaseBales",
+		"purchasePallets",
 		"harvestIncome",
 		"incomeBga",
 		"missionIncome",

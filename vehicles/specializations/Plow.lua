@@ -568,21 +568,19 @@ function Plow.getDefaultSpeedLimit()
 end
 
 function Plow:getIsWorkAreaActive(superFunc, workArea)
-	if not superFunc(self, workArea) then
-		return false
+	if workArea.type == WorkAreaType.PLOW then
+		local spec = self.spec_plow
+
+		if g_currentMission.time < spec.startActivationTime then
+			return false
+		end
+
+		if spec.onlyActiveWhenLowered and self.getIsLowered ~= nil and not self:getIsLowered(false) then
+			return false
+		end
 	end
 
-	local spec = self.spec_plow
-
-	if g_currentMission.time < spec.startActivationTime then
-		return false
-	end
-
-	if spec.onlyActiveWhenLowered and self.getIsLowered ~= nil and not self:getIsLowered(false) then
-		return false
-	end
-
-	return true
+	return superFunc(self, workArea)
 end
 
 function Plow:getCanAIImplementContinueWork(superFunc)

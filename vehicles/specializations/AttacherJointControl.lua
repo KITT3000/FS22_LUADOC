@@ -327,6 +327,10 @@ function AttacherJointControl:controlAttacherJointHeight(moveAlpha)
 
 	self:updateAttacherJointRotationNodes(jointDesc, moveAlpha)
 
+	jointDesc.moveAlpha = moveAlpha
+
+	self:updateAttacherJointRotation(jointDesc, self)
+
 	spec.lastHeightAlpha = moveAlpha
 
 	return moveAlpha

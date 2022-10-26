@@ -72,6 +72,10 @@ function AnimatedVehicle.registerAnimationXMLPaths(schema, basePath)
 	schema:register(XMLValueType.VECTOR_TRANS, basePath .. ".part(?)#endTransLimit", "End translation limit")
 	schema:register(XMLValueType.VECTOR_TRANS, basePath .. ".part(?)#endTransMinLimit", "End translation min limit")
 	schema:register(XMLValueType.VECTOR_TRANS, basePath .. ".part(?)#endTransMaxLimit", "End translation max limit")
+	schema:register(XMLValueType.VECTOR_3, basePath .. ".part(?)#startRotLimitSpring", "Start rot limit spring")
+	schema:register(XMLValueType.VECTOR_3, basePath .. ".part(?)#startRotLimitDamping", "Start rot limit damping")
+	schema:register(XMLValueType.VECTOR_3, basePath .. ".part(?)#endRotLimitSpring", "End rot limit spring")
+	schema:register(XMLValueType.VECTOR_3, basePath .. ".part(?)#endRotLimitDamping", "End rot limit damping")
 	schema:register(XMLValueType.INT, basePath .. ".part(?)#componentIndex", "Component index")
 	schema:register(XMLValueType.FLOAT, basePath .. ".part(?)#startMass", "Start mass of component")
 	schema:register(XMLValueType.VECTOR_TRANS, basePath .. ".part(?)#startCenterOfMass", "Start center of mass")
@@ -1656,6 +1660,79 @@ function AnimatedVehicle:onRegisterAnimationValueTypes()
 			value.vehicle:setComponentJointTransLimit(value.componentJoint, 1, minX, maxX)
 			value.vehicle:setComponentJointTransLimit(value.componentJoint, 2, minY, maxY)
 			value.vehicle:setComponentJointTransLimit(value.componentJoint, 3, minZ, maxZ)
+		end)
+		self:registerAnimationValueType("rotationLimitSpring", "", "", false, AnimationValueFloat, function (value, xmlFile, xmlKey)
+			value.startRotLimitSpring = xmlFile:getValue(xmlKey .. "#startRotLimitSpring", nil, true)
+			value.startRotLimitDamping = xmlFile:getValue(xmlKey .. "#startRotLimitDamping", nil, true)
+			value.endRotLimitSpring = xmlFile:getValue(xmlKey .. "#endRotLimitSpring", nil, true)
+			value.endRotLimitDamping = xmlFile:getValue(xmlKey .. "#endRotLimitDamping", nil, true)
+			local componentJointIndex = xmlFile:getValue(xmlKey .. "#componentJointIndex")
+
+			if componentJointIndex ~= nil then
+				if componentJointIndex >= 1 then
+					value.componentJoint = value.vehicle.componentJoints[componentJointIndex]
+				end
+
+				if value.componentJoint == nil then
+					Logging.xmlWarning(xmlFile, "Invalid componentJointIndex for animation part '%s'. Indexing starts with 1!", xmlKey)
+
+					return false
+				end
+			end
+
+			if value.componentJoint ~= nil and (value.endRotLimitSpring ~= nil or value.startRotLimitDamping ~= nil) then
+				if value.startRotLimitSpring ~= nil and value.startRotLimitDamping ~= nil then
+					value.startValue = {
+						value.startRotLimitSpring[1],
+						value.startRotLimitSpring[2],
+						value.startRotLimitSpring[3],
+						value.startRotLimitDamping[1],
+						value.startRotLimitDamping[2],
+						value.startRotLimitDamping[3]
+					}
+				end
+
+				if value.endRotLimitSpring ~= nil and value.endRotLimitDamping ~= nil then
+					value.endValue = {
+						value.endRotLimitSpring[1],
+						value.endRotLimitSpring[2],
+						value.endRotLimitSpring[3],
+						value.endRotLimitDamping[1],
+						value.endRotLimitDamping[2],
+						value.endRotLimitDamping[3]
+					}
+				end
+
+				if value.endValue == nil then
+					Logging.xmlWarning(xmlFile, "Missing 'endRotLimitSpring' or 'endRotLimitDamping' for animation part '%s'.", xmlKey)
+
+					return false
+				end
+
+				value.endName = "rotationLimitSpring"
+
+				value:setWarningInformation("componentJointIndex: " .. componentJointIndex)
+				value:addCompareParameters("componentJoint")
+
+				return true
+			end
+
+			return false
+		end, function (value)
+			return value.componentJoint.rotLimitSpring[1], value.componentJoint.rotLimitSpring[2], value.componentJoint.rotLimitSpring[3], value.componentJoint.rotLimitDamping[1], value.componentJoint.rotLimitDamping[2], value.componentJoint.rotLimitDamping[3]
+		end, function (value, spring1, spring2, spring3, damping1, damping2, damping3)
+			value.componentJoint.rotLimitSpring[3] = spring3
+			value.componentJoint.rotLimitSpring[2] = spring2
+			value.componentJoint.rotLimitSpring[1] = spring1
+			value.componentJoint.rotLimitDamping[3] = damping3
+			value.componentJoint.rotLimitDamping[2] = damping2
+			value.componentJoint.rotLimitDamping[1] = damping1
+
+			if value.componentJoint.jointIndex ~= nil then
+				for i = 1, 3 do
+					setJointRotationLimitSpring(value.componentJoint.jointIndex, i - 1, value.componentJoint.rotLimitSpring[i], value.componentJoint.rotLimitDamping[i])
+				end
+			end
 		end)
 		self:registerAnimationValueType("componentMass", "startMass", "endMass", false, AnimationValueFloat, function (value, xmlFile, xmlKey)
 			local componentIndex = xmlFile:getValue(xmlKey .. "#componentIndex")

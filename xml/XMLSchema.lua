@@ -27,6 +27,13 @@ end
 
 function XMLSchema:register(valueTypeId, path, description, defaultValue, isRequired)
 	if path ~= nil then
+		if path:find("%.%.") then
+			Logging.error("Invalid xml path given: %s", path)
+			printCallstack()
+
+			return
+		end
+
 		if self.rootNodeName ~= nil then
 			local start = path:find("%.")
 			path = self.rootNodeName .. path:sub(start)
@@ -356,10 +363,6 @@ function XMLSchema:generateSchema()
 			end
 		else
 			line = add(content, line, indent .. TAB) + 1
-		end
-
-		if description ~= nil then
-			line = add(string.format("<xs:annotation><xs:appinfo><typeStr>%s</typeStr></xs:appinfo></xs:annotation>", description), line, indent .. TAB) + 1
 		end
 
 		line = add("</xs:simpleType>", line, indent) + 1

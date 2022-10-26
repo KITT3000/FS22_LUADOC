@@ -332,6 +332,10 @@ function FSDensityMapUtil.getFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 end
 
 function FSDensityMapUtil.updateRollerArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, angle)
+	if not Platform.gameplay.useRolling then
+		return 0
+	end
+
 	local functionData = FSDensityMapUtil.functionCache.updateRollerArea
 
 	if functionData == nil then
@@ -2132,6 +2136,10 @@ function FSDensityMapUtil.removeWeedBlockingState(startWorldX, startWorldZ, widt
 end
 
 function FSDensityMapUtil.updateMulcherArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+	if not Platform.gameplay.useStubbleShred then
+		return 0, 0
+	end
+
 	local functionData = FSDensityMapUtil.functionCache.updateMulcherArea
 
 	if functionData == nil then
@@ -2459,8 +2467,11 @@ function FSDensityMapUtil.updateSowingArea(fruitIndex, startWorldX, startWorldZ,
 
 		functionData.sowingFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, firstSowingValue, lastSowingValue)
 
-		functionData.rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
-		functionData.rollerLevelMaxValue = rollerLevelMaxValue
+		if Platform.gameplay.useRolling then
+			functionData.rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
+			functionData.rollerLevelMaxValue = rollerLevelMaxValue
+		end
+
 		functionData.sownType = sownType
 		functionData.directSownType = directSownType
 		functionData.ridgeType = ridgeType
@@ -2513,15 +2524,19 @@ function FSDensityMapUtil.updateSowingArea(fruitIndex, startWorldX, startWorldZ,
 	fruitModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	groundTypeModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	groundAngleModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	rollerLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
-	local rollerLevelValue = 0
+	if Platform.gameplay.useRolling then
+		rollerLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
-	if desc.needsRolling then
-		rollerLevelValue = rollerLevelMaxValue
+		local rollerLevelValue = 0
+
+		if desc.needsRolling then
+			rollerLevelValue = rollerLevelMaxValue
+		end
+
+		rollerLevelModifier:executeSet(rollerLevelValue, sowableFilter)
 	end
 
-	rollerLevelModifier:executeSet(rollerLevelValue, sowableFilter)
 	fruitFilter:setValueCompareParams(DensityValueCompareType.NOTEQUAL, growthState)
 
 	local _, numPixels, _ = fruitModifier:executeSet(growthState, fruitFilter, sowableFilter)
@@ -2621,8 +2636,11 @@ function FSDensityMapUtil.updateDirectSowingArea(fruitIndex, startWorldX, startW
 
 		functionData.sownFilter:setValueCompareParams(DensityValueCompareType.EQUAL, sownType)
 
-		functionData.rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
-		functionData.rollerLevelMaxValue = rollerLevelMaxValue
+		if Platform.gameplay.useRolling then
+			functionData.rollerLevelModifier = DensityMapModifier.new(rollerLevelMapId, rollerLevelFirstChannel, rollerLevelNumChannels, terrainRootNode)
+			functionData.rollerLevelMaxValue = rollerLevelMaxValue
+		end
+
 		functionData.sownType = sownType
 		functionData.directSownType = directSownType
 		functionData.ridgeType = ridgeType
@@ -2714,7 +2732,6 @@ function FSDensityMapUtil.updateDirectSowingArea(fruitIndex, startWorldX, startW
 	fruitModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	groundTypeModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	groundAngleModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
-	rollerLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	multiModifier:updateParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 	multiModifier:execute(false)
 
@@ -2724,13 +2741,17 @@ function FSDensityMapUtil.updateDirectSowingArea(fruitIndex, startWorldX, startW
 		FSDensityMapUtil.removeWeedArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
 	end
 
-	local rollerLevelValue = 0
+	if Platform.gameplay.useRolling then
+		rollerLevelModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 
-	if desc.needsRolling then
-		rollerLevelValue = rollerLevelMaxValue
+		local rollerLevelValue = 0
+
+		if desc.needsRolling then
+			rollerLevelValue = rollerLevelMaxValue
+		end
+
+		rollerLevelModifier:executeSet(rollerLevelValue, sowableFilter)
 	end
-
-	rollerLevelModifier:executeSet(rollerLevelValue, sowableFilter)
 
 	local _, changedArea, totalArea = fruitModifier:executeSet(growthState, sowableFilter)
 
@@ -2886,11 +2907,14 @@ function FSDensityMapUtil.createVineArea(fruitId, startWorldX, startWorldZ, widt
 			functionData.stoneModifier = DensityMapModifier.new(stoneMapId, stoneFirstChannel, stoneNumChannels, terrainRootNode)
 		end
 
-		local fieldGroundSystem = g_currentMission.fieldGroundSystem
-		local terrainRootNode = g_currentMission.terrainRootNode
-		local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
-		functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
-		functionData.limeLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.LIME_LEVEL)
+		if Platform.gameplay.useLimeCounter then
+			local fieldGroundSystem = g_currentMission.fieldGroundSystem
+			local terrainRootNode = g_currentMission.terrainRootNode
+			local limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.LIME_LEVEL)
+			functionData.limeLevelModifier = DensityMapModifier.new(limeLevelMapId, limeLevelFirstChannel, limeLevelNumChannels, terrainRootNode)
+			functionData.limeLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.LIME_LEVEL)
+		end
+
 		FSDensityMapUtil.functionCache.createVineArea = functionData
 	end
 
@@ -3364,6 +3388,66 @@ function FSDensityMapUtil.getAreaDensity(id, firstChannel, numChannels, value, s
 	filter:setValueCompareParams(DensityValueCompareType.EQUAL, value)
 
 	return modifier:executeGet(filter)
+end
+
+function FSDensityMapUtil.getFruitTypeIndexAtWorldPos(x, z)
+	local functionData = FSDensityMapUtil.functionCache.getFruitTypeIndexAtWorldPos
+
+	if functionData == nil then
+		local terrainRootNode = g_currentMission.terrainRootNode
+		functionData = {
+			fruitModifiers = {},
+			fruitFilters = {}
+		}
+
+		for fruitTypeIndex, desc in pairs(g_fruitTypeManager:getFruitTypes()) do
+			if desc.terrainDataPlaneId ~= nil then
+				local fruitModifier = DensityMapModifier.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels, terrainRootNode)
+
+				fruitModifier:setPolygonRoundingMode(DensityRoundingMode.NEAREST)
+
+				functionData.fruitModifiers[fruitTypeIndex] = fruitModifier
+				local fruitFilter = DensityMapFilter.new(fruitModifier)
+
+				fruitFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+
+				functionData.fruitFilters[fruitTypeIndex] = fruitFilter
+			end
+		end
+
+		FSDensityMapUtil.functionCache.getFruitTypeIndexAtWorldPos = functionData
+	end
+
+	local fruitMapSize = g_currentMission.fruitMapSize
+	local terrainSize = g_currentMission.terrainSize
+	local cellSize = terrainSize / fruitMapSize
+	local startWorldX = math.floor(x / cellSize) * cellSize
+	local startWorldZ = math.floor(z / cellSize) * cellSize
+	local widthWorldX = startWorldX + cellSize
+	local widthWorldZ = startWorldZ
+	local heightWorldX = startWorldX
+	local heightWorldZ = startWorldZ + cellSize
+
+	for fruitTypeIndex, desc in pairs(g_fruitTypeManager:getFruitTypes()) do
+		local modifier = functionData.fruitModifiers[fruitTypeIndex]
+		local filter = functionData.fruitFilters[fruitTypeIndex]
+
+		modifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+
+		local growthState, numPixels, _ = modifier:executeGet(filter)
+
+		if numPixels > 0 then
+			return fruitTypeIndex, growthState
+		end
+	end
+
+	return nil, nil
+end
+
+function FSDensityMapUtil.getIsFieldAtWorldPos(x, z)
+	local isOnField = getDensityAtWorldPos(g_currentMission.terrainDetailId, x, 0, z) ~= 0
+
+	return isOnField
 end
 
 function FSDensityMapUtil.getFieldDensity(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)

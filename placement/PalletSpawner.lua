@@ -20,14 +20,37 @@ end
 function PalletSpawner:load(components, xmlFile, key, customEnv, i3dMappings)
 	self.rootNode = xmlFile:getValue(key .. "#node", components[1].node, components, i3dMappings)
 	self.spawnPlaces = {}
+	self.fillTypeToSpawnPlaces = {}
+	local hasFillTypeSpawnPlaces = false
 
 	xmlFile:iterate(key .. ".spawnPlaces.spawnPlace", function (index, spawnPlaceKey)
 		local spawnPlace = PlacementUtil.loadPlaceFromXML(xmlFile, spawnPlaceKey, components, i3dMappings)
+		local fillTypes = nil
+		local fillTypeCategories = xmlFile:getValue(spawnPlaceKey .. "#fillTypeCategories")
+		local fillTypeNames = xmlFile:getValue(spawnPlaceKey .. "#fillTypes")
 
-		table.insert(self.spawnPlaces, spawnPlace)
+		if fillTypeCategories ~= nil and fillTypeNames == nil then
+			fillTypes = g_fillTypeManager:getFillTypesByCategoryNames(fillTypeCategories, "Warning: Palletspawner '" .. xmlFile:getFilename() .. "' has invalid fillTypeCategory '%s'.")
+		elseif fillTypeCategories == nil and fillTypeNames ~= nil then
+			fillTypes = g_fillTypeManager:getFillTypesByNames(fillTypeNames, "Warning: Palletspawner '" .. xmlFile:getFilename() .. "' has invalid fillType '%s'.")
+		end
+
+		if fillTypes ~= nil then
+			hasFillTypeSpawnPlaces = true
+
+			for _, fillType in ipairs(fillTypes) do
+				if self.fillTypeToSpawnPlaces[fillType] == nil then
+					self.fillTypeToSpawnPlaces[fillType] = {}
+				end
+
+				table.insert(self.fillTypeToSpawnPlaces[fillType], spawnPlace)
+			end
+		else
+			table.insert(self.spawnPlaces, spawnPlace)
+		end
 	end)
 
-	if #self.spawnPlaces == 0 then
+	if #self.spawnPlaces == 0 and not hasFillTypeSpawnPlaces then
 		Logging.xmlError(xmlFile, "No spawn place(s) defined for pallet spawner %s%s", key, ".spawnPlaces")
 
 		return false
@@ -125,9 +148,10 @@ end
 function PalletSpawner:getOrSpawnPallet(farmId, fillTypeId, callback, callbackTarget)
 	self.foundExistingPallet = nil
 	self.getOrSpawnPalletFilltype = fillTypeId
+	local spawnPlaces = self.fillTypeToSpawnPlaces[fillTypeId] or self.spawnPlaces
 
-	for i = 1, #self.spawnPlaces do
-		local place = self.spawnPlaces[i]
+	for i = 1, #spawnPlaces do
+		local place = spawnPlaces[i]
 		local x = place.startX + place.width / 2 * place.dirX
 		local y = place.startY + place.width / 2 * place.dirY
 		local z = place.startZ + place.width / 2 * place.dirZ
@@ -145,9 +169,10 @@ end
 function PalletSpawner:getAllPallets(fillTypeId, callbackFunc, callbackTarget)
 	self.getAllPalletsFoundPallets = {}
 	self.getAllPalletsFilltype = fillTypeId
+	local spawnPlaces = self.fillTypeToSpawnPlaces[fillTypeId] or self.spawnPlaces
 
-	for i = 1, #self.spawnPlaces do
-		local place = self.spawnPlaces[i]
+	for i = 1, #spawnPlaces do
+		local place = spawnPlaces[i]
 		local x = place.startX + place.width / 2 * place.dirX
 		local y = place.startY + place.width / 2 * place.dirY
 		local z = place.startZ + place.width / 2 * place.dirZ
@@ -162,8 +187,9 @@ function PalletSpawner:update(dt)
 	if #self.spawnQueue > 0 then
 		if self.currentObjectToSpawn == nil then
 			self.currentObjectToSpawn = self.spawnQueue[1]
+			local spawnPlaces = self.fillTypeToSpawnPlaces[self.currentObjectToSpawn.fillType] or self.spawnPlaces
 
-			g_currentMission.placementManager:getPlaceAsync(self.spawnPlaces, self.currentObjectToSpawn.pallet.size, self.onSpawnSearchFinished, self)
+			g_currentMission.placementManager:getPlaceAsync(spawnPlaces, self.currentObjectToSpawn.pallet.size, self.onSpawnSearchFinished, self)
 		end
 	else
 		g_currentMission:removeUpdateable(self)
@@ -218,6 +244,8 @@ end
 
 function PalletSpawner.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#node", "root node")
+	schema:register(XMLValueType.STRING, basePath .. ".spawnPlaces.spawnPlace(?)#fillTypes", "Supported filltypes for this spawnPlace")
+	schema:register(XMLValueType.STRING, basePath .. ".spawnPlaces.spawnPlace(?)#fillTypeCategories", "Supported filltype categories for this spawnPlace")
 	PlacementUtil.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".pallets.pallet(?)#filename", "Path to pallet xml file")
 end

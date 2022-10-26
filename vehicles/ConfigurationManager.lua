@@ -13,9 +13,10 @@ function ConfigurationManager:initDataStructures()
 	self.configurations = {}
 	self.intToConfigurationName = {}
 	self.configurationNameToInt = {}
+	self.sortedConfigurationNames = {}
 end
 
-function ConfigurationManager:addConfigurationType(name, title, xmlKey, preLoadFunc, singleItemLoadFunc, postLoadFunc, selectorType, subConfigurationTitle, getSubConfigurationValuesFunc, getItemsBySubConfigurationIdentifierFunc)
+function ConfigurationManager:addConfigurationType(name, title, xmlKey, preLoadFunc, singleItemLoadFunc, postLoadFunc, selectorType, subConfigurationTitle, getSubConfigurationValuesFunc, getItemsBySubConfigurationIdentifierFunc, priority)
 	if self.configurations[name] ~= nil then
 		print("Error: configuration name '" .. name .. "' is already in use!")
 
@@ -39,7 +40,8 @@ function ConfigurationManager:addConfigurationType(name, title, xmlKey, preLoadF
 		subConfigurationTitle = subConfigurationTitle,
 		getSubConfigurationValuesFunc = getSubConfigurationValuesFunc,
 		getItemsBySubConfigurationIdentifierFunc = getItemsBySubConfigurationIdentifierFunc,
-		hasSubselection = getSubConfigurationValuesFunc ~= nil
+		hasSubselection = getSubConfigurationValuesFunc ~= nil,
+		priority = priority or #self.intToConfigurationName + 1000
 	}
 	self.configurations[name] = entry
 
@@ -47,6 +49,10 @@ function ConfigurationManager:addConfigurationType(name, title, xmlKey, preLoadF
 
 	self.configurationNameToInt[name] = self:getNumOfConfigurationTypes()
 
+	table.insert(self.sortedConfigurationNames, name)
+	table.sort(self.sortedConfigurationNames, function (a, b)
+		return self.configurations[a].priority < self.configurations[b].priority
+	end)
 	print("  Register configuration '" .. name .. "'")
 end
 
@@ -56,6 +62,10 @@ end
 
 function ConfigurationManager:getConfigurationTypes()
 	return self.intToConfigurationName
+end
+
+function ConfigurationManager:getSortedConfigurationTypes()
+	return self.sortedConfigurationNames
 end
 
 function ConfigurationManager:getConfigurationNameByIndex(index)

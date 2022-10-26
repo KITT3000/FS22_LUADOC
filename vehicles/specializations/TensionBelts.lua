@@ -40,7 +40,10 @@ TensionBelts = {
 		schema:register(XMLValueType.FLOAT, key .. ".tensionBelt(?)#offsetRight", "Offset right")
 		schema:register(XMLValueType.FLOAT, key .. ".tensionBelt(?)#offset", "Offset")
 		schema:register(XMLValueType.FLOAT, key .. ".tensionBelt(?)#height", "Height")
+		schema:register(XMLValueType.NODE_INDEX, key .. ".tensionBelt(?)#linkNode", "Custom link node for visual tension belts")
+		schema:register(XMLValueType.NODE_INDEX, key .. ".tensionBelt(?)#jointNode", "Custom joint node for to mount the objects to")
 		schema:register(XMLValueType.NODE_INDEX, key .. ".tensionBelt(?).intersectionNode(?)#node", "Intersection node")
+		ObjectChangeUtil.registerObjectChangeXMLPaths(schema, key .. ".tensionBelt(?)")
 		SoundManager.registerSampleXMLPaths(schema, key .. ".sounds", "toggleBelt")
 		SoundManager.registerSampleXMLPaths(schema, key .. ".sounds", "addBelt")
 		SoundManager.registerSampleXMLPaths(schema, key .. ".sounds", "removeBelt")
@@ -243,6 +246,13 @@ function TensionBelts:onLoad(savegame)
 						j = j + 1
 					end
 
+					local linkNode = self.xmlFile:getValue(key .. "#linkNode", nil, self.components, self.i3dMappings)
+					local jointNode = self.xmlFile:getValue(key .. "#jointNode", nil, self.components, self.i3dMappings)
+					local changeObjects = {}
+
+					ObjectChangeUtil.loadObjectChangeFromXML(self.xmlFile, key, changeObjects, self.components, self)
+					ObjectChangeUtil.setObjectChanges(changeObjects, false, self, self.setMovingToolDirty)
+
 					local belt = {
 						id = i + 1,
 						startNode = startNode,
@@ -251,7 +261,10 @@ function TensionBelts:onLoad(savegame)
 						offsetRight = offsetRight,
 						offset = offset,
 						height = height,
-						intersectionNodes = intersectionNodes
+						intersectionNodes = intersectionNodes,
+						changeObjects = changeObjects,
+						linkNode = linkNode,
+						jointNode = jointNode
 					}
 					spec.singleBelts[belt] = belt
 
@@ -554,6 +567,7 @@ function TensionBelts:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelec
 		end
 
 		g_currentMission.activatableObjectsSystem:addActivatable(spec.activatable)
+		spec.activatable:updateActivateText()
 	elseif wasInRange then
 		g_currentMission.activatableObjectsSystem:removeActivatable(spec.activatable)
 
@@ -676,6 +690,10 @@ function TensionBelts:freeTensionBeltObject(objectId, objectsToJointTable, isDyn
 				end
 			end
 		end
+
+		if getSplitType(objectId) ~= 0 then
+			setUserAttribute(objectId, "isTensionBeltMounted", "Boolean", false)
+		end
 	end
 
 	objectsToJointTable[objectId] = nil
@@ -722,12 +740,13 @@ function TensionBelts:lockTensionBeltObject(objectId, objectsToJointTable, isDyn
 
 			local jointTransform = createTransformGroup("tensionBeltJoint")
 
-			link(self.spec_tensionBelts.linkNode, jointTransform)
+			link(jointNode, jointTransform)
 
 			local x, y, z = localToWorld(objectId, getCenterOfMass(objectId))
 
 			setWorldTranslation(jointTransform, x, y, z)
 			constr:setJointTransforms(jointTransform, jointTransform)
+			constr:setEnableCollision(true)
 			constr:setRotationLimit(0, 0, 0)
 			constr:setRotationLimit(1, 0, 0)
 			constr:setRotationLimit(2, 0, 0)
@@ -782,6 +801,11 @@ function TensionBelts:lockTensionBeltObject(objectId, objectsToJointTable, isDyn
 				object = object
 			}
 		end
+
+		if getSplitType(objectId) ~= 0 then
+			setUserAttribute(objectId, "isTensionBeltMounted", "Boolean", true)
+			g_messageCenter:publish(MessageType.TREE_SHAPE_MOUNTED, objectId, self)
+		end
 	end
 end
 
@@ -811,7 +835,7 @@ function TensionBelts:setTensionBeltsActive(isActive, beltId, noEventSend, playS
 			end
 
 			for _, data in pairs(objects) do
-				self:lockTensionBeltObject(data.physics, spec.objectsToJoint, spec.isDynamic, spec.jointNode, data.object)
+				self:lockTensionBeltObject(data.physics, spec.objectsToJoint, spec.isDynamic, belt.jointNode or spec.jointNode, data.object)
 
 				if data.object ~= nil then
 					data.object.tensionMountObject = self
@@ -835,6 +859,10 @@ function TensionBelts:setTensionBeltsActive(isActive, beltId, noEventSend, playS
 					objectData.object.tensionMountObject = nil
 				end
 			end
+		end
+
+		if belt ~= nil then
+			ObjectChangeUtil.setObjectChanges(belt.changeObjects, isActive, self, self.setMovingToolDirty)
 		end
 
 		self:updateFastenState()
@@ -896,7 +924,7 @@ function TensionBelts:createTensionBelt(belt, isDummy, objects, playSound)
 
 	tensionBelt:setFixedPoints(belt.startNode, belt.endNode)
 	tensionBelt:setGeometryBias(spec.geometryBias)
-	tensionBelt:setLinkNode(spec.linkNode)
+	tensionBelt:setLinkNode(belt.linkNode or spec.linkNode)
 
 	for _, pointNode in pairs(belt.intersectionNodes) do
 		local x, y, z = getWorldTranslation(pointNode)

@@ -290,7 +290,7 @@ function XMLValueType.getXMLColor(xmlFile, path, default, packed)
 	if packed then
 		return color
 	else
-		return unpack(packed)
+		return unpack(color)
 	end
 end
 

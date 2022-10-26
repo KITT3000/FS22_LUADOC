@@ -441,6 +441,8 @@ function ShopMenu:onClose(element)
 		g_currentMission:showMoneyChange(MoneyType.PURCHASE_FERTILIZER)
 		g_currentMission:showMoneyChange(MoneyType.PURCHASE_FUEL)
 		g_currentMission:showMoneyChange(MoneyType.PURCHASE_SAPLINGS)
+		g_currentMission:showMoneyChange(MoneyType.PURCHASE_PALLETS)
+		g_currentMission:showMoneyChange(MoneyType.PURCHASE_BALES)
 		g_currentMission:showMoneyChange(MoneyType.OTHER)
 		g_currentMission:showMoneyChange(MoneyType.BOUGHT_MATERIALS)
 	end

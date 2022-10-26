@@ -22,6 +22,10 @@ function BeaconLightManager.new(customMt)
 	return self
 end
 
+function BeaconLightManager:getNumOfLights()
+	return getNumOfBeaconLights()
+end
+
 function BeaconLightManager:activateBeaconLight(mode, numLEDs, rpm, brightness)
 	if #self.beaconLights < self.maxNumBeaconLights then
 		local mask = BeaconLightManager.MASK_ALL

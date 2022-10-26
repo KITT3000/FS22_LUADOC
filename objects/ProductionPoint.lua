@@ -663,10 +663,14 @@ function ProductionPoint:palletSpawnRequestCallback(pallet, status, fillType)
 	else
 		self.palletSpawnCooldown = g_time + ProductionPoint.NO_PALLET_SPACE_COOLDOWN
 
-		if status == PalletSpawner.PALLET_LIMITED_REACHED and not self.palletLimitReached then
-			self.palletLimitReached = true
+		if status == PalletSpawner.PALLET_LIMITED_REACHED then
+			if not self.palletLimitReached then
+				self.palletLimitReached = true
 
-			self:raiseDirtyFlags(self.dirtyFlag)
+				self:raiseDirtyFlags(self.dirtyFlag)
+			end
+		else
+			self.lastPalletFillTypeId = next(self.outputFillTypeIdsToPallets, self.lastPalletFillTypeId)
 		end
 	end
 end
@@ -810,17 +814,37 @@ function ProductionPoint:updateProduction()
 		end
 	end
 
-	if self.isServer and self.isOwned and self.palletSpawnCooldown < g_time then
-		for fillTypeId, pallet in pairs(self.outputFillTypeIdsToPallets) do
-			if self.outputFillTypeIdsDirectSell[fillTypeId] == nil and self.outputFillTypeIdsAutoDeliver[fillTypeId] == nil then
+	if self.isServer and self.isOwned and self.palletSpawnCooldown < g_time and not self.waitingForPalletToSpawn then
+		local nextFillTypeId = nil
+
+		while true do
+			local fillTypeId = self.lastPalletFillTypeId
+
+			if fillTypeId ~= nil and self.outputFillTypeIdsDirectSell[fillTypeId] == nil and self.outputFillTypeIdsAutoDeliver[fillTypeId] == nil then
 				local fillLevel = self.storage:getFillLevel(fillTypeId)
 
-				if fillLevel > 0 and pallet and pallet.capacity <= fillLevel and not self.waitingForPalletToSpawn then
-					self.waitingForPalletToSpawn = true
+				if fillLevel > 0 then
+					local pallet = self.outputFillTypeIdsToPallets[fillTypeId]
 
-					self.palletSpawner:spawnPallet(self:getOwnerFarmId(), fillTypeId, self.palletSpawnRequestCallback, self)
+					if pallet and pallet.capacity <= fillLevel then
+						nextFillTypeId = fillTypeId
+
+						break
+					end
 				end
 			end
+
+			self.lastPalletFillTypeId = next(self.outputFillTypeIdsToPallets, self.lastPalletFillTypeId)
+
+			if self.lastPalletFillTypeId == nil then
+				break
+			end
+		end
+
+		if nextFillTypeId ~= nil then
+			self.waitingForPalletToSpawn = true
+
+			self.palletSpawner:spawnPallet(self:getOwnerFarmId(), nextFillTypeId, self.palletSpawnRequestCallback, self)
 		end
 	end
 
@@ -1353,4 +1377,14 @@ function ProductionPointActivatable:run()
 	elseif ownerFarmId == AccessHandler.EVERYONE then
 		self.productionPoint:buyRequest()
 	end
+end
+
+function ProductionPointActivatable:getDistance(x, y, z)
+	if self.productionPoint.interactionTriggerNode ~= nil then
+		local tx, ty, tz = getWorldTranslation(self.productionPoint.interactionTriggerNode)
+
+		return MathUtil.vector3Length(x - tx, y - ty, z - tz)
+	end
+
+	return math.huge
 end

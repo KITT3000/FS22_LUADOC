@@ -128,3 +128,13 @@ function RailroadCallerActivatable:draw()
 		self.activateText = string.format(self.activateTextRent, g_i18n:formatMoney(spec.rentPricePerHour, 0, true, true))
 	end
 end
+
+function RailroadCallerActivatable:getDistance(x, y, z)
+	if self.railroadCaller.triggerNode ~= nil then
+		local tx, ty, tz = getWorldTranslation(self.railroadCaller.triggerNode)
+
+		return MathUtil.vector3Length(x - tx, y - ty, z - tz)
+	end
+
+	return math.huge
+end

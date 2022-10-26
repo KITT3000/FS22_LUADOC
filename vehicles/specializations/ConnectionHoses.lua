@@ -69,6 +69,8 @@ function ConnectionHoses.registerHoseNodesXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#length", "Hose length", 3)
 	schema:register(XMLValueType.FLOAT, basePath .. "#diameter", "Hose diameter", 0.02)
 	schema:register(XMLValueType.FLOAT, basePath .. "#straighteningFactor", "Straightening Factor", 1)
+	schema:register(XMLValueType.FLOAT, basePath .. "#centerPointDropFactor", "Can be used to manipulate how much the hose will drop while it's getting shorter then set", 1)
+	schema:register(XMLValueType.FLOAT, basePath .. "#centerPointTension", "Defines the tension on the center control point (0: default behavior)", 0)
 	schema:register(XMLValueType.ANGLE, basePath .. "#minCenterPointAngle", "Min. angle of sagged curve", "Defined on connectionHose xml, default 90 degree")
 	schema:register(XMLValueType.VECTOR_TRANS, basePath .. "#minCenterPointOffset", "Min. center point offset from hose node", "unlimited")
 	schema:register(XMLValueType.VECTOR_TRANS, basePath .. "#maxCenterPointOffset", "Max. center point offset from hose node", "unlimited")
@@ -132,7 +134,9 @@ end
 function ConnectionHoses.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onPreLoad", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", ConnectionHoses)
+	SpecializationUtil.registerEventListener(vehicleType, "onLoadFinished", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostUpdate", ConnectionHoses)
+	SpecializationUtil.registerEventListener(vehicleType, "onUpdateEnd", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostAttach", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onPreDetach", ConnectionHoses)
 end
@@ -179,12 +183,16 @@ function ConnectionHoses:onLoad(savegame)
 	spec.skipNodesAvailable = #spec.hoseSkipNodes > 0
 	spec.updateableHoses = {}
 
-	for _, localHoseNode in ipairs(spec.localHoseNodes) do
-		self:connectHose(localHoseNode.hose, self, localHoseNode.target, false)
-	end
-
 	if not self.isClient or not spec.targetNodesAvailable and not spec.hoseNodesAvailable and not spec.localHosesAvailable and not spec.skipNodesAvailable then
 		SpecializationUtil.removeEventListener(self, "onPostUpdate", ConnectionHoses)
+	end
+end
+
+function ConnectionHoses:onLoadFinished(savegame)
+	local spec = self.spec_connectionHoses
+
+	for _, localHoseNode in ipairs(spec.localHoseNodes) do
+		self:connectHose(localHoseNode.hose, self, localHoseNode.target, false)
 	end
 end
 
@@ -212,6 +220,10 @@ function ConnectionHoses:onPostUpdate(dt, isActiveForInput, isActiveForInputIgno
 			end
 		end
 	end
+end
+
+function ConnectionHoses:onUpdateEnd(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	ConnectionHoses.onPostUpdate(self, dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 end
 
 function ConnectionHoses:getConnectionHoseConfigIndex()
@@ -251,7 +263,7 @@ function ConnectionHoses:updateConnectionHose(hose, index)
 	end
 
 	local d = MathUtil.vector3Length(p3x, p3y, p3z)
-	local lengthDifference = math.max(hose.length - d, 0)
+	local lengthDifference = math.max(hose.length - d, 0) * (hose.centerPointDropFactor or 1)
 	local p2yStart = p2y
 
 	if not hose.isWorldSpaceHose then
@@ -332,7 +344,7 @@ function ConnectionHoses:updateConnectionHose(hose, index)
 		p2x = 0
 	end
 
-	setShaderParameter(hose.hoseNode, "cv2", p2x, p2y, p2z, 0, false)
+	setShaderParameter(hose.hoseNode, "cv2", p2x, p2y, p2z, hose.centerPointTension or 0, false)
 	setShaderParameter(hose.hoseNode, "cv3", p3x, p3y, p3z, 0, false)
 	setShaderParameter(hose.hoseNode, "cv4", p4x, p4y, p4z, 1, false)
 
@@ -784,6 +796,8 @@ function ConnectionHoses:loadHoseNode(xmlFile, hoseKey, entry, isBaseHose)
 	entry.length = xmlFile:getValue(hoseKey .. "#length", 3)
 	entry.diameter = xmlFile:getValue(hoseKey .. "#diameter", 0.02)
 	entry.straighteningFactor = xmlFile:getValue(hoseKey .. "#straighteningFactor", 1)
+	entry.centerPointDropFactor = xmlFile:getValue(hoseKey .. "#centerPointDropFactor", 1)
+	entry.centerPointTension = xmlFile:getValue(hoseKey .. "#centerPointTension", 0)
 	entry.minCenterPointAngle = xmlFile:getValue(hoseKey .. "#minCenterPointAngle")
 	entry.minCenterPointOffset = xmlFile:getValue(hoseKey .. "#minCenterPointOffset", nil, true)
 	entry.maxCenterPointOffset = xmlFile:getValue(hoseKey .. "#maxCenterPointOffset", nil, true)

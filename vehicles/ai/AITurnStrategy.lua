@@ -637,20 +637,20 @@ function AITurnStrategy:getIsBoxColliding(box)
 		return true
 	end
 
-	local x1, _, z1 = localToWorld(self.vehicleDirectionNode, box.center[1] + box.size[1], 0, box.center[3] + box.size[3])
-	local x2, _, z2 = localToWorld(self.vehicleDirectionNode, box.center[1] + box.size[1], 0, box.center[3] - box.size[3])
+	local x1, _, z1 = localToWorld(self.vehicleDirectionNode, box.center[1] + box.size[1] * 0.66, 0, box.center[3] + box.size[3])
+	local x2, _, z2 = localToWorld(self.vehicleDirectionNode, box.center[1] - box.size[1] * 0.66, 0, box.center[3] + box.size[3])
 	local t1 = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x1, 0, z1)
 	local t2 = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x2, 0, z2)
 
-	raycastClosest(x1, t1, z1, 0, -1, 0, "onWaterRaycastCallback", 200, self, CollisionFlag.WATER, false, false, true)
-	raycastClosest(x2, t2, z2, 0, -1, 0, "onWaterRaycastCallback2", 200, self, CollisionFlag.WATER, false, false, true)
+	raycastClosest(x1, t1 + 50, z1, 0, -1, 0, "onWaterRaycastCallback", 100, self, CollisionFlag.WATER, false, false, true)
+	raycastClosest(x2, t2 + 50, z2, 0, -1, 0, "onWaterRaycastCallback2", 100, self, CollisionFlag.WATER, false, false, true)
 
 	local waterY1 = self.lastWaterY1
 	local waterY2 = self.lastWaterY2
 	self.lastWaterY1 = -2000
 	self.lastWaterY2 = -2000
 
-	if t1 < waterY1 or t2 < waterY2 then
+	if t1 < waterY1 - 0.75 or t2 < waterY2 - 0.75 then
 		if VehicleDebug.state == VehicleDebug.DEBUG_AI then
 			self.vehicle:addAIDebugText(string.format(" hit water: b%.1f f%.1f w%.1f", t1, t2, waterY1))
 		end

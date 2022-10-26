@@ -37,7 +37,7 @@ end
 function Ropes.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", Ropes)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoadFinished", Ropes)
-	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", Ropes)
+	SpecializationUtil.registerEventListener(vehicleType, "onPostUpdate", Ropes)
 end
 
 function Ropes:onLoad(savegame)
@@ -114,7 +114,7 @@ function Ropes:onLoad(savegame)
 
 	if not self.isClient or #spec.ropes == 0 then
 		SpecializationUtil.removeEventListener(self, "onLoadFinished", Ropes)
-		SpecializationUtil.removeEventListener(self, "onUpdate", Ropes)
+		SpecializationUtil.removeEventListener(self, "onPostUpdate", Ropes)
 	end
 end
 
@@ -123,6 +123,10 @@ function Ropes:onLoadFinished(savegame)
 end
 
 function Ropes:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	Ropes.onPostUpdate(self, dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+end
+
+function Ropes:onPostUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	self:updateRopes(dt)
 end
 

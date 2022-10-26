@@ -8,7 +8,7 @@ function PlayerStateThrow.new(player, stateMachine)
 end
 
 function PlayerStateThrow:isAvailable()
-	if self.player.isClient and self.player.isEntered and not self.player:hasHandtoolEquipped() and (self.player.isCarryingObject or not self.player.isCarryingObject and self.player.isObjectInRange and self.player.lastFoundObject ~= nil) and self.player.lastFoundObjectMass <= Player.MAX_PICKABLE_OBJECT_MASS then
+	if self.player.isClient and self.player.isEntered and not self.player:hasHandtoolEquipped() and (self.player.isCarryingObject or not self.player.isCarryingObject and self.player.isObjectInRange and self.player.lastFoundObject ~= nil) and self.player.lastFoundObjectMass <= self.player.maxPickableMass then
 		return true
 	end
 

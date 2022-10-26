@@ -94,6 +94,7 @@ function RotationAnimation:load(xmlFile, key, rootNodes, owner, i3dMapping)
 		if owner[speedFuncStr] ~= nil then
 			self.speedFunc = owner[speedFuncStr]
 			self.speedFuncTarget = self.owner
+			self.speedFuncParam = xmlFile:getValue(key .. "#speedFuncParam")
 		else
 			Logging.xmlWarning(xmlFile, "Could not find speed function '%s' for rotation animation '%s'!", speedFuncStr, key)
 		end
@@ -131,7 +132,7 @@ function RotationAnimation:update(dt)
 	end
 
 	if self.currentAlpha > 0 then
-		local speedFactor = self.speedFunc(self.speedFuncTarget)
+		local speedFactor = self.speedFunc(self.speedFuncTarget, self.speedFuncParam)
 		local rot = self.currentAlpha * dt * self.rotSpeed * speedFactor
 
 		if self.shaderParameterName == nil then
@@ -253,4 +254,5 @@ function RotationAnimation.registerAnimationClassXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#turnOffFadeTime", "Turn off fade time", 2)
 	schema:register(XMLValueType.FLOAT, basePath .. "#turnOnOffVariance", "Turn off time variance")
 	schema:register(XMLValueType.STRING, basePath .. "#speedFunc", "Lua speed function")
+	schema:register(XMLValueType.STRING, basePath .. "#speedFuncParam", "Additional string parameter that is passed to the speedFunc")
 end

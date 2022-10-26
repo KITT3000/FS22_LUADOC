@@ -290,6 +290,7 @@ function Client:packetReceived(packetType, timestamp, streamId)
 
 			self.serverConnection:readUpdateAck(streamId)
 
+			self.serverFPS = streamReadUIntN(streamId, 6)
 			local networkDebug = streamReadBool(streamId)
 
 			if self.networkListener ~= nil then

@@ -42,6 +42,7 @@ function Mountable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getDynamicMountObject", Mountable.getDynamicMountObject)
 	SpecializationUtil.registerFunction(vehicleType, "setReducedComponentMass", Mountable.setReducedComponentMass)
 	SpecializationUtil.registerFunction(vehicleType, "getAllowComponentMassReduction", Mountable.getAllowComponentMassReduction)
+	SpecializationUtil.registerFunction(vehicleType, "getDefaultAllowComponentMassReduction", Mountable.getDefaultAllowComponentMassReduction)
 	SpecializationUtil.registerFunction(vehicleType, "getMountableLockPositions", Mountable.getMountableLockPositions)
 end
 
@@ -96,7 +97,7 @@ function Mountable:onLoad(savegame)
 	spec.dynamicMountSingleAxisFreeY = self.xmlFile:getValue("vehicle.dynamicMount#singleAxisFreeY")
 	spec.dynamicMountSingleAxisFreeX = self.xmlFile:getValue("vehicle.dynamicMount#singleAxisFreeX")
 	spec.additionalMountDistance = self.xmlFile:getValue("vehicle.dynamicMount#additionalMountDistance", 0)
-	spec.allowMassReduction = self.xmlFile:getValue("vehicle.dynamicMount#allowMassReduction", true)
+	spec.allowMassReduction = self.xmlFile:getValue("vehicle.dynamicMount#allowMassReduction", self:getDefaultAllowComponentMassReduction())
 	spec.reducedComponentMass = false
 	spec.lockPositions = {}
 
@@ -437,6 +438,10 @@ end
 
 function Mountable:getAllowComponentMassReduction()
 	return self.spec_mountable.allowMassReduction
+end
+
+function Mountable:getDefaultAllowComponentMassReduction()
+	return false
 end
 
 function Mountable:getMountableLockPositions()

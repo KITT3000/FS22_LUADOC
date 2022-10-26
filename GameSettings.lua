@@ -24,6 +24,7 @@ GameSettings.SETTING = {
 	EASY_ARM_CONTROL = "easyArmControl",
 	SHOW_MULTIPLAYER_NAMES = "showMultiplayerNames",
 	USE_WORLD_CAMERA = "useWorldCamera",
+	WOOD_HARVESTER_AUTO_CUT = "woodHarvesterAutoCut",
 	INGAME_MAP_FILTER = "ingameMapFilter",
 	RADIO_VEHICLE_ONLY = "radioVehicleOnly",
 	INGAME_MAP_STATE = "ingameMapState",
@@ -198,6 +199,7 @@ function GameSettings.new(customMt, messageCenter)
 	self[GameSettings.SETTING.DIRECTION_CHANGE_MODE] = VehicleMotor.DIRECTION_CHANGE_MODE_AUTOMATIC
 	self[GameSettings.SETTING.GEAR_SHIFT_MODE] = VehicleMotor.SHIFT_MODE_AUTOMATIC
 	self[GameSettings.SETTING.HUD_SPEED_GAUGE] = SpeedMeterDisplay.GAUGE_MODE_RPM
+	self[GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT] = true
 	self[GameSettings.SETTING.INGAME_MAP_FILTER] = 0
 	self[GameSettings.SETTING.INGAME_MAP_SOIL_FILTER] = bitNOT(0)
 	self[GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER] = bitNOT(0)
@@ -495,6 +497,7 @@ function GameSettings:loadFromXML(xmlFile)
 		self:setValue(GameSettings.SETTING.DIRECTION_CHANGE_MODE, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.directionChangeMode"), self[GameSettings.SETTING.DIRECTION_CHANGE_MODE]))
 		self:setValue(GameSettings.SETTING.GEAR_SHIFT_MODE, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.gearShiftMode"), self[GameSettings.SETTING.GEAR_SHIFT_MODE]))
 		self:setValue(GameSettings.SETTING.HUD_SPEED_GAUGE, Utils.getNoNil(getXMLFloat(xmlFile, "gameSettings.hudSpeedGauge"), self[GameSettings.SETTING.HUD_SPEED_GAUGE]))
+		self:setValue(GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT, Utils.getNoNil(getXMLBool(xmlFile, "gameSettings.woodHarvesterAutoCut"), self[GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT]))
 		self:setValue(GameSettings.SETTING.INGAME_MAP_STATE, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.ingameMapState"), IngameMap.STATE_MINIMAP_ROUND))
 		self:setValue(GameSettings.SETTING.INGAME_MAP_FILTER, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.ingameMapFilters"), self[GameSettings.SETTING.INGAME_MAP_FILTER]))
 		self:setValue(GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER, Utils.getNoNil(getXMLInt(xmlFile, "gameSettings.ingameMapGrowthFilter"), self[GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER]))
@@ -627,6 +630,7 @@ function GameSettings:saveToXMLFile(xmlFile)
 		setXMLInt(xmlFile, "gameSettings.directionChangeMode", self[GameSettings.SETTING.DIRECTION_CHANGE_MODE])
 		setXMLInt(xmlFile, "gameSettings.gearShiftMode", self[GameSettings.SETTING.GEAR_SHIFT_MODE])
 		setXMLInt(xmlFile, "gameSettings.hudSpeedGauge", self[GameSettings.SETTING.HUD_SPEED_GAUGE])
+		setXMLBool(xmlFile, "gameSettings.woodHarvesterAutoCut", self[GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT])
 		setXMLBool(xmlFile, "gameSettings.shownFreemodeWarning", self[GameSettings.SETTING.SHOWN_FREEMODE_WARNING])
 		setXMLBool(xmlFile, "gameSettings.showMultiplayerNames", self[GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES])
 		setXMLInt(xmlFile, "gameSettings.ingameMapGrowthFilter", self[GameSettings.SETTING.INGAME_MAP_GROWTH_FILTER])

@@ -152,7 +152,7 @@ function Wheels.registerEventListeners(vehicleType)
 end
 
 function Wheels.initSpecialization()
-	g_configurationManager:addConfigurationType("wheel", g_i18n:getText("configuration_wheelSetup"), "wheels", nil, Wheels.loadBrandName, Wheels.loadedBrandNames, ConfigurationUtil.SELECTOR_MULTIOPTION, g_i18n:getText("configuration_wheelBrand"), Wheels.getBrands, Wheels.getWheelsByBrand)
+	g_configurationManager:addConfigurationType("wheel", g_i18n:getText("configuration_wheelSetup"), "wheels", nil, Wheels.loadBrandName, Wheels.loadedBrandNames, ConfigurationUtil.SELECTOR_MULTIOPTION, g_i18n:getText("configuration_wheelBrand"), Wheels.getBrands, Wheels.getWheelsByBrand, 2)
 	g_configurationManager:addConfigurationType("rimColor", g_i18n:getText("configuration_rimColor"), nil, nil, ConfigurationUtil.getConfigColorSingleItemLoad, ConfigurationUtil.getConfigColorPostLoad, ConfigurationUtil.SELECTOR_COLOR)
 	g_storeManager:addSpecType("wheels", "shopListAttributeIconWheels", Wheels.loadSpecValueWheels, Wheels.getSpecValueWheels, "vehicle")
 	g_storeManager:addVRamUsageFunction(Wheels.getVRamUsageFromXML)
@@ -1013,8 +1013,8 @@ function Wheels:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, 
 			end
 		end
 
-		if self:getAreSurfaceSoundsActive() then
-			if spec.surfaceSounds ~= nil then
+		if spec.surfaceSounds ~= nil then
+			if self:getAreSurfaceSoundsActive() then
 				local currentSound = self:getCurrentSurfaceSound()
 
 				if currentSound ~= spec.currentSurfaceSound then
@@ -1030,9 +1030,9 @@ function Wheels:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, 
 				elseif not g_soundManager:getIsSamplePlaying(currentSound) then
 					g_soundManager:playSample(currentSound)
 				end
+			elseif spec.currentSurfaceSound ~= nil then
+				g_soundManager:stopSample(spec.currentSurfaceSound)
 			end
-		elseif spec.currentSurfaceSound ~= nil then
-			g_soundManager:stopSample(spec.currentSurfaceSound)
 		end
 	end
 

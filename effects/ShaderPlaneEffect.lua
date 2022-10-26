@@ -305,6 +305,12 @@ function ShaderPlaneEffect:setDistance(distance)
 	end
 end
 
+function ShaderPlaneEffect:setColor(r, g, b, a)
+	if self.node ~= nil then
+		setShaderParameter(self.node, "colorScale", r, g, b, a, false)
+	end
+end
+
 function ShaderPlaneEffect.registerEffectXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#fadeTime", "(ShaderPlaneEffect) Fade time for fade in and fade out", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. "#fadeInTime", "(ShaderPlaneEffect) Fade in time", 1)

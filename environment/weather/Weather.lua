@@ -899,7 +899,7 @@ function Weather:fillWeatherForecast(isRebuild)
 	local lastItem = self.forecastItems[#self.forecastItems]
 	local maxNumOfforecastItemsItems = 2^Weather.SEND_BITS_NUM_OBJECTS - 1
 
-	while (lastItem == nil or lastItem.startDay < self.owner.currentMonotonicDay + 8) and maxNumOfforecastItemsItems > #self.forecastItems do
+	while (lastItem == nil or lastItem.startDay < self.owner.currentMonotonicDay + 9) and maxNumOfforecastItemsItems > #self.forecastItems do
 		local startDay = self.owner.currentMonotonicDay
 		local startDayTime = self.owner.dayTime
 

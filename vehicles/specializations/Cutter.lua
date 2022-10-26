@@ -76,6 +76,7 @@ function Cutter.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "isAttachAllowed", Cutter.isAttachAllowed)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getConsumingLoad", Cutter.getConsumingLoad)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsGroundReferenceNodeThreshold", Cutter.getIsGroundReferenceNodeThreshold)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getDefaultAllowComponentMassReduction", Cutter.getDefaultAllowComponentMassReduction)
 end
 
 function Cutter.registerEventListeners(vehicleType)
@@ -1242,6 +1243,10 @@ function Cutter:getIsGroundReferenceNodeThreshold(superFunc, groundReferenceNode
 	threshold = threshold + self.spec_cutter.currentCutHeight
 
 	return threshold
+end
+
+function Cutter:getDefaultAllowComponentMassReduction()
+	return true
 end
 
 function Cutter:onPreAttach(attacherVehicle, inputJointDescIndex, jointDescIndex)

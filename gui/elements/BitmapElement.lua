@@ -46,6 +46,7 @@ function BitmapElement:loadProfile(profile, applyProfile)
 	})
 
 	if oldFilename ~= self.overlay.filename or oldPreviewFilename ~= self.overlay.previewFilename then
+		GuiOverlay.deleteOverlay(self.overlay)
 		GuiOverlay.createOverlay(self.overlay)
 	end
 

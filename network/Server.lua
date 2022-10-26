@@ -41,6 +41,8 @@ function Server:update(dt, isRunning)
 	self:updateActiveObjects(dt)
 
 	self.tickSum = self.tickSum + dt
+	local currentFPS = MathUtil.round(1000 / dt, 0)
+	self.serverFPS = math.min(self.serverFPS, currentFPS)
 
 	if self.tickSum >= self.tickDuration - 3 then
 		local numClients = #self.clients
@@ -147,6 +149,10 @@ function Server:update(dt, isRunning)
 					streamWriteUIntN(streamId, MessageIds.OBJECT_UPDATE, MessageIds.SEND_NUM_BITS)
 					streamWriteInt32(streamId, g_physicsNetworkTime)
 					connection:writeUpdateAck(streamId)
+
+					local clampedFPS = MathUtil.clamp(self.serverFPS, 1, 60)
+
+					streamWriteUIntN(streamId, clampedFPS, 6)
 					streamWriteBool(streamId, g_networkDebug)
 
 					if self.networkListener ~= nil then
@@ -289,6 +295,7 @@ function Server:update(dt, isRunning)
 		self:updatePacketStats(self.tickSum)
 
 		self.tickSum = 0
+		self.serverFPS = currentFPS
 	end
 end
 

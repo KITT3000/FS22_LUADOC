@@ -217,6 +217,24 @@ function I3DUtil.setShapeBonesRec(node, skeleton, oldSkeleton, keepBindPoses)
 	end
 end
 
+function I3DUtil.getHasShaderParameterRec(node, shaderParam)
+	if getHasClassId(node, ClassIds.SHAPE) and getHasShaderParameter(node, shaderParam) then
+		return true
+	end
+
+	local numChildren = getNumOfChildren(node)
+
+	if numChildren > 0 then
+		for i = 0, numChildren - 1 do
+			if I3DUtil.getHasShaderParameterRec(getChildAt(node, i), shaderParam) then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
 function I3DUtil.getShaderParameterRec(node, shaderParam)
 	if getHasClassId(node, ClassIds.SHAPE) and getHasShaderParameter(node, shaderParam) then
 		return getShaderParameter(node, shaderParam)
@@ -330,6 +348,10 @@ end
 
 function I3DUtil.getIsSpline(node)
 	return getHasClassId(node, ClassIds.SHAPE) and getGeometry(node) ~= 0 and getHasClassId(getGeometry(node), ClassIds.SPLINE)
+end
+
+function I3DUtil.getSupportsLOD(node)
+	return getHasClassId(node, ClassIds.SHAPE) and not getIsNonRenderable(node) and not I3DUtil.getIsSpline(node) or getHasClassId(node, ClassIds.LIGHT_SOURCE) or getHasClassId(node, ClassIds.AUDIO_SOURCE)
 end
 
 function I3DUtil.getNodePath(node)

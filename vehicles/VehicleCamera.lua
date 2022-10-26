@@ -641,6 +641,31 @@ function VehicleCamera:consoleCommandLODDebug()
 	end
 end
 
+function VehicleCamera:consoleCommandCameraYDebug(height)
+	if not self.cameraYDebugMode then
+		self.cameraYDebugMode = true
+		self.cameraYDebugHeight = tonumber(height) or 5
+		self.cameraYDebugZoom = self.zoom
+		self.rotZ = 0
+		self.rotY = math.pi * 0.5
+		self.rotX = 0
+
+		setRotation(self.rotateNode, self.rotX, self.rotY, self.rotZ)
+		setIsOrthographic(self.cameraNode, true)
+		setOrthographicHeight(self.cameraNode, tonumber(height) or 5)
+
+		self.isRotatable = false
+
+		g_depthOfFieldManager:setManipulatedParams(0)
+	else
+		self.isRotatable = true
+		self.cameraYDebugMode = false
+
+		setIsOrthographic(self.cameraNode, false)
+		g_depthOfFieldManager:setManipulatedParams(DepthOfFieldManager.DEFAULT_VALUES[1])
+	end
+end
+
 function VehicleCamera:onDeactivate()
 	self.isActivated = false
 
@@ -958,4 +983,6 @@ function VehicleCamera.registerCameraSavegameXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#fovY", "Custom Field of View Y")
 	schema:register(XMLValueType.BOOL, basePath .. "#lodDebugActive", "LOD Debug Mode Active")
 	schema:register(XMLValueType.FLOAT, basePath .. "#lodDebugZoom", "LOD Debug Mode Zoom Ref")
+	schema:register(XMLValueType.BOOL, basePath .. "#cameraYDebugActive", "Camera Y Debug Mode Active")
+	schema:register(XMLValueType.FLOAT, basePath .. "#cameraYDebugHeight", "Camera Y Debug Mode orthographic height")
 end

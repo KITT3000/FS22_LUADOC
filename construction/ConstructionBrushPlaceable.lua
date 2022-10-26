@@ -20,6 +20,7 @@ ConstructionBrushPlaceable.ERROR_MESSAGES = {
 	[ConstructionBrushPlaceable.ERROR.DEFORM_FAILED] = "ui_construction_deformationFailed",
 	[ConstructionBrushPlaceable.ERROR.BLOCKED] = "ui_construction_deformationBlocked"
 }
+ConstructionBrushPlaceable.LAST_SNAPPING_STATE = false
 ConstructionBrushPlaceable.DISPLACEMENT_COST_PER_M3 = 5
 ConstructionBrushPlaceable.MAX_ACTIVE_VALIDATIONS = 2
 
@@ -44,6 +45,10 @@ function ConstructionBrushPlaceable.new(subclass_mt, cursor)
 	self.errorEndTime = 0
 	self.freeMode = false
 	self.activeValidationCount = 0
+	self.supportsSnapping = true
+	self.snappingActive = ConstructionBrushPlaceable.LAST_SNAPPING_STATE
+	self.snappingAngleDeg = 7.5
+	self.snappingSize = 0.25
 	self.requiredPermission = Farm.PERMISSION.BUY_PLACEABLE
 
 	return self
@@ -108,6 +113,11 @@ function ConstructionBrushPlaceable:updateHeightFromInput(dt)
 end
 
 function ConstructionBrushPlaceable:getSnappedRotation(rotY)
+	if self.snappingActive then
+		local degAngle = MathUtil.snapValue(math.deg(rotY), self.snappingAngleDeg)
+		rotY = math.rad(degAngle)
+	end
+
 	if self.placeable ~= nil and self.placeable.getPlacementRotation ~= nil then
 		local _ = nil
 		_, rotY, _ = self.placeable:getPlacementRotation(0, rotY, 0)
@@ -119,6 +129,12 @@ end
 function ConstructionBrushPlaceable:getSnappedPosition(x, y, z)
 	if x == nil then
 		return nil
+	end
+
+	if self.snappingActive then
+		local snapSize = 1 / self.snappingSize
+		x = math.floor(x * snapSize) / snapSize
+		z = math.floor(z * snapSize) / snapSize
 	end
 
 	if self.placeable ~= nil and self.placeable.getPlacementPosition ~= nil then
@@ -413,6 +429,13 @@ function ConstructionBrushPlaceable:onButtonTertiary()
 	end
 end
 
+function ConstructionBrushPlaceable:onButtonSnapping()
+	self.snappingActive = not self.snappingActive
+	ConstructionBrushPlaceable.LAST_SNAPPING_STATE = self.snappingActive
+
+	self:setInputTextDirty()
+end
+
 function ConstructionBrushPlaceable:onAxisPrimary(inputValue)
 	if self.placeable == nil then
 		return
@@ -485,4 +508,8 @@ end
 
 function ConstructionBrushPlaceable:getAxisSecondaryText()
 	return "$l10n_input_CONSTRUCTION_HEIGHT"
+end
+
+function ConstructionBrushPlaceable:getButtonSnappingText()
+	return string.format("%s (%s)", g_i18n:getText("input_CONSTRUCTION_ACTION_SNAPPING"), g_i18n:getText(self.snappingActive and "ui_on" or "ui_off"))
 end

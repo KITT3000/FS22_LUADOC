@@ -218,7 +218,7 @@ function ProductionChainManager:distributeGoods()
 								local distanceSourceToTarget = calcDistanceFrom(distributingProdPoint.owningPlaceable.rootNode, prodPointInDemand.owningPlaceable.rootNode)
 								local transferCosts = amountToTransfer * distanceSourceToTarget * ProductionPoint.DIRECT_DELIVERY_PRICE
 
-								g_currentMission:addMoney(transferCosts, prodPointInDemand.ownerFarmId, MoneyType.PRODUCTION_COSTS, true)
+								g_currentMission:addMoney(-transferCosts, prodPointInDemand.ownerFarmId, MoneyType.PRODUCTION_COSTS, true)
 								prodPointInDemand.storage:setFillLevel(prodPointInDemand.storage:getFillLevel(fillTypeIdToDistribute) + amountToTransfer, fillTypeIdToDistribute)
 								distributingProdPoint.storage:setFillLevel(distributingProdPoint.storage:getFillLevel(fillTypeIdToDistribute) - amountToTransfer, fillTypeIdToDistribute)
 							end

@@ -98,6 +98,8 @@ function InGameMenuTourFrame:updateContents()
 	self.layout:invalidateLayout()
 
 	local steps = g_currentMission.guidedTour:getPassedSteps()
+	local _, offsetYBottomTop = getNormalizedScreenValues(0, 60)
+	local _, offsetYTextInput = getNormalizedScreenValues(0, 30)
 
 	for index, step in ipairs(steps) do
 		local row = self.contentItem:clone(self.layout)
@@ -118,7 +120,7 @@ function InGameMenuTourFrame:updateContents()
 
 		textElement:setSize(nil, height)
 
-		height = height + 60 / g_screenHeight
+		height = height + offsetYBottomTop
 		local useGamepadButtons = g_inputBinding:getInputHelpMode() == GS_INPUT_HELP_MODE_GAMEPAD
 		local numVisibleControls = 0
 
@@ -154,7 +156,7 @@ function InGameMenuTourFrame:updateContents()
 			controlsElement:setSize(nil, numVisibleControls * controlsElement.elements[1].absSize[2])
 			controlsElement:invalidateLayout()
 
-			height = height + controlsElement.absSize[2] + 30 / g_screenHeight
+			height = height + controlsElement.absSize[2] + offsetYTextInput
 		end
 
 		row:setSize(nil, height)

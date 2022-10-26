@@ -75,7 +75,7 @@ function FillLevelListener:readStream(streamId, connection)
 	FillLevelListener:superClass().readStream(self, streamId, connection)
 
 	if connection:getIsServer() then
-		local newY = streamWriteFloat32(streamId)
+		local newY = streamReadFloat32(streamId)
 
 		setTranslation(self.node, self.baseTranslation[1], newY, self.baseTranslation[3])
 	end
@@ -93,7 +93,7 @@ function FillLevelListener:readUpdateStream(streamId, timestamp, connection)
 	FillLevelListener:superClass().readUpdateStream(self, streamId, timestamp, connection)
 
 	if connection:getIsServer() and streamReadBool(streamId) then
-		local newY = streamWriteFloat32(streamId)
+		local newY = streamReadFloat32(streamId)
 
 		setTranslation(self.node, self.baseTranslation[1], newY, self.baseTranslation[3])
 	end

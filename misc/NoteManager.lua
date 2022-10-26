@@ -140,6 +140,10 @@ function NoteManager:onNotePickColor(colorIndex, args)
 
 	setName(note, string.format("note_%d", self.currentNoteIndex))
 
+	if g_isDevelopmentVersion and self.currentNoteIndex == 1 then
+		executeConsoleCommand("enableNoteRendering true")
+	end
+
 	self.currentNoteIndex = self.currentNoteIndex + 1
 
 	Logging.info("created note '%s' at %.1f %.1f %.1f", getNoteNodeText(note), getWorldTranslation(note))

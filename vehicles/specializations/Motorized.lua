@@ -6,7 +6,7 @@ Motorized = {
 }
 
 function Motorized.initSpecialization()
-	g_configurationManager:addConfigurationType("motor", g_i18n:getText("configuration_motorSetup"), "motorized", nil, Motorized.getStoreAdditionalConfigData, nil, ConfigurationUtil.SELECTOR_MULTIOPTION)
+	g_configurationManager:addConfigurationType("motor", g_i18n:getText("configuration_motorSetup"), "motorized", nil, Motorized.getStoreAdditionalConfigData, nil, ConfigurationUtil.SELECTOR_MULTIOPTION, nil, nil, nil, 1)
 	g_storeManager:addSpecType("fuel", "shopListAttributeIconFuel", Motorized.loadSpecValueFuel, Motorized.getSpecValueFuelDiesel, "vehicle")
 	g_storeManager:addSpecType("electricCharge", "shopListAttributeIconElectricCharge", Motorized.loadSpecValueFuel, Motorized.getSpecValueFuelElectricCharge, "vehicle")
 	g_storeManager:addSpecType("methane", "shopListAttributeIconMethane", Motorized.loadSpecValueFuel, Motorized.getSpecValueFuelMethane, "vehicle")
@@ -1016,7 +1016,11 @@ function Motorized:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSele
 					vx = ex - vx
 					local lx, ly, lz = worldToLocal(effect.effectNode, vx, vy, vz)
 					local distance = MathUtil.vector2Length(lx, lz)
-					lx, lz = MathUtil.vector2Normalize(lx, lz)
+
+					if distance > 0 then
+						lx, lz = MathUtil.vector2Normalize(lx, lz)
+					end
+
 					ly = math.abs(math.max(ly, 0.01))
 					local xFactor = math.atan(distance / ly) * (1.2 + 2 * ly)
 					local yFactor = math.atan(distance / ly) * (1.2 + 2 * ly)

@@ -39,7 +39,7 @@ function Enterable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.enterable.characterTargetNodeModifier(?)#transitionIdleDelay", "State is changed after this delay", 0.5)
 	schema:register(XMLValueType.NODE_INDEX, "vehicle.enterable.mirrors.mirror(?)#node", "Mirror node")
 	schema:register(XMLValueType.INT, "vehicle.enterable.mirrors.mirror(?)#prio", "Priority", 2)
-	Dashboard.registerDashboardXMLPaths(schema, "vehicle.enterable.dashboards", "time | operatingTime | outsideTemperature")
+	Dashboard.registerDashboardXMLPaths(schema, "vehicle.enterable.dashboards", "time | timeHours | timeMinutes | operatingTime | outsideTemperature")
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.enterable.sounds", "rain(?)")
 	schema:register(XMLValueType.BOOL, Dashboard.GROUP_XML_KEY .. "#isEntered", "Is entered")
 	schema:register(XMLValueType.BOOL, Cylindered.MOVING_TOOL_XML_KEY .. "#updateCharacterTargetModifier", "Update character target modifier state", false)
@@ -50,6 +50,7 @@ function Enterable.initSpecialization()
 
 	VehicleCamera.registerCameraSavegameXMLPaths(schemaSavegame, "vehicles.vehicle(?).enterable.camera(?)")
 	schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).enterable#activeCameraIndex", "Index of active camera", 1)
+	schemaSavegame:register(XMLValueType.BOOL, "vehicles.vehicle(?).enterable#isTabbable", "Is tabbable", true)
 end
 
 function Enterable.registerEvents(vehicleType)
@@ -271,7 +272,8 @@ function Enterable:onLoad(savegame)
 				table.insert(spec.mirrors, {
 					cosAngle = 1,
 					node = node,
-					prio = prio
+					prio = prio,
+					parentNode = getParent(node)
 				})
 			else
 				setVisibility(node, false)
@@ -294,6 +296,22 @@ function Enterable:onLoad(savegame)
 			valueFunc = "getEnvironmentTime",
 			valueTypeToLoad = "time",
 			valueObject = g_currentMission.environment
+		})
+		self:loadDashboardsFromXML(self.xmlFile, "vehicle.enterable.dashboards", {
+			valueTypeToLoad = "timeHours",
+			valueObject = g_currentMission.environment,
+			valueFunc = function (env)
+				local time = env:getEnvironmentTime()
+
+				return math.floor(time) + time % 1 * 100 / 60
+			end
+		})
+		self:loadDashboardsFromXML(self.xmlFile, "vehicle.enterable.dashboards", {
+			valueTypeToLoad = "timeMinutes",
+			valueObject = g_currentMission.environment,
+			valueFunc = function (env)
+				return env:getEnvironmentTime() % 1 * 100
+			end
 		})
 		self:loadDashboardsFromXML(self.xmlFile, "vehicle.enterable.dashboards", {
 			valueFunc = "getFormattedOperatingTime",
@@ -341,6 +359,8 @@ function Enterable:onPostLoad(savegame)
 	end
 
 	if savegame ~= nil and not savegame.resetVehicles then
+		self:setIsTabbable(savegame.xmlFile:getValue(savegame.key .. ".enterable#isTabbable", spec.isTabbable))
+
 		spec.camIndex = savegame.xmlFile:getValue(savegame.key .. ".enterable#activeCameraIndex", 1)
 	end
 end
@@ -385,6 +405,8 @@ function Enterable:onDelete()
 end
 
 function Enterable:onReadStream(streamId, connection)
+	local spec = self.spec_enterable
+	spec.isTabbable = streamReadBool(streamId)
 	local isControlled = streamReadBool(streamId)
 
 	if isControlled then
@@ -402,6 +424,8 @@ end
 function Enterable:onWriteStream(streamId, connection)
 	local spec = self.spec_enterable
 
+	streamWriteBool(streamId, spec.isTabbable)
+
 	if streamWriteBool(streamId, spec.isControlled) then
 		spec.playerStyle:writeStream(streamId, connection)
 		streamWriteUIntN(streamId, spec.controllerFarmId, FarmManager.FARM_ID_SEND_NUM_BITS)
@@ -417,6 +441,7 @@ function Enterable:saveToXMLFile(xmlFile, key, usedModNames)
 	end
 
 	xmlFile:setValue(key .. "#activeCameraIndex", spec.camIndex)
+	xmlFile:setValue(key .. "#isTabbable", spec.isTabbable)
 end
 
 function Enterable:saveStatsToXMLFile(xmlFile, key)
@@ -1199,7 +1224,7 @@ function Enterable:setMirrorVisible(visible)
 		local numVisibleMirrors = 0
 
 		for _, mirror in pairs(spec.mirrors) do
-			if getIsInCameraFrustum(mirror.node, spec.activeCamera.cameraNode, g_presentedScreenAspectRatio) then
+			if getEffectiveVisibility(mirror.parentNode) and getIsInCameraFrustum(mirror.node, spec.activeCamera.cameraNode, g_presentedScreenAspectRatio) then
 				local dirX, dirY, dirZ = localToLocal(spec.activeCamera.cameraNode, mirror.node, 0, 0, 0)
 				dirY = dirY * g_screenAspectRatio
 				local length = MathUtil.vector3Length(dirX, dirY, dirZ)
@@ -1220,12 +1245,14 @@ function Enterable:setMirrorVisible(visible)
 		local maxNumMirrors = g_gameSettings:getValue("maxNumMirrors")
 
 		for _, mirror in ipairs(spec.mirrors) do
-			if mirror.cosAngle ~= math.huge and numVisibleMirrors < maxNumMirrors then
-				setVisibility(mirror.node, true)
+			if getEffectiveVisibility(mirror.parentNode) then
+				if mirror.cosAngle ~= math.huge and numVisibleMirrors < maxNumMirrors then
+					setVisibility(mirror.node, true)
 
-				numVisibleMirrors = numVisibleMirrors + 1
-			else
-				setVisibility(mirror.node, false)
+					numVisibleMirrors = numVisibleMirrors + 1
+				else
+					setVisibility(mirror.node, false)
+				end
 			end
 		end
 	else
@@ -1240,6 +1267,10 @@ function Enterable:getIsTabbable()
 end
 
 function Enterable:setIsTabbable(isTabbable)
+	if isTabbable == nil then
+		isTabbable = false
+	end
+
 	self.spec_enterable.isTabbable = isTabbable
 end
 

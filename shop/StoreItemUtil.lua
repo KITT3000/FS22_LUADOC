@@ -281,7 +281,7 @@ function StoreItemUtil.getConfigurationsFromXML(xmlFile, key, baseDir, customEnv
 	local configurations = {}
 	local defaultConfigurationIds = {}
 	local numConfigs = 0
-	local configurationTypes = g_configurationManager:getConfigurationTypes()
+	local configurationTypes = g_configurationManager:getSortedConfigurationTypes()
 
 	for _, name in pairs(configurationTypes) do
 		local configuration = g_configurationManager:getConfigurationDescByName(name)
@@ -390,6 +390,11 @@ function StoreItemUtil.getConfigurationSetsFromXML(storeItem, xmlFile, key, base
 
 		if params ~= nil then
 			params = params:split("|")
+
+			for j = 1, #params do
+				params[j] = g_i18n:convertText(params[j], customEnvironment)
+			end
+
 			configSet.name = string.format(configSet.name, unpack(params))
 		end
 

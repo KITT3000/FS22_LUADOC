@@ -412,6 +412,13 @@ function ConstructionScreen:registerBrushActionEvents()
 		self.inputManager:setActionEventTextPriority(self.secondaryBrushAxisEvent, GS_PRIO_HIGH)
 		table.insert(self.brushEvents, self.secondaryBrushAxisEvent)
 	end
+
+	if brush.supportsSnapping then
+		_, self.snappingBrushEvent = g_inputBinding:registerActionEvent(InputAction.CONSTRUCTION_ACTION_SNAPPING, self, self.onButtonSnapping, false, true, false, true)
+
+		g_inputBinding:setActionEventTextPriority(self.snappingBrushEvent, GS_PRIO_HIGH)
+		table.insert(self.brushEvents, self.snappingBrushEvent)
+	end
 end
 
 function ConstructionScreen:updateBrushActionTexts()
@@ -468,6 +475,16 @@ function ConstructionScreen:updateBrushActionTexts()
 
 		self.inputManager:setActionEventTextVisibility(self.secondaryBrushAxisEvent, text ~= nil)
 	end
+
+	if self.snappingBrushEvent ~= nil then
+		local text = self.brush:getButtonSnappingText()
+
+		if text ~= nil then
+			g_inputBinding:setActionEventText(self.snappingBrushEvent, g_i18n:convertText(text))
+		end
+
+		g_inputBinding:setActionEventTextVisibility(self.snappingBrushEvent, text ~= nil)
+	end
 end
 
 function ConstructionScreen:removeBrushActionEvents()
@@ -481,6 +498,7 @@ function ConstructionScreen:removeBrushActionEvents()
 	self.fourthBrushEvent = nil
 	self.primaryBrushAxisEvent = nil
 	self.secondaryBrushAxisEvent = nil
+	self.snappingBrushEvent = nil
 end
 
 function ConstructionScreen:onButtonPrimary(_, inputValue, _, isAnalog, isMouse)
@@ -529,6 +547,10 @@ end
 
 function ConstructionScreen:onButtonFourth(_, inputValue, _, isAnalog, isMouse)
 	self.brush:onButtonFourth()
+end
+
+function ConstructionScreen:onButtonSnapping(_, inputValue, _, isAnalog, isMouse)
+	self.brush:onButtonSnapping()
 end
 
 function ConstructionScreen:onAxisPrimary(_, inputValue, _, isAnalog, isMouse)
@@ -851,7 +873,8 @@ function ConstructionScreen:rebuildData()
 	end
 
 	self.categoriesBox:invalidateLayout()
-	FocusManager:linkElements(self.categoriesBox.elements[1], FocusManager.LEFT, nil)
+	FocusManager:linkElements(self.categoriesBox.elements[1], FocusManager.LEFT, self.buttonDestruct)
+	FocusManager:linkElements(self.categoriesBox, FocusManager.RIGHT, self.buttonDestruct)
 
 	for i = #self.tabsBox.elements, 1, -1 do
 		self.tabsBox.elements[i]:delete()

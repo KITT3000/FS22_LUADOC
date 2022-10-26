@@ -248,6 +248,7 @@ function LogGrab:mountSplitShape(shapeId)
 
 	constr:setRotationLimitSpring(springForce, springDamping, springForce, springDamping, springForce, springDamping)
 	constr:setTranslationLimitSpring(springForce, springDamping, springForce, springDamping, springForce, springDamping)
+	g_messageCenter:publish(MessageType.TREE_SHAPE_MOUNTED, shapeId, self)
 
 	return constr:finalize(), jointTransform
 end

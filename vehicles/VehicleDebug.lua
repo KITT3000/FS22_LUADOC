@@ -1621,6 +1621,42 @@ function VehicleDebug.drawDebugAttributeRendering(vehicle)
 	if vehicle.spec_ikChains ~= nil then
 		IKUtil.debugDrawChains(vehicle.spec_ikChains.chains, true)
 	end
+
+	if vehicle.spec_powerTakeOffs ~= nil then
+		for i = 1, #vehicle.spec_powerTakeOffs.outputPowerTakeOffs do
+			local powerTakeOffOutput = vehicle.spec_powerTakeOffs.outputPowerTakeOffs[i]
+			local size = 0.25
+			local x, y, z = getWorldTranslation(powerTakeOffOutput.outputNode)
+			local dirX, dirY, dirZ = localDirectionToWorld(powerTakeOffOutput.outputNode, 0, 0, 1)
+			local upX, upY, upZ = localDirectionToWorld(powerTakeOffOutput.outputNode, 0, 1, 0)
+
+			drawDebugLine(x, y, z, 0, 1, 0, x + upX * size, y + upY * size, z + upZ * size, 0, 1, 0)
+			drawDebugLine(x, y, z, 0, 0, 1, x + dirX * size, y + dirY * size, z + dirZ * size, 0, 0, 1)
+		end
+	end
+
+	if vehicle.spec_connectionHoses ~= nil then
+		for i = 1, #vehicle.spec_connectionHoses.targetNodes do
+			local targetNode = vehicle.spec_connectionHoses.targetNodes[i]
+			local size = 0.1
+			local x, y, z = getWorldTranslation(targetNode.node)
+			local dirX, dirY, dirZ = localDirectionToWorld(targetNode.node, 0, 0, -1)
+			local upX, upY, upZ = localDirectionToWorld(targetNode.node, 0, 1, 0)
+
+			drawDebugLine(x, y, z, 0, 1, 0, x + upX * size, y + upY * size, z + upZ * size, 0, 1, 0)
+			drawDebugLine(x, y, z, 0, 0, 1, x + dirX * size, y + dirY * size, z + dirZ * size, 0, 0, 1)
+		end
+	end
+
+	if vehicle.spec_mountable ~= nil then
+		if vehicle.spec_mountable.dynamicMountJointTransY ~= nil then
+			DebugUtil.drawDebugRectangle(vehicle.rootNode, -vehicle.size.width * 0.5, vehicle.size.width * 0.5, -vehicle.size.length * 0.5, vehicle.size.length * 0.5, vehicle.spec_mountable.dynamicMountJointTransY, 0, 1, 0, 0.2, true)
+		end
+
+		if vehicle.spec_mountable.additionalMountDistance ~= 0 then
+			DebugUtil.drawDebugRectangle(vehicle.rootNode, -vehicle.size.width * 0.5, vehicle.size.width * 0.5, -vehicle.size.length * 0.5, vehicle.size.length * 0.5, vehicle.spec_mountable.additionalMountDistance, 1, 1, 0, 0.2, true)
+		end
+	end
 end
 
 function VehicleDebug.drawDebugAIRendering(vehicle)
@@ -1866,6 +1902,14 @@ function VehicleDebug.drawSoundDebugValues(vehicle)
 
 			i = i + 1
 		end
+	end
+
+	local wheelsSpec = vehicle.spec_wheels
+
+	if wheelsSpec then
+		local wx, wy, wz = getWorldTranslation(vehicle.rootNode)
+
+		Utils.renderTextAtWorldPosition(wx, wy, wz, string.format("surfaceSound: %s", wheelsSpec.currentSurfaceSound and wheelsSpec.currentSurfaceSound.sampleName or "none"), 0.01)
 	end
 
 	setTextAlignment(RenderText.ALIGN_LEFT)

@@ -11,6 +11,7 @@ function PowerConsumer.initSpecialization()
 	PowerConsumer.registerPowerConsumerXMLPaths(schema, "vehicle.powerConsumer.powerConsumerConfigurations.powerConsumerConfiguration(?)")
 	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.powerConsumer.powerConsumerConfigurations.powerConsumerConfiguration(?)")
 	schema:register(XMLValueType.INT, "vehicle.storeData.specs.neededPower", "Needed power")
+	schema:register(XMLValueType.INT, "vehicle.storeData.specs.neededPower#maxPower", "Max. recommended power")
 	schema:register(XMLValueType.INT, "vehicle.powerConsumer.powerConsumerConfigurations.powerConsumerConfiguration(?)#neededPower", "Needed power")
 	schema:setXMLSpecializationType()
 end
@@ -370,6 +371,7 @@ addConsoleCommand("gsPowerConsumerSet", "Sets properties of the powerConsumer sp
 function PowerConsumer.loadSpecValueNeededPower(xmlFile, customEnvironment, baseDir)
 	local neededPower = {
 		base = xmlFile:getValue("vehicle.storeData.specs.neededPower"),
+		maxPower = xmlFile:getValue("vehicle.storeData.specs.neededPower#maxPower"),
 		config = {}
 	}
 	local i = 0
@@ -391,6 +393,7 @@ end
 function PowerConsumer.getSpecValueNeededPower(storeItem, realItem, configurations, saleItem, returnValues, returnRange)
 	if storeItem.specs.neededPower ~= nil then
 		local minPower = storeItem.specs.neededPower.base or 0
+		local maxPower = storeItem.specs.neededPower.maxPower
 
 		for _, value in pairs(storeItem.specs.neededPower.config) do
 			minPower = math.max(minPower, value)
@@ -400,9 +403,16 @@ function PowerConsumer.getSpecValueNeededPower(storeItem, realItem, configuratio
 			return nil
 		end
 
-		local hp, kw = g_i18n:getPower(minPower)
+		if maxPower == nil then
+			local hp, kw = g_i18n:getPower(minPower)
 
-		return string.format(g_i18n:getText("shop_neededPowerValue"), MathUtil.round(kw), MathUtil.round(hp))
+			return string.format(g_i18n:getText("shop_neededPowerValue"), MathUtil.round(kw), MathUtil.round(hp))
+		else
+			local minHP, _ = g_i18n:getPower(minPower)
+			local maxHP, _ = g_i18n:getPower(maxPower)
+
+			return string.format(g_i18n:getText("shop_neededPowerValueMinMax"), MathUtil.round(minHP), MathUtil.round(maxHP))
+		end
 	end
 
 	return nil

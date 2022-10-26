@@ -1163,7 +1163,7 @@ function NitrogenMap:updateDestroyCommonArea(startWorldX, startWorldZ, widthWorl
 		modifierLock:executeSet(0)
 
 		for index, desc in pairs(g_fruitTypeManager:getFruitTypes()) do
-			if desc.weed == nil then
+			if desc.weed == nil and desc.terrainDataPlaneId ~= nil then
 				fruitFilter:resetDensityMapAndChannels(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
 				fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, desc.numGrowthStates)
 
@@ -1330,9 +1330,11 @@ function NitrogenMap:updateCropSensorArea(startWorldX, startWorldZ, widthWorldX,
 			for i = 1, #self.cropSensorFruitTypes do
 				local fruitType = self.cropSensorFruitTypes[i]
 
-				fruitFilter:resetDensityMapAndChannels(fruitType.terrainDataPlaneId, fruitType.startStateChannel, fruitType.numStateChannels)
-				fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 1, fruitType.minHarvestingGrowthState)
-				tempFruitModifier:executeSet(1, fruitFilter)
+				if fruitType.terrainDataPlaneId ~= nil then
+					fruitFilter:resetDensityMapAndChannels(fruitType.terrainDataPlaneId, fruitType.startStateChannel, fruitType.numStateChannels)
+					fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 1, fruitType.minHarvestingGrowthState)
+					tempFruitModifier:executeSet(1, fruitFilter)
+				end
 			end
 		else
 			tempFruitModifier:executeSet(1)
@@ -1429,7 +1431,7 @@ function NitrogenMap:getTargetLevelAtWorldPos(x, z, size, forcedFruitType, fillT
 
 			if foundFruitTypeIndex == nil then
 				for index, desc in pairs(g_fruitTypeManager:getFruitTypes()) do
-					if desc.weed == nil then
+					if desc.weed == nil and desc.terrainDataPlaneId ~= nil then
 						modifierFruit:resetDensityMapAndChannels(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
 
 						local acc, numPixels, _ = modifierFruit:executeGet()

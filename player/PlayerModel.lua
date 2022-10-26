@@ -3,6 +3,7 @@ local PlayerModel_mt = Class(PlayerModel)
 
 function PlayerModel.new(customMt)
 	local self = setmetatable({}, customMt or PlayerModel_mt)
+	self.xmlFile = nil
 	self.isLoaded = false
 	self.sharedLoadRequestIds = {}
 	self.modelParts = {}
@@ -95,6 +96,12 @@ function PlayerModel.new(customMt)
 end
 
 function PlayerModel:delete()
+	if self.xmlFile ~= nil then
+		delete(self.xmlFile)
+
+		self.xmlFile = nil
+	end
+
 	if self.sharedLoadRequestId ~= nil then
 		g_i3DManager:releaseSharedI3DFile(self.sharedLoadRequestId)
 
@@ -197,6 +204,7 @@ function PlayerModel:load(xmlFilename, isRealPlayer, isOwner, isAnimated, asyncC
 
 	local filename = getXMLString(xmlFile, "player.filename")
 	self.filename = Utils.getFilename(filename, self.baseDirectory)
+	self.xmlFile = xmlFile
 	self.isRealPlayer = isRealPlayer
 	self.asyncLoadCallbackArguments = asyncCallbackArguments
 	self.asyncLoadCallbackObject = asyncCallbackObject
@@ -206,26 +214,23 @@ function PlayerModel:load(xmlFilename, isRealPlayer, isOwner, isAnimated, asyncC
 		isOwner,
 		isAnimated
 	})
-
-	delete(xmlFile)
 end
 
 function PlayerModel:loadFileFinished(rootNode, failedReason, arguments)
+	local xmlFile = self.xmlFile
+	self.xmlFile = nil
+
 	if failedReason == LoadI3DFailedReason.FILE_NOT_FOUND then
 		Logging.error("Player model file '%s' does not exist!", self.filename)
+		delete(xmlFile)
 
 		return self.asyncLoadCallbackFunction(self.asyncLoadCallbackObject, false, self.asyncLoadCallbackArguments)
 	end
 
 	if failedReason == LoadI3DFailedReason.UNKNOWN or rootNode == nil or rootNode == 0 then
 		Logging.error("Failed to load player model %s", self.filename, failedReason)
+		delete(xmlFile)
 
-		return self.asyncLoadCallbackFunction(self.asyncLoadCallbackObject, false, self.asyncLoadCallbackArguments)
-	end
-
-	local xmlFile = loadXMLFile("playerXML", self.xmlFilename)
-
-	if xmlFile == 0 then
 		return self.asyncLoadCallbackFunction(self.asyncLoadCallbackObject, false, self.asyncLoadCallbackArguments)
 	end
 
@@ -255,6 +260,7 @@ function PlayerModel:loadFileFinished(rootNode, failedReason, arguments)
 
 		if self.animRootThirdPerson == nil then
 			Logging.devError("Error: Failed to find animation root node in '%s'", self.filename)
+			delete(xmlFile)
 
 			return self.asyncLoadCallbackFunction(self.asyncLoadCallbackObject, false, self.asyncLoadCallbackArguments)
 		end

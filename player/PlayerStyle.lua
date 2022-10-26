@@ -495,10 +495,7 @@ function PlayerStyle:loadClothing(xmlFile, rootKey, itemKey, configName, isColor
 			end
 		end)
 		xmlFile:iterate(key .. ".extent", function (_, eKey)
-			if item.extents == nil then
-				item.extents = {}
-			end
-
+			item.extents = item.extents or {}
 			local node = xmlFile:getString(eKey .. "#node")
 			local typ = xmlFile:getString(eKey .. "#type")
 			item.extents[typ] = node
@@ -1297,18 +1294,6 @@ function PlayerStyle:getPossibleHairStyles()
 	return possible
 end
 
-function PlayerStyle:getHeadgearHair()
-	if self.hairStyleConfig.selection == 0 then
-		return 0
-	end
-
-	for index, style in ipairs(self.hairStyleConfig.items) do
-		if style.forHat then
-			return index
-		end
-	end
-end
-
 function PlayerStyle:getPossibleHeadgear()
 	local possible = {}
 
@@ -1489,7 +1474,7 @@ function PlayerStyle:getSlotUVs(slot)
 	local slotV = slot % PlayerStyle.ATLAS_ROWS
 	local u = slotU / PlayerStyle.ATLAS_COLUMNS
 	local v = slotV / PlayerStyle.ATLAS_ROWS
-	local uvs = GuiUtils.getNormalizedValues(u .. " " .. v .. " " .. " " .. 1 / PlayerStyle.ATLAS_COLUMNS .. " " .. 1 / PlayerStyle.ATLAS_ROWS, {
+	local uvs = GuiUtils.getNormalizedValues(u .. " " .. v .. " " .. 1 / PlayerStyle.ATLAS_COLUMNS .. " " .. 1 / PlayerStyle.ATLAS_ROWS, {
 		PlayerStyle.ATLAS_COLUMNS,
 		PlayerStyle.ATLAS_ROWS
 	})

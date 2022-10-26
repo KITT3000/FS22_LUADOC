@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 11
-g_gameVersionNotification = "1.7.1.0"
-g_gameVersionDisplay = "1.7.1.0"
+g_gameVersion = 13
+g_gameVersionNotification = "1.8.1.0"
+g_gameVersionDisplay = "1.8.1.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 69
+g_maxModDescVersion = 71
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -444,7 +444,8 @@ function init(args)
 	end
 
 	if g_isDevelopmentVersion then
-		caption = caption .. " - DevelopmentVersion"
+		local gameVersionText = g_gameVersionDisplay .. g_gameVersionDisplayExtra .. " (" .. getEngineRevision() .. "/" .. g_gameRevision .. ")"
+		caption = caption .. " - DevelopmentVersion - " .. gameVersionText
 	elseif g_addTestCommands then
 		caption = caption .. " - InternalVersion"
 	end

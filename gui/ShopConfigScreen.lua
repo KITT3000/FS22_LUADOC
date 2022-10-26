@@ -193,7 +193,7 @@ function ShopConfigScreen:createWorkshop(assetPath, posX, posY, posZ)
 	setVisibility(self.workshopRootNode, false)
 
 	self.loadRequestIdWorkshop = self.i3dManager:loadI3DFileAsync(assetPath, false, true, self.onWorkshopLoaded, self, nil)
-	self.loadRequestIdLicensePlateBox = self.i3dManager:loadI3DFileAsync(ShopConfigScreen.LICENSE_PLATE_PATH, false, true, self.onLicensePlateBoxLoaded, self, nil)
+	self.loadRequestIdLicensePlateBox = self.i3dManager:loadSharedI3DFileAsync(ShopConfigScreen.LICENSE_PLATE_PATH, false, true, self.onLicensePlateBoxLoaded, self, nil)
 end
 
 function ShopConfigScreen:onWorkshopLoaded(node, failedReason, args)
@@ -220,7 +220,6 @@ end
 
 function ShopConfigScreen:onLicensePlateBoxLoaded(node, failedReason, args)
 	if node ~= 0 then
-		self.loadRequestIdLicensePlateBox = nil
 		self.creationBox = node
 
 		setVisibility(node, false)
@@ -285,7 +284,7 @@ function ShopConfigScreen:delete()
 	end
 
 	if self.loadRequestIdLicensePlateBox ~= nil then
-		self.i3dManager:cancelStreamI3DFile(self.loadRequestIdLicensePlateBox)
+		self.i3dManager:releaseSharedI3DFile(self.loadRequestIdLicensePlateBox)
 	end
 
 	for _, element in ipairs(self.configItemCache) do
@@ -516,6 +515,14 @@ function ShopConfigScreen:processStoreItemBaleLoaderBaleSize(storeItem)
 	end
 end
 
+function ShopConfigScreen:processStoreItemWoodHarvesterMaxTreeSize(storeItem, realItem, saleItem)
+	if storeItem.specs ~= nil and storeItem.specs.woodHarvesterMaxTreeSize ~= nil then
+		return WoodHarvester.getSpecValueMaxTreeSize(storeItem, realItem, self.configurations, saleItem, false)
+	else
+		return nil
+	end
+end
+
 function ShopConfigScreen:processAttributeData(storeItem, vehicle, saleItem)
 	local dailyUpkeep = 0
 	local powerOutput = 0
@@ -535,7 +542,7 @@ function ShopConfigScreen:processAttributeData(storeItem, vehicle, saleItem)
 	local wheelNames = ""
 	local baleSize = ""
 	local baleSizeProfile = ShopConfigScreen.GUI_PROFILE.BALE_SIZE_ROUND
-	local wrapperBaleSizeRound, wrapperBaleSizeSquare, loaderBaleSizeRound, loaderBaleSizeSquare, storeItems = nil
+	local wrapperBaleSizeRound, wrapperBaleSizeSquare, loaderBaleSizeRound, loaderBaleSizeSquare, woodHarvesterMaxTreeSize, storeItems = nil
 
 	if storeItem.bundleInfo == nil then
 		storeItems = {
@@ -588,6 +595,7 @@ function ShopConfigScreen:processAttributeData(storeItem, vehicle, saleItem)
 		roundSize, squareSize = self:processStoreItemBaleLoaderBaleSize(item)
 		loaderBaleSizeRound = loaderBaleSizeRound or roundSize
 		loaderBaleSizeSquare = loaderBaleSizeSquare or squareSize
+		woodHarvesterMaxTreeSize = self:processStoreItemWoodHarvesterMaxTreeSize(item)
 	end
 
 	if vehicle ~= nil then
@@ -746,6 +754,15 @@ function ShopConfigScreen:processAttributeData(storeItem, vehicle, saleItem)
 		})
 	end
 
+	if woodHarvesterMaxTreeSize ~= nil then
+		table.insert(values, {
+			profile = ShopConfigScreen.GUI_PROFILE.MAX_TREE_SIZE,
+			value = woodHarvesterMaxTreeSize
+		})
+	end
+
+	self:registerCustomSpecValues(values, storeItems, vehicle, saleItem)
+
 	for _ = 1, #self.attributesLayout.elements do
 		self.attributesLayout.elements[1]:delete()
 	end
@@ -761,6 +778,9 @@ function ShopConfigScreen:processAttributeData(storeItem, vehicle, saleItem)
 	end
 
 	self.attributesLayout:invalidateLayout()
+end
+
+function ShopConfigScreen:registerCustomSpecValues(values, storeItems, vehicle, saleItem)
 end
 
 function ShopConfigScreen:getConfigurationCostsAndChanges(storeItem, vehicle, saleItem)
@@ -963,7 +983,7 @@ function ShopConfigScreen:loadCurrentConfiguration(storeItem, vehicleIndex, offs
 				for i, component in ipairs(preVehicle.components) do
 					lastVehicleComponentPositions[i] = {
 						{
-							getTranslation(component.node)
+							getWorldTranslation(component.node)
 						},
 						{
 							getWorldRotation(component.node)
@@ -1237,7 +1257,7 @@ function ShopConfigScreen:unloadMapData()
 	end
 
 	if self.loadRequestIdLicensePlateBox ~= nil then
-		self.i3dManager:cancelStreamI3DFile(self.loadRequestIdLicensePlateBox)
+		self.i3dManager:releaseSharedI3DFile(self.loadRequestIdLicensePlateBox)
 
 		self.loadRequestIdLicensePlateBox = nil
 	end
@@ -1408,9 +1428,7 @@ end
 
 function ShopConfigScreen:processStoreItemConfigurationSet(storeItem, configSet, vehicle, saleItem)
 	local options = {}
-	local configurationTypes = self.configurationManager:getConfigurationTypes()
-	local configNames = {}
-	local subConfigIndex = 1
+	local configurationTypes = g_configurationManager:getSortedConfigurationTypes()
 
 	for _, configName in ipairs(configurationTypes) do
 		if self.configurationManager:getConfigurationAttribute(configName, "selectorType") ~= ConfigurationUtil.SELECTOR_COLOR then
@@ -1418,26 +1436,15 @@ function ShopConfigScreen:processStoreItemConfigurationSet(storeItem, configSet,
 			local subConfigItems = storeItem.subConfigurations[configName]
 
 			if subConfigItems ~= nil and #subConfigItems.subConfigValues > 1 then
-				table.insert(configNames, subConfigIndex, configName)
+				local option = self:processStoreItemSubConfigurationOption(storeItem, configName, vehicle, saleItem)
 
-				subConfigIndex = subConfigIndex + 1
+				table.insert(options, option)
 			elseif items ~= nil and #items > 1 and configSet.configurations[configName] == nil then
-				table.insert(configNames, configName)
+				local option = self:processStoreItemConfigurationOption(storeItem, configName, items, vehicle, nil, saleItem)
+
+				table.insert(options, option)
 			end
 		end
-	end
-
-	for i, configName in ipairs(configNames) do
-		local option = nil
-
-		if i < subConfigIndex then
-			option = self:processStoreItemSubConfigurationOption(storeItem, configName, vehicle, saleItem)
-		else
-			local items = storeItem.configurations[configName]
-			option = self:processStoreItemConfigurationOption(storeItem, configName, items, vehicle, nil, saleItem)
-		end
-
-		table.insert(options, option)
 	end
 
 	return options
@@ -1650,7 +1657,7 @@ function ShopConfigScreen:processStoreItemConfigurations(storeItem, vehicle, sal
 
 		self.colorPickers = {}
 		local colorPickerIndex = 1
-		local configurations = g_configurationManager:getConfigurationTypes()
+		local configurations = g_configurationManager:getSortedConfigurationTypes()
 
 		for i = 1, #configurations do
 			local configName = configurations[i]
@@ -2397,8 +2404,7 @@ function ShopConfigScreen:onStoreItemsReloaded()
 		self.needsRefocus = true
 		self.storeItem = g_storeManager:getItemByXMLFilename(self.storeItem.xmlFilename)
 
-		self:processStoreItemConfigurations(self.storeItem, self.vehicle, self.saleItem)
-		self:updateDisplay(self.storeItem, self.vehicle, self.saleItem)
+		self:setStoreItem(self.storeItem, nil, nil, nil, self.configurations)
 	end
 end
 
@@ -2684,9 +2690,10 @@ ShopConfigScreen.GUI_PROFILE = {
 	BALE_SIZE_SQUARE = "shopConfigAttributeIconBaleSizeSquare",
 	WHEELS = "shopConfigAttributeIconWheels",
 	CAPACITY = "shopConfigAttributeIconCapacity",
-	SHOP_MONEY = "shopMoney",
+	MAX_TREE_SIZE = "shopConfigAttributeIconMaxTreeSize",
 	POWER_REQUIREMENT = "shopConfigAttributeIconPowerReq",
 	WORKING_WIDTH = "shopConfigAttributeIconWorkingWidth",
+	SHOP_MONEY = "shopMoney",
 	BUTTON_BUY = "buttonBuy",
 	BUTTON_CONFIGURE = "buttonConfigurate",
 	TRANSMISSION = "shopConfigAttributeIconTransmission",

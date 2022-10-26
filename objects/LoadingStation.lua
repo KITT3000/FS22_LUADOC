@@ -31,7 +31,16 @@ function LoadingStation:load(components, xmlFile, key, customEnv, i3dMappings, r
 	self.hasStoragePerFarm = false
 
 	xmlFile:iterate(key .. ".loadTrigger", function (_, loadTriggerKey)
-		local loadTrigger = LoadTrigger.new(self.isServer, self.isClient)
+		local className = xmlFile:getValue(loadTriggerKey .. "#class", "LoadTrigger")
+		local class = ClassUtil.getClassObject(className)
+
+		if class == nil then
+			Logging.xmlError(xmlFile, "LoadTrigger class '%s' not defined", className, loadTriggerKey)
+
+			return
+		end
+
+		local loadTrigger = class.new(self.isServer, self.isClient)
 
 		if loadTrigger:load(components, xmlFile, loadTriggerKey, i3dMappings, self.rootNode) then
 			loadTrigger:setSource(self)
@@ -330,6 +339,14 @@ function LoadingStation:getAITargetPositionAndDirection(fillType)
 	return nil
 end
 
+function LoadingStation:setOwnerFarmId(farmId, noEventSend)
+	LoadingStation:superClass().setOwnerFarmId(self, farmId, noEventSend)
+
+	for _, loadTrigger in ipairs(self.loadTriggers) do
+		loadTrigger:setOwnerFarmId(farmId, true)
+	end
+end
+
 function LoadingStation.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#node", "Loading station node")
 	schema:register(XMLValueType.STRING, basePath .. "#stationName", "Station name", "LoadingStation")
@@ -338,4 +355,5 @@ function LoadingStation.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. "#fillTypes", "Basic supported filltypes")
 	schema:register(XMLValueType.STRING, basePath .. "#fillTypeCategories", "Basic supported filltype categories")
 	LoadTrigger.registerXMLPaths(schema, basePath .. ".loadTrigger(?)")
+	schema:register(XMLValueType.STRING, basePath .. ".loadTrigger(?)#class", "Name of load trigger class")
 end

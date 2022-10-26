@@ -660,7 +660,7 @@ end
 function TurnOnVehicle:getIsWorkModeChangeAllowed(superFunc)
 	local spec = self.spec_workMode
 
-	if spec.allowChangeWhileTurnedOn ~= nil and self:getIsTurnedOn() then
+	if spec.allowChangeWhileTurnedOn == false and self:getIsTurnedOn() then
 		return false
 	end
 

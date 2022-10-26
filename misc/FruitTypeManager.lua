@@ -602,7 +602,7 @@ function FruitTypeManager:getFruitTypeNameByIndex(index)
 end
 
 function FruitTypeManager:getFruitTypeByName(name)
-	return self.nameToFruitType[name and name:upper()]
+	return self.nameToFruitType[name and string.upper(name)]
 end
 
 function FruitTypeManager:getFruitTypes()
@@ -615,6 +615,46 @@ end
 
 function FruitTypeManager:getFruitTypeByFillTypeIndex(index)
 	return self.fruitTypes[self.fillTypeIndexToFruitTypeIndex[index]]
+end
+
+function FruitTypeManager:getIsFruitGrowing(index, growthState)
+	local fruitType = self:getFruitTypeByIndex(index)
+	local maxGrowingState = fruitType.minHarvestingGrowthState - 1
+
+	if fruitType.minPreparingGrowthState >= 0 then
+		maxGrowingState = math.min(maxGrowingState, fruitType.minPreparingGrowthState - 1)
+	end
+
+	return fruitType and growthState > 0 and growthState <= maxGrowingState
+end
+
+function FruitTypeManager:getIsFruitPreparableForHarvest(index, growthState)
+	local fruitType = self:getFruitTypeByIndex(index)
+
+	return fruitType and fruitType.minPreparingGrowthState >= 0 and fruitType.minPreparingGrowthState <= growthState and growthState <= fruitType.maxPreparingGrowthState
+end
+
+function FruitTypeManager:getIsFruitHarvestable(index, growthState)
+	local fruitType = self:getFruitTypeByIndex(index)
+
+	return fruitType and fruitType.minHarvestingGrowthState <= growthState and growthState <= fruitType.maxHarvestingGrowthState
+end
+
+function FruitTypeManager:getIsFruitWithered(index, growthState)
+	local fruitType = self:getFruitTypeByIndex(index)
+	local witheredState = fruitType.maxHarvestingGrowthState + 1
+
+	if fruitType.maxPreparingGrowthState >= 0 then
+		witheredState = fruitType.maxPreparingGrowthState + 1
+	end
+
+	return fruitType and growthState == witheredState
+end
+
+function FruitTypeManager:getIsFruitCut(index, growthState)
+	local fruitType = self:getFruitTypeByIndex(index)
+
+	return fruitType and growthState == fruitType.cutState
 end
 
 function FruitTypeManager:getFillTypeIndexByFruitTypeIndex(index)

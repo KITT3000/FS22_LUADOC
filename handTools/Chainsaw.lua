@@ -627,7 +627,7 @@ function Chainsaw:update(dt, allowInput)
 			self.speedFactor = math.min(self.speedFactor + dt / self.maxWorkTime, 1)
 
 			if not self.waitingForResetAfterCut then
-				local inRange = self.minCutDistance <= self.cutFocusDistance and self.cutFocusDistance < self.maxCutDistance
+				local inRange = self.minCutDistance <= self.cutFocusDistance and self.cutFocusDistance < self.maxCutDistance and self.ringSelector ~= nil
 				self.shouldDelimb = inRange
 
 				if (self.curSplitShape ~= nil or self.cutTimer == 0) and inRange then

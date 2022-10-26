@@ -97,34 +97,37 @@ end
 
 function VehicleSellingPoint:determineCurrentVehicles()
 	local vehicles = {}
+	local playerFarmId = g_currentMission:getFarmId()
 
-	for shapeId, inRange in pairs(self.vehicleShapesInRange) do
-		if inRange ~= nil and entityExists(shapeId) then
-			local vehicle = g_currentMission.nodeToObject[shapeId]
+	if playerFarmId ~= FarmManager.SPECTATOR_FARM_ID then
+		for shapeId, inRange in pairs(self.vehicleShapesInRange) do
+			if inRange ~= nil and entityExists(shapeId) then
+				local vehicle = g_currentMission.nodeToObject[shapeId]
 
-			if vehicle ~= nil then
-				local isRidable = SpecializationUtil.hasSpecialization(Rideable, vehicle.specializations)
+				if vehicle ~= nil then
+					local isRidable = SpecializationUtil.hasSpecialization(Rideable, vehicle.specializations)
 
-				if not isRidable and not vehicle.isPallet and vehicle.getSellPrice ~= nil and vehicle.price ~= nil then
-					local items = vehicle.rootVehicle:getChildVehicles()
+					if not isRidable and not vehicle.isPallet and vehicle.getSellPrice ~= nil and vehicle.price ~= nil then
+						local items = vehicle.rootVehicle:getChildVehicles()
 
-					for i = 1, #items do
-						local item = items[i]
+						for _, item in ipairs(items) do
+							local ownerFarmId = item:getOwnerFarmId()
 
-						if (self:getOwnerFarmId() == AccessHandler.EVERYONE or self:getOwnerFarmId() == item:getOwnerFarmId()) and g_currentMission.accessHandler:canPlayerAccess(item) then
-							table.addElement(vehicles, item)
+							if ownerFarmId == playerFarmId then
+								table.addElement(vehicles, item)
+							end
 						end
 					end
 				end
+			else
+				self.vehicleShapesInRange[shapeId] = nil
 			end
-		else
-			self.vehicleShapesInRange[shapeId] = nil
 		end
-	end
 
-	table.sort(vehicles, function (a, b)
-		return a.rootNode < b.rootNode
-	end)
+		table.sort(vehicles, function (a, b)
+			return a.rootNode < b.rootNode
+		end)
+	end
 
 	return vehicles
 end

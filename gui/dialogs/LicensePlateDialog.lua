@@ -120,7 +120,7 @@ function LicensePlateDialog:createKeyboards()
 
 	local function updateButtons(characterType, list)
 		for i = #list.elements, 1, -1 do
-			list:removeElement(list.elements[i])
+			list.elements[i]:delete()
 		end
 
 		local characters = font.charactersByType[characterType]

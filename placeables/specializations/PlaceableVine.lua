@@ -50,6 +50,7 @@ end
 
 function PlaceableVine.registerSavegameXMLPaths(schema, basePath)
 	schema:setXMLSpecializationType("Vine")
+	schema:register(XMLValueType.INT, basePath .. "#startGrowthState", "Vineyard start growth state")
 	schema:setXMLSpecializationType()
 end
 
@@ -170,6 +171,12 @@ function PlaceableVine:onLoad(savegame)
 
 		table.insert(spec.resetStates, resetState)
 	end)
+
+	spec.startGrowthState = nil
+
+	if savegame ~= nil then
+		spec.startGrowthState = savegame.xmlFile:getValue(savegame.key .. ".vine#startGrowthState")
+	end
 end
 
 function PlaceableVine:deleteSegment(superFunc, segment)
@@ -321,7 +328,11 @@ function PlaceableVine:onCreateSegmentPanel(isPreview, segment, panel, poleIndex
 			end
 		end
 
-		if not self.isLoadingFromSavegameXML then
+		if not self.isLoadingFromSavegameXML or spec.startGrowthState ~= nil then
+			if spec.startGrowthState ~= nil then
+				maxState = spec.startGrowthState
+			end
+
 			for i = 1, spec.numSections do
 				local section = data.sections[i]
 

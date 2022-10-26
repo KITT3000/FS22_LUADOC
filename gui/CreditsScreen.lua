@@ -624,7 +624,7 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
-		c = "Loïck Pardies",
+		c = "Loïck Ruß",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -1416,6 +1416,29 @@ function CreditsScreen:loadCredits()
 	})
 	table.insert(creditsTexts, {
 		c = "in shapes, colours and performance.",
+		t = CreditsScreen.DISCLAIMER
+	})
+	table.insert(creditsTexts, {
+		c = "",
+		t = CreditsScreen.DISCLAIMER
+	})
+	table.insert(creditsTexts, {
+		t = CreditsScreen.SEPARATOR
+	})
+	table.insert(creditsTexts, {
+		c = "The VOLVO trademarks (word and device),",
+		t = CreditsScreen.DISCLAIMER
+	})
+	table.insert(creditsTexts, {
+		c = "other related trademarks, if applicable, ",
+		t = CreditsScreen.DISCLAIMER
+	})
+	table.insert(creditsTexts, {
+		c = "and the Volvo designs are licensed by",
+		t = CreditsScreen.DISCLAIMER
+	})
+	table.insert(creditsTexts, {
+		c = "the AB Volvo Group.",
 		t = CreditsScreen.DISCLAIMER
 	})
 	table.insert(creditsTexts, {

@@ -81,7 +81,7 @@ function SellPlaceableEvent:run(connection)
 
 					state = SellPlaceableEvent.STATE_SUCCESS
 
-					g_currentMission:addMoney(sellPrice, self.placeable:getOwnerFarmId(), MoneyType.SHOP_PROPERTY_SELL, true)
+					g_currentMission:addMoney(sellPrice, self.placeable:getOwnerFarmId(), MoneyType.SHOP_PROPERTY_SELL, true, true)
 
 					if self.placeable:getSellAction() == Placeable.SELL_AND_SPECTATOR_FARM then
 						self.placeable:setOwnerFarmId(FarmManager.SPECTATOR_FARM_ID)

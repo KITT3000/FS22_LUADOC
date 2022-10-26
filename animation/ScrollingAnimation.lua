@@ -92,6 +92,7 @@ function ScrollingAnimation:load(xmlFile, key, rootNodes, owner, i3dMapping)
 		if owner[speedFuncStr] ~= nil then
 			self.speedFunc = owner[speedFuncStr]
 			self.speedFuncTarget = self.owner
+			self.speedFuncParam = xmlFile:getValue(key .. "#speedFuncParam")
 		else
 			Logging.xmlWarning(xmlFile, "Could not find speed function '%s' for scrolling animation '%s'!", speedFuncStr, key)
 		end
@@ -119,7 +120,7 @@ function ScrollingAnimation:update(dt)
 	end
 
 	if self.currentAlpha > 0 then
-		local speedFactor = self.speedFunc(self.speedFuncTarget)
+		local speedFactor = self.speedFunc(self.speedFuncTarget, self.speedFuncParam)
 		local x, y, z, w = getShaderParameter(self.node, self.shaderParameterName)
 
 		if self.shaderParameterComponent == 1 then
@@ -255,4 +256,5 @@ function ScrollingAnimation.registerAnimationClassXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#turnedOffSubDivisions", "Amount of sub divisions which have the same state", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. "#minAlphaForTurnOff", "Min. alpha for turn off (speed [0-1])", 0)
 	schema:register(XMLValueType.STRING, basePath .. "#speedFunc", "Lua speed function")
+	schema:register(XMLValueType.STRING, basePath .. "#speedFuncParam", "Additional string parameter that is passed to the speedFunc")
 end

@@ -13,7 +13,7 @@ StumpCutter = {
 		schema:register(XMLValueType.FLOAT, "vehicle.stumpCutter.cutNode(?)#cutSizeZ", "Cut size X", 1)
 		schema:register(XMLValueType.TIME, "vehicle.stumpCutter.cutNode(?)#maxCutTime", "Time until cut", 4)
 		schema:register(XMLValueType.TIME, "vehicle.stumpCutter.cutNode(?)#maxResetCutTime", "Time between cuts", 4)
-		schema:register(XMLValueType.FLOAT, "vehicle.stumpCutter.cutNode(?)#cutFullTreeThreshold", "Cut fill tree threshold", 0.4)
+		schema:register(XMLValueType.FLOAT, "vehicle.stumpCutter.cutNode(?)#cutFullTreeThreshold", "If the tree length below the cut node is smaller than this value it gets removed", 0.4)
 		schema:register(XMLValueType.FLOAT, "vehicle.stumpCutter.cutNode(?)#cutPartThreshold", "Cut part threshold", 0.2)
 		schema:register(XMLValueType.INT, "vehicle.stumpCutter.cutNode(?)#workAreaIndex", "Work area index")
 		schema:register(XMLValueType.TIME, "vehicle.stumpCutter.cutNode(?)#cutDuration", "Cut duration", 1)
@@ -204,7 +204,7 @@ function StumpCutter:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSe
 								self:crushSplitShape(cutNode.curSplitShape)
 
 								cutNode.curSplitShape = nil
-							elseif cutNode.cutPartThreshold <= lenAbove then
+							elseif cutNode.cutPartThreshold <= lenAbove and cutNode.cutPartThreshold <= lenBelow then
 								cutNode.nextCutTime = cutNode.maxCutTime
 								local curSplitShape = cutNode.curSplitShape
 								cutNode.curSplitShape = nil

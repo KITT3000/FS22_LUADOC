@@ -117,6 +117,9 @@ end
 function ConstructionBrush:onButtonTertiary()
 end
 
+function ConstructionBrush:onButtonSnapping()
+end
+
 function ConstructionBrush:onAxisPrimary(inputValue)
 end
 
@@ -145,6 +148,10 @@ end
 
 function ConstructionBrush:getAxisSecondaryText()
 	return "SECONDARY AXIS"
+end
+
+function ConstructionBrush:getButtonSnappingText()
+	return "SNAPPING"
 end
 
 function ConstructionBrush:setActiveSound(soundId, pitchModifier)

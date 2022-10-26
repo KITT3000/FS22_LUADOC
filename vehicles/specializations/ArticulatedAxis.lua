@@ -276,9 +276,9 @@ function ArticulatedAxis:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
 		if self.isServer then
 			setRotation(spec.rotationNode, 0, steeringAngle, 0)
 			self:setComponentJointFrame(spec.componentJoint, spec.anchorActor)
-
-			spec.curRot = steeringAngle
 		end
+
+		spec.curRot = steeringAngle
 
 		if self.isClient then
 			local percent = 0

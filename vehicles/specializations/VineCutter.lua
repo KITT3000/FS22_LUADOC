@@ -27,6 +27,7 @@ end
 function VineCutter.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", VineCutter)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostLoad", VineCutter)
+	SpecializationUtil.registerEventListener(vehicleType, "onDraw", VineCutter)
 	SpecializationUtil.registerEventListener(vehicleType, "onTurnedOff", VineCutter)
 end
 
@@ -42,11 +43,21 @@ function VineCutter:onLoad(savegame)
 	end
 
 	spec.outputFillTypeIndex = g_fruitTypeManager:getFillTypeIndexByFruitTypeIndex(spec.inputFruitTypeIndex)
+	spec.showFarmlandNotOwnedWarning = false
+	spec.warningYouDontHaveAccessToThisLand = g_i18n:getText("warning_youDontHaveAccessToThisLand")
 end
 
 function VineCutter:onPostLoad(savegame)
 	if self.addCutterToCombine ~= nil then
 		self:addCutterToCombine(self)
+	end
+end
+
+function VineCutter:onDraw(isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	local spec = self.spec_vineCutter
+
+	if spec.showFarmlandNotOwnedWarning then
+		g_currentMission:showBlinkingWarning(spec.warningYouDontHaveAccessToThisLand)
 	end
 end
 
@@ -58,6 +69,8 @@ function VineCutter:onTurnedOff()
 	if spec.lastHarvestingPlaceable ~= nil and spec.lastHarvestingNode ~= nil then
 		spec.lastHarvestingPlaceable:setShakingFactor(spec.lastHarvestingNode, 0, 0, 0, 0)
 	end
+
+	spec.showFarmlandNotOwnedWarning = false
 end
 
 function VineCutter:getCanStartVineDetection(superFunc)
@@ -93,7 +106,34 @@ function VineCutter:getIsValidVinePlaceable(superFunc, placeable)
 end
 
 function VineCutter:handleVinePlaceable(superFunc, node, placeable, x, y, z, distance)
+	local spec = self.spec_vineCutter
+	spec.showFarmlandNotOwnedWarning = false
+
 	if not superFunc(self, node, placeable, x, y, z, distance) then
+		return false
+	end
+
+	local farmlandId = g_farmlandManager:getFarmlandIdAtWorldPosition(x, z)
+
+	if farmlandId == nil then
+		spec.showFarmlandNotOwnedWarning = true
+
+		return false
+	end
+
+	if farmlandId == FarmlandManager.NOT_BUYABLE_FARM_ID then
+		spec.showFarmlandNotOwnedWarning = true
+
+		return false
+	end
+
+	local landOwner = g_farmlandManager:getFarmlandOwner(farmlandId)
+	local farmId = self:getOwnerFarmId()
+	local accessible = landOwner ~= 0 and g_currentMission.accessHandler:canFarmAccessOtherId(farmId, landOwner)
+
+	if not accessible then
+		spec.showFarmlandNotOwnedWarning = true
+
 		return false
 	end
 
@@ -108,10 +148,10 @@ function VineCutter:handleVinePlaceable(superFunc, node, placeable, x, y, z, dis
 	end
 
 	if placeable ~= nil then
-		local spec = self.spec_vineCutter
 		local startPosX, startPosY, startPosZ = self:getFirstVineHitPosition()
 		local currentPosX, currentPosY, currentPosZ = self:getCurrentVineHitPosition()
 		spec.currentCombineVehicle = combineVehicle
+		spec.lastTouchedFarmlandFarmId = landOwner
 
 		placeable:harvestVine(node, startPosX, startPosY, startPosZ, currentPosX, currentPosY, currentPosZ, self.harvestCallback, self)
 		placeable:setShakingFactor(node, currentPosX, currentPosY, currentPosZ, 1)
@@ -140,6 +180,7 @@ function VineCutter:clearCurrentVinePlaceable(superFunc)
 
 	spec.lastHarvestingPlaceable = nil
 	spec.lastHarvestingNode = nil
+	spec.showFarmlandNotOwnedWarning = false
 end
 
 function VineCutter:harvestCallback(placeable, area, totalArea, weedFactor, sprayFactor, plowFactor, sectionLength)
@@ -150,11 +191,10 @@ function VineCutter:harvestCallback(placeable, area, totalArea, weedFactor, spra
 	local beeYieldBonusPerc = 0
 	local multiplier = g_currentMission:getHarvestScaleMultiplier(spec.inputFruitTypeIndex, sprayFactor, plowFactor, limeFactor, weedFactor, stubbleTillageFactor, rollerFactor, beeYieldBonusPerc)
 	local realArea = area * multiplier
-	local farmId = placeable:getOwnerFarmId()
 
-	spec.currentCombineVehicle:addCutterArea(area, realArea, spec.inputFruitTypeIndex, spec.outputFillTypeIndex, 0, nil, farmId, 1)
+	spec.currentCombineVehicle:addCutterArea(area, realArea, spec.inputFruitTypeIndex, spec.outputFillTypeIndex, 0, nil, spec.lastTouchedFarmlandFarmId, 1)
 
-	local stats = g_currentMission:farmStats(farmId)
+	local stats = g_currentMission:farmStats(spec.lastTouchedFarmlandFarmId)
 
 	if spec.inputFruitTypeIndex == FruitType.GRAPE then
 		stats:updateStats("harvestedGrapes", sectionLength)

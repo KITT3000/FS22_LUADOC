@@ -3704,6 +3704,8 @@ function InputBinding:debugRenderInputContext(contextName)
 	contextName = contextName or self.currentContextName
 	local context = self.contexts[contextName] or {}
 
+	setTextBold(false)
+	setTextAlignment(RenderText.ALIGN_LEFT)
 	renderText(0.01, 0.98, 0.015, string.format("Context [%s]: previousContextName=%s, eventOrderCounter=%s", contextName, context.previousContextName, context.eventOrderCounter))
 
 	local posX = 0.01

@@ -108,6 +108,7 @@ function PlaceableAnimatedObjects:onPostFinalizePlacement()
 
 	for _, animatedObject in ipairs(spec.animatedObjects) do
 		animatedObject:register(true)
+		animatedObject:setOwnerFarmId(self.ownerFarmId, true)
 	end
 end
 

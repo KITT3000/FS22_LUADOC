@@ -3938,14 +3938,14 @@ function AttacherJoints.getAttacherJointCompatibility(vehicle, attacherJoint, in
 		end
 
 		if not found then
-			if attacherJoint.subTypeShowWarning then
+			if attacherJoint.subTypeShowWarning and inputAttacherJoint.subTypeShowWarning then
 				return false, vehicle.spec_attacherJoints.texts.warningToolNotCompatible
 			end
 
 			return false
 		end
 	elseif inputAttacherJoint.subTypes ~= nil then
-		if inputAttacherJoint.subTypeShowWarning then
+		if inputAttacherJoint.subTypeShowWarning and attacherJoint.subTypeShowWarning then
 			return false, vehicle.spec_attacherJoints.texts.warningToolNotCompatible
 		end
 

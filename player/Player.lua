@@ -335,6 +335,7 @@ function Player.new(isServer, isClient)
 	self.lastAnimPosX = 0
 	self.lastAnimPosY = 0
 	self.lastAnimPosZ = 0
+	self.maxPickableMass = Player.MAX_PICKABLE_OBJECT_MASS
 	self.walkDistance = 0
 	self.animUpdateTime = 0
 	self.allowPlayerPickUp = Platform.allowPlayerPickUp
@@ -501,6 +502,8 @@ function Player:delete()
 
 		self.foliageBendingId = nil
 	end
+
+	self.foliageBendingNode = nil
 
 	if self.isOwner then
 		removeConsoleCommand("gsPlayerFlightMode")
@@ -824,7 +827,6 @@ end
 
 function Player:updateWaterParams()
 	local x, y, z = getWorldTranslation(self.rootNode)
-	local yw = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, y, z)
 
 	g_currentMission.environmentAreaSystem:getWaterYAtWorldPositionAsync(x, y, z, function (_, waterY)
 		self.waterY = waterY or -2000
@@ -1397,6 +1399,10 @@ function Player:moveToAbsoluteInternal(x, y, z)
 	self.walkDistance = 0
 	local _ = nil
 	self.baseInformation.lastPositionX, _, self.baseInformation.lastPositionZ = getTranslation(self.graphicsRootNode)
+	self.baseInformation.isInWater = false
+	self.baseInformation.waterDepth = 0
+	self.baseInformation.wasInWater = false
+	self.waterY = -2000
 end
 
 function Player:drawUIInfo()
@@ -1628,15 +1634,15 @@ end
 function Player:consoleCommandToggleSuperStrongMode()
 	if self.superStrengthEnabled then
 		self.superStrengthEnabled = false
-		Player.MAX_PICKABLE_OBJECT_MASS = self.superStrengthPickupMassBackup
-		Player.MAX_PICKABLE_OBJECT_DISTANCE = self.superStrengthPickupDistanceBackup
+		self.maxPickableMass = self.superStrengthPickupMassBackup
 		self.superStrengthPickupMassBackup = nil
+		Player.MAX_PICKABLE_OBJECT_DISTANCE = self.superStrengthPickupDistanceBackup
 
 		return "Player now has normal strength"
 	else
 		self.superStrengthEnabled = true
-		self.superStrengthPickupMassBackup = Player.MAX_PICKABLE_OBJECT_MASS
-		Player.MAX_PICKABLE_OBJECT_MASS = 50
+		self.superStrengthPickupMassBackup = self.maxPickableMass
+		self.maxPickableMass = 50
 		self.superStrengthPickupDistanceBackup = Player.MAX_PICKABLE_OBJECT_DISTANCE
 		Player.MAX_PICKABLE_OBJECT_DISTANCE = 6
 
@@ -1976,18 +1982,14 @@ function Player:checkObjectInRange()
 end
 
 function Player:pickUpObjectRaycastCallback(hitObjectId, x, y, z, distance)
-	if hitObjectId ~= g_currentMission.terrainRootNode and Player.PICKED_UP_OBJECTS[hitObjectId] ~= true then
-		local rigidBodyType = getRigidBodyType(hitObjectId)
+	if hitObjectId ~= g_currentMission.terrainRootNode and hitObjectId ~= self.rootNode and Player.PICKED_UP_OBJECTS[hitObjectId] ~= true then
+		self.lastFoundAnyObject = hitObjectId
 
-		if rigidBodyType == RigidBodyType.DYNAMIC or rigidBodyType == RigidBodyType.KINEMATIC then
-			self.lastFoundAnyObject = hitObjectId
-
-			if not self.isServer then
-				return false
-			end
+		if not self.isServer then
+			return false
 		end
 
-		if self.isServer and rigidBodyType == RigidBodyType.DYNAMIC then
+		if self.isServer and getRigidBodyType(hitObjectId) == RigidBodyType.DYNAMIC then
 			local canBePickedUp = true
 			local object = g_currentMission:getNodeObject(hitObjectId)
 
@@ -2084,10 +2086,12 @@ function Player:pickUpObject(state, noEventSend)
 
 			constr:setTranslationLimitSpring(translationLimitSpring[1], translationLimitDamper[1], translationLimitSpring[2], translationLimitDamper[2], translationLimitSpring[3], translationLimitDamper[3])
 
-			local forceAcceleration = 4
-			local forceLimit = forceAcceleration * mass * 40
+			if not self.superStrengthEnabled then
+				local forceAcceleration = 4
+				local forceLimit = forceAcceleration * mass * 40
 
-			constr:setBreakable(forceLimit, forceLimit)
+				constr:setBreakable(forceLimit, forceLimit)
+			end
 
 			self.pickedUpObjectJointId = constr:finalize()
 
@@ -2144,7 +2148,7 @@ function Player:throwObject(noEventSend)
 		self:pickUpObject(false)
 
 		local mass = getMass(pickedUpObject)
-		local v = 8 * (1.1 - mass / Player.MAX_PICKABLE_OBJECT_MASS)
+		local v = 8 * (1.1 - mass / self.maxPickableMass)
 		local vx, vy, vz = localDirectionToWorld(self.cameraNode, 0, 0, -v)
 
 		setLinearVelocity(pickedUpObject, vx, vy, vz)
@@ -2173,11 +2177,11 @@ function Player:throwObject(noEventSend)
 				end
 			end
 		end
-	elseif self.isObjectInRange and self.lastFoundObject ~= nil and not self.isCarryingObject then
+	elseif self.isObjectInRange and self.lastFoundObject ~= nil and not self.isCarryingObject and entityExists(self.lastFoundObject) then
 		local mass = getMass(self.lastFoundObject)
 
-		if mass <= Player.MAX_PICKABLE_OBJECT_MASS then
-			local v = 8 * (1.1 - mass / Player.MAX_PICKABLE_OBJECT_MASS)
+		if mass <= self.maxPickableMass then
+			local v = 8 * (1.1 - mass / self.maxPickableMass)
 			local halfSqrt = 0.707106781
 			local vx, vy, vz = localDirectionToWorld(self.cameraNode, 0, halfSqrt * v, -halfSqrt * v)
 
@@ -2235,9 +2239,11 @@ function Player:updateSound()
 end
 
 function Player:updateFX()
-	local x, y, z = getWorldTranslation(self.rootNode)
+	if self.model.isLoaded then
+		local x, y, z = getWorldTranslation(self.rootNode)
 
-	self.model:updateFX(x, y, z, self.baseInformation.isInWater, self.baseInformation.plungedInWater, self.waterY)
+		self.model:updateFX(x, y, z, self.baseInformation.isInWater, self.baseInformation.plungedInWater, self.waterY)
+	end
 end
 
 function Player:movePlayer(dt, movementX, movementY, movementZ)
@@ -2444,18 +2450,16 @@ function Player:getDesiredSpeed()
 		local isCrouching = self.playerStateMachine:isActive("crouch")
 		local isFalling = self.playerStateMachine:isActive("fall")
 		local isUsingHandtool = self:hasHandtoolEquipped()
-		local baseSpeed = self.motionInformation.maxWalkingSpeed
+		local maxSpeed = self.motionInformation.maxWalkingSpeed
 
 		if isFalling then
-			baseSpeed = self.motionInformation.maxFallingSpeed
+			maxSpeed = self.motionInformation.maxFallingSpeed
 		elseif isSwimming then
-			baseSpeed = self.motionInformation.maxSwimmingSpeed
+			maxSpeed = self.motionInformation.maxSwimmingSpeed
 		elseif isCrouching then
-			baseSpeed = self.motionInformation.maxCrouchingSpeed
+			maxSpeed = self.motionInformation.maxCrouchingSpeed
 		end
 
-		local magnitude = math.sqrt(inputRight * inputRight + inputForward * inputForward)
-		local desiredSpeed = MathUtil.clamp(magnitude, 0, 1) * baseSpeed
 		local inputRun = self.inputInformation.runAxis
 
 		if inputRun > 0 and not isSwimming and not isCrouching and not isUsingHandtool then
@@ -2467,8 +2471,11 @@ function Player:getDesiredSpeed()
 				runningSpeed = self.motionInformation.maxCheatRunningSpeed
 			end
 
-			desiredSpeed = math.max(desiredSpeed + (runningSpeed - desiredSpeed) * MathUtil.clamp(inputRun, 0, 1), desiredSpeed)
+			maxSpeed = math.max(maxSpeed + (runningSpeed - maxSpeed) * math.min(inputRun, 1), maxSpeed)
 		end
+
+		local magnitude = math.sqrt(inputRight * inputRight + inputForward * inputForward)
+		local desiredSpeed = MathUtil.clamp(magnitude, 0, 1) * maxSpeed
 
 		return desiredSpeed
 	end
@@ -2900,6 +2907,11 @@ end
 
 function Player:rotateObject(inputValue, axisX, axisY, axisZ)
 	local jointIndex = self.pickedUpObjectJointId
+
+	if jointIndex == nil then
+		return
+	end
+
 	local actor = 0
 	local _, objectTransform = self.model:getKinematicHelpers()
 	local rotX, rotY, rotZ = localDirectionToLocal(self.cameraNode, objectTransform, axisX, axisY, axisZ)

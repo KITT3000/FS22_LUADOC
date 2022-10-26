@@ -1,26 +1,27 @@
 InGameMenuGeneralSettingsFrame = {}
 local InGameMenuGeneralSettingsFrame_mt = Class(InGameMenuGeneralSettingsFrame, TabbedMenuFrameElement)
 InGameMenuGeneralSettingsFrame.CONTROLS = {
-	CHECKBOX_RESET_CAMERA = "checkResetCamera",
+	CHECKBOX_WOOD_HARVESTER_AUTO_CUT = "checkWoodHarvesterAutoCut",
 	OPTION_VOICE_INPUT_SENSITIVITY = "multiVoiceInputSensitivity",
 	CHECKBOX_USE_EASY_ARM_CONTROLER = "checkUseEasyArmControl",
 	OPTION_REAL_BEACON_LIGHT = "multiRealBeaconLightBrightness",
+	CHECKBOX_INVERT_Y_LOOK = "checkInvertYLook",
 	CHECKBOX_AUTO_HELP = "checkAutoHelp",
 	CHECKBOX_SHOW_MULTIPLAYER_NAMES = "checkShowMultiplayerNames",
 	CHECKBOX_SHOW_FIELD_INFO = "checkShowFieldInfo",
-	CHECKBOX_INVERT_Y_LOOK = "checkInvertYLook",
 	OPTION_VOLUME_RADIO = "multiRadioVolume",
 	CHECKBOX_USE_MILES = "checkUseMiles",
 	OPTION_MONEY_UNIT = "multiMoneyUnit",
 	OPTION_VEHICLE_ARM_SENSITIVITY = "multiVehicleArmSensitivity",
-	OPTION_VOLUME_VOICE = "multiVolumeVoice",
+	OPTION_HUD_SPEED_GAUGE = "multiHudSpeedGauge",
 	OPTION_VOLUME_VEHICLE = "multiVehicleVolume",
 	CHECKBOX_SHOW_HELP_TRIGGER = "checkShowHelpTrigger",
 	OPTION_VOLUME_MASTER = "multiMasterVolume",
-	OPTION_HUD_SPEED_GAUGE = "multiHudSpeedGauge",
-	OPTION_INPUT_HELP_MODE = "multiInputHelpMode",
+	OPTION_VOLUME_VOICE = "multiVolumeVoice",
+	CHECKBOX_RESET_CAMERA = "checkResetCamera",
 	CHECKBOX_SHOW_TRIGGER_MARKER = "checkShowTriggerMarker",
 	CHECKBOX_IS_TRAIN_TABBABLE = "checkIsTrainTabbable",
+	OPTION_INPUT_HELP_MODE = "multiInputHelpMode",
 	OPTION_VOICE_MODE = "multiVoiceMode",
 	SETTINGS_CONTAINER = "settingsContainer",
 	BOX_LAYOUT = "boxLayout",
@@ -79,6 +80,7 @@ function InGameMenuGeneralSettingsFrame:initialize()
 	self.checkboxMapping[self.checkUseEasyArmControl] = SettingsModel.SETTING.EASY_ARM_CONTROL
 	self.checkboxMapping[self.checkIsTrainTabbable] = SettingsModel.SETTING.IS_TRAIN_TABBABLE
 	self.checkboxMapping[self.checkShowMultiplayerNames] = SettingsModel.SETTING.SHOW_MULTIPLAYER_NAMES
+	self.checkboxMapping[self.checkWoodHarvesterAutoCut] = SettingsModel.SETTING.WOOD_HARVESTER_AUTO_CUT
 
 	self.checkUseMiles:setTexts(self.settingsModel:getDistanceUnitTexts())
 	self.checkUseFahrenheit:setTexts(self.settingsModel:getTemperatureUnitTexts())
@@ -149,7 +151,7 @@ function InGameMenuGeneralSettingsFrame:onFrameOpen(element)
 	self.multiVoiceMode:setVisible(isMultiplayer)
 	self.multiVolumeVoiceInput:setVisible(isMultiplayer and VoiceChatUtil.getHasRecordingDevice() and not VoiceChatUtil.getIsVoiceRestricted())
 	self.checkShowMultiplayerNames:setVisible(isMultiplayer and not GS_IS_CONSOLE_VERSION)
-	self.multiRealBeaconLightBrightness:setVisible(GS_PLATFORM_PC)
+	self.multiRealBeaconLightBrightness:setVisible(g_beaconLightManager:getNumOfLights() > 0)
 	self.checkCameraCheckCollision:setVisible(g_modIsLoaded.FS22_disableVehicleCameraCollision)
 	self.multiVoiceInputSensitivity:setVisible(isMultiplayer)
 	self.boxLayout:invalidateLayout()

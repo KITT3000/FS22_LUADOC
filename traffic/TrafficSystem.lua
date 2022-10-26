@@ -30,7 +30,10 @@ function TrafficSystem.new(isServer, isClient, customMt)
 	local self = Object.new(isServer, isClient, customMt or TrafficSystem_mt)
 	self.trafficSystemId = nil
 	self.isEnabled = false
+	self.debugIsEnabled = false
 	self.trafficSystemDirtyFlag = self:getNextDirtyFlag()
+
+	addConsoleCommand("gsTrafficSystemToggleDebug", "Enables debug rendering for the collision geometry", "consoleCommandToggleDebugRendering", self)
 
 	return self
 end
@@ -70,6 +73,7 @@ function TrafficSystem:delete()
 		g_currentMission.trafficSystem = nil
 	end
 
+	removeConsoleCommand("gsTrafficSystemToggleDebug")
 	g_messageCenter:unsubscribeAll(self)
 	g_soundManager:removeIndoorStateChangedListener(self)
 end
@@ -152,4 +156,14 @@ function TrafficSystem:getSplineByIndex(splineIndex)
 	end)
 
 	return foundSpine
+end
+
+function TrafficSystem:consoleCommandToggleDebugRendering()
+	self.debugIsEnabled = not self.debugIsEnabled
+
+	if self.trafficSystemId ~= nil then
+		setTrafficSystemRenderCollisionGeometry(self.trafficSystemId, self.debugIsEnabled)
+	end
+
+	return "TrafficSystem Debug: " .. tostring(self.debugIsEnabled)
 end

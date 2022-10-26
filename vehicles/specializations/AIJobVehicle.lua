@@ -359,6 +359,10 @@ function AIJobVehicle:getCanStartAIVehicle()
 		return false
 	end
 
+	if self:getOwnerFarmId() == AccessHandler.EVERYONE then
+		return false
+	end
+
 	if not self.spec_aiJobVehicle.supportsAIJobs then
 		return false
 	end

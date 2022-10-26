@@ -19,6 +19,7 @@ ConstructionBrushFence.ERROR_MESSAGES = {
 ConstructionBrushFence.MINIMUM_LENGTH = 0.5
 ConstructionBrushFence.MINIMUM_ANGLE = math.rad(30)
 ConstructionBrushFence.SNAP_DISTANCE = 0.4
+ConstructionBrushFence.LAST_SNAPPING_STATE = false
 
 function ConstructionBrushFence.new(subclass_mt, cursor)
 	local self = ConstructionBrushFence:superClass().new(subclass_mt or ConstructionBrushFence_mt, cursor)
@@ -29,6 +30,10 @@ function ConstructionBrushFence.new(subclass_mt, cursor)
 	self.requiredPermission = Farm.PERMISSION.BUY_PLACEABLE
 	self.parallelSnappingEnabled = false
 	self.doFindPlaceable = false
+	self.supportsSnapping = true
+	self.snappingActive = ConstructionBrushFence.LAST_SNAPPING_STATE
+	self.snappingAngleDeg = 7.5
+	self.snappingSize = 0.25
 
 	return self
 end
@@ -259,6 +264,12 @@ function ConstructionBrushFence:getSnappedCursorPosition()
 		end
 
 		return px, py, pz, true, segment
+	end
+
+	if self.snappingActive then
+		local snapSize = 1 / self.snappingSize
+		x = math.floor(x * snapSize) / snapSize
+		z = math.floor(z * snapSize) / snapSize
 	end
 
 	return x, y, z, false
@@ -508,7 +519,7 @@ function ConstructionBrushFence:update(dt)
 	local segment = self.fence:getPreviewSegment()
 
 	if x ~= nil and segment ~= nil then
-		if segment.x2 ~= x and segment.z2 ~= z then
+		if segment.x2 ~= x or segment.z2 ~= z then
 			segment.x2 = x
 			segment.z2 = z
 
@@ -667,6 +678,13 @@ function ConstructionBrushFence:onButtonTertiary()
 	end
 end
 
+function ConstructionBrushFence:onButtonSnapping()
+	self.snappingActive = not self.snappingActive
+	ConstructionBrushFence.LAST_SNAPPING_STATE = self.snappingActive
+
+	self:setInputTextDirty()
+end
+
 function ConstructionBrushFence:cancel()
 	self:onButtonSecondary()
 end
@@ -685,4 +703,8 @@ function ConstructionBrushFence:getButtonTertiaryText()
 	else
 		return nil
 	end
+end
+
+function ConstructionBrushFence:getButtonSnappingText()
+	return string.format("%s (%s)", g_i18n:getText("input_CONSTRUCTION_ACTION_SNAPPING"), g_i18n:getText(self.snappingActive and "ui_on" or "ui_off"))
 end

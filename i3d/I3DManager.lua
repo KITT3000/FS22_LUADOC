@@ -142,6 +142,10 @@ function I3DManager:releaseSharedI3DFile(sharedLoadRequestId, warnIfInvalid)
 	if sharedLoadRequestId ~= nil then
 		warnIfInvalid = Utils.getNoNil(warnIfInvalid, false)
 
+		if g_isDevelopmentVersion then
+			-- Nothing
+		end
+
 		releaseSharedI3DFile(sharedLoadRequestId, warnIfInvalid)
 	else
 		Logging.error("I3DManager:releaseSharedI3DFile - sharedLoadRequestId is nil")

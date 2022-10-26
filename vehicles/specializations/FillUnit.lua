@@ -45,6 +45,7 @@ function FillUnit.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.storeData.specs.capacity", "Capacity")
 	FillUnit.registerUnitDisplaySchema(schema, "vehicle.storeData.specs.capacity")
 	schema:register(XMLValueType.BOOL, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#removeVehicleIfEmpty", "Remove vehicle if unit empty", false)
+	schema:register(XMLValueType.FLOAT, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#removeVehicleThreshold", "Remove vehicle if empty threshold in liters", 0.3)
 	schema:register(XMLValueType.TIME, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#removeVehicleDelay", "Delay for vehicle removal (e.g. can be used while sounds are still playing)", 0)
 	schema:register(XMLValueType.BOOL, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#allowFoldingWhileFilled", "Allow folding while filled", true)
 	schema:register(XMLValueType.FLOAT, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#allowFoldingThreshold", "Allow folding threshold", 0.0001)
@@ -254,6 +255,7 @@ function FillUnit:onLoad(savegame)
 	ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.fillUnit.fillUnitConfigurations.fillUnitConfiguration", fillUnitConfigurationId, self.components, self)
 
 	spec.removeVehicleIfEmpty = self.xmlFile:getValue(baseKey .. "#removeVehicleIfEmpty", false)
+	spec.removeVehicleThreshold = self.xmlFile:getValue(baseKey .. "#removeVehicleThreshold", 0.3)
 	spec.removeVehicleDelay = self.xmlFile:getValue(baseKey .. "#removeVehicleDelay", 0)
 	spec.allowFoldingWhileFilled = self.xmlFile:getValue(baseKey .. "#allowFoldingWhileFilled", true)
 	spec.allowFoldingThreshold = self.xmlFile:getValue(baseKey .. "#allowFoldingThreshold", 0.0001)
@@ -1365,7 +1367,7 @@ function FillUnit:addFillUnitFillLevel(farmId, fillUnitIndex, fillLevelDelta, fi
 
 		SpecializationUtil.raiseEvent(self, "onFillUnitFillLevelChanged", fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData, appliedDelta)
 
-		if self.isServer and spec.removeVehicleIfEmpty and fillUnit.fillLevel <= 0.3 then
+		if self.isServer and spec.removeVehicleIfEmpty and fillUnit.fillLevel <= spec.removeVehicleThreshold then
 			if spec.removeVehicleDelay == 0 then
 				g_currentMission:removeVehicle(self)
 			else

@@ -57,6 +57,7 @@ end
 
 function TreePlantManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 	TreePlantManager:superClass().loadMapData(self)
+	addConsoleCommand("gsTreeCut", "Cut all trees and a given radius", "consoleCommandCutTrees", self)
 	self:loadDefaultTypes(missionInfo, baseDirectory)
 
 	return XMLUtil.loadDataFromMapXML(xmlFile, "treeTypes", baseDirectory, self, self.loadTreeTypes, missionInfo, baseDirectory)
@@ -69,6 +70,7 @@ function TreePlantManager:unloadMapData()
 		self.treeFileCache[i3dFilename] = true
 	end
 
+	removeConsoleCommand("gsTreeCut")
 	self:deleteTreesData()
 	TreePlantManager:superClass().unloadMapData(self)
 end
@@ -492,6 +494,24 @@ function TreePlantManager:updateTrees(dt, dtGame)
 		end
 	end
 
+	if self.commandCutTreeData ~= nil then
+		if #self.commandCutTreeData.trees > 0 then
+			local treeId = self.commandCutTreeData.trees[1]
+			local x, y, z = getWorldTranslation(treeId)
+			local localX, localY, localZ = worldToLocal(treeId, x, y + 0.5, z)
+			local cx, cy, cz = localToWorld(treeId, localX - 2, localY, localZ - 2)
+			local nx, ny, nz = localDirectionToWorld(treeId, 0, 1, 0)
+			local yx, yy, yz = localDirectionToWorld(treeId, 0, 0, 1)
+			self.commandCutTreeData.shapeBeingCut = treeId
+
+			Logging.info("Cut tree '%s' (%d left)", getName(treeId), #self.commandCutTreeData.trees - 1)
+			splitShape(treeId, cx, cy, cz, nx, ny, nz, yx, yy, yz, 4, 4, "onTreeCutCommandSplitCallback", self)
+			table.remove(self.commandCutTreeData.trees, 1)
+		else
+			self.commandCutTreeData = nil
+		end
+	end
+
 	self.updateDecayDtGame = self.updateDecayDtGame + dtGame
 
 	if TreePlantManager.DECAY_INTERVAL < self.updateDecayDtGame then
@@ -752,11 +772,31 @@ function TreePlantManager:getTreeTypeDescFromIndex(index)
 	return nil
 end
 
+function TreePlantManager:getTreeTypeNameFromIndex(index)
+	if self.treeTypes ~= nil and self.treeTypes[index] ~= nil then
+		return self.treeTypes[index].name
+	end
+
+	return nil
+end
+
 function TreePlantManager:getTreeTypeDescFromName(name)
 	if self.nameToTreeType ~= nil and name ~= nil then
 		name = name:upper()
 
 		return self.nameToTreeType[name]
+	end
+
+	return nil
+end
+
+function TreePlantManager:getTreeTypeIndexFromName(name)
+	if self.nameToTreeType ~= nil and name ~= nil then
+		name = name:upper()
+
+		if self.nameToTreeType[name] ~= nil then
+			return self.nameToTreeType[name].index
+		end
 	end
 
 	return nil
@@ -789,7 +829,7 @@ function TreePlantManager:addingSplitShape(shape, oldShape, fromTree)
 	elseif fromTree then
 		state = 1
 		local x, y, z = getWorldTranslation(shape)
-		variation = x + y + z
+		variation = math.abs(x) + math.abs(y) + math.abs(z)
 	else
 		state = 0
 		variation = 80
@@ -813,6 +853,30 @@ end
 
 function TreePlantManager:setSplitShapeLeafScaleAndVariation(shape, scale, variation)
 	I3DUtil.setShaderParameterRec(shape, "windSnowLeafScale", 0, 0, scale, variation)
+end
+
+function TreePlantManager:consoleCommandCutTrees(radius)
+	radius = tonumber(radius or "50")
+	self.commandCutTreeData = {
+		trees = {}
+	}
+	local x, y, z = getWorldTranslation(getCamera())
+
+	overlapSphere(x, y, z, radius, "onTreeCutCommandOverlapCallback", self, CollisionFlag.TREE, false, true, false, false)
+
+	return string.format("Found %d trees to cut", #self.commandCutTreeData.trees)
+end
+
+function TreePlantManager:onTreeCutCommandOverlapCallback(objectId, ...)
+	if getHasClassId(objectId, ClassIds.SHAPE) and getSplitType(objectId) ~= 0 and getRigidBodyType(objectId) == RigidBodyType.STATIC and not getIsSplitShapeSplit(objectId) then
+		table.insert(self.commandCutTreeData.trees, objectId)
+	end
+end
+
+function TreePlantManager:onTreeCutCommandSplitCallback(shape, isBelow, isAbove, minY, maxY, minZ, maxZ)
+	rotate(shape, 0.1, 0, 0)
+	g_currentMission:addKnownSplitShape(shape)
+	self:addingSplitShape(shape, self.commandCutTreeData.shapeBeingCut, true)
 end
 
 g_treePlantManager = TreePlantManager.new()

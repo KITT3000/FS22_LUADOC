@@ -121,6 +121,7 @@ function Placeable.init()
 	savegameSchema:register(XMLValueType.INT, "placeables#version", "Version of map placeables file")
 	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. "#name", "Custom name set by player to be used instead of store item name")
 	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. "#mapBoundId", "Map bound identifier (defines that a placeable is placed on a map directly, and with a unique ID)")
+	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. ".customImage#filename", "Path to a custom image file")
 	savegameSchema:register(XMLValueType.VECTOR_TRANS, basePathSavegame .. "#position", "Position")
 	savegameSchema:register(XMLValueType.VECTOR_ROT, basePathSavegame .. "#rotation", "Rotation")
 	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. "#filename", "Path to xml filename")
@@ -241,6 +242,8 @@ function Placeable:load(placeableData, asyncCallbackFunction, asyncCallbackObjec
 
 		return
 	end
+
+	self.customImageFilename = nil
 
 	for funcName, func in pairs(typeDef.functions) do
 		self[funcName] = func
@@ -366,6 +369,12 @@ function Placeable:onFinishedLoading()
 
 		self.isLoadingFromSavegameXML = false
 		self.mapBoundId = self.savegame.xmlFile:getValue(self.savegame.key .. "#mapBoundId", self.mapBoundId)
+		self.customImageFilename = self.savegame.xmlFile:getValue(self.savegame.key .. ".customImage#filename", self.customImageFilename)
+
+		if self.customImageFilename ~= nil then
+			self.customImageFilename = NetworkUtil.convertFromNetworkFilename(self.customImageFilename)
+		end
+
 		self.name = self.savegame.xmlFile:getValue(self.savegame.key .. "#name")
 		self.age = self.savegame.xmlFile:getValue(self.savegame.key .. "#age", 0)
 		self.price = self.savegame.xmlFile:getValue(self.savegame.key .. "#price", self.price)
@@ -626,6 +635,10 @@ function Placeable:postReadStream(streamId, connection)
 		self:setName(streamReadString(streamId), true)
 	end
 
+	if streamReadBool(streamId) then
+		self.customImageFilename = NetworkUtil.convertFromNetworkFilename(streamReadString(streamId))
+	end
+
 	self:setLoadingStep(Placeable.LOAD_STEP_SYNCHRONIZED)
 	self:raiseActive()
 end
@@ -648,6 +661,10 @@ function Placeable:postWriteStream(streamId, connection)
 
 	if streamWriteBool(streamId, self.name ~= nil) then
 		streamWriteString(streamId, self.name)
+	end
+
+	if streamWriteBool(streamId, self.customImageFilename ~= nil) then
+		streamWriteString(streamId, NetworkUtil.convertToNetworkFilename(self.customImageFilename))
 	end
 end
 
@@ -705,6 +722,10 @@ function Placeable:saveToXMLFile(xmlFile, key, usedModNames)
 		xmlFile:setValue(key .. "#mapBoundId", self.mapBoundId)
 	end
 
+	if self.customImageFilename ~= nil then
+		xmlFile:setValue(key .. ".customImage#filename", HTMLUtil.encodeToHTML(NetworkUtil.convertToNetworkFilename(self.customImageFilename)))
+	end
+
 	for id, spec in pairs(self.specializations) do
 		local name = self.specializationNames[id]
 
@@ -753,7 +774,7 @@ function Placeable:getName()
 end
 
 function Placeable:getImageFilename()
-	return self.storeItem.imageFilename
+	return self.customImageFilename or self.storeItem.imageFilename
 end
 
 function Placeable:getCanBeRenamedByFarm(farmId)

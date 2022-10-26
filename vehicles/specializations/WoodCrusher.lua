@@ -197,7 +197,7 @@ function WoodCrusher:onCrushedSplitShape(splitType, volume)
 		volume = volume * (1 - damage * WoodCrusher.DAMAGED_YIELD_DECREASE)
 	end
 
-	self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, volume * 1000 * splitType.woodChipsPerLiter, FillType.WOODCHIPS, ToolType.UNDEFINED)
+	self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, volume * splitType.volumeToLiter * splitType.woodChipsPerLiter, FillType.WOODCHIPS, ToolType.UNDEFINED)
 end
 
 function WoodCrusher:loadWoodCrusher(woodCrusher, xmlFile, rootNode, i3dMappings)

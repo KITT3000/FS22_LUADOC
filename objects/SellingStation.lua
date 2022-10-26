@@ -47,6 +47,7 @@ function SellingStation:load(components, xmlFile, key, customEnv, i3dMappings, r
 		end
 	end
 
+	self.fixedIncomeName = xmlFile:getValue(key .. "#incomeName", nil)
 	self.appearsOnStats = xmlFile:getValue(key .. "#appearsOnStats", false)
 	self.suppressWarnings = xmlFile:getValue(key .. "#suppressWarnings", false)
 	self.allowMissions = xmlFile:getValue(key .. "#allowMissions", true)
@@ -416,6 +417,10 @@ function SellingStation:getEffectiveFillTypePrice(fillType, toolType)
 end
 
 function SellingStation:getIncomeNameForFillType(fillType, toolType)
+	if self.fixedIncomeName ~= nil then
+		return self.fixedIncomeName
+	end
+
 	if toolType == ToolType.BALE then
 		return self.incomeNameBale
 	end
@@ -605,6 +610,7 @@ function SellingStation.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#fullPriceRecoverHours", "Full price recover ingame hours")
 	schema:register(XMLValueType.STRING, basePath .. "#fillTypeCategories", "Supported filltypes if no unloadtriggers defined")
 	schema:register(XMLValueType.STRING, basePath .. "#fillTypes", "Supported filltypes if no unloadtriggers defined")
+	schema:register(XMLValueType.STRING, basePath .. "#incomeName", "Income name for stats")
 	schema:register(XMLValueType.STRING, basePath .. ".fillType(?)#name", "Fill type name")
 	schema:register(XMLValueType.FLOAT, basePath .. ".fillType(?)#priceScale", "Price scale", 1)
 	schema:register(XMLValueType.BOOL, basePath .. ".fillType(?)#supportsGreatDemand", "Supports great demand", false)

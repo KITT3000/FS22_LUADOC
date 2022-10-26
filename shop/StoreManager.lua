@@ -131,7 +131,22 @@ function StoreManager:loadItemsFromXML(filename, baseDirectory, customEnvironmen
 		local extraContentId = xmlFile:getString(key .. "#extraContentId")
 
 		g_asyncTaskManager:addSubtask(function ()
-			self:loadItem(xmlFilename, baseDirectory, customEnvironment, false, false, "", extraContentId)
+			local isMod = false
+			local dlcTitle = ""
+			local absFilename = Utils.getFilename(xmlFilename, baseDirectory)
+			local modName, _ = Utils.getModNameAndBaseDirectory(absFilename)
+
+			if modName ~= nil then
+				local modItem = g_modManager:getModByName(modName)
+
+				if modItem ~= nil then
+					dlcTitle = modItem.title
+				end
+
+				isMod = not modItem.isDLC
+			end
+
+			self:loadItem(xmlFilename, baseDirectory, customEnvironment, isMod, false, dlcTitle, extraContentId)
 		end)
 	end)
 	xmlFile:delete()

@@ -4,7 +4,8 @@ InGameMenuHelpFrame.CONTROLS = {
 	"helpLineList",
 	"helpLineTitleElement",
 	"helpLineContentBox",
-	"helpLineContentItem"
+	"helpLineContentItem",
+	"helpLineContentItemTitle"
 }
 
 function InGameMenuHelpFrame.new(subclass_mt, l10n, helpLineManager)
@@ -43,6 +44,7 @@ end
 
 function InGameMenuHelpFrame:delete()
 	self.helpLineContentItem:delete()
+	self.helpLineContentItemTitle:delete()
 	InGameMenuHelpFrame:superClass().delete(self)
 end
 
@@ -62,6 +64,7 @@ end
 
 function InGameMenuHelpFrame:updateContents(page)
 	self.helpLineContentItem:unlinkElement()
+	self.helpLineContentItemTitle:unlinkElement()
 
 	for i = #self.helpLineContentBox.elements, 1, -1 do
 		self.helpLineContentBox.elements[i]:delete()
@@ -76,12 +79,27 @@ function InGameMenuHelpFrame:updateContents(page)
 	self.helpLineTitleElement:setText(self.helpLineManager:convertText(page.title, page.customEnvironment))
 
 	for _, paragraph in ipairs(page.paragraphs) do
+		if paragraph.title ~= nil then
+			local titleElement = self.helpLineContentItemTitle:clone(self.helpLineContentBox)
+
+			titleElement:setText(g_helpLineManager:convertText(paragraph.title, paragraph.customEnvironment))
+		end
+
 		local row = self.helpLineContentItem:clone(self.helpLineContentBox)
 		local textElement = row:getDescendantByName("text")
 		local textFullElement = row:getDescendantByName("textFullWidth")
 		local imageElement = row:getDescendantByName("image")
 		local textHeight = 0
 		local textHeightFullHeight = 0
+
+		if paragraph.noSpacing then
+			row.margin = {
+				0,
+				0,
+				0,
+				0
+			}
+		end
 
 		if paragraph.image ~= nil then
 			textFullElement:setVisible(false)
@@ -103,15 +121,26 @@ function InGameMenuHelpFrame:updateContents(page)
 				imageElement.originalWidth = imageElement.absSize[1]
 			end
 
-			if paragraph.text == nil then
+			if paragraph.image.displaySize ~= nil then
+				imageElement:setSize(paragraph.image.displaySize[1], paragraph.image.displaySize[2])
+			elseif paragraph.text == nil then
 				imageElement:setSize(row.absSize[1], row.absSize[1] * paragraph.image.aspectRatio * g_screenAspectRatio)
 			else
 				imageElement:setSize(imageElement.originalWidth, nil)
 			end
+
+			if paragraph.text ~= nil and paragraph.alignToImage then
+				textElement:setSize(nil, imageElement.size[2])
+
+				textElement.textVerticalAlignment = TextElement.VERTICAL_ALIGNMENT.MIDDLE
+			end
 		else
 			textElement:setVisible(false)
 			imageElement:setVisible(false)
-			textFullElement:setText(self.helpLineManager:convertText(paragraph.text, paragraph.customEnvironment))
+
+			if paragraph.text ~= nil then
+				textFullElement:setText(self.helpLineManager:convertText(paragraph.text, paragraph.customEnvironment))
+			end
 
 			textHeightFullHeight = textFullElement:getTextHeight(true)
 

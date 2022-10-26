@@ -11,28 +11,29 @@ InGameMenuMapFrame.CONTROLS = {
 	BUTTON_SELL_FARMLAND = "buttonSellFarmland",
 	BUTTON_RESET_VEHICLE = "buttonResetVehicle",
 	CONTEXT_TEXT = "contextText",
-	BUTTON_ENTER_VEHICLE = "buttonEnterVehicle",
+	BUTTON_SELECT = "buttonSelectIngame",
 	BUTTON_VISIT_PLACE = "buttonVisitPlace",
 	FILTER_BUTTON_TIPPING = "filterButtonTipping",
 	CONTEXT_IMAGE = "contextImage",
 	FILTER_BUTTON_ANIMALS = "filterButtonAnimals",
-	FILTER_BUTTON_TOOL = "filterButtonTool",
+	FARMLAND_ID_TEXT = "farmlandIdText",
 	SOIL_STATE_FILTER_TEXTS = "soilStateFilterText",
 	FILTER_BUTTON_FIELD_JOBS = "filterButtonContracts",
 	GROWTH_STATE_FILTER_BOX = "mapOverviewGrowthBox",
 	CONTEXT_BOX = "contextBox",
 	FILTER_BUTTON_PRODUCTION = "filterButtonProductions",
-	MAP_BOX = "mapBox",
+	FILTER_BUTTON_TOOL = "filterButtonTool",
 	GROWTH_STATE_FILTER_TEXTS = "growthStateFilterText",
+	MAP_BOX = "mapBox",
 	BUTTON_SWITCH_MAP_MODE = "buttonSwitchMapMode",
-	BUTTON_SELECT = "buttonSelectIngame",
+	BUTTON_ENTER_VEHICLE = "buttonEnterVehicle",
 	SOIL_STATE_FILTER_BOX = "mapOverviewSoilBox",
 	FILTER_PAGING = "filterPaging",
-	FILTER_BUTTON_OTHER = "filterButtonOther",
 	MAP_OVERVIEW_SELECTOR = "mapOverviewSelector",
-	BALANCE_TEXT = "balanceText",
+	FILTER_BUTTON_OTHER = "filterButtonOther",
 	MAP_CURSOR = "mapCursor",
 	DYNAMIC_MAP_IMAGE_LOADING = "dynamicMapImageLoading",
+	BALANCE_TEXT = "balanceText",
 	FILTER_BUTTON_COMBINE = "filterButtonCombine",
 	CROP_TYPE_FILTER_BOX = "mapOverviewFruitTypeBox",
 	BUTTON_SET_MARKER = "buttonSetMarker",
@@ -814,9 +815,6 @@ function InGameMenuMapFrame:toggleFarmlandsHotspotFilterSettings(isActive)
 			self.ingameMapBase:setHotspotFilter(k, false)
 		end
 
-		self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_FIELD, true)
-		self.ingameMapBase:setHotspotFilter(MapHotspot.CATEGORY_MISSION, true)
-
 		self.needsFilterReset = true
 	elseif self.needsFilterReset then
 		self.needsFilterReset = false
@@ -1169,8 +1167,46 @@ function InGameMenuMapFrame:onDrawPostIngameMap(element, ingameMap)
 
 		local width, height = self.ingameMapBase.fullScreenLayout:getMapSize()
 		local x, y = self.ingameMapBase.fullScreenLayout:getMapPosition()
+		local overlayX = x + width * 0.25
+		local overlayY = y + height * 0.25
 
-		renderOverlay(modeOverlay, x + width * 0.25, y + height * 0.25, width * 0.5, height * 0.5)
+		renderOverlay(modeOverlay, overlayX, overlayY, width * 0.5, height * 0.5)
+
+		if self.mode == InGameMenuMapFrame.MODE_FARMLANDS then
+			local terrainSize = g_currentMission.terrainSize
+			local terrainSizeHalf = terrainSize * 0.5
+			local xPixel = 1 / g_screenWidth
+			local yPixel = 1 / g_screenHeight
+			local textSize = getCorrectTextSize(0.018)
+
+			setTextBold(true)
+			setTextAlignment(RenderText.ALIGN_CENTER)
+			setTextVerticalAlignment(RenderText.VERTICAL_ALIGN_MIDDLE)
+
+			for _, farmland in pairs(g_farmlandManager:getFarmlands()) do
+				if farmland.showOnFarmlandsScreen then
+					local xOffset = width * 0.5 * (farmland.xWorldPos + terrainSizeHalf) / terrainSize
+					local yOffset = height * 0.5 * (1 - (farmland.zWorldPos + terrainSizeHalf) / terrainSize)
+					local xPos = overlayX + xOffset
+					local yPos = overlayY + yOffset
+
+					setTextColor(0, 0, 0, 1)
+					renderText(xPos + xPixel, yPos - yPixel, textSize, tostring(farmland.id))
+
+					if farmland == self.selectedFarmland then
+						setTextColor(0.0227, 0.5346, 0.8519, 1)
+					else
+						setTextColor(1, 1, 1, 1)
+					end
+
+					renderText(xPos, yPos, textSize, tostring(farmland.id))
+				end
+			end
+
+			setTextBold(false)
+			setTextAlignment(RenderText.VERTICAL_ALIGN_BASELINE)
+			setTextVerticalAlignment(RenderText.ALIGN_LEFT)
+		end
 	end
 end
 
@@ -1247,6 +1283,7 @@ function InGameMenuMapFrame:onClickMap(element, worldX, worldZ)
 					self.farmlandValueText:applyProfile(InGameMenuMapFrame.PROFILE.MONEY_VALUE_NEGATIVE)
 				end
 
+				self.farmlandIdText:setText(self.selectedFarmland.id)
 				self.farmlandValueText:setValue(self.selectedFarmland.price)
 				self.farmlandValueBox:setVisible(true)
 				self.farmlandValueBox:invalidateLayout()
@@ -1259,7 +1296,9 @@ function InGameMenuMapFrame:onClickMap(element, worldX, worldZ)
 				self:showContextInput(false, false, false, false, false, self.canBuy, self.canSell)
 			end
 		else
+			self:generateFarmlandOverlay(nil)
 			self:resetFarmlandSelection()
+			self:showContextInput(false, false, false, false, false, false, false)
 		end
 	end
 end

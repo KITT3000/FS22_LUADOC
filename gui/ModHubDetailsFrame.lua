@@ -215,6 +215,10 @@ function ModHubDetailsFrame:getMainElementPosition()
 end
 
 function ModHubDetailsFrame:onButtonBuy()
+	self:openShop(false)
+end
+
+function ModHubDetailsFrame:openShop(isUpdate)
 	local modInfo = self.currentModInfo
 	local url = modInfo:getDLCLink()
 
@@ -231,6 +235,12 @@ function ModHubDetailsFrame:onButtonBuy()
 			})
 		end
 	else
+		local hasSpecialDLCLink = GS_IS_STEAM_VERSION or GS_IS_EPIC_VERSION or GS_IS_MSSTORE_VERSION
+
+		if isUpdate and not hasSpecialDLCLink then
+			url = "updates.php"
+		end
+
 		openWebFile(url, "")
 	end
 end
@@ -288,7 +298,7 @@ end
 
 function ModHubDetailsFrame:onButtonUpdate()
 	if self.currentModInfo:getIsDLC() then
-		self:onButtonBuy()
+		self:openShop(true)
 	else
 		self.modHubController:update(self.currentModInfo:getId())
 	end

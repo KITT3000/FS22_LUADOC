@@ -71,6 +71,22 @@ function GuiElement.new(target, custom_mt)
 		0,
 		1
 	}
+	self.borders = {
+		0,
+		0,
+		1,
+		1
+	}
+	self.parentBorders = {
+		0,
+		0,
+		1,
+		1
+	}
+	self.center = {
+		0,
+		0
+	}
 	self.outputSize = {
 		g_referenceScreenWidth,
 		g_referenceScreenHeight
@@ -1221,28 +1237,23 @@ function GuiElement:getParentBorders()
 		return self.parent:getBorders()
 	end
 
-	return {
-		0,
-		0,
-		1,
-		1
-	}
+	return self.parentBorders
 end
 
 function GuiElement:getBorders()
-	return {
-		self.absPosition[1],
-		self.absPosition[2],
-		self.absPosition[1] + self.absSize[1],
-		self.absPosition[2] + self.absSize[2]
-	}
+	self.borders[1] = self.absPosition[1]
+	self.borders[2] = self.absPosition[2]
+	self.borders[3] = self.absPosition[1] + self.absSize[1]
+	self.borders[4] = self.absPosition[2] + self.absSize[2]
+
+	return self.borders
 end
 
 function GuiElement:getCenter()
-	return {
-		self.absPosition[1] + self.absSize[1] * 0.5,
-		self.absPosition[2] + self.absSize[2] * 0.5
-	}
+	self.center[1] = self.absPosition[1] + self.absSize[1] * 0.5
+	self.center[2] = self.absPosition[2] + self.absSize[2] * 0.5
+
+	return self.center
 end
 
 function GuiElement:getAspectScale()

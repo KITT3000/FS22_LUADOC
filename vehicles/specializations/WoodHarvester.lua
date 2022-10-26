@@ -1,60 +1,72 @@
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterCutTreeEvent.lua")
+source("dataS/scripts/vehicles/specializations/events/WoodHarvesterHeaderTiltEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterOnCutTreeEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterOnDelimbTreeEvent.lua")
 
 WoodHarvester = {
+	HEADER_JOINT_TILT_XML_KEY = "vehicle.woodHarvester.headerJointTilt",
 	prerequisitesPresent = function (specializations)
 		return SpecializationUtil.hasSpecialization(TurnOnVehicle, specializations)
-	end,
-	initSpecialization = function ()
-		local schema = Vehicle.xmlSchema
-
-		schema:setXMLSpecializationType("WoodHarvester")
-		schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.cutNode#node", "Cut node")
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#maxRadius", "Max. radius", 1)
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#sizeY", "Size Y", 1)
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#sizeZ", "Size Z", 1)
-		schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.cutNode#attachNode", "Attach node")
-		schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.cutNode#attachReferenceNode", "Attach reference node")
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#attachMoveSpeed", "Attach move speed", 3)
-		schema:register(XMLValueType.INT, "vehicle.woodHarvester.cutNode#releasedComponentJointIndex", "Released component joint")
-		schema:register(XMLValueType.ANGLE, "vehicle.woodHarvester.cutNode#releasedComponentJointRotLimitXSpeed", "Released component joint rot limit X speed", 100)
-		schema:register(XMLValueType.INT, "vehicle.woodHarvester.cutNode#releasedComponentJoint2Index", "Released component joint 2")
-		schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.delimbNode#node", "Delimb node")
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.delimbNode#sizeX", "Delimb size X", 0.1)
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.delimbNode#sizeY", "Delimb size Y", 1)
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.delimbNode#sizeZ", "Delimb size Z", 1)
-		schema:register(XMLValueType.BOOL, "vehicle.woodHarvester.delimbNode#delimbOnCut", "Delimb on cut", false)
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutLengths#min", "Min. cut length", 1)
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutLengths#max", "Max. cut length", 5)
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutLengths#step", "Cut length steps", 0.5)
-		EffectManager.registerEffectXMLPaths(schema, "vehicle.woodHarvester.cutEffects")
-		EffectManager.registerEffectXMLPaths(schema, "vehicle.woodHarvester.delimbEffects")
-		AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.woodHarvester.forwardingNodes")
-		SoundManager.registerSampleXMLPaths(schema, "vehicle.woodHarvester.sounds", "cut")
-		SoundManager.registerSampleXMLPaths(schema, "vehicle.woodHarvester.sounds", "delimb")
-		schema:register(XMLValueType.STRING, "vehicle.woodHarvester.cutAnimation#name", "Cut animation name")
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutAnimation#speedScale", "Cut animation speed scale")
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutAnimation#cutTime", "Cut animation cut time")
-		schema:register(XMLValueType.STRING, "vehicle.woodHarvester.grabAnimation#name", "Grab animation name")
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.grabAnimation#speedScale", "Grab animation speed scale")
-		schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.treeSizeMeasure#node", "Tree size measure node")
-		schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.treeSizeMeasure#rotMaxRadius", "Max. tree size as reference for grab animation", 1)
-		Dashboard.registerDashboardXMLPaths(schema, "vehicle.woodHarvester.dashboards", "cutLength | curCutLength | diameter")
-		schema:setXMLSpecializationType()
-
-		local schemaSavegame = Vehicle.xmlSchemaSavegame
-
-		schemaSavegame:register(XMLValueType.FLOAT, "vehicles.vehicle(?).woodHarvester#currentCutLength", "Current cut length", "Min. length")
-		schemaSavegame:register(XMLValueType.BOOL, "vehicles.vehicle(?).woodHarvester#isTurnedOn", "Harvester is turned on", false)
-		schemaSavegame:register(XMLValueType.VECTOR_4, "vehicles.vehicle(?).woodHarvester#lastTreeSize", "Last dimensions of tree to cutNode")
-		schemaSavegame:register(XMLValueType.VECTOR_3, "vehicles.vehicle(?).woodHarvester#lastTreeJointPos", "Last tree joint position in local space of splitShape")
-		schemaSavegame:register(XMLValueType.BOOL, "vehicles.vehicle(?).woodHarvester#hasAttachedSplitShape", "Has split shape attached", false)
-	end,
-	registerEvents = function (vehicleType)
-		SpecializationUtil.registerEvent(vehicleType, "onCutTree")
 	end
 }
+
+function WoodHarvester.initSpecialization()
+	g_storeManager:addSpecType("woodHarvesterMaxTreeSize", "shopListAttributeIconMaxTreeSize", WoodHarvester.loadSpecValueMaxTreeSize, WoodHarvester.getSpecValueMaxTreeSize, "vehicle")
+
+	local schema = Vehicle.xmlSchema
+
+	schema:setXMLSpecializationType("WoodHarvester")
+	schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.cutNode#node", "Cut node")
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#maxRadius", "Max. radius", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#sizeY", "Size Y", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#sizeZ", "Size Z", 1)
+	schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.cutNode#attachNode", "Attach node")
+	schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.cutNode#attachReferenceNode", "Attach reference node")
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutNode#attachMoveSpeed", "Attach move speed", 3)
+	schema:register(XMLValueType.INT, "vehicle.woodHarvester.cutNode#releasedComponentJointIndex", "Released component joint")
+	schema:register(XMLValueType.ANGLE, "vehicle.woodHarvester.cutNode#releasedComponentJointRotLimitXSpeed", "Released component joint rot limit X speed", 100)
+	schema:register(XMLValueType.INT, "vehicle.woodHarvester.cutNode#releasedComponentJoint2Index", "Released component joint 2")
+	schema:register(XMLValueType.STRING, WoodHarvester.HEADER_JOINT_TILT_XML_KEY .. "#animationName", "Header tilt animation")
+	schema:register(XMLValueType.FLOAT, WoodHarvester.HEADER_JOINT_TILT_XML_KEY .. "#speedFactor", "Speed of header tilt animation", 1)
+	schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.delimbNode#node", "Delimb node")
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.delimbNode#sizeX", "Delimb size X", 0.1)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.delimbNode#sizeY", "Delimb size Y", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.delimbNode#sizeZ", "Delimb size Z", 1)
+	schema:register(XMLValueType.BOOL, "vehicle.woodHarvester.delimbNode#delimbOnCut", "Delimb on cut", false)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutLengths#min", "Min. cut length", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutLengths#max", "Max. cut length", 5)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutLengths#step", "Cut length steps", 0.5)
+	schema:register(XMLValueType.VECTOR_N, "vehicle.woodHarvester.cutLengths#values", "Multiple lengths that are available separated by blank space")
+	schema:register(XMLValueType.INT, "vehicle.woodHarvester.cutLengths#startIndex", "Default selected cut length index", 1)
+	EffectManager.registerEffectXMLPaths(schema, "vehicle.woodHarvester.cutEffects")
+	EffectManager.registerEffectXMLPaths(schema, "vehicle.woodHarvester.delimbEffects")
+	AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.woodHarvester.forwardingNodes")
+	SoundManager.registerSampleXMLPaths(schema, "vehicle.woodHarvester.sounds", "cut")
+	SoundManager.registerSampleXMLPaths(schema, "vehicle.woodHarvester.sounds", "delimb")
+	schema:register(XMLValueType.STRING, "vehicle.woodHarvester.cutAnimation#name", "Cut animation name")
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutAnimation#speedScale", "Cut animation speed scale")
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.cutAnimation#cutTime", "Cut animation cut time")
+	schema:register(XMLValueType.STRING, "vehicle.woodHarvester.grabAnimation#name", "Grab animation name")
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.grabAnimation#speedScale", "Grab animation speed scale")
+	schema:register(XMLValueType.NODE_INDEX, "vehicle.woodHarvester.treeSizeMeasure#node", "Tree size measure node")
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.treeSizeMeasure#rotMaxRadius", "Max. tree size as reference for grab animation", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.woodHarvester.treeSizeMeasure#rotMaxAnimTime", "Grab animation time which reflects the rotMaxRadius (0-1)", 1)
+	Dashboard.registerDashboardXMLPaths(schema, "vehicle.woodHarvester.dashboards", "cutLength | curCutLength | diameter")
+	schema:setXMLSpecializationType()
+
+	local schemaSavegame = Vehicle.xmlSchemaSavegame
+
+	schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).woodHarvester#currentCutLengthIndex", "Current cut length selection index", 1)
+	schemaSavegame:register(XMLValueType.BOOL, "vehicles.vehicle(?).woodHarvester#isTurnedOn", "Harvester is turned on", false)
+	schemaSavegame:register(XMLValueType.VECTOR_4, "vehicles.vehicle(?).woodHarvester#lastTreeSize", "Last dimensions of tree to cutNode")
+	schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).woodHarvester#lastCutAttachDirection", "Last tree attach direction")
+	schemaSavegame:register(XMLValueType.VECTOR_3, "vehicles.vehicle(?).woodHarvester#lastTreeJointPos", "Last tree joint position in local space of splitShape")
+	schemaSavegame:register(XMLValueType.BOOL, "vehicles.vehicle(?).woodHarvester#hasAttachedSplitShape", "Has split shape attached", false)
+end
+
+function WoodHarvester.registerEvents(vehicleType)
+	SpecializationUtil.registerEvent(vehicleType, "onCutTree")
+end
 
 function WoodHarvester.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "woodHarvesterSplitShapeCallback", WoodHarvester.woodHarvesterSplitShapeCallback)
@@ -63,6 +75,9 @@ function WoodHarvester.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "cutTree", WoodHarvester.cutTree)
 	SpecializationUtil.registerFunction(vehicleType, "onDelimbTree", WoodHarvester.onDelimbTree)
 	SpecializationUtil.registerFunction(vehicleType, "getCanSplitShapeBeAccessed", WoodHarvester.getCanSplitShapeBeAccessed)
+	SpecializationUtil.registerFunction(vehicleType, "loadWoodHarvesterHeaderTiltFromXML", WoodHarvester.loadWoodHarvesterHeaderTiltFromXML)
+	SpecializationUtil.registerFunction(vehicleType, "getIsWoodHarvesterTiltStateAllowed", WoodHarvester.getIsWoodHarvesterTiltStateAllowed)
+	SpecializationUtil.registerFunction(vehicleType, "setWoodHarvesterTiltState", WoodHarvester.setWoodHarvesterTiltState)
 end
 
 function WoodHarvester.registerOverwrittenFunctions(vehicleType)
@@ -78,6 +93,8 @@ function WoodHarvester.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onDelete", WoodHarvester)
 	SpecializationUtil.registerEventListener(vehicleType, "onReadStream", WoodHarvester)
 	SpecializationUtil.registerEventListener(vehicleType, "onWriteStream", WoodHarvester)
+	SpecializationUtil.registerEventListener(vehicleType, "onReadUpdateStream", WoodHarvester)
+	SpecializationUtil.registerEventListener(vehicleType, "onWriteUpdateStream", WoodHarvester)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", WoodHarvester)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", WoodHarvester)
 	SpecializationUtil.registerEventListener(vehicleType, "onDraw", WoodHarvester)
@@ -87,6 +104,7 @@ function WoodHarvester.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onTurnedOff", WoodHarvester)
 	SpecializationUtil.registerEventListener(vehicleType, "onStateChange", WoodHarvester)
 	SpecializationUtil.registerEventListener(vehicleType, "onCutTree", WoodHarvester)
+	SpecializationUtil.registerEventListener(vehicleType, "onVehicleSettingChanged", WoodHarvester)
 end
 
 function WoodHarvester:onLoad(savegame)
@@ -103,13 +121,22 @@ function WoodHarvester:onLoad(savegame)
 	spec.attachedSplitShape = nil
 	spec.hasAttachedSplitShape = false
 	spec.isAttachedSplitShapeMoving = false
+	spec.attachedSplitShapeLastDelimbTime = 0
 	spec.attachedSplitShapeX = 0
 	spec.attachedSplitShapeY = 0
 	spec.attachedSplitShapeZ = 0
 	spec.attachedSplitShapeTargetY = 0
 	spec.attachedSplitShapeLastCutY = 0
 	spec.attachedSplitShapeStartY = 0
+	spec.attachedSplitShapeOnlyMove = false
+	spec.attachedSplitShapeOnlyMoveDelay = 0
+	spec.attachedSplitShapeMoveEffectActive = false
+	spec.attachedSplitShapeDelimbEffectActive = false
 	spec.cutTimer = -1
+	spec.lastCutEventTime = 0
+	spec.cutEventCoolDownTime = 1000
+	spec.automaticCuttingEnabled = true
+	spec.automaticCuttingIsDirty = false
 	spec.lastTreeSize = nil
 	spec.lastTreeJointPos = nil
 	spec.loadedSplitShapeFromSavegame = false
@@ -136,6 +163,12 @@ function WoodHarvester:onLoad(savegame)
 		spec.cutReleasedComponentJoint2RotLimitXSpeed = self.xmlFile:getValue("vehicle.woodHarvester.cutNode#releasedComponentJointRotLimitXSpeed", 100) * 0.001
 	end
 
+	spec.headerJointTilt = {}
+
+	if not self:loadWoodHarvesterHeaderTiltFromXML(spec.headerJointTilt, self.xmlFile, "vehicle.woodHarvester.headerJointTilt") then
+		spec.headerJointTilt = nil
+	end
+
 	if spec.cutAttachReferenceNode ~= nil and spec.cutAttachNode ~= nil then
 		spec.cutAttachHelperNode = createTransformGroup("helper")
 
@@ -144,6 +177,8 @@ function WoodHarvester:onLoad(savegame)
 		setRotation(spec.cutAttachHelperNode, 0, 0, 0)
 	end
 
+	spec.cutAttachDirection = 1
+	spec.lastCutAttachDirection = 1
 	spec.delimbNode = self.xmlFile:getValue("vehicle.woodHarvester.delimbNode#node", nil, self.components, self.i3dMappings)
 	spec.delimbSizeX = self.xmlFile:getValue("vehicle.woodHarvester.delimbNode#sizeX", 0.1)
 	spec.delimbSizeY = self.xmlFile:getValue("vehicle.woodHarvester.delimbNode#sizeY", 1)
@@ -152,6 +187,24 @@ function WoodHarvester:onLoad(savegame)
 	spec.cutLengthMin = self.xmlFile:getValue("vehicle.woodHarvester.cutLengths#min", 1)
 	spec.cutLengthMax = self.xmlFile:getValue("vehicle.woodHarvester.cutLengths#max", 5)
 	spec.cutLengthStep = self.xmlFile:getValue("vehicle.woodHarvester.cutLengths#step", 0.5)
+	spec.cutLengths = self.xmlFile:getValue("vehicle.woodHarvester.cutLengths#values", nil, true)
+
+	if spec.cutLengths == nil or #spec.cutLengths == 0 then
+		spec.cutLengths = {}
+
+		for i = spec.cutLengthMin, spec.cutLengthMax, spec.cutLengthStep do
+			table.insert(spec.cutLengths, i)
+		end
+	else
+		for i = 1, #spec.cutLengths do
+			if spec.cutLengths[i] == 0 then
+				spec.cutLengths[i] = math.huge
+			end
+		end
+	end
+
+	spec.currentCutLengthIndex = MathUtil.clamp(self.xmlFile:getValue("vehicle.woodHarvester.cutLengths#startIndex", 1), 1, #spec.cutLengths)
+	spec.currentCutLength = spec.cutLengths[spec.currentCutLengthIndex] or 1
 
 	if self.isClient then
 		spec.cutEffects = g_effectManager:loadEffect(self.xmlFile, "vehicle.woodHarvester.cutEffects", self.components, self, self.i3dMappings)
@@ -176,22 +229,26 @@ function WoodHarvester:onLoad(savegame)
 	}
 	spec.treeSizeMeasure = {
 		node = self.xmlFile:getValue("vehicle.woodHarvester.treeSizeMeasure#node", nil, self.components, self.i3dMappings),
-		rotMaxRadius = self.xmlFile:getValue("vehicle.woodHarvester.treeSizeMeasure#rotMaxRadius", 1)
+		rotMaxRadius = self.xmlFile:getValue("vehicle.woodHarvester.treeSizeMeasure#rotMaxRadius", 1),
+		rotMaxAnimTime = self.xmlFile:getValue("vehicle.woodHarvester.treeSizeMeasure#rotMaxAnimTime", 1)
 	}
 	spec.warnInvalidTree = false
 	spec.warnInvalidTreeRadius = false
 	spec.warnInvalidTreePosition = false
 	spec.warnTreeNotOwned = false
-	spec.currentCutLength = spec.cutLengthMin
 	spec.lastDiameter = 0
 	spec.texts = {
 		actionChangeCutLength = g_i18n:getText("action_woodHarvesterChangeCutLength"),
+		woodHarvesterTiltHeader = g_i18n:getText("action_woodHarvesterTiltHeader"),
+		uiMax = g_i18n:getText("ui_max"),
+		unitMeterShort = g_i18n:getText("unit_mShort"),
 		actionCut = g_i18n:getText("action_woodHarvesterCut"),
 		warningFoldingTreeMounted = g_i18n:getText("warning_foldingTreeMounted"),
 		warningTreeTooThick = g_i18n:getText("warning_treeTooThick"),
 		warningTreeTooThickAtPosition = g_i18n:getText("warning_treeTooThickAtPosition"),
 		warningTreeTypeNotSupported = g_i18n:getText("warning_treeTypeNotSupported"),
-		warningYouDontHaveAccessToThisLand = g_i18n:getText("warning_youAreNotAllowedToCutThisTree")
+		warningYouDontHaveAccessToThisLand = g_i18n:getText("warning_youAreNotAllowedToCutThisTree"),
+		warningFirstTurnOnTheTool = string.format(g_i18n:getText("warning_firstTurnOnTheTool"), self.typeDesc)
 	}
 
 	if self.loadDashboardsFromXML ~= nil then
@@ -199,14 +256,18 @@ function WoodHarvester:onLoad(savegame)
 			valueTypeToLoad = "cutLength",
 			valueObject = spec,
 			valueFunc = function ()
-				return spec.currentCutLength * 100
+				if spec.currentCutLength == math.huge then
+					return 9999999
+				else
+					return spec.currentCutLength * 100
+				end
 			end
 		})
 		self:loadDashboardsFromXML(self.xmlFile, "vehicle.woodHarvester.dashboards", {
 			valueTypeToLoad = "curCutLength",
 			valueObject = spec,
 			valueFunc = function ()
-				return math.abs(spec.currentCutLength - (spec.attachedSplitShapeTargetY - spec.attachedSplitShapeY)) * 100
+				return math.abs(spec.attachedSplitShapeStartY - spec.attachedSplitShapeY) * 100
 			end
 		})
 		self:loadDashboardsFromXML(self.xmlFile, "vehicle.woodHarvester.dashboards", {
@@ -217,16 +278,40 @@ function WoodHarvester:onLoad(savegame)
 			end
 		})
 	end
+
+	self:registerVehicleSetting(GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT, true)
 end
 
 function WoodHarvester:onPostLoad(savegame)
 	local spec = self.spec_woodHarvester
 
+	if spec.grabAnimation.name ~= nil then
+		local speedScale = -spec.grabAnimation.speedScale
+		local stopTime = 0
+
+		if spec.grabAnimation.speedScale < 0 then
+			stopTime = 1
+		end
+
+		self:playAnimation(spec.grabAnimation.name, speedScale, nil, true)
+		self:setAnimationStopTime(spec.grabAnimation.name, stopTime)
+		AnimatedVehicle.updateAnimationByName(self, spec.grabAnimation.name, 99999999, true)
+	end
+end
+
+function WoodHarvester:onLoadFinished(savegame)
+	local spec = self.spec_woodHarvester
+
 	if savegame ~= nil and not savegame.resetVehicles then
-		spec.currentCutLength = savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#currentCutLength", spec.cutLengthMin)
+		spec.currentCutLengthIndex = savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#currentCutLengthIndex", spec.currentCutLengthIndex)
+		spec.currentCutLength = spec.cutLengths[spec.currentCutLengthIndex] or 1
 
 		if savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#isTurnedOn", false) then
 			self:setIsTurnedOn(true)
+		end
+
+		if spec.grabAnimation.name ~= nil then
+			AnimatedVehicle.updateAnimationByName(self, spec.grabAnimation.name, 99999999, true)
 		end
 
 		local minY, maxY, minZ, maxZ = savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#lastTreeSize")
@@ -249,30 +334,15 @@ function WoodHarvester:onPostLoad(savegame)
 				z
 			}
 		end
-	end
 
-	if spec.grabAnimation.name ~= nil then
-		local speedScale = -spec.grabAnimation.speedScale
-		local stopTime = 0
+		spec.lastCutAttachDirection = savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#lastCutAttachDirection", spec.lastCutAttachDirection)
 
-		if spec.grabAnimation.speedScale < 0 then
-			stopTime = 1
-		end
+		if savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#hasAttachedSplitShape", false) and self:getIsTurnedOn() then
+			self:findSplitShapesInRange(0.5, true)
 
-		self:playAnimation(spec.grabAnimation.name, speedScale, nil, true)
-		self:setAnimationStopTime(spec.grabAnimation.name, stopTime)
-		AnimatedVehicle.updateAnimationByName(self, spec.grabAnimation.name, 99999999, true)
-	end
-end
-
-function WoodHarvester:onLoadFinished(savegame)
-	if savegame ~= nil and not savegame.resetVehicles and savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#hasAttachedSplitShape", false) and self:getIsTurnedOn() then
-		self:findSplitShapesInRange(0.5, true)
-
-		local spec = self.spec_woodHarvester
-
-		if spec.curSplitShape ~= nil and spec.curSplitShape ~= 0 then
-			spec.loadedSplitShapeFromSavegame = true
+			if spec.curSplitShape ~= nil and spec.curSplitShape ~= 0 then
+				spec.loadedSplitShapeFromSavegame = true
+			end
 		end
 	end
 end
@@ -299,9 +369,10 @@ end
 function WoodHarvester:saveToXMLFile(xmlFile, key, usedModNames)
 	local spec = self.spec_woodHarvester
 
-	xmlFile:setValue(key .. "#currentCutLength", spec.currentCutLength)
+	xmlFile:setValue(key .. "#currentCutLengthIndex", spec.currentCutLengthIndex)
 	xmlFile:setValue(key .. "#isTurnedOn", self:getIsTurnedOn() or spec.hasAttachedSplitShape)
 	xmlFile:setValue(key .. "#hasAttachedSplitShape", spec.hasAttachedSplitShape)
+	xmlFile:setValue(key .. "#lastCutAttachDirection", spec.lastCutAttachDirection)
 
 	if spec.hasAttachedSplitShape then
 		if spec.lastTreeSize ~= nil then
@@ -327,6 +398,29 @@ function WoodHarvester:onWriteStream(streamId, connection)
 	streamWriteBool(streamId, spec.isAttachedSplitShapeMoving)
 end
 
+function WoodHarvester:onReadUpdateStream(streamId, timestamp, connection)
+	if connection:getIsServer() then
+		local spec = self.spec_woodHarvester
+		spec.attachedSplitShapeMoveEffectActive = streamReadBool(streamId)
+
+		if spec.attachedSplitShapeMoveEffectActive then
+			spec.attachedSplitShapeDelimbEffectActive = streamReadBool(streamId)
+		else
+			spec.attachedSplitShapeDelimbEffectActive = false
+		end
+	end
+end
+
+function WoodHarvester:onWriteUpdateStream(streamId, connection, dirtyMask)
+	if not connection:getIsServer() then
+		local spec = self.spec_woodHarvester
+
+		if streamWriteBool(streamId, spec.attachedSplitShapeMoveEffectActive) then
+			streamWriteBool(streamId, spec.attachedSplitShapeDelimbEffectActive)
+		end
+	end
+end
+
 function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	local spec = self.spec_woodHarvester
 
@@ -338,6 +432,8 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 				spec.attachedSplitShape = nil
 				spec.attachedSplitShapeJointIndex = nil
 				spec.isAttachedSplitShapeMoving = false
+				spec.attachedSplitShapeMoveEffectActive = false
+				spec.attachedSplitShapeDelimbEffectActive = false
 				spec.cutTimer = -1
 				lostShape = true
 			end
@@ -347,7 +443,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 		end
 
 		if lostShape then
-			SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
+			SpecializationUtil.raiseEvent(self, "onCutTree", 0, false, false)
 
 			if g_server ~= nil then
 				g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
@@ -410,8 +506,13 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 			spec.attachedSplitShape = nil
 			spec.curSplitShape = nil
 			spec.prevSplitShape = currentSplitShape
+			local doTreeCut = not spec.loadedSplitShapeFromSavegame
 
-			if not spec.loadedSplitShapeFromSavegame then
+			if getRigidBodyType(currentSplitShape) ~= RigidBodyType.STATIC and newTreeCut then
+				doTreeCut = false
+			end
+
+			if doTreeCut then
 				g_currentMission:removeKnownSplitShape(currentSplitShape)
 
 				self.shapeBeingCut = currentSplitShape
@@ -421,11 +522,42 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 				splitShape(currentSplitShape, x, y, z, nx, ny, nz, yx, yy, yz, spec.cutSizeY, spec.cutSizeZ, "woodHarvesterSplitShapeCallback", self)
 				g_treePlantManager:removingSplitShape(currentSplitShape)
 			else
-				self:woodHarvesterSplitShapeCallback(currentSplitShape, false, true, unpack(spec.lastTreeSize))
+				local minY, maxY, minZ, maxZ = nil
+				local delimbOffset = 0
+
+				if spec.lastTreeSize == nil or not spec.loadedSplitShapeFromSavegame then
+					minY, maxY, minZ, maxZ = testSplitShape(currentSplitShape, x, y, z, nx, ny, nz, yx, yy, yz, spec.cutSizeY, spec.cutSizeZ)
+
+					if minY ~= nil then
+						local lengthBelow, _ = getSplitShapePlaneExtents(currentSplitShape, x, y, z, nx, ny, nz)
+
+						if lengthBelow ~= nil and lengthBelow > 0.01 then
+							delimbOffset = -lengthBelow
+						end
+					end
+				else
+					maxZ = spec.lastTreeSize[4]
+					minZ = spec.lastTreeSize[3]
+					maxY = spec.lastTreeSize[2]
+					minY = spec.lastTreeSize[1]
+				end
+
+				if minY ~= nil then
+					self:woodHarvesterSplitShapeCallback(currentSplitShape, false, true, minY, maxY, minZ, maxZ)
+					g_messageCenter:publish(MessageType.TREE_SHAPE_MOUNTED, currentSplitShape, self)
+
+					if delimbOffset ~= 0 then
+						spec.attachedSplitShapeTargetY = spec.attachedSplitShapeLastCutY + delimbOffset * spec.cutAttachDirection
+						spec.attachedSplitShapeOnlyMove = true
+						spec.attachedSplitShapeOnlyMoveDelay = 750
+
+						self:onDelimbTree(true)
+					end
+				end
 			end
 
 			if spec.attachedSplitShape == nil then
-				SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
+				SpecializationUtil.raiseEvent(self, "onCutTree", 0, false, false)
 
 				if g_server ~= nil then
 					g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
@@ -442,7 +574,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 				removeSplitShapeAttachments(spec.attachedSplitShape, xD + vx * 3, yD + vy * 3, zD + vz * 3, nxD, nyD, nzD, yxD, yyD, yzD, sizeX * 3 + spec.delimbSizeX, spec.delimbSizeY, spec.delimbSizeZ)
 			end
 
-			if newTreeCut then
+			if doTreeCut and newTreeCut then
 				local stats = g_currentMission:farmStats(self:getActiveFarm())
 				local cutTreeCount = stats:updateStats("cutTreeCount", 1)
 
@@ -455,69 +587,110 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 			end
 		end
 
+		spec.attachedSplitShapeMoveEffectActive = false
+		spec.attachedSplitShapeDelimbEffectActive = false
+
 		if spec.attachedSplitShape ~= nil and spec.isAttachedSplitShapeMoving then
 			if spec.delimbNode ~= nil then
 				local x, y, z = getWorldTranslation(spec.delimbNode)
 				local nx, ny, nz = localDirectionToWorld(spec.delimbNode, 1, 0, 0)
 				local yx, yy, yz = localDirectionToWorld(spec.delimbNode, 0, 1, 0)
+				local didDelimb = removeSplitShapeAttachments(spec.attachedSplitShape, x, y, z, nx, ny, nz, yx, yy, yz, spec.delimbSizeX, spec.delimbSizeY, spec.delimbSizeZ)
 
-				removeSplitShapeAttachments(spec.attachedSplitShape, x, y, z, nx, ny, nz, yx, yy, yz, spec.delimbSizeX, spec.delimbSizeY, spec.delimbSizeZ)
+				if didDelimb then
+					spec.attachedSplitShapeLastDelimbTime = g_time
+				end
+
+				if g_time - spec.attachedSplitShapeLastDelimbTime < 500 then
+					spec.attachedSplitShapeDelimbEffectActive = true
+				end
 			end
 
-			if spec.cutNode ~= nil and spec.attachedSplitShapeJointIndex ~= nil then
-				local x, y, z = getWorldTranslation(spec.cutAttachReferenceNode)
-				local nx, ny, nz = localDirectionToWorld(spec.cutAttachReferenceNode, 0, 1, 0)
-				local _, lengthRem = getSplitShapePlaneExtents(spec.attachedSplitShape, x, y, z, nx, ny, nz)
+			local updateSplitShapeJoint = false
+			local updateJointSavePosition = false
 
-				if lengthRem == nil or lengthRem <= 0.1 then
-					removeJoint(spec.attachedSplitShapeJointIndex)
+			if not spec.attachedSplitShapeOnlyMove then
+				if spec.cutNode ~= nil and spec.attachedSplitShapeJointIndex ~= nil then
+					local x, y, z = getWorldTranslation(spec.cutAttachReferenceNode)
+					local nx, ny, nz = localDirectionToWorld(spec.cutAttachReferenceNode, 0, 1, 0)
+					local _, lengthRem = getSplitShapePlaneExtents(spec.attachedSplitShape, x, y, z, nx, ny, nz)
 
-					spec.attachedSplitShapeJointIndex = nil
-					spec.attachedSplitShape = nil
+					if lengthRem == nil or lengthRem <= 0.1 then
+						removeJoint(spec.attachedSplitShapeJointIndex)
 
-					self:onDelimbTree(false)
-
-					if g_server ~= nil then
-						g_server:broadcastEvent(WoodHarvesterOnDelimbTreeEvent.new(self, false), nil, nil, self)
-					end
-
-					SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
-
-					if g_server ~= nil then
-						g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
-					end
-				else
-					spec.attachedSplitShapeY = spec.attachedSplitShapeY + spec.cutAttachMoveSpeed * dt
-
-					if spec.attachedSplitShapeTargetY <= spec.attachedSplitShapeY then
-						spec.attachedSplitShapeY = spec.attachedSplitShapeTargetY
+						spec.attachedSplitShapeJointIndex = nil
+						spec.attachedSplitShape = nil
 
 						self:onDelimbTree(false)
 
 						if g_server ~= nil then
 							g_server:broadcastEvent(WoodHarvesterOnDelimbTreeEvent.new(self, false), nil, nil, self)
 						end
-					end
 
-					if spec.attachedSplitShapeJointIndex ~= nil then
-						x, y, z = localToWorld(spec.cutNode, 0.3, 0, 0)
-						nx, ny, nz = localDirectionToWorld(spec.cutNode, 1, 0, 0)
-						local yx, yy, yz = localDirectionToWorld(spec.cutNode, 0, 1, 0)
-						local shape, minY, maxY, minZ, maxZ = findSplitShape(x, y, z, nx, ny, nz, yx, yy, yz, spec.cutSizeY, spec.cutSizeZ)
+						SpecializationUtil.raiseEvent(self, "onCutTree", 0, false, false)
 
-						if shape == spec.attachedSplitShape then
-							local treeCenterX, treeCenterY, treeCenterZ = localToWorld(spec.cutNode, 0, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5)
-							spec.attachedSplitShapeX, _, spec.attachedSplitShapeZ = worldToLocal(spec.attachedSplitShape, treeCenterX, treeCenterY, treeCenterZ)
+						if g_server ~= nil then
+							g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
+						end
+					else
+						local dir = spec.attachedSplitShapeY < spec.attachedSplitShapeTargetY and 1 or -1
+						local limit = spec.attachedSplitShapeY < spec.attachedSplitShapeTargetY and math.min or math.max
+						spec.attachedSplitShapeY = limit(spec.attachedSplitShapeY + spec.cutAttachMoveSpeed * dt * dir, spec.attachedSplitShapeTargetY)
 
-							self:setLastTreeDiameter((maxY - minY + maxZ - minZ) * 0.5)
+						if spec.attachedSplitShapeY == spec.attachedSplitShapeTargetY then
+							self:onDelimbTree(false)
+
+							if g_server ~= nil then
+								g_server:broadcastEvent(WoodHarvesterOnDelimbTreeEvent.new(self, false), nil, nil, self)
+							end
 						end
 
-						x, y, z = localToWorld(spec.attachedSplitShape, spec.attachedSplitShapeX, spec.attachedSplitShapeY, spec.attachedSplitShapeZ)
-
-						setJointPosition(spec.attachedSplitShapeJointIndex, 1, x, y, z)
+						updateSplitShapeJoint = true
 					end
 				end
+			elseif spec.attachedSplitShapeOnlyMoveDelay <= 0 then
+				local dir = spec.attachedSplitShapeY < spec.attachedSplitShapeTargetY and 1 or -1
+				local limit = spec.attachedSplitShapeY < spec.attachedSplitShapeTargetY and math.min or math.max
+				spec.attachedSplitShapeY = limit(spec.attachedSplitShapeY + spec.cutAttachMoveSpeed * dt * dir, spec.attachedSplitShapeTargetY)
+
+				if spec.attachedSplitShapeY == spec.attachedSplitShapeTargetY then
+					spec.isAttachedSplitShapeMoving = false
+					spec.attachedSplitShapeOnlyMove = false
+					spec.attachedSplitShapeLastCutY = spec.attachedSplitShapeY
+				end
+
+				updateSplitShapeJoint = true
+				updateJointSavePosition = true
+			else
+				spec.attachedSplitShapeOnlyMoveDelay = spec.attachedSplitShapeOnlyMoveDelay - dt
 			end
+
+			if updateSplitShapeJoint and spec.attachedSplitShapeJointIndex ~= nil then
+				local x, y, z = localToWorld(spec.cutNode, 0.3, 0, 0)
+				local nx, ny, nz = localDirectionToWorld(spec.cutNode, 1, 0, 0)
+				local yx, yy, yz = localDirectionToWorld(spec.cutNode, 0, 1, 0)
+				local shape, minY, maxY, minZ, maxZ = findSplitShape(x, y, z, nx, ny, nz, yx, yy, yz, spec.cutSizeY, spec.cutSizeZ)
+
+				if shape == spec.attachedSplitShape then
+					local treeCenterX, treeCenterY, treeCenterZ = localToWorld(spec.cutNode, 0, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5)
+					local _ = nil
+					spec.attachedSplitShapeX, _, spec.attachedSplitShapeZ = worldToLocal(spec.attachedSplitShape, treeCenterX, treeCenterY, treeCenterZ)
+
+					self:setLastTreeDiameter((maxY - minY + maxZ - minZ) * 0.5)
+				end
+
+				x, y, z = localToWorld(spec.attachedSplitShape, spec.attachedSplitShapeX, spec.attachedSplitShapeY, spec.attachedSplitShapeZ)
+
+				setJointPosition(spec.attachedSplitShapeJointIndex, 1, x, y, z)
+
+				if updateJointSavePosition then
+					spec.lastTreeJointPos[1] = spec.attachedSplitShapeX
+					spec.lastTreeJointPos[2] = spec.attachedSplitShapeY
+					spec.lastTreeJointPos[3] = spec.attachedSplitShapeZ
+				end
+			end
+
+			spec.attachedSplitShapeMoveEffectActive = updateSplitShapeJoint
 		end
 	end
 
@@ -543,7 +716,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 			end
 		end
 
-		if spec.isAttachedSplitShapeMoving then
+		if spec.attachedSplitShapeMoveEffectActive then
 			if not spec.isDelimbSamplePlaying then
 				g_soundManager:playSample(spec.samples.delimb)
 
@@ -552,6 +725,7 @@ function WoodHarvester:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 
 			g_effectManager:setFillType(spec.delimbEffects, FillType.WOODCHIPS)
 			g_effectManager:startEffects(spec.delimbEffects)
+			g_effectManager:setDensity(spec.delimbEffects, spec.attachedSplitShapeDelimbEffectActive and 1 or 0.1)
 			g_animationManager:startAnimations(spec.forwardingNodes)
 		else
 			if spec.isDelimbSamplePlaying then
@@ -604,7 +778,7 @@ function WoodHarvester:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 		end
 
 		if spec.curSplitShape == nil and spec.cutTimer > -1 then
-			SpecializationUtil.raiseEvent(self, "onCutTree", 0, false)
+			SpecializationUtil.raiseEvent(self, "onCutTree", 0, false, false)
 
 			if g_server ~= nil then
 				g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
@@ -663,7 +837,13 @@ function WoodHarvester:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 			g_inputBinding:setActionEventActive(actionEvent.actionEventId, not spec.isAttachedSplitShapeMoving)
 
 			if not spec.isAttachedSplitShapeMoving then
-				g_inputBinding:setActionEventText(actionEvent.actionEventId, string.format(spec.texts.actionChangeCutLength, string.format("%.1f", spec.currentCutLength)))
+				local lengthStr = string.format("%.1f%s", spec.currentCutLength, spec.texts.unitMeterShort)
+
+				if spec.currentCutLength == math.huge then
+					lengthStr = spec.texts.uiMax
+				end
+
+				g_inputBinding:setActionEventText(actionEvent.actionEventId, string.format(spec.texts.actionChangeCutLength, lengthStr))
 			end
 		end
 	end
@@ -692,14 +872,25 @@ function WoodHarvester:onRegisterActionEvents(isActiveForInput, isActiveForInput
 		self:clearActionEventsTable(spec.actionEvents)
 
 		if isActiveForInputIgnoreSelection then
-			local _, actionEventId = self:addPoweredActionEvent(spec.actionEvents, InputAction.IMPLEMENT_EXTRA2, self, WoodHarvester.actionEventCutTree, false, true, false, true, nil)
+			local _, actionEventId = self:addPoweredActionEvent(spec.actionEvents, InputAction.IMPLEMENT_EXTRA2, self, WoodHarvester.actionEventCutTree, false, true, true, true, nil)
 
 			g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_HIGH)
 			g_inputBinding:setActionEventText(actionEventId, spec.texts.actionCut)
 
-			_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.IMPLEMENT_EXTRA3, self, WoodHarvester.actionEventSetCutlength, false, true, false, true, nil)
+			_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.IMPLEMENT_EXTRA3, self, WoodHarvester.actionEventSetCutlength, false, true, false, true, 1)
 
 			g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_HIGH)
+
+			_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.TOGGLE_CUT_LENGTH_BACK, self, WoodHarvester.actionEventSetCutlength, false, true, false, true, -1)
+
+			g_inputBinding:setActionEventTextVisibility(actionEventId, false)
+
+			if spec.headerJointTilt ~= nil then
+				_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.TOGGLE_WOOD_HARVESTER_TILT, self, WoodHarvester.actionEventTiltHeader, false, true, false, true, nil)
+
+				g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_HIGH)
+				g_inputBinding:setActionEventText(actionEventId, spec.texts.woodHarvesterTiltHeader)
+			end
 		end
 	end
 end
@@ -715,7 +906,7 @@ function WoodHarvester:onTurnedOn()
 	local spec = self.spec_woodHarvester
 	self.playDelayedGrabAnimationTime = nil
 
-	if spec.grabAnimation.name ~= nil then
+	if spec.grabAnimation.name ~= nil and spec.attachedSplitShape == nil then
 		if spec.grabAnimation.speedScale > 0 then
 			self:setAnimationStopTime(spec.grabAnimation.name, 1)
 		else
@@ -763,6 +954,40 @@ function WoodHarvester:getCanSplitShapeBeAccessed(x, z, shape)
 	return g_currentMission.accessHandler:canFarmAccessLand(self:getActiveFarm(), x, z) and g_currentMission:getHasPlayerPermission("cutTrees", self:getOwner())
 end
 
+function WoodHarvester:loadWoodHarvesterHeaderTiltFromXML(headerTilt, xmlFile, key)
+	headerTilt.animationName = xmlFile:getValue(key .. "#animationName")
+
+	if headerTilt.animationName == nil then
+		return false
+	end
+
+	headerTilt.speedFactor = xmlFile:getValue(key .. "#speedFactor", 1)
+	headerTilt.state = false
+	headerTilt.lastState = nil
+
+	return true
+end
+
+function WoodHarvester:getIsWoodHarvesterTiltStateAllowed(headerTilt)
+	return true
+end
+
+function WoodHarvester:setWoodHarvesterTiltState(state, noEventSend)
+	local spec = self.spec_woodHarvester
+
+	if state == nil then
+		state = not spec.headerJointTilt.state
+	end
+
+	if state ~= spec.headerJointTilt.state then
+		spec.headerJointTilt.state = state
+
+		self:playAnimation(spec.headerJointTilt.animationName, state and 1 or -1, self:getAnimationTime(spec.headerJointTilt.animationName), true)
+	end
+
+	WoodHarvesterHeaderTiltEvent.sendEvent(self, state, noEventSend)
+end
+
 function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
 	local spec = self.spec_woodHarvester
 
@@ -782,8 +1007,15 @@ function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
 				elseif self:getCanSplitShapeBeAccessed(x, z, shape) then
 					local treeDx, treeDy, treeDz = localDirectionToWorld(shape, 0, 1, 0)
 					local cosTreeAngle = MathUtil.dotProduct(nx, ny, nz, treeDx, treeDy, treeDz)
+					local angleLimit = 0.2617
 
-					if math.acos(cosTreeAngle) <= 0.2617 then
+					if getRigidBodyType(shape) ~= RigidBodyType.STATIC then
+						angleLimit = 0.6981
+					end
+
+					local angle = 1.57079 - math.abs(math.acos(cosTreeAngle) - 1.57079)
+
+					if angleLimit >= angle then
 						local radius = math.max(maxY - minY, maxZ - minZ) * 0.5 * cosTreeAngle
 
 						if spec.cutMaxRadius < radius then
@@ -792,7 +1024,7 @@ function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
 							shape, minY, maxY, minZ, maxZ = findSplitShape(x, y, z, nx, ny, nz, yx, yy, yz, spec.cutSizeY, spec.cutSizeZ)
 
 							if shape ~= 0 then
-								radius = math.max(maxY - minY, maxZ - minZ) * 0.5 * cosTreeAngle
+								radius = math.max(maxY - minY, maxZ - minZ) * 0.5 * math.cos(angle)
 
 								if radius <= spec.cutMaxRadius then
 									spec.warnInvalidTreeRadius = false
@@ -827,15 +1059,24 @@ function WoodHarvester:cutTree(length, noEventSend)
 	if self.isServer then
 		if length == 0 then
 			if spec.attachedSplitShape ~= nil or spec.curSplitShape ~= nil then
-				spec.cutTimer = 100
+				if spec.attachedSplitShape == nil and spec.curSplitShape ~= nil and getRigidBodyType(spec.curSplitShape) ~= RigidBodyType.STATIC then
+					spec.cutTimer = 0
 
-				if spec.cutAnimation.name ~= nil then
-					self:setAnimationTime(spec.cutAnimation.name, 0, true)
-					self:playAnimation(spec.cutAnimation.name, spec.cutAnimation.speedScale, self:getAnimationTime(spec.cutAnimation.name))
+					if spec.cutAnimation.name ~= nil then
+						self:setAnimationTime(spec.cutAnimation.name, 0, true)
+						self:playAnimation(spec.cutAnimation.name, 999999, self:getAnimationTime(spec.cutAnimation.name))
+					end
+				else
+					spec.cutTimer = 100
+
+					if spec.cutAnimation.name ~= nil then
+						self:setAnimationTime(spec.cutAnimation.name, 0, true)
+						self:playAnimation(spec.cutAnimation.name, spec.cutAnimation.speedScale, self:getAnimationTime(spec.cutAnimation.name))
+					end
 				end
 			end
 		elseif length > 0 and spec.attachedSplitShape ~= nil then
-			spec.attachedSplitShapeTargetY = spec.attachedSplitShapeLastCutY + length
+			spec.attachedSplitShapeTargetY = spec.attachedSplitShapeLastCutY + length * spec.cutAttachDirection
 
 			self:onDelimbTree(true)
 
@@ -844,15 +1085,17 @@ function WoodHarvester:cutTree(length, noEventSend)
 			end
 		end
 	end
+
+	spec.automaticCuttingIsDirty = false
 end
 
-function WoodHarvester:onCutTree(radius, isNewTree)
+function WoodHarvester:onCutTree(radius, isNewTree, loadedFromSavegame)
 	local spec = self.spec_woodHarvester
 
 	if radius > 0 then
 		if self.isClient then
 			if spec.grabAnimation.name ~= nil then
-				local targetAnimTime = math.min(1, radius / spec.treeSizeMeasure.rotMaxRadius)
+				local targetAnimTime = math.min(radius / spec.treeSizeMeasure.rotMaxRadius, 1) * spec.treeSizeMeasure.rotMaxAnimTime
 
 				if spec.grabAnimation.speedScale < 0 then
 					targetAnimTime = 1 - targetAnimTime
@@ -884,6 +1127,22 @@ function WoodHarvester:onCutTree(radius, isNewTree)
 
 		spec.hasAttachedSplitShape = false
 		spec.cutTimer = -1
+
+		if self.isServer and spec.headerJointTilt ~= nil and spec.headerJointTilt.lastState ~= nil then
+			self:setWoodHarvesterTiltState(spec.headerJointTilt.lastState)
+
+			spec.headerJointTilt.lastState = nil
+		end
+	end
+
+	if loadedFromSavegame and spec.grabAnimation.name ~= nil then
+		AnimatedVehicle.updateAnimationByName(self, spec.grabAnimation.name, 99999999, true)
+	end
+end
+
+function WoodHarvester:onVehicleSettingChanged(gameSettingId, state)
+	if gameSettingId == GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT then
+		self.spec_woodHarvester.automaticCuttingEnabled = state
 	end
 end
 
@@ -895,7 +1154,11 @@ function WoodHarvester:onDelimbTree(state)
 	else
 		spec.isAttachedSplitShapeMoving = false
 
-		self:cutTree(0)
+		if spec.automaticCuttingEnabled then
+			self:cutTree(0)
+		else
+			spec.automaticCuttingIsDirty = true
+		end
 	end
 end
 
@@ -914,10 +1177,13 @@ function WoodHarvester:woodHarvesterSplitShapeCallback(shape, isBelow, isAbove, 
 			maxZ
 		}
 		local treeCenterX, treeCenterY, treeCenterZ = localToWorld(spec.cutNode, 0, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5)
+		local cutAttachDirection = nil
+		local loadedSplitShapeFromSavegame = spec.loadedSplitShapeFromSavegame
 
-		if spec.loadedSplitShapeFromSavegame then
+		if loadedSplitShapeFromSavegame then
 			if spec.lastTreeJointPos ~= nil then
 				treeCenterX, treeCenterY, treeCenterZ = localToWorld(shape, unpack(spec.lastTreeJointPos))
+				cutAttachDirection = spec.lastCutAttachDirection
 			end
 
 			spec.loadedSplitShapeFromSavegame = false
@@ -928,7 +1194,10 @@ function WoodHarvester:woodHarvesterSplitShapeCallback(shape, isBelow, isAbove, 
 		}
 		local x, y, z = localToWorld(spec.cutAttachReferenceNode, 0, 0, (maxZ - minZ) * 0.5)
 		local dx, dy, dz = localDirectionToWorld(shape, 0, 0, 1)
-		local upx, upy, upz = localDirectionToWorld(spec.cutAttachReferenceNode, 0, 1, 0)
+		local _, treeYDirection, _ = localDirectionToLocal(shape, spec.cutAttachReferenceNode, 0, 1, 0)
+		spec.cutAttachDirection = cutAttachDirection or treeYDirection > 0 and 1 or -1
+		spec.lastCutAttachDirection = spec.cutAttachDirection
+		local upx, upy, upz = localDirectionToWorld(spec.cutAttachReferenceNode, 0, spec.cutAttachDirection, 0)
 		local sideX, sideY, sizeZ = MathUtil.crossProduct(upx, upy, upz, dx, dy, dz)
 		dx, dy, dz = MathUtil.crossProduct(sideX, sideY, sizeZ, upx, upy, upz)
 
@@ -962,13 +1231,19 @@ function WoodHarvester:woodHarvesterSplitShapeCallback(shape, isBelow, isAbove, 
 			end
 		end
 
+		if spec.headerJointTilt ~= nil and spec.headerJointTilt.state and spec.headerJointTilt.lastState == nil then
+			spec.headerJointTilt.lastState = spec.headerJointTilt.state
+
+			self:setWoodHarvesterTiltState(false)
+		end
+
 		spec.attachedSplitShapeX, spec.attachedSplitShapeY, spec.attachedSplitShapeZ = worldToLocal(shape, treeCenterX, treeCenterY, treeCenterZ)
 		spec.attachedSplitShapeLastCutY = spec.attachedSplitShapeY
 		spec.attachedSplitShapeStartY = spec.attachedSplitShapeY
 		spec.attachedSplitShapeTargetY = spec.attachedSplitShapeY
 		local radius = (maxY - minY + maxZ - minZ) / 4
 
-		SpecializationUtil.raiseEvent(self, "onCutTree", radius, self.shapeBeingCutIsNew)
+		SpecializationUtil.raiseEvent(self, "onCutTree", radius, self.shapeBeingCutIsNew, loadedSplitShapeFromSavegame)
 
 		if g_server ~= nil then
 			g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, radius), nil, nil, self)
@@ -1004,12 +1279,28 @@ end
 function WoodHarvester:actionEventCutTree(actionName, inputValue, callbackState, isAnalog)
 	local spec = self.spec_woodHarvester
 
-	if spec.hasAttachedSplitShape then
-		if not spec.isAttachedSplitShapeMoving and self:getAnimationTime(spec.cutAnimation.name) == 1 then
-			self:cutTree(spec.currentCutLength)
+	if self:getIsTurnedOn() then
+		if spec.cutEventCoolDownTime < g_time - spec.lastCutEventTime then
+			if spec.hasAttachedSplitShape then
+				if not spec.isAttachedSplitShapeMoving and self:getAnimationTime(spec.cutAnimation.name) == 1 then
+					if spec.automaticCuttingIsDirty then
+						self:cutTree(0)
+
+						spec.lastCutEventTime = g_time
+					else
+						self:cutTree(spec.currentCutLength)
+
+						spec.lastCutEventTime = g_time
+					end
+				end
+			elseif spec.curSplitShape ~= nil and spec.cutTimer == -1 then
+				self:cutTree(0)
+
+				spec.lastCutEventTime = g_time
+			end
 		end
-	elseif spec.curSplitShape ~= nil then
-		self:cutTree(0)
+	else
+		g_currentMission:showBlinkingWarning(spec.texts.warningFirstTurnOnTheTool, 2000)
 	end
 end
 
@@ -1017,10 +1308,41 @@ function WoodHarvester:actionEventSetCutlength(actionName, inputValue, callbackS
 	local spec = self.spec_woodHarvester
 
 	if not spec.isAttachedSplitShapeMoving then
-		spec.currentCutLength = spec.currentCutLength + spec.cutLengthStep
+		spec.currentCutLengthIndex = spec.currentCutLengthIndex + callbackState
 
-		if spec.currentCutLength > spec.cutLengthMax + 0.0001 then
-			spec.currentCutLength = spec.cutLengthMin
+		if spec.currentCutLengthIndex > #spec.cutLengths then
+			spec.currentCutLengthIndex = 1
+		elseif spec.currentCutLengthIndex < 1 then
+			spec.currentCutLengthIndex = #spec.cutLengths
+		end
+
+		spec.currentCutLength = spec.cutLengths[spec.currentCutLengthIndex] or 1
+	end
+end
+
+function WoodHarvester:actionEventTiltHeader(actionName, inputValue, callbackState, isAnalog)
+	local spec = self.spec_woodHarvester
+
+	if self:getIsWoodHarvesterTiltStateAllowed(spec.headerJointTilt) and not spec.hasAttachedSplitShape then
+		self:setWoodHarvesterTiltState()
+	end
+end
+
+function WoodHarvester.loadSpecValueMaxTreeSize(xmlFile, customEnvironment, baseDir)
+	return xmlFile:getValue("vehicle.woodHarvester.cutNode#maxRadius")
+end
+
+function WoodHarvester.getSpecValueMaxTreeSize(storeItem, realItem, configurations, saleItem, returnValues, returnRange)
+	if storeItem.specs.woodHarvesterMaxTreeSize ~= nil then
+		local value = storeItem.specs.woodHarvesterMaxTreeSize * 2 * 100
+		local str = string.format("%d%s", MathUtil.round(value), g_i18n:getText("unit_cmShort"))
+
+		if returnValues and returnRange then
+			return value, value, str
+		elseif returnValues then
+			return value, str
+		else
+			return str
 		end
 	end
 end

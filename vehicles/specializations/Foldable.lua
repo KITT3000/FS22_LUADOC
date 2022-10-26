@@ -73,6 +73,8 @@ function Foldable.initSpecialization()
 	schema:register(XMLValueType.FLOAT, Shovel.SHOVEL_NODE_XML_KEY .. "#foldMaxLimit", "Fold max. time for shovel pickup", 1)
 	schema:register(XMLValueType.FLOAT, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#foldMinLimit", "Fold min. time for steering angle nodes to update", 0)
 	schema:register(XMLValueType.FLOAT, Attachable.STEERING_ANGLE_NODE_XML_KEY .. "#foldMaxLimit", "Fold max. time for steering angle nodes to update", 1)
+	schema:register(XMLValueType.FLOAT, WoodHarvester.HEADER_JOINT_TILT_XML_KEY .. "#foldMinLimit", "Fold min. time for header tilt to be allowed", 0)
+	schema:register(XMLValueType.FLOAT, WoodHarvester.HEADER_JOINT_TILT_XML_KEY .. "#foldMaxLimit", "Fold max. time for header tilt to be allowed", 1)
 	schema:setXMLSpecializationType()
 
 	local schemaSavegame = Vehicle.xmlSchemaSavegame
@@ -208,6 +210,8 @@ function Foldable.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getShovelNodeIsActive", Foldable.getShovelNodeIsActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadSteeringAngleNodeFromXML", Foldable.loadSteeringAngleNodeFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateSteeringAngleNode", Foldable.updateSteeringAngleNode)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadWoodHarvesterHeaderTiltFromXML", Foldable.loadWoodHarvesterHeaderTiltFromXML)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsWoodHarvesterTiltStateAllowed", Foldable.getIsWoodHarvesterTiltStateAllowed)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleCrabSteering", Foldable.getCanToggleCrabSteering)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getBrakeForce", Foldable.getBrakeForce)
 end
@@ -1549,6 +1553,27 @@ function Foldable:updateSteeringAngleNode(superFunc, steeringAngleNode, angle, d
 	end
 
 	return superFunc(self, steeringAngleNode, angle, dt)
+end
+
+function Foldable:loadWoodHarvesterHeaderTiltFromXML(superFunc, headerTilt, xmlFile, key)
+	if not superFunc(self, headerTilt, xmlFile, key) then
+		return false
+	end
+
+	headerTilt.foldMinLimit = xmlFile:getValue(key .. "#foldMinLimit", 0)
+	headerTilt.foldMaxLimit = xmlFile:getValue(key .. "#foldMaxLimit", 1)
+
+	return true
+end
+
+function Foldable:getIsWoodHarvesterTiltStateAllowed(superFunc, headerTilt)
+	local foldAnimTime = self:getFoldAnimTime()
+
+	if foldAnimTime < headerTilt.foldMinLimit or headerTilt.foldMaxLimit < foldAnimTime then
+		return false
+	end
+
+	return superFunc(self, headerTilt)
 end
 
 function Foldable:getCanToggleCrabSteering(superFunc)

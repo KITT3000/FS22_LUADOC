@@ -66,6 +66,7 @@ function WoodUnloadTrigger:load(components, xmlFile, xmlNode, target, i3dMapping
 		end
 	end
 
+	self.isManualSellingActive = true
 	self.trainSystemId = xmlFile:getValue(xmlNode .. "#trainSystemId")
 	self.trainSystem = nil
 
@@ -119,31 +120,48 @@ function WoodUnloadTrigger:processWood(farmId, noEventSend)
 	local isFull = false
 
 	for _, nodeId in pairs(self.woodInTrigger) do
-		if entityExists(nodeId) then
-			soldWood = true
-			local volume, qualityScale = self:calculateWoodBaseValue(nodeId)
-			self.extraAttributes.price = qualityScale
+		if self:getCanProcessWood() then
+			if entityExists(nodeId) then
+				soldWood = true
+				local volume, qualityScale, maxSize = self:calculateWoodBaseValue(nodeId)
+				self.extraAttributes.price = qualityScale
+				self.extraAttributes.maxSize = maxSize
 
-			if g_currentMission:getIsServer() then
-				if self.target.getFillUnitFreeCapacity == nil or self.target:getFillUnitFreeCapacity(nil, FillType.WOOD, farmId) > volume * 0.9 then
-					self.target:addFillUnitFillLevel(farmId, nil, volume, FillType.WOOD, ToolType.undefined, nil, self.extraAttributes)
-					delete(nodeId)
-				else
-					isFull = true
+				if g_currentMission:getIsServer() then
+					local fillType = self:getTargetFillType(maxSize, volume)
+
+					if self.target.getFillUnitFreeCapacity == nil or self.target:getFillUnitFreeCapacity(nil, fillType, farmId) > volume * 0.9 then
+						self.target:addFillUnitFillLevel(farmId, nil, volume, fillType, ToolType.undefined, nil, self.extraAttributes)
+						self:onProcessedWood(nodeId, volume, fillType)
+						delete(nodeId)
+					else
+						isFull = true
+					end
 				end
 			end
-		end
 
-		if isFull then
-			break
-		else
-			self.woodInTrigger[nodeId] = nil
+			if isFull then
+				break
+			else
+				self.woodInTrigger[nodeId] = nil
+			end
 		end
 	end
 
 	if soldWood and g_currentMission:getIsServer() then
 		g_currentMission:farmStats():updateStats("woodTonsSold", totalMass)
 	end
+end
+
+function WoodUnloadTrigger:getTargetFillType(maxSize, volume)
+	return FillType.WOOD
+end
+
+function WoodUnloadTrigger:getCanProcessWood()
+	return true
+end
+
+function WoodUnloadTrigger:onProcessedWood(nodeId, volume, fillType)
 end
 
 function WoodUnloadTrigger:calculateWoodBaseValue(objectId)
@@ -158,13 +176,14 @@ function WoodUnloadTrigger:calculateWoodBaseValueForData(volume, splitType, size
 	local qualityScale = 1
 	local lengthScale = 1
 	local defoliageScale = 1
+	local maxSize = 0
 
 	if sizeX ~= nil and volume > 0 then
 		local bvVolume = sizeX * sizeY * sizeZ
 		local volumeRatio = bvVolume / volume
 		local volumeQuality = 1 - math.sqrt(MathUtil.clamp((volumeRatio - 3) / 7, 0, 1)) * 0.95
 		local convexityQuality = 1 - MathUtil.clamp((numConvexes - 2) / 4, 0, 1) * 0.95
-		local maxSize = math.max(sizeX, sizeY, sizeZ)
+		maxSize = math.max(sizeX, sizeY, sizeZ)
 
 		if maxSize < 11 then
 			lengthScale = 0.6 + math.min(math.max((maxSize - 1) / 5, 0), 1) * 0.6
@@ -181,7 +200,7 @@ function WoodUnloadTrigger:calculateWoodBaseValueForData(volume, splitType, size
 	qualityScale = MathUtil.lerp(1, qualityScale, g_currentMission.missionInfo.economicDifficulty / 3)
 	defoliageScale = MathUtil.lerp(1, defoliageScale, g_currentMission.missionInfo.economicDifficulty / 3)
 
-	return volume * 1000, splitType.pricePerLiter * qualityScale * defoliageScale * lengthScale
+	return volume * splitType.volumeToLiter, splitType.pricePerLiter * qualityScale * defoliageScale * lengthScale, maxSize
 end
 
 function WoodUnloadTrigger:update(dt)
@@ -220,7 +239,7 @@ function WoodUnloadTrigger:woodTriggerCallback(triggerId, otherId, onEnter, onLe
 			if onEnter then
 				self.woodInTrigger[otherId] = otherId
 
-				if self.trainSystemId ~= nil then
+				if self:getNeedRaiseActive() then
 					self:raiseActive()
 				end
 			else
@@ -230,6 +249,10 @@ function WoodUnloadTrigger:woodTriggerCallback(triggerId, otherId, onEnter, onLe
 	end
 end
 
+function WoodUnloadTrigger:getNeedRaiseActive()
+	return self.trainSystemId ~= nil
+end
+
 function WoodUnloadTrigger:getWoodLogs()
 	return self.woodInTrigger
 end
@@ -237,7 +260,9 @@ end
 function WoodUnloadTrigger:woodSellTriggerCallback(triggerId, otherActorId, onEnter, onLeave, onStay, otherShapeId)
 	if (onEnter or onLeave) and g_currentMission.player ~= nil and otherActorId == g_currentMission.player.rootNode then
 		if onEnter then
-			g_currentMission.activatableObjectsSystem:addActivatable(self.activatable)
+			if self.isManualSellingActive then
+				g_currentMission.activatableObjectsSystem:addActivatable(self.activatable)
+			end
 		else
 			g_currentMission.activatableObjectsSystem:removeActivatable(self.activatable)
 		end
@@ -261,4 +286,14 @@ end
 
 function PlaceableWoodSellingStationActivatable:run()
 	self.woodUnloadTrigger:processWood(g_currentMission:getFarmId())
+end
+
+function PlaceableWoodSellingStationActivatable:getDistance(x, y, z)
+	if self.woodUnloadTrigger.activationTrigger ~= nil then
+		local tx, ty, tz = getWorldTranslation(self.woodUnloadTrigger.activationTrigger)
+
+		return MathUtil.vector3Length(x - tx, y - ty, z - tz)
+	end
+
+	return math.huge
 end

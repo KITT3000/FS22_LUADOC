@@ -515,94 +515,131 @@ end
 
 function TreePlanter:addFillUnitFillLevel(superFunc, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
 	local spec = self.spec_treePlanter
-	local pallet = spec.mountedSaplingPallet
 
-	if pallet ~= nil then
-		local fillUnits = pallet:getFillUnits()
+	if fillUnitIndex == spec.fillUnitIndex then
+		local pallet = spec.mountedSaplingPallet
 
-		for palletFillUnitIndex, _ in pairs(fillUnits) do
-			if pallet:getFillUnitFillType(fillUnitIndex) == fillTypeIndex then
-				return pallet:addFillUnitFillLevel(self:getOwnerFarmId(), palletFillUnitIndex, fillLevelDelta, fillTypeIndex, ToolType.UNDEFINED)
+		if pallet ~= nil then
+			local fillUnits = pallet:getFillUnits()
+
+			for palletFillUnitIndex, _ in pairs(fillUnits) do
+				if pallet:getFillUnitFillType(fillUnitIndex) == fillTypeIndex then
+					return pallet:addFillUnitFillLevel(self:getOwnerFarmId(), palletFillUnitIndex, fillLevelDelta, fillTypeIndex, ToolType.UNDEFINED)
+				end
 			end
 		end
 	end
 
-	return 0
+	return superFunc(self, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
 end
 
 function TreePlanter:getFillUnitFillLevel(superFunc, fillUnitIndex)
 	local spec = self.spec_treePlanter
-	local pallet = spec.mountedSaplingPallet
-	local fillLevel = 0
 
-	if pallet ~= nil then
-		local fillUnits = pallet:getFillUnits()
+	if fillUnitIndex == spec.fillUnitIndex then
+		local pallet = spec.mountedSaplingPallet
 
-		for palletFillUnitIndex, _ in pairs(fillUnits) do
-			fillLevel = fillLevel + pallet:getFillUnitFillLevel(palletFillUnitIndex)
+		if pallet ~= nil then
+			local fillLevel = 0
+			local fillUnits = pallet:getFillUnits()
+
+			for palletFillUnitIndex, _ in pairs(fillUnits) do
+				fillLevel = fillLevel + pallet:getFillUnitFillLevel(palletFillUnitIndex)
+			end
+
+			return fillLevel
 		end
 	end
 
-	return fillLevel
+	return superFunc(self, fillUnitIndex)
 end
 
 function TreePlanter:getFillUnitFillLevelPercentage(superFunc, fillUnitIndex)
 	local spec = self.spec_treePlanter
-	local pallet = spec.mountedSaplingPallet
 
-	if pallet ~= nil then
-		local capacity = self:getFillUnitCapacity(fillUnitIndex)
-		local fillLevel = self:getFillUnitFillLevel(fillUnitIndex)
+	if fillUnitIndex == spec.fillUnitIndex then
+		local pallet = spec.mountedSaplingPallet
 
-		if capacity > 0 then
-			return fillLevel / capacity
+		if pallet ~= nil then
+			local capacity = self:getFillUnitCapacity(fillUnitIndex)
+			local fillLevel = self:getFillUnitFillLevel(fillUnitIndex)
+
+			if capacity > 0 then
+				return fillLevel / capacity
+			end
 		end
 	end
 
-	return 0
+	return superFunc(self, fillUnitIndex)
 end
 
 function TreePlanter:getFillUnitFillType(superFunc, fillUnitIndex)
 	local spec = self.spec_treePlanter
-	local pallet = spec.mountedSaplingPallet
 
-	if pallet ~= nil then
-		local fillUnits = pallet:getFillUnits()
+	if fillUnitIndex == spec.fillUnitIndex then
+		local pallet = spec.mountedSaplingPallet
 
-		for palletFillUnitIndex, _ in pairs(fillUnits) do
-			if pallet:getFillUnitFillLevel(palletFillUnitIndex) > 0 then
-				return pallet:getFillUnitFillType(palletFillUnitIndex)
+		if pallet ~= nil then
+			local fillUnits = pallet:getFillUnits()
+
+			for palletFillUnitIndex, _ in pairs(fillUnits) do
+				if pallet:getFillUnitFillLevel(palletFillUnitIndex) > 0 then
+					return pallet:getFillUnitFillType(palletFillUnitIndex)
+				end
 			end
 		end
-
-		return FillType.UNKNOWN
 	end
 
-	return nil
+	return superFunc(self, fillUnitIndex)
 end
 
 function TreePlanter:getFillUnitCapacity(superFunc, fillUnitIndex)
 	local spec = self.spec_treePlanter
-	local pallet = spec.mountedSaplingPallet
-	local capacity = 0
 
-	if pallet ~= nil then
-		local fillUnits = pallet:getFillUnits()
+	if fillUnitIndex == spec.fillUnitIndex then
+		local pallet = spec.mountedSaplingPallet
 
-		for palletFillUnitIndex, _ in pairs(fillUnits) do
-			capacity = capacity + pallet:getFillUnitCapacity(palletFillUnitIndex)
+		if pallet ~= nil then
+			local capacity = 0
+			local fillUnits = pallet:getFillUnits()
+
+			for palletFillUnitIndex, _ in pairs(fillUnits) do
+				capacity = capacity + pallet:getFillUnitCapacity(palletFillUnitIndex)
+			end
+
+			return capacity
 		end
 	end
 
-	return capacity
+	return superFunc(self, fillUnitIndex)
 end
 
 function TreePlanter:getFillUnitAllowsFillType(superFunc, fillUnitIndex, fillType)
-	return false
+	local spec = self.spec_treePlanter
+
+	if fillUnitIndex == spec.fillUnitIndex then
+		local pallet = spec.mountedSaplingPallet
+
+		if pallet ~= nil then
+			return false
+		end
+	end
+
+	return superFunc(self, fillUnitIndex, fillType)
 end
 
 function TreePlanter:getFillUnitFreeCapacity(superFunc, fillUnitIndex, fillTypeIndex, farmId)
-	return 0
+	local spec = self.spec_treePlanter
+
+	if fillUnitIndex == spec.fillUnitIndex then
+		local pallet = spec.mountedSaplingPallet
+
+		if pallet ~= nil then
+			return 0
+		end
+	end
+
+	return superFunc(self, fillUnitIndex, fillTypeIndex, farmId)
 end
 
 function TreePlanter:getFillLevelInformation(superFunc, display)
@@ -610,9 +647,9 @@ function TreePlanter:getFillLevelInformation(superFunc, display)
 	local pallet = spec.mountedSaplingPallet
 
 	if pallet ~= nil then
-		local capacity = self:getFillUnitCapacity()
-		local fillLevel = self:getFillUnitFillLevel()
-		local fillType = self:getFillUnitFillType()
+		local capacity = self:getFillUnitCapacity(spec.fillUnitIndex)
+		local fillLevel = self:getFillUnitFillLevel(spec.fillUnitIndex)
+		local fillType = self:getFillUnitFillType(spec.fillUnitIndex)
 
 		display:addFillLevel(fillType, fillLevel, capacity)
 	end

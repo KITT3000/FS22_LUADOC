@@ -186,6 +186,10 @@ SystemConsoleCommands = {
 				DebugRendering.NORMALS,
 				"normals"
 			},
+			tangent_space_normals = {
+				DebugRendering.TANGENT_SPACE_NORMALS,
+				"tangentSpaceNormals"
+			},
 			smoothness = {
 				DebugRendering.SMOOTHNESS,
 				"smoothness"

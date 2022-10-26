@@ -48,23 +48,27 @@ end
 function AILoadable:onPostLoad()
 	local spec = self.spec_aiLoadable
 
-	if spec.aiFillUnits ~= nil and self.getInputAttacherJoints ~= nil then
+	if spec.aiFillUnits ~= nil then
 		for _, aiFillUnit in ipairs(spec.aiFillUnits) do
 			aiFillUnit.inputAttacherJointOffsets = {}
 
-			for _, inputAttacherJoint in ipairs(self:getInputAttacherJoints()) do
-				local x, y, z = localToLocal(aiFillUnit.aiLoadingNode, inputAttacherJoint.node, 0, 0, 0)
+			if self.getInputAttacherJoints ~= nil then
+				for _, inputAttacherJoint in ipairs(self:getInputAttacherJoints()) do
+					local x, y, z = localToLocal(aiFillUnit.aiLoadingNode, inputAttacherJoint.node, 0, 0, 0)
 
-				table.insert(aiFillUnit.inputAttacherJointOffsets, {
-					x,
-					y,
-					z
-				})
+					table.insert(aiFillUnit.inputAttacherJointOffsets, {
+						x,
+						y,
+						z
+					})
+				end
 			end
 
 			if self.getAIRootNode ~= nil then
 				local aiRootNode = self:getAIRootNode()
-				aiFillUnit.aiRootNodeOffsets = localToLocal(aiFillUnit.aiLoadingNode, aiRootNode, 0, 0, 0)
+				aiFillUnit.aiRootNodeOffsets = {
+					localToLocal(aiFillUnit.aiLoadingNode, aiRootNode, 0, 0, 0)
+				}
 			end
 		end
 	end
@@ -110,11 +114,14 @@ function AILoadable:getAILoadingNodeZAlignedOffset(fillUnitIndex, targetVehicle)
 	local fillUnit = self:getFillUnitByIndex(fillUnitIndex)
 
 	if targetVehicle == self then
-		return unpack(fillUnit.aiRootNodeOffsets)
+		return fillUnit.aiRootNodeOffsets[1], fillUnit.aiRootNodeOffsets[2], fillUnit.aiRootNodeOffsets[3]
 	end
 
 	local index = self:getActiveInputAttacherJointDescIndex()
-	local offsetX, offsetY, offsetZ = unpack(fillUnit.inputAttacherJointOffsets[index])
+	local inputAttacherOffsets = fillUnit.inputAttacherJointOffsets[index]
+	local offsetX = inputAttacherOffsets[1]
+	local offsetY = inputAttacherOffsets[2]
+	local offsetZ = inputAttacherOffsets[3]
 	local currentVehicle = self
 	local nextVehicle = currentVehicle:getAttacherVehicle()
 

@@ -386,6 +386,7 @@ function ShopController:makeDisplayItem(storeItem, realItem, configurations, sal
 	addSpec("inlineWrapperBaleSizeSquare")
 	addSpec("baleLoaderBaleSizeRound")
 	addSpec("baleLoaderBaleSizeSquare")
+	addSpec("woodHarvesterMaxTreeSize")
 	addSpec("licensePlate")
 
 	if self.currentMission.slotSystem:getAreSlotsVisible() then

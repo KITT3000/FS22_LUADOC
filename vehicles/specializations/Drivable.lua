@@ -31,7 +31,7 @@ Drivable = {
 		schema:register(XMLValueType.NODE_INDEX, "vehicle.drivable.idleTurning.wheel(?)#node", "Wheel node to change")
 		schema:register(XMLValueType.ANGLE, "vehicle.drivable.idleTurning.wheel(?)#steeringAngle", "Steering angle while idle turning")
 		schema:register(XMLValueType.BOOL, "vehicle.drivable.idleTurning.wheel(?)#inverted", "Acceleration is inverted", false)
-		Dashboard.registerDashboardXMLPaths(schema, "vehicle.drivable.dashboards", "cruiseControl | directionForward | directionBackward | movingDirection | cruiseControlActive | accelerationAxis | decelerationAxis | ac_decelerationAxis | steeringAngle")
+		Dashboard.registerDashboardXMLPaths(schema, "vehicle.drivable.dashboards", "cruiseControl | directionForward | directionBackward | movingDirection | cruiseControlActive | accelerationAxis | decelerationAxis | ac_decelerationAxis | steeringAngle | combinedPedalLeft | combinedPedalRight")
 		SoundManager.registerSampleXMLPaths(schema, "vehicle.drivable.sounds", "waterSplash")
 		schema:setXMLSpecializationType()
 
@@ -239,6 +239,20 @@ function Drivable:onLoad(savegame)
 			valueTypeToLoad = "steeringAngle",
 			valueObject = self
 		})
+		self:loadDashboardsFromXML(self.xmlFile, dashKey, {
+			maxFunc = 1,
+			minFunc = -1,
+			valueTypeToLoad = "combinedPedalLeft",
+			valueObject = self,
+			valueFunc = Drivable.getDashboardCombinedPedalLeft
+		})
+		self:loadDashboardsFromXML(self.xmlFile, dashKey, {
+			maxFunc = 1,
+			minFunc = -1,
+			valueTypeToLoad = "combinedPedalRight",
+			valueObject = self,
+			valueFunc = Drivable.getDashboardCombinedPedalRight
+		})
 	end
 
 	if self.isClient then
@@ -413,13 +427,21 @@ function Drivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 					end
 
 					if spec.idleTurningAllowed then
-						if axisForward == 0 and axisSteer ~= 0 and lastSpeed < 1 and not spec.idleTurningActive then
+						if axisForward == 0 and math.abs(axisSteer) > 0.05 and lastSpeed < 1 and not spec.idleTurningActive then
 							spec.idleTurningActive = true
 							spec.idleTurningDirection = MathUtil.sign(axisSteer) * spec.idleTurningDrivingDirection
 						end
 
 						if axisForward ~= 0 and spec.idleTurningActive then
 							spec.idleTurningActive = false
+
+							if axisSteer > 0 then
+								self.rotatedTime = self.minRotTime
+								spec.axisSide = 1
+							elseif axisSteer < 0 then
+								self.rotatedTime = self.maxRotTime
+								spec.axisSide = -1
+							end
 						end
 
 						if spec.idleTurningActive and not spec.idleTurningLockDirection then
@@ -806,6 +828,32 @@ function Drivable:getDashboardSteeringAxis()
 	end
 
 	return self.rotatedTime * self:getReverserDirection()
+end
+
+function Drivable:getDashboardCombinedPedalLeft()
+	local value = self:getAcDecelerationAxis()
+	local spec = self.spec_drivable
+
+	if spec.idleTurningAllowed and spec.idleTurningActive then
+		return value * spec.idleTurningDirection
+	end
+
+	value = MathUtil.clamp(value - self:getDashboardSteeringAxis(), -1, 1)
+
+	return value
+end
+
+function Drivable:getDashboardCombinedPedalRight()
+	local value = self:getAcDecelerationAxis()
+	local spec = self.spec_drivable
+
+	if spec.idleTurningAllowed and spec.idleTurningActive then
+		return -value * spec.idleTurningDirection
+	end
+
+	value = MathUtil.clamp(value + self:getDashboardSteeringAxis(), -1, 1)
+
+	return value
 end
 
 function Drivable:setReverserDirection(reverserDirection)

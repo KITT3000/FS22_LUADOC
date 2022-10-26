@@ -1,6 +1,10 @@
 SpecializationUtil = {
 	raiseEvent = function (object, eventName, ...)
-		assert(object.eventListeners[eventName] ~= nil, "Error: Event '" .. tostring(eventName) .. "' is not registered for type '" .. tostring(object.type.name) .. "'!")
+		if object.eventListeners[eventName] == nil then
+			printError("Error: Event '" .. tostring(eventName) .. "' is not registered for type '" .. tostring(object.type.name) .. "'!")
+
+			return
+		end
 
 		for _, spec in ipairs(object.eventListeners[eventName]) do
 			spec[eventName](object, ...)

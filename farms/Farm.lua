@@ -3,6 +3,8 @@ Farm = {
 	MAX_LOAN = 3000000,
 	EQUITY_LOAN_RATIO = 0.8,
 	LOAN_INTEREST_RATE = 0.04,
+	MAX_NUM_SAVED_PLAYERS = 150,
+	MAX_NUM_DAYS_OFFLINE = 30,
 	PERMISSION = {
 		MANAGE_CONTRACTS = "manageContracts",
 		SELL_PLACEABLE = "sellPlaceable",
@@ -227,6 +229,7 @@ function Farm:loadFromXMLFile(xmlFile, key)
 			uniqueUserId = xmlFile:getString(playerKey .. "#uniqueUserId"),
 			isFarmManager = xmlFile:getBool(playerKey .. "#farmManager", false),
 			lastNickname = xmlFile:getString(playerKey .. "#lastNickname", ""),
+			timeLastConnected = xmlFile:getString(playerKey .. "#timeLastConnected") or getDate("%Y/%m/%d %H:%M"),
 			permissions = {}
 		}
 
@@ -263,17 +266,54 @@ function Farm:saveToXMLFile(xmlFile, key)
 
 	xmlFile:setFloat(key .. "#loan", self.loan)
 	xmlFile:setFloat(key .. "#money", self.money)
-	xmlFile:setSortedTable(key .. ".players.player", self.players, function (playerKey, player)
+
+	local playersToSave = table.copy(self.players)
+
+	table.sort(playersToSave, function (a, b)
+		return b.timeLastConnected < a.timeLastConnected
+	end)
+
+	local yearCur, monthCur, dayCur, hourCur, minuteCur = string.match(getDate("%Y/%m/%d %H:%M"), "(%d+)/(%d+)/(%d+) (%d+):(%d+)")
+	minuteCur = tonumber(minuteCur)
+	hourCur = tonumber(hourCur)
+	dayCur = tonumber(dayCur)
+	monthCur = tonumber(monthCur)
+	yearCur = tonumber(yearCur)
+	local maxTimeSinceLastConnectionSec = Farm.MAX_NUM_DAYS_OFFLINE * 24 * 60 * 60
+	local xmlIndex = 0
+
+	for i, player in ipairs(playersToSave) do
+		local playerKey = string.format("%s.players.player(%d)", key, xmlIndex)
+
+		if Farm.MAX_NUM_SAVED_PLAYERS <= xmlIndex then
+			local year, month, day, hour, minute = string.match(player.timeLastConnected, "(%d+)/(%d+)/(%d+) (%d+):(%d+)")
+			minute = tonumber(minute)
+			hour = tonumber(hour)
+			day = tonumber(day)
+			month = tonumber(month)
+			year = tonumber(year)
+
+			if year and maxTimeSinceLastConnectionSec < math.abs(getDateDiffSeconds(year, month, day, hour, minute, 0, yearCur, monthCur, dayCur, hourCur, minuteCur, 0)) then
+				Logging.info("Excluded %d players from '%s': Limit reached and affected players did not join the server for more than %d days", #playersToSave - xmlIndex, xmlFile:getFilename(), Farm.MAX_NUM_DAYS_OFFLINE)
+
+				break
+			end
+		end
+
 		xmlFile:setString(playerKey .. "#uniqueUserId", player.uniqueUserId)
 		xmlFile:setBool(playerKey .. "#farmManager", player.isFarmManager)
 		xmlFile:setString(playerKey .. "#lastNickname", player.lastNickname or "")
+		xmlFile:setString(playerKey .. "#timeLastConnected", player.timeLastConnected)
 
 		for _, permission in ipairs(Farm.PERMISSIONS) do
 			local value = Utils.getNoNil(player.permissions[permission], false)
 
 			xmlFile:setBool(playerKey .. "#" .. permission, value)
 		end
-	end)
+
+		xmlIndex = xmlIndex + 1
+	end
+
 	xmlFile:setSortedTable(key .. ".handTools.handTool", self.handTools, function (toolKey, filename)
 		xmlFile:setString(toolKey .. "#filename", HTMLUtil.encodeToHTML(NetworkUtil.convertToNetworkFilename(filename)))
 	end)
@@ -407,6 +447,7 @@ function Farm:resetToSingleplayer()
 		player.permissions[permission] = true
 	end
 
+	player.timeLastConnected = getDate("%Y/%m/%d %H:%M")
 	self.players = {
 		player
 	}
@@ -665,6 +706,7 @@ function Farm:addUser(userId, uniqueUserId, isFarmManager, user)
 
 	if self.isServer then
 		player.uniqueUserId = uniqueUserId
+		player.timeLastConnected = getDate("%Y/%m/%d %H:%M")
 		self.uniqueUserIdToPlayer[uniqueUserId] = player
 	end
 

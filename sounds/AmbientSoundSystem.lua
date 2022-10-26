@@ -288,6 +288,8 @@ function AmbientSoundSystem:addMovingSound(node)
 	local numChildren = getNumOfChildren(node)
 
 	if numChildren < 2 or numChildren > 3 then
+		Logging.devWarning("AmbientSoundSystem:addMovingSound(): Invalid number of children given for node '%s'", getName(node))
+
 		return
 	end
 
@@ -295,7 +297,7 @@ function AmbientSoundSystem:addMovingSound(node)
 	local transformNode = getChildAt(node, 1)
 
 	if not getHasClassId(getGeometry(spline), ClassIds.SPLINE) then
-		Logging.error("AmbientsoundSystem: Given node '%s' is not a spline!", getName(spline))
+		Logging.error("AmbientsoundSystem:addMovingSound(): First child '%s' of given node '%s' is not a spline!", getName(spline), getName(node))
 
 		return
 	end
@@ -387,23 +389,36 @@ function AmbientSoundSystem:addMovingSound(node)
 
 	for i = 0, getNumOfChildren(transformNode) - 1 do
 		local sound = getChildAt(transformNode, i)
-		local innerRange = getAudioSourceInnerRange(sound)
-		local outerRange = getAudioSourceRange(sound)
 
-		table.insert(sounds, {
-			node = sound,
-			innerRange = innerRange,
-			outerRange = outerRange
-		})
+		if not getHasClassId(sound, ClassIds.AUDIO_SOURCE) then
+			Logging.warning("AmbientsoundSystem:addMovingSound(): Child '%s' of transform '%s' is not an audio source", getName(transformNode), getName(sound))
+		else
+			local innerRange = getAudioSourceInnerRange(sound)
+			local outerRange = getAudioSourceRange(sound)
+
+			table.insert(sounds, {
+				node = sound,
+				innerRange = innerRange,
+				outerRange = outerRange
+			})
+		end
 	end
 
-	table.insert(self.movingSounds, {
+	local movingSoundEntry = {
 		spline = spline,
 		node = transformNode,
 		eps = eps,
 		sounds = sounds,
 		modifiers = modifiers
-	})
+	}
+
+	table.insert(self.movingSounds, movingSoundEntry)
+
+	return movingSoundEntry
+end
+
+function AmbientSoundSystem:removeMovingSound(movingSoundEntry)
+	return table.removeElement(self.movingSounds, movingSoundEntry)
 end
 
 function AmbientSoundSystem:registerModifier(xmlAttributeName, loadFromXMLFunc)

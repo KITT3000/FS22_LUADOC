@@ -49,6 +49,7 @@ function Storage:load(components, xmlFile, key, i3dMappings)
 	self.fillTypes = {}
 	self.fillLevels = {}
 	self.fillLevelsLastSynced = {}
+	self.fillLevelsLastPublished = {}
 	self.sortedFillTypes = {}
 	local fillTypeCategories = xmlFile:getValue(key .. "#fillTypeCategories")
 	local fillTypeNames = xmlFile:getValue(key .. "#fillTypes")
@@ -90,6 +91,7 @@ function Storage:load(components, xmlFile, key, i3dMappings)
 
 		self.fillLevels[fillType] = 0
 		self.fillLevelsLastSynced[fillType] = 0
+		self.fillLevelsLastPublished[fillType] = 0
 	end
 
 	table.sort(self.sortedFillTypes)
@@ -344,11 +346,14 @@ function Storage:setFillLevel(fillLevel, fillType, fillInfo)
 		local oldLevel = self.fillLevels[fillType]
 		self.fillLevels[fillType] = fillLevel
 		local delta = self.fillLevels[fillType] - oldLevel
+		local newFillLevelInt = MathUtil.round(self.fillLevels[fillType])
 
-		if math.abs(delta) > 0.1 then
+		if math.abs(delta) > 0.1 or self.fillLevelsLastPublished[fillType] ~= newFillLevelInt then
 			for _, func in ipairs(self.fillLevelChangedListeners) do
 				func(fillType, delta)
 			end
+
+			self.fillLevelsLastPublished[fillType] = newFillLevelInt
 		end
 
 		if self.isServer and (fillLevel < 0.1 or self.fillLevelSyncThreshold <= math.abs(self.fillLevelsLastSynced[fillType] - fillLevel) or capacity - fillLevel < 0.1) then

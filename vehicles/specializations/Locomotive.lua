@@ -156,7 +156,7 @@ function Locomotive:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 		elseif spec.state == Locomotive.STATE_MANUAL_TRAVEL_INACTIVE then
 			if self.movingDirection > 0 then
 				self:updateVehiclePhysics(-1, 0, 0, dt)
-			else
+			elseif self.movingDirection < 0 then
 				self:updateVehiclePhysics(1, 0, 0, dt)
 			end
 

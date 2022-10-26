@@ -28,8 +28,7 @@ function Effect:load(xmlFile, baseName, rootNodes, parent, i3dMapping)
 			i3dMapping = i3dMapping,
 			filename = filename
 		}
-
-		g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.effectI3DFileLoaded, self, arguments)
+		self.sharedLoadRequestId = g_i3DManager:loadSharedI3DFileAsync(filename, false, false, self.effectI3DFileLoaded, self, arguments)
 	else
 		if not self:loadEffectAttributes(xmlFile, baseName, nil, rootNodes, i3dMapping) then
 			Logging.xmlWarning(xmlFile, "Failed to load effect '%s' from node", baseName)

@@ -213,7 +213,7 @@ function ParticleEffect:setFillType(fillType)
 				local color = g_fillTypeManager:getSmokeColorByFillTypeIndex(fillType, self.useFruitColor)
 
 				if color ~= nil then
-					setShaderParameter(self.particleSystem.shape, "colorAlpha", color[1], color[2], color[3], color[4], false)
+					self:setColor(color[1], color[2], color[3], color[4])
 				end
 			end
 		end
@@ -222,6 +222,12 @@ function ParticleEffect:setFillType(fillType)
 	end
 
 	return success
+end
+
+function ParticleEffect:setColor(r, g, b, a)
+	if self.particleSystem ~= nil and getHasShaderParameter(self.particleSystem.shape, "colorAlpha") then
+		setShaderParameter(self.particleSystem.shape, "colorAlpha", r, g, b, a, false)
+	end
 end
 
 function ParticleEffect:setMinMaxWidth(minValue, maxValue, minWidthNorm, maxWidthNorm, reset)
@@ -254,6 +260,12 @@ function ParticleEffect:setDistance(distance, terrain)
 		local lifespan = curve:get(distance + self.extraDistance)
 
 		ParticleUtil.setParticleLifespan(self.particleSystem, lifespan)
+	end
+end
+
+function ParticleEffect:setDensity(density)
+	if self.particleSystem ~= nil then
+		ParticleUtil.setEmitCountScale(self.particleSystem, self.emitCountScale * density)
 	end
 end
 

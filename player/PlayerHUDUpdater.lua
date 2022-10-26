@@ -63,9 +63,7 @@ function PlayerHUDUpdater:updateRaycastObject()
 	local object = g_currentMission:getNodeObject(self.currentRaycastTarget)
 
 	if object == nil then
-		local splitType = getSplitType(self.currentRaycastTarget)
-
-		if splitType ~= 0 then
+		if getHasClassId(self.currentRaycastTarget, ClassIds.MESH_SPLIT_SHAPE) then
 			self.isSplitShape = true
 			self.object = self.currentRaycastTarget
 
@@ -83,6 +81,8 @@ function PlayerHUDUpdater:updateRaycastObject()
 				if cluster ~= nil then
 					self.isAnimal = true
 					self.object = cluster
+
+					return
 				end
 			end
 		end
@@ -157,8 +157,8 @@ function PlayerHUDUpdater:showPalletInfo(pallet)
 
 	box:clear()
 
-	if SpecializationUtil.hasSpecialization(BigBag, pallet.specializations) then
-		box:setTitle(g_i18n:getText("shopItem_bigBag"))
+	if pallet.getInfoBoxTitle ~= nil then
+		box:setTitle(pallet:getInfoBoxTitle())
 	else
 		box:setTitle(g_i18n:getText("infohud_pallet"))
 	end
@@ -173,7 +173,7 @@ function PlayerHUDUpdater:showPalletInfo(pallet)
 end
 
 function PlayerHUDUpdater:showSplitShapeInfo(splitShape)
-	if not entityExists(splitShape) then
+	if not entityExists(splitShape) or not getHasClassId(splitShape, ClassIds.MESH_SPLIT_SHAPE) then
 		return
 	end
 
@@ -183,7 +183,13 @@ function PlayerHUDUpdater:showSplitShapeInfo(splitShape)
 		return
 	end
 
-	local mass = getMass(splitShape)
+	local isSplit = getIsSplitShapeSplit(splitShape)
+	local isStatic = getRigidBodyType(splitShape) == RigidBodyType.STATIC
+
+	if isSplit and isStatic then
+		return
+	end
+
 	local sizeX, sizeY, sizeZ, numConvexes, numAttachments = getSplitShapeStats(splitShape)
 	local splitType = g_splitTypeManager:getSplitTypeByIndex(splitTypeId)
 	local splitTypeName = splitType and splitType.title
@@ -191,7 +197,12 @@ function PlayerHUDUpdater:showSplitShapeInfo(splitShape)
 	local box = self.objectBox
 
 	box:clear()
-	box:setTitle(g_i18n:getText("infohud_wood"))
+
+	if isSplit then
+		box:setTitle(g_i18n:getText("infohud_wood"))
+	else
+		box:setTitle(g_i18n:getText("infohud_tree"))
+	end
 
 	if splitTypeName ~= nil then
 		box:addLine(g_i18n:getText("infohud_type"), splitTypeName)
@@ -199,7 +210,9 @@ function PlayerHUDUpdater:showSplitShapeInfo(splitShape)
 
 	box:addLine(g_i18n:getText("infohud_length"), g_i18n:formatNumber(length, 1) .. " m")
 
-	if g_currentMission:getIsServer() then
+	if g_currentMission:getIsServer() and not isStatic then
+		local mass = getMass(splitShape)
+
 		box:addLine(g_i18n:getText("infohud_mass"), g_i18n:formatMass(mass))
 	end
 

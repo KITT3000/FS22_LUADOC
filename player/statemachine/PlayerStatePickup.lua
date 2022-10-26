@@ -9,7 +9,7 @@ end
 
 function PlayerStatePickup:isAvailable()
 	if self.player.isClient and self.player.isEntered and not self.player:hasHandtoolEquipped() and not self.player.isCarryingObject and self.player.isObjectInRange then
-		if self.player.lastFoundObjectMass <= Player.MAX_PICKABLE_OBJECT_MASS then
+		if self.player.lastFoundObjectMass <= self.player.maxPickableMass then
 			return true
 		else
 			g_currentMission:addExtraPrintText(g_i18n:getText("warning_objectTooHeavy"))

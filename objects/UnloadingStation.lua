@@ -34,7 +34,16 @@ function UnloadingStation:load(components, xmlFile, key, customEnv, i3dMappings,
 	self.aiSupportedFillTypes = {}
 
 	xmlFile:iterate(key .. ".unloadTrigger", function (index, unloadTriggerKey)
-		local unloadTrigger = UnloadTrigger.new(self.isServer, self.isClient)
+		local className = xmlFile:getValue(unloadTriggerKey .. "#class", "UnloadTrigger")
+		local class = ClassUtil.getClassObject(className)
+
+		if class == nil then
+			Logging.xmlError(xmlFile, "UnloadTrigger class '%s' not defined", className, unloadTriggerKey)
+
+			return
+		end
+
+		local unloadTrigger = class.new(self.isServer, self.isClient)
 
 		if unloadTrigger:load(components, xmlFile, unloadTriggerKey, self, nil, i3dMappings) then
 			unloadTrigger:setTarget(self)
@@ -46,9 +55,10 @@ function UnloadingStation:load(components, xmlFile, key, customEnv, i3dMappings,
 	end)
 
 	if self.isClient then
+		local _, baseDirectory = Utils.getModNameAndBaseDirectory(xmlFile:getFilename())
 		self.samples = {
-			idle = g_soundManager:loadSampleFromXML(xmlFile, key .. ".sounds", "idle", self.baseDirectory, components, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil),
-			active = g_soundManager:loadSampleFromXML(xmlFile, key .. ".sounds", "active", self.baseDirectory, components, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
+			idle = g_soundManager:loadSampleFromXML(xmlFile, key .. ".sounds", "idle", baseDirectory, components, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil),
+			active = g_soundManager:loadSampleFromXML(xmlFile, key .. ".sounds", "active", baseDirectory, components, 1, AudioGroup.ENVIRONMENT, i3dMappings, nil)
 		}
 		self.animations = g_animationManager:loadAnimations(xmlFile, key .. ".animationNodes", components, self, i3dMappings)
 		self.effects = g_effectManager:loadEffect(xmlFile, key .. ".effectNodes", components, self, i3dMappings)
@@ -343,6 +353,14 @@ function UnloadingStation:getAITargetPositionAndDirection(fillType)
 	return nil
 end
 
+function UnloadingStation:setOwnerFarmId(farmId, noEventSend)
+	UnloadingStation:superClass().setOwnerFarmId(self, farmId, noEventSend)
+
+	for _, unloadTrigger in ipairs(self.unloadTriggers) do
+		unloadTrigger:setOwnerFarmId(farmId, true)
+	end
+end
+
 function UnloadingStation.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#node", "Unloading station node")
 	schema:register(XMLValueType.STRING, basePath .. "#stationName", "Station name", "LoadingStation")
@@ -350,6 +368,7 @@ function UnloadingStation.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.BOOL, basePath .. "#hideFromPricesMenu", "Hide station from prices menu", false)
 	schema:register(XMLValueType.BOOL, basePath .. "#supportsExtension", "Supports extensions", false)
 	UnloadTrigger.registerXMLPaths(schema, basePath .. ".unloadTrigger(?)")
+	schema:register(XMLValueType.STRING, basePath .. ".unloadTrigger(?)#class", "Name of unload trigger class")
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "active")
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "idle")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, basePath .. ".animationNodes")

@@ -13,11 +13,14 @@ end
 
 function HelpLineManager:initDataStructures()
 	self.categories = {}
+	self.modCategories = {}
+	self.idToCategoryIndex = {}
 	self.categoryNames = {}
 	self.triggers = {}
 	self.triggerNodeToData = {}
 	self.sharedLoadingIds = {}
 	self.helpData = nil
+	self.idToIndices = {}
 end
 
 function HelpLineManager:loadMapData(xmlFile, missionInfo)
@@ -33,31 +36,68 @@ function HelpLineManager:loadMapData(xmlFile, missionInfo)
 
 	self:loadFromXML(filename, missionInfo)
 
+	local additionalFilename = getXMLString(xmlFile, "map.helpline#additionalFilename")
+
+	if additionalFilename ~= nil then
+		additionalFilename = Utils.getFilename(additionalFilename, g_currentMission.baseDirectory)
+
+		self:loadFromXML(additionalFilename, missionInfo)
+	end
+
+	for _, category in ipairs(self.modCategories) do
+		table.insert(self.categories, category)
+
+		if category.id ~= nil then
+			self.idToCategoryIndex[category.id] = #self.categories
+		end
+	end
+
 	local xmlObject = XMLFile.wrap(xmlFile, nil)
 
-	xmlObject:iterate("map.helpline.trigger", function (index, key)
+	xmlObject:iterate("map.helpline.trigger", function (_, key)
 		local position = xmlObject:getVector(key .. "#position", nil, 3)
 
 		if position ~= nil then
 			local trigger = {
-				position = position,
-				categoryIndex = xmlObject:getInt(key .. "#categoryIndex", 1),
-				pageIndex = xmlObject:getInt(key .. "#pageIndex", 1)
+				position = position
 			}
+			local categoryIndex = nil
+			local id = xmlObject:getString(key .. "#categoryId")
+
+			if id ~= nil then
+				local mapXMLFilename = xmlObject:getFilename()
+				local customEnvironment, _ = Utils.getModNameAndBaseDirectory(mapXMLFilename)
+
+				if self.idToCategoryIndex[id] ~= nil then
+					categoryIndex = self.idToCategoryIndex[id]
+				end
+
+				if categoryIndex == nil and customEnvironment ~= nil then
+					local modId = customEnvironment .. "." .. id
+					categoryIndex = self.idToCategoryIndex[modId]
+				end
+			end
+
+			if categoryIndex == nil then
+				categoryIndex = xmlObject:getInt(key .. "#categoryIndex", 1)
+			end
+
+			trigger.categoryIndex = categoryIndex
+			trigger.pageIndex = xmlObject:getInt(key .. "#pageIndex", 1)
 			local category = self.categories[trigger.categoryIndex]
 
 			if category ~= nil then
 				local page = category.pages[trigger.pageIndex]
 
 				if page ~= nil then
-					local sharedLoadingId = g_i3DManager:loadI3DFileAsync("data/objects/helpIcon/icon.i3d", false, false, HelpLineManager.onIconLoaded, self, trigger)
+					local sharedLoadingId = g_i3DManager:loadSharedI3DFileAsync("data/objects/helpIcon/icon.i3d", false, false, HelpLineManager.onIconLoaded, self, trigger)
 
 					table.insert(self.sharedLoadingIds, sharedLoadingId)
 				else
-					Logging.xmlWarning(xmlObject, "Invalid helpline trigger page index for '%s'", key)
+					Logging.xmlWarning(xmlObject, "Invalid helpline trigger page index '%d' for category '%d' for '%s'", trigger.pageIndex, categoryIndex, key)
 				end
 			else
-				Logging.xmlWarning(xmlObject, "Invalid helpline trigger category index for '%s'", key)
+				Logging.xmlWarning(xmlObject, "Invalid helpline trigger category index '%d' for '%s'", categoryIndex, key)
 			end
 		else
 			Logging.xmlWarning(xmlObject, "Missing helpline trigger position for '%s'", key)
@@ -129,9 +169,21 @@ function HelpLineManager:loadFromXML(filename, missionInfo)
 
 			if category ~= nil then
 				table.insert(self.categories, category)
+
+				if category.id ~= nil then
+					self.idToCategoryIndex[category.id] = #self.categories
+				end
 			end
 		end)
 		xmlFile:delete()
+	end
+end
+
+function HelpLineManager:addModCategory(xmlFile, key, customEnvironment, baseDirectory)
+	local category = self:loadCategory(xmlFile, key, nil, customEnvironment, baseDirectory)
+
+	if category ~= nil then
+		table.insert(self.modCategories, category)
 	end
 end
 
@@ -141,6 +193,15 @@ function HelpLineManager:loadCategory(xmlFile, key, missionInfo, customEnvironme
 		customEnvironment = customEnvironment,
 		pages = {}
 	}
+	local id = xmlFile:getString(key .. "#id")
+
+	if id ~= nil then
+		if customEnvironment ~= nil then
+			id = customEnvironment .. "." .. id
+		end
+
+		category.id = id
+	end
 
 	xmlFile:iterate(key .. ".page", function (index, pageKey)
 		local page = self:loadPage(xmlFile, pageKey, missionInfo, customEnvironment, baseDirectory)
@@ -160,9 +221,12 @@ function HelpLineManager:loadPage(xmlFile, key, missionInfo, customEnvironment, 
 
 	xmlFile:iterate(key .. ".paragraph", function (index, paragraphKey)
 		local paragraph = {
+			title = xmlFile:getString(paragraphKey .. ".title#text"),
 			text = xmlFile:getString(paragraphKey .. ".text#text"),
+			alignToImage = xmlFile:getBool(paragraphKey .. ".text#alignToImage"),
 			customEnvironment = customEnvironment,
-			baseDirectory = baseDirectory
+			baseDirectory = baseDirectory,
+			noSpacing = xmlFile:getBool(paragraphKey .. "#noSpacing")
 		}
 		local filename = xmlFile:getString(paragraphKey .. ".image#filename")
 
@@ -174,12 +238,17 @@ function HelpLineManager:loadPage(xmlFile, key, missionInfo, customEnvironment, 
 				1024
 			})
 			local uvs = GuiUtils.getUVs(xmlFile:getString(paragraphKey .. ".image#uvs", "0 0 1 1"), size)
+			local displaySize = GuiUtils.getNormalizedValues(xmlFile:getString(paragraphKey .. ".image#displaySize"), {
+				g_referenceScreenWidth,
+				g_referenceScreenHeight
+			}, nil)
 			paragraph.image = {
 				filename = filename,
 				uvs = uvs,
 				size = size,
 				heightScale = heightScale,
-				aspectRatio = aspectRatio
+				aspectRatio = aspectRatio,
+				displaySize = displaySize
 			}
 		end
 
@@ -241,4 +310,16 @@ function HelpLineActivatable:run()
 		g_gui:showGui("InGameMenu")
 		g_messageCenter:publishDelayed(MessageType.GUI_INGAME_OPEN_HELP_SCREEN, data.categoryIndex, data.pageIndex)
 	end
+end
+
+function HelpLineActivatable:getDistance(x, y, z)
+	local data = g_helpLineManager.helpData
+
+	if data ~= nil and data.triggerNode ~= nil then
+		local tx, ty, tz = getWorldTranslation(data.triggerNode)
+
+		return MathUtil.vector3Length(x - tx, y - ty, z - tz)
+	end
+
+	return math.huge
 end

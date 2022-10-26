@@ -487,7 +487,7 @@ function FSBaseMission:onStartMission()
 		if g_dedicatedServer == nil then
 			local spawnPoint = g_farmManager:getSpawnPoint(self.player.farmId)
 
-			if not self.missionInfo.isValid then
+			if self:getIsServer() and not self.missionInfo.isValid then
 				spawnPoint = g_mission00StartPoint
 			end
 
@@ -599,6 +599,8 @@ function FSBaseMission:createPlayer(connection, isOwner, farmId, userId)
 
 		player:setStyleAsync(playerStyle, nil, false)
 	end
+
+	return player
 end
 
 function FSBaseMission:getClientPosition()
@@ -3988,7 +3990,7 @@ function FSBaseMission:consoleCommandUpdateTipCollisions(width)
 	return string.format("Updated tipCollision in a %ix%i area around the camera. Add a number as a parameter to update a custom area", width, width)
 end
 
-function FSBaseMission:consoleCommandAddPallet(palletType)
+function FSBaseMission:consoleCommandAddPallet(palletFillTypeName, amount, worldX, worldZ)
 	local pallets = {}
 
 	for _, fillType in pairs(g_fillTypeManager:getFillTypes()) do
@@ -3997,34 +3999,51 @@ function FSBaseMission:consoleCommandAddPallet(palletType)
 		end
 	end
 
-	palletType = string.upper(palletType or "")
-	local xmlFilename = pallets[palletType]
+	if palletFillTypeName == nil then
+		return "Error: no fillType given"
+	end
+
+	if palletFillTypeName:lower() == "all" then
+		local x, _, z, dirX, _, dirZ = DebugUtil.getVehicleOrPlayerPosAndDir()
+
+		for _, fillType in pairs(g_fillTypeManager:getFillTypes()) do
+			if fillType.palletFilename ~= nil then
+				z = z + dirZ * 3
+				x = x + dirX * 3
+
+				self:consoleCommandAddPallet(fillType.name, amount, x, z)
+			end
+		end
+
+		return
+	end
+
+	palletFillTypeName = string.upper(palletFillTypeName)
+	local palletFillType = g_fillTypeManager:getFillTypeIndexByName(palletFillTypeName)
+
+	if palletFillType == nil then
+		return string.format("Error: Invalid pallet fillType '%s'. Valid types are %s", palletFillTypeName, table.concatKeys(pallets, ", "))
+	end
+
+	local xmlFilename = pallets[palletFillTypeName]
 
 	if xmlFilename == nil then
-		return "Error: Invalid pallet type. Valid types are " .. table.concatKeys(pallets, " ")
+		return string.format("Error: no pallet for given fillType '%s'", palletFillTypeName)
 	end
 
-	local x = 0
-	local y = 0
-	local z = 0
-	local dirX = 1
-	local dirZ = 0
-	local _ = nil
-
-	if self.controlPlayer then
-		if self.player ~= nil and self.player.isControlled and self.player.rootNode ~= nil and self.player.rootNode ~= 0 then
-			x, y, z = getWorldTranslation(self.player.rootNode)
-			dirZ = -math.cos(self.player.rotY)
-			dirX = -math.sin(self.player.rotY)
-		end
-	elseif self.controlledVehicle ~= nil then
-		x, y, z = getWorldTranslation(self.controlledVehicle.rootNode)
-		dirX, _, dirZ = localDirectionToWorld(self.controlledVehicle.rootNode, 0, 0, 1)
-	end
-
+	local x, y, z, dirX, _, dirZ = DebugUtil.getVehicleOrPlayerPosAndDir()
 	z = z + dirZ * 4
 	x = x + dirX * 4
 	y = y + 1.5
+
+	if worldX ~= nil then
+		x = tonumber(worldX)
+	end
+
+	if worldZ ~= nil then
+		z = tonumber(worldZ)
+	end
+
 	local location = {
 		x = x,
 		y = y,
@@ -4033,15 +4052,27 @@ function FSBaseMission:consoleCommandAddPallet(palletType)
 
 	local function asyncCallbackFunction(_, vehicle, vehicleLoadState, arguments)
 		if vehicleLoadState == VehicleLoadingUtil.VEHICLE_LOAD_OK then
-			local fillTypeIndex = vehicle:getFillUnitFirstSupportedFillType(1)
+			local fillUnits = vehicle:getFillUnits()
+			local amountToAdd = tonumber(amount) or math.huge
+			local addedAmount = 0
 
-			vehicle:addFillUnitFillLevel(1, 1, math.huge, fillTypeIndex, ToolType.UNDEFINED, nil)
-			print("Loaded pallet")
+			for _, fillUnit in ipairs(fillUnits) do
+				if vehicle:getFillUnitSupportsFillType(fillUnit.fillUnitIndex, palletFillType) then
+					addedAmount = addedAmount + vehicle:addFillUnitFillLevel(1, fillUnit.fillUnitIndex, amountToAdd, palletFillType, ToolType.UNDEFINED, nil)
+					amountToAdd = amountToAdd - addedAmount
+
+					if amountToAdd <= 0 then
+						break
+					end
+				end
+			end
+
+			print(string.format("Loaded pallet with %dl of %s", addedAmount, palletFillTypeName))
 
 			return
 		end
 
-		print("Failed to load pallet")
+		print("Error: Failed to load pallet")
 	end
 
 	local farmId = g_currentMission:getFarmId()

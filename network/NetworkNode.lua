@@ -27,6 +27,7 @@ function NetworkNode.new(customMt)
 	self.lastUploadedKBs = 0
 	self.lastUploadedKBsSmooth = 0
 	self.maxUploadedKBs = 0
+	self.serverFPS = 60
 	self.graphData = {
 		[NetworkNode.PACKET_EVENT] = {
 			title = "event",
@@ -124,6 +125,9 @@ function NetworkNode.new(customMt)
 	self.showNetworkTraffic = false
 	self.showNetworkTrafficClients = false
 	self.showObjects = false
+	self.updateDurationTimer = 0
+	self.updateDurationFrames = 0
+	self.updateDurationTotalTime = 0
 
 	return self
 end
@@ -174,9 +178,37 @@ function NetworkNode:updateActiveObjects(dt)
 		self.removedObjects[id] = nil
 	end
 
-	for _, object in pairs(self.activeObjects) do
-		if object.recieveUpdates then
-			object:update(dt)
+	if self.showObjects then
+		for _, object in pairs(self.activeObjects) do
+			local startTime = getTimeSec()
+
+			if object.recieveUpdates then
+				object:update(dt)
+			end
+
+			object.profilerUpdateCounter = (object.profilerUpdateCounter or 0) + getTimeSec() - startTime
+		end
+
+		self.updateDurationTimer = self.updateDurationTimer + dt
+		self.updateDurationFrames = self.updateDurationFrames + 1
+
+		if self.updateDurationTimer >= 1000 then
+			self.updateDurationTotalTime = 0
+
+			for _, object in pairs(self.activeObjects) do
+				object.profilerUpdateTime = object.profilerUpdateCounter * 1000 / self.updateDurationFrames
+				object.profilerUpdateCounter = 0
+				self.updateDurationTotalTime = self.updateDurationTotalTime + object.profilerUpdateTime
+			end
+
+			self.updateDurationTimer = 0
+			self.updateDurationFrames = 0
+		end
+	else
+		for _, object in pairs(self.activeObjects) do
+			if object.recieveUpdates then
+				object:update(dt)
+			end
 		end
 	end
 end
@@ -380,6 +412,14 @@ function NetworkNode:draw()
 		setTextAlignment(RenderText.ALIGN_LEFT)
 		renderText(0.01, 0.8, getCorrectTextSize(0.015), string.format("Game Data Upload %.2fkb/s ", self.lastUploadedKBsSmooth))
 
+		local alpha = MathUtil.clamp(self.serverFPS / 60, 0, 1)
+		local r = 1 - alpha
+		local g = alpha
+
+		setTextColor(r, g, 0, 1)
+		renderText(0.01, 0.82, getCorrectTextSize(0.015), string.format("Server: %d FPS", self.serverFPS))
+		setTextColor(1, 1, 1, 1)
+
 		local x = self.packetGraphs[1].left - 0.15
 		local y = self.packetGraphs[1].bottom
 
@@ -491,7 +531,7 @@ function NetworkNode:draw()
 		local posY = 0.96
 		local offsetX = 1 / g_screenWidth
 		local offsetY = -1 / g_screenHeight
-		local title = string.format("Registered Objects: %d | Objects in update-loop: %d", #allObjects, count)
+		local title = string.format("Registered Objects: %d | Objects in update-loop: %d | Update time: %.3f ms", #allObjects, count, self.updateDurationTotalTime)
 
 		setTextColor(0, 0, 0, 1)
 		renderText(posX + offsetX, 0.98 + offsetY, 0.013, title)
@@ -508,6 +548,15 @@ function NetworkNode:draw()
 			local serverId = tostring(object.serverId)
 			local text = string.format(" - %s - %s", object.debugClassName, tostring(path))
 			local isActive = self.activeObjects[object.serverId] ~= nil
+			local activeR = 0.1254
+			local activeG = 0.7647
+
+			if object.profilerUpdateTime ~= nil then
+				text = string.format("%s (%.3f ms)", text, object.profilerUpdateTime)
+				local alpha = MathUtil.clamp(object.profilerUpdateTime / 1, 0, 1)
+				activeG = 1 - alpha
+				activeR = alpha
+			end
 
 			setTextBold(isActive)
 			setTextColor(0, 0, 0, 1)
@@ -516,7 +565,7 @@ function NetworkNode:draw()
 			renderText(posX + offsetX, posY + offsetY, 0.01, serverId)
 
 			if isActive then
-				setTextColor(0.1254, 0.7647, 0, 1)
+				setTextColor(activeR, activeG, 0, 1)
 			else
 				setTextColor(1, 1, 1, 1)
 			end

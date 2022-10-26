@@ -19,7 +19,16 @@ function UnloadTrigger:load(components, xmlFile, xmlNode, target, extraAttribute
 	local baleTriggerKey = xmlNode .. ".baleTrigger"
 
 	if xmlFile:hasProperty(baleTriggerKey) then
-		self.baleTrigger = BaleUnloadTrigger.new(self.isServer, self.isClient)
+		local className = xmlFile:getValue(baleTriggerKey .. "#class", "BaleUnloadTrigger")
+		local class = ClassUtil.getClassObject(className)
+
+		if class == nil then
+			Logging.xmlError(xmlFile, "BaleTrigger class '%s' not defined", className, baleTriggerKey)
+
+			return false
+		end
+
+		self.baleTrigger = class.new(self.isServer, self.isClient)
 
 		if self.baleTrigger:load(components, xmlFile, baleTriggerKey, self, i3dMappings) then
 			self.baleTrigger:setTarget(self)
@@ -32,7 +41,16 @@ function UnloadTrigger:load(components, xmlFile, xmlNode, target, extraAttribute
 	local woodTriggerKey = xmlNode .. ".woodTrigger"
 
 	if xmlFile:hasProperty(woodTriggerKey) then
-		self.woodTrigger = WoodUnloadTrigger.new(self.isServer, self.isClient)
+		local className = xmlFile:getValue(woodTriggerKey .. "#class", "WoodUnloadTrigger")
+		local class = ClassUtil.getClassObject(className)
+
+		if class == nil then
+			Logging.xmlError(xmlFile, "WoodTrigger class '%s' not defined", className, woodTriggerKey)
+
+			return false
+		end
+
+		self.woodTrigger = class.new(self.isServer, self.isClient)
 
 		if self.woodTrigger:load(components, xmlFile, woodTriggerKey, self, i3dMappings) then
 			self.woodTrigger:setTarget(self)
@@ -332,9 +350,23 @@ function UnloadTrigger:getAITargetPositionAndDirection()
 	return x, z, xDir, zDir
 end
 
+function UnloadTrigger:setOwnerFarmId(farmId, noEventSend)
+	UnloadTrigger:superClass().setOwnerFarmId(self, farmId, noEventSend)
+
+	if self.baleTrigger ~= nil then
+		self.baleTrigger:setOwnerFarmId(farmId, true)
+	end
+
+	if self.woodTrigger ~= nil then
+		self.woodTrigger:setOwnerFarmId(farmId, true)
+	end
+end
+
 function UnloadTrigger.registerXMLPaths(schema, basePath)
 	BaleUnloadTrigger.registerXMLPaths(schema, basePath .. ".baleTrigger")
+	schema:register(XMLValueType.STRING, basePath .. ".baleTrigger#class", "Name of bale trigger class")
 	WoodUnloadTrigger.registerXMLPaths(schema, basePath .. ".woodTrigger")
+	schema:register(XMLValueType.STRING, basePath .. ".woodTrigger#class", "Name of wood trigger class")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#exactFillRootNode", "Exact fill root node")
 	schema:register(XMLValueType.FLOAT, basePath .. "#priceScale", "Price scale added for sold goods")
 	schema:register(XMLValueType.STRING, basePath .. "#acceptedToolTypes", "List of accepted tool types")

@@ -7,26 +7,26 @@ SettingsModel.SETTING_CLASS = {
 	SAVE_NONE = 0
 }
 SettingsModel.SETTING = {
-	TERRAIN_QUALITY = "terrainQuality",
+	VALAR = "valar",
 	RESOLUTION = "resolution",
 	SHARPNESS = "sharpness",
 	FIDELITYFX_SR_20 = "fidelityFxSR20",
-	TEXTURE_RESOLUTION = "textureResolution",
-	SHADOW_DISTANCE_QUALITY = "shadowDistanceQuality",
-	V_SYNC = "vSync",
 	TERRAIN_LOD_DISTANCE = "terrainLODDistance",
+	TEXTURE_RESOLUTION = "textureResolution",
+	V_SYNC = "vSync",
 	FOLIAGE_SHADOW = "foliageShadow",
 	LANGUAGE = "language",
 	SHADOW_MAP_FILTERING = "shadowMapFiltering",
+	SHADOW_DISTANCE_QUALITY = "shadowDistanceQuality",
 	HDR_PEAK_BRIGHTNESS = "hdrPeakBrightness",
 	RESOLUTION_SCALE = "resolutionScale",
 	SHADOW_QUALITY = "shadowQuality",
-	CONSOLE_RESOLUTION = "consoleResolution",
 	DLSS = "dlss",
 	TEXTURE_FILTERING = "textureFiltering",
 	MSAA = "msaa",
 	FULLSCREEN_MODE = "fullscreenMode",
 	VOLUME_MESH_TESSELLATION = "volumeMeshTessellation",
+	CONSOLE_RESOLUTION = "consoleResolution",
 	RESOLUTION_SCALE_3D = "resolutionScale3d",
 	CONSOLE_RENDER_QUALITY = "consoleRenderQuality",
 	MAX_TIRE_TRACKS = "maxTireTracks",
@@ -35,6 +35,7 @@ SettingsModel.SETTING = {
 	LOD_DISTANCE = "lodDistance",
 	FOLIAGE_DRAW_DISTANCE = "foliageDrawDistance",
 	POST_PROCESS_AA = "postProcessAntiAliasing",
+	TERRAIN_QUALITY = "terrainQuality",
 	CLOUD_QUALITY = "cloudQuality",
 	BRIGHTNESS = "brightness",
 	PERFORMANCE_CLASS = "performanceClass",
@@ -92,6 +93,7 @@ SettingsModel.SETTING = {
 	DIRECTION_CHANGE_MODE = GameSettings.SETTING.DIRECTION_CHANGE_MODE,
 	GEAR_SHIFT_MODE = GameSettings.SETTING.GEAR_SHIFT_MODE,
 	HUD_SPEED_GAUGE = GameSettings.SETTING.HUD_SPEED_GAUGE,
+	WOOD_HARVESTER_AUTO_CUT = GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT,
 	SHOW_MULTIPLAYER_NAMES = GameSettings.SETTING.SHOW_MULTIPLAYER_NAMES,
 	GYROSCOPE_STEERING = GameSettings.SETTING.GYROSCOPE_STEERING,
 	CAMERA_TILTING = GameSettings.SETTING.CAMERA_TILTING,
@@ -225,6 +227,7 @@ function SettingsModel:addManagedSettings()
 	self:addDLSSSetting()
 	self:addFidelityFxSRSetting()
 	self:addFidelityFxSR20Setting()
+	self:addValarSetting()
 	self:addXeSSSetting()
 	self:addSharpnessSetting()
 	self:addShadingRateQualitySetting()
@@ -259,6 +262,7 @@ function SettingsModel:addManagedSettings()
 	self:addDirectionChangeModeSetting()
 	self:addGearShiftModeSetting()
 	self:addHudSpeedGaugeSetting()
+	self:addWoodHarvesterAutoCutSetting()
 	self:addForceFeedbackSetting()
 
 	if Platform.hasAdjustableFrameLimit then
@@ -693,6 +697,19 @@ function SettingsModel:createControlDisplayValues()
 
 			self.fidelityFxSR20Mapping[quality] = #self.fidelityFxSR20Texts
 			self.fidelityFxSR20MappingReverse[#self.fidelityFxSR20Texts] = quality
+		end
+	end
+
+	self.valarTexts = {}
+	self.valarMapping = {}
+	self.valarMappingReverse = {}
+
+	for quality = 0, ValarQuality.NUM - 1 do
+		if quality == ValarQuality.OFF or getSupportsValarQuality(quality) then
+			table.insert(self.valarTexts, quality == ValarQuality.OFF and g_i18n:getText("ui_off") or getValarQualityName(quality))
+
+			self.valarMapping[quality] = #self.valarTexts
+			self.valarMappingReverse[#self.valarTexts] = quality
 		end
 	end
 
@@ -1281,6 +1298,10 @@ function SettingsModel:getFidelityFxSR20Texts()
 	return self.fidelityFxSR20Texts
 end
 
+function SettingsModel:getValarTexts()
+	return self.valarTexts
+end
+
 function SettingsModel:getXeSSTexts()
 	return self.xeSSTexts
 end
@@ -1617,6 +1638,22 @@ function SettingsModel:addFidelityFxSR20Setting()
 	end
 
 	self:addSetting(SettingsModel.SETTING.FIDELITYFX_SR_20, readValue, writeValue, true)
+end
+
+function SettingsModel:addValarSetting()
+	local function readValue()
+		return self.valarMapping[getValarQuality()]
+	end
+
+	local function writeValue(value)
+		local newValue = self.valarMappingReverse[value]
+
+		if getValarQuality() ~= newValue then
+			setValarQuality(newValue)
+		end
+	end
+
+	self:addSetting(SettingsModel.SETTING.VALAR, readValue, writeValue, true)
 end
 
 function SettingsModel:addXeSSSetting()
@@ -2123,6 +2160,15 @@ function SettingsModel:addHudSpeedGaugeSetting()
 	end
 
 	self:addSetting(SettingsModel.SETTING.HUD_SPEED_GAUGE, self.defaultReaderFunction, writeSetting, true)
+end
+
+function SettingsModel:addWoodHarvesterAutoCutSetting()
+	local function writeSetting(value)
+		g_gameSettings:setValue(SettingsModel.SETTING.WOOD_HARVESTER_AUTO_CUT, value)
+		g_messageCenter:publish(MessageType.SETTING_CHANGED[GameSettings.SETTING.WOOD_HARVESTER_AUTO_CUT], value)
+	end
+
+	self:addSetting(SettingsModel.SETTING.WOOD_HARVESTER_AUTO_CUT, self.defaultReaderFunction, writeSetting, true)
 end
 
 function SettingsModel:addMasterVolumeSetting()

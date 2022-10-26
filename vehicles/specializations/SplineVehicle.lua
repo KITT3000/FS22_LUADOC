@@ -195,7 +195,7 @@ end
 function SplineVehicle:getAreSurfaceSoundsActive(superFunc)
 	local rootVehicle = self.rootVehicle
 
-	if rootVehicle ~= nil then
+	if rootVehicle ~= nil and rootVehicle ~= self then
 		return rootVehicle:getAreSurfaceSoundsActive()
 	end
 
