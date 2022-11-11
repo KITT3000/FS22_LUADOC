@@ -174,6 +174,12 @@ function FSBaseMission.new(baseDirectory, customMt, missionCollaborators)
 	self.radioEvents = {}
 	self.moneyChanges = {}
 
+	if self:getIsServer() and StartParams.getIsSet("debugCameraClone") then
+		self.debugCameraClone = DebugCameraClone.new(true, true)
+
+		self.debugCameraClone:register(false)
+	end
+
 	return self
 end
 
@@ -236,6 +242,10 @@ function FSBaseMission:delete()
 
 	if self.playerInfoStorage ~= nil then
 		self.playerInfoStorage:delete()
+	end
+
+	if self.debugCameraClone ~= nil then
+		self.debugCameraClone:delete()
 	end
 
 	self.growthSystem:delete()
@@ -1872,7 +1882,7 @@ function FSBaseMission:initTerrain(terrainId, filename)
 
 	self.indoorMask:onTerrainLoad(self.terrainRootNode)
 	self.snowSystem:onTerrainLoad(self.terrainRootNode)
-	self.aiSystem:onTerrainLoad(self.terrainRootNode)
+	self.aiSystem:onTerrainLoad(self.terrainRootNode, filename)
 	g_groundTypeManager:initTerrain(self.terrainRootNode)
 	DensityMapHeightUtil.initTerrain(self, self.terrainDetailId, self.terrainDetailHeightId)
 	FieldUtil.initTerrain(self.terrainDetailId)

@@ -249,7 +249,7 @@ function VehicleSaleSystem:removeSale(item, index, noEventSend)
 	table.remove(self.items, index)
 
 	if self.mission:getIsServer() then
-		table.push(self.freeIds, index)
+		table.push(self.freeIds, item.id)
 
 		if item.isGenerated then
 			self.numGeneratedItems = self.numGeneratedItems - 1

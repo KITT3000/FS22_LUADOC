@@ -1270,6 +1270,7 @@ function Cylindered:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 
 			for _, dependentTool in pairs(tool.dependentMovingTools) do
 				if not dependentTool.movingTool.syncMinRotLimits or not dependentTool.movingTool.syncMaxRotLimits then
+					Cylindered.updateRotationBasedLimits(self, tool, dependentTool)
 					self:updateDependentToolLimits(tool, dependentTool)
 				end
 			end
@@ -4106,26 +4107,25 @@ end
 function Cylindered:updateRotationBasedLimits(tool, dependentTool)
 	if dependentTool.rotationBasedLimits ~= nil then
 		local state = Cylindered.getMovingToolState(self, tool)
+		local minRot, maxRot, minTrans, maxTrans = dependentTool.rotationBasedLimits:get(state)
 
-		if dependentTool.rotationBasedLimits ~= nil then
-			local minRot, maxRot, minTrans, maxTrans = dependentTool.rotationBasedLimits:get(state)
+		if minRot ~= nil then
+			dependentTool.movingTool.rotMin = minRot
+		end
 
-			if minRot ~= nil then
-				dependentTool.movingTool.rotMin = minRot
-			end
+		if maxRot ~= nil then
+			dependentTool.movingTool.rotMax = maxRot
+		end
 
-			if maxRot ~= nil then
-				dependentTool.movingTool.rotMax = maxRot
-			end
+		if minTrans ~= nil then
+			dependentTool.movingTool.transMin = minTrans
+		end
 
-			if minTrans ~= nil then
-				dependentTool.movingTool.transMin = minTrans
-			end
+		if maxTrans ~= nil then
+			dependentTool.movingTool.transMax = maxTrans
+		end
 
-			if maxTrans ~= nil then
-				dependentTool.movingTool.transMax = maxTrans
-			end
-
+		if self.isServer then
 			local isDirty = false
 
 			if minRot ~= nil or maxRot ~= nil then
@@ -4141,6 +4141,8 @@ function Cylindered:updateRotationBasedLimits(tool, dependentTool)
 				self:raiseDirtyFlags(dependentTool.movingTool.dirtyFlag)
 				self:raiseDirtyFlags(self.spec_cylindered.cylinderedDirtyFlag)
 			end
+		elseif minRot ~= nil or maxRot ~= nil then
+			dependentTool.movingTool.networkInterpolators.rotation:setMinMax(dependentTool.movingTool.rotMin, dependentTool.movingTool.rotMax)
 		end
 	end
 end

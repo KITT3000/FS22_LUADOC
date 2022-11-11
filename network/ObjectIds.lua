@@ -151,5 +151,6 @@ ObjectIds.MISSION_SPRAY = nextObjectId()
 ObjectIds.MISSION_TRANSPORT = nextObjectId()
 ObjectIds.MISSION_WEED = nextObjectId()
 ObjectIds.TRAFFIC_SYSTEM = nextObjectId()
+ObjectIds.OBJECT_DEBUG_CAMERA_CLONE = nextObjectId()
 ObjectIds.SEND_NUM_BITS = 16
 ObjectIds.MAX_OBJECT_ID = 2^ObjectIds.SEND_NUM_BITS - 1

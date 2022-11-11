@@ -1,9 +1,11 @@
+source("dataS/scripts/vehicles/specializations/events/WoodHarvesterCutLengthEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterCutTreeEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterHeaderTiltEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterOnCutTreeEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterOnDelimbTreeEvent.lua")
 
 WoodHarvester = {
+	NUM_BITS_CUT_LENGTH = 5,
 	HEADER_JOINT_TILT_XML_KEY = "vehicle.woodHarvester.headerJointTilt",
 	prerequisitesPresent = function (specializations)
 		return SpecializationUtil.hasSpecialization(TurnOnVehicle, specializations)
@@ -78,6 +80,7 @@ function WoodHarvester.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "loadWoodHarvesterHeaderTiltFromXML", WoodHarvester.loadWoodHarvesterHeaderTiltFromXML)
 	SpecializationUtil.registerFunction(vehicleType, "getIsWoodHarvesterTiltStateAllowed", WoodHarvester.getIsWoodHarvesterTiltStateAllowed)
 	SpecializationUtil.registerFunction(vehicleType, "setWoodHarvesterTiltState", WoodHarvester.setWoodHarvesterTiltState)
+	SpecializationUtil.registerFunction(vehicleType, "setWoodHarvesterCutLengthIndex", WoodHarvester.setWoodHarvesterCutLengthIndex)
 end
 
 function WoodHarvester.registerOverwrittenFunctions(vehicleType)
@@ -303,8 +306,9 @@ function WoodHarvester:onLoadFinished(savegame)
 	local spec = self.spec_woodHarvester
 
 	if savegame ~= nil and not savegame.resetVehicles then
-		spec.currentCutLengthIndex = savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#currentCutLengthIndex", spec.currentCutLengthIndex)
-		spec.currentCutLength = spec.cutLengths[spec.currentCutLengthIndex] or 1
+		local cutLengthIndex = savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#currentCutLengthIndex", spec.currentCutLengthIndex)
+
+		self:setWoodHarvesterCutLengthIndex(cutLengthIndex, true)
 
 		if savegame.xmlFile:getValue(savegame.key .. ".woodHarvester#isTurnedOn", false) then
 			self:setIsTurnedOn(true)
@@ -388,14 +392,31 @@ end
 function WoodHarvester:onReadStream(streamId, connection)
 	local spec = self.spec_woodHarvester
 	spec.hasAttachedSplitShape = streamReadBool(streamId)
+
+	if spec.hasAttachedSplitShape then
+		local animTime = streamReadUIntN(streamId, 7) / 127
+
+		self:setAnimationTime(spec.grabAnimation.name, animTime, true)
+		self:setAnimationTime(spec.cutAnimation.name, 1, true)
+	end
+
 	spec.isAttachedSplitShapeMoving = streamReadBool(streamId)
+	local cutLengthIndex = streamReadUIntN(streamId, WoodHarvester.NUM_BITS_CUT_LENGTH)
+
+	self:setWoodHarvesterCutLengthIndex(cutLengthIndex, true)
 end
 
 function WoodHarvester:onWriteStream(streamId, connection)
 	local spec = self.spec_woodHarvester
 
-	streamWriteBool(streamId, spec.hasAttachedSplitShape)
+	if streamWriteBool(streamId, spec.hasAttachedSplitShape) then
+		local animTime = self:getAnimationTime(spec.grabAnimation.name)
+
+		streamWriteUIntN(streamId, animTime * 127, 7)
+	end
+
 	streamWriteBool(streamId, spec.isAttachedSplitShapeMoving)
+	streamWriteUIntN(streamId, spec.currentCutLengthIndex, WoodHarvester.NUM_BITS_CUT_LENGTH)
 end
 
 function WoodHarvester:onReadUpdateStream(streamId, timestamp, connection)
@@ -988,6 +1009,17 @@ function WoodHarvester:setWoodHarvesterTiltState(state, noEventSend)
 	WoodHarvesterHeaderTiltEvent.sendEvent(self, state, noEventSend)
 end
 
+function WoodHarvester:setWoodHarvesterCutLengthIndex(index, noEventSend)
+	local spec = self.spec_woodHarvester
+
+	if index ~= spec.currentCutLengthIndex then
+		spec.currentCutLengthIndex = index
+		spec.currentCutLength = spec.cutLengths[spec.currentCutLengthIndex] or 1
+	end
+
+	WoodHarvesterCutLengthEvent.sendEvent(self, index, noEventSend)
+end
+
 function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
 	local spec = self.spec_woodHarvester
 
@@ -1154,10 +1186,14 @@ function WoodHarvester:onDelimbTree(state)
 	else
 		spec.isAttachedSplitShapeMoving = false
 
-		if spec.automaticCuttingEnabled then
-			self:cutTree(0)
+		if self.isServer then
+			if spec.automaticCuttingEnabled then
+				self:cutTree(0)
+			else
+				spec.automaticCuttingIsDirty = true
+			end
 		else
-			spec.automaticCuttingIsDirty = true
+			spec.automaticCuttingIsDirty = not spec.automaticCuttingEnabled
 		end
 	end
 end
@@ -1308,15 +1344,15 @@ function WoodHarvester:actionEventSetCutlength(actionName, inputValue, callbackS
 	local spec = self.spec_woodHarvester
 
 	if not spec.isAttachedSplitShapeMoving then
-		spec.currentCutLengthIndex = spec.currentCutLengthIndex + callbackState
+		local cutLengthIndex = spec.currentCutLengthIndex + callbackState
 
-		if spec.currentCutLengthIndex > #spec.cutLengths then
-			spec.currentCutLengthIndex = 1
-		elseif spec.currentCutLengthIndex < 1 then
-			spec.currentCutLengthIndex = #spec.cutLengths
+		if cutLengthIndex > #spec.cutLengths then
+			cutLengthIndex = 1
+		elseif cutLengthIndex < 1 then
+			cutLengthIndex = #spec.cutLengths
 		end
 
-		spec.currentCutLength = spec.cutLengths[spec.currentCutLengthIndex] or 1
+		self:setWoodHarvesterCutLengthIndex(cutLengthIndex)
 	end
 end
 
