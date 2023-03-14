@@ -184,8 +184,15 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 			if self:getShovelNodeIsActive(shovelNode) then
 				local fillLevel = self:getFillUnitFillLevel(shovelNode.fillUnitIndex)
 				local capacity = self:getFillUnitCapacity(shovelNode.fillUnitIndex)
+				local freeCapacity = math.huge
 
-				if fillLevel < capacity or shovelNode.ignoreFillLevel then
+				if not shovelNode.ignoreFillLevel then
+					freeCapacity = self:getFillUnitFreeCapacity(shovelNode.fillUnitIndex)
+				end
+
+				freeCapacity = math.min(freeCapacity, shovelNode.fillLitersPerSecond * dt)
+
+				if freeCapacity > 0 then
 					local pickupFillType = self:getFillUnitFillType(shovelNode.fillUnitIndex)
 
 					if fillLevel / capacity < self:getFillTypeChangeThreshold() then
@@ -193,7 +200,6 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 					end
 
 					local minValidLiter = g_densityMapHeightManager:getMinValidLiterValue(pickupFillType) or 0
-					local freeCapacity = math.min(shovelNode.ignoreFillLevel and math.huge or capacity - fillLevel, shovelNode.fillLitersPerSecond * dt)
 					local sx, sy, sz = localToWorld(shovelNode.node, -shovelNode.width * 0.5, shovelNode.yOffset, shovelNode.zOffset)
 					local ex, ey, ez = localToWorld(shovelNode.node, shovelNode.width * 0.5, shovelNode.yOffset, shovelNode.zOffset)
 					local innerRadius = shovelNode.length

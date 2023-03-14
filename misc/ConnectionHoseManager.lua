@@ -183,7 +183,6 @@ function ConnectionHoseManager:loadConnectionHosesFromXML(xmlFilename, customEnv
 					j = j + 1
 				end
 
-				hoseType.hoses = {}
 				j = 0
 
 				while true do

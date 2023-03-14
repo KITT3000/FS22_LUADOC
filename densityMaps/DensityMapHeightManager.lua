@@ -7,6 +7,7 @@ local DensityMapHeightManager_mt = Class(DensityMapHeightManager, AbstractManage
 
 function DensityMapHeightManager.new(customMt)
 	local self = AbstractManager.new(customMt or DensityMapHeightManager_mt)
+	self.modDensityHeightMapTypeFilenames = {}
 
 	return self
 end
@@ -67,7 +68,19 @@ function DensityMapHeightManager:loadMapData(xmlFile, missionInfo, baseDirectory
 	addConsoleCommand("gsDensityMapToggleDebug", "Toggles debug mode", "consoleCommandToggleDebug", self)
 	self:loadDefaultTypes(missionInfo, baseDirectory)
 
-	return XMLUtil.loadDataFromMapXML(xmlFile, "densityMapHeightTypes", baseDirectory, self, self.loadDensityMapHeightTypes, missionInfo, baseDirectory)
+	local success = XMLUtil.loadDataFromMapXML(xmlFile, "densityMapHeightTypes", baseDirectory, self, self.loadDensityMapHeightTypes, missionInfo, baseDirectory)
+
+	for i = #self.modDensityHeightMapTypeFilenames, 1, -1 do
+		local filename = self.modDensityHeightMapTypeFilenames[i]
+		local xmlFile = loadXMLFile("heightTypes", filename)
+
+		self:loadDensityMapHeightTypes(xmlFile, missionInfo, baseDirectory, false)
+		delete(xmlFile)
+
+		self.modDensityHeightMapTypeFilenames[i] = nil
+	end
+
+	return success
 end
 
 function DensityMapHeightManager:unloadMapData()
@@ -93,7 +106,7 @@ function DensityMapHeightManager:loadDensityMapHeightTypes(xmlFile, missionInfo,
 		local fillTypeIndex = g_fillTypeManager:getFillTypeIndexByName(fillTypeName)
 
 		if fillTypeIndex == nil then
-			print("Error loading density map height. '" .. tostring(key) .. "' has no valid 'fillTypeName'!")
+			Logging.xmlError(xmlFile, "'%s' has invalid fill type '%s'!", key, fillTypeName)
 
 			return
 		end
@@ -121,6 +134,10 @@ function DensityMapHeightManager:loadDensityMapHeightTypes(xmlFile, missionInfo,
 	self:sortHeightTypes()
 
 	return true
+end
+
+function DensityMapHeightManager:addModDensityMapHeightTypes(xmlFilename)
+	table.insert(self.modDensityHeightMapTypeFilenames, xmlFilename)
 end
 
 function DensityMapHeightManager:loadFromXMLFile(xmlFilename)
@@ -185,7 +202,7 @@ end
 
 function DensityMapHeightManager:addDensityMapHeightType(fillTypeName, maxSurfaceAngle, collisionScale, collisionBaseOffset, minCollisionOffset, maxCollisionOffset, fillToGroundScale, allowsSmoothing, isBaseType)
 	if isBaseType and self.fillTypeNameToHeightType[fillTypeName] ~= nil then
-		print("Warning: density height map for '" .. tostring(fillTypeName) .. "' already exists!")
+		Logging.error("density height map for '%s' already exists!", fillTypeName)
 
 		return nil
 	end
@@ -383,7 +400,7 @@ function DensityMapHeightManager:initialize(isServer, tipCollisionMap, placement
 	local typeNumChannels = self.heightTypeNumChannels
 
 	if heightFirstChannel < typeFirstChannel + typeNumChannels and typeFirstChannel < heightFirstChannel + heightNumChannels then
-		print(string.format("Warning: Density map height type channels [%d-%d] are overlapping with the density map height channels [%d-%d]. This will lead to unexpected results.", typeFirstChannel, typeFirstChannel + typeNumChannels - 1, heightFirstChannel, heightFirstChannel + heightNumChannels - 1))
+		Logging.warning("Density map height type channels [%d-%d] are overlapping with the density map height channels [%d-%d]. This will lead to unexpected results.", typeFirstChannel, typeFirstChannel + typeNumChannels - 1, heightFirstChannel, heightFirstChannel + heightNumChannels - 1)
 	end
 
 	local densityMapHeightCollisionMask = CollisionMask.TERRAIN_DETAIL_HEIGHT

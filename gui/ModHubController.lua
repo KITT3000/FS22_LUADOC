@@ -395,7 +395,9 @@ function ModHubController:update(modId)
 		self.modInstallFailedCallback()
 	end
 
-	self.discSpaceChangedCallback()
+	if self.discSpaceChangedCallback ~= nil then
+		self.discSpaceChangedCallback()
+	end
 end
 
 function ModHubController:uninstall(modId)
@@ -416,7 +418,9 @@ function ModHubController:uninstall(modId)
 		self.uninstallFailedCallback()
 	end
 
-	self.discSpaceChangedCallback()
+	if self.discSpaceChangedCallback ~= nil then
+		self.discSpaceChangedCallback()
+	end
 end
 
 function ModHubController:setUninstallFailedCallback(callback, target)

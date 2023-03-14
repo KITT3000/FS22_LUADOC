@@ -7,7 +7,6 @@ function BaleUnloadTrigger.new(isServer, isClient, customMt)
 	local self = Object.new(isServer, isClient, customMt or BaleUnloadTrigger_mt)
 	self.triggerNode = nil
 	self.balesInTrigger = {}
-	self.baleLoadersInTrigger = {}
 
 	return self
 end
@@ -46,7 +45,6 @@ function BaleUnloadTrigger:delete()
 	end
 
 	self.balesInTrigger = nil
-	self.baleLoadersInTrigger = nil
 
 	BaleUnloadTrigger:superClass().delete(self)
 end
@@ -63,13 +61,23 @@ function BaleUnloadTrigger:getTarget()
 	return self.target
 end
 
+function BaleUnloadTrigger:getIsBaleSupportedByUnloadTrigger(bale)
+	local fillType = bale:getFillType()
+
+	if self.target:getIsFillTypeAllowed(fillType) and self.target:getIsFillTypeSupported(fillType) and self.target:getIsToolTypeAllowed(ToolType.BALE) then
+		return true
+	end
+
+	return false
+end
+
 function BaleUnloadTrigger:update(dt)
 	BaleUnloadTrigger:superClass().update(self, dt)
 
 	if self.isServer then
 		for index, bale in ipairs(self.balesInTrigger) do
 			if bale ~= nil and bale.nodeId ~= 0 then
-				if bale:getCanBeSold() and bale.dynamicMountJointIndex == nil then
+				if bale:getCanBeSold() and bale.dynamicMountType == MountableObject.MOUNT_TYPE_NONE then
 					local fillType = bale:getFillType()
 					local fillLevel = bale:getFillLevel()
 					local fillInfo = nil
@@ -105,28 +113,7 @@ function BaleUnloadTrigger:update(dt)
 			end
 		end
 
-		for index, baleLoader in ipairs(self.baleLoadersInTrigger) do
-			if baleLoader:getIsAutomaticBaleUnloadingAllowed() then
-				local bales = baleLoader:getLoadedBales()
-				local unloadingAllowed = false
-
-				for i, bale in ipairs(bales) do
-					local fillType = bale:getFillType()
-
-					if self.target:getIsFillTypeAllowed(fillType) and self.target:getIsFillTypeSupported(fillType) and self.target:getIsToolTypeAllowed(ToolType.BALE) then
-						unloadingAllowed = true
-
-						break
-					end
-				end
-
-				if unloadingAllowed then
-					baleLoader:startAutomaticBaleUnloading()
-				end
-			end
-		end
-
-		if #self.balesInTrigger > 0 or #self.baleLoadersInTrigger > 0 then
+		if #self.balesInTrigger > 0 then
 			self:raiseActive()
 		end
 	end
@@ -139,9 +126,7 @@ function BaleUnloadTrigger:baleTriggerCallback(triggerId, otherId, onEnter, onLe
 		if object ~= nil then
 			if object:isa(Bale) then
 				if onEnter then
-					local fillType = object:getFillType()
-
-					if self.target:getIsFillTypeAllowed(fillType) and self.target:getIsFillTypeSupported(fillType) and self.target:getIsToolTypeAllowed(ToolType.BALE) then
+					if self:getIsBaleSupportedByUnloadTrigger(object) then
 						self:raiseActive()
 						table.addElement(self.balesInTrigger, object)
 					end
@@ -154,18 +139,11 @@ function BaleUnloadTrigger:baleTriggerCallback(triggerId, otherId, onEnter, onLe
 						end
 					end
 				end
-			elseif Platform.gameplay.automaticBaleDrop and object:isa(Vehicle) and SpecializationUtil.hasSpecialization(BaleLoader, object.specializations) then
+			elseif object:isa(Vehicle) and SpecializationUtil.hasSpecialization(BaleLoader, object.specializations) then
 				if onEnter then
-					table.addElement(self.baleLoadersInTrigger, object)
-					self:raiseActive()
+					object:addBaleUnloadTrigger(self)
 				elseif onLeave then
-					for index, baleLoader in ipairs(self.baleLoadersInTrigger) do
-						if baleLoader == object then
-							table.remove(self.baleLoadersInTrigger, index)
-
-							break
-						end
-					end
+					object:removeBaleUnloadTrigger(self)
 				end
 			end
 		end

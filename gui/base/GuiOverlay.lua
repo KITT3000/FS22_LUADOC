@@ -538,3 +538,12 @@ function GuiOverlay.setRotation(overlay, rotation, centerX, centerY)
 
 	overlay.hasCustomRotation = true
 end
+
+function GuiOverlay.setColor(overlay, r, g, b, a)
+	overlay.color = {
+		r,
+		g,
+		b,
+		a
+	}
+end

@@ -1,4 +1,6 @@
 Mountable = {
+	FORCE_LIMIT_UPDATE_TIME = 1000,
+	FORCE_LIMIT_RAYCAST_DISTANCE = 20,
 	prerequisitesPresent = function (specializations)
 		return true
 	end,
@@ -37,6 +39,7 @@ function Mountable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "unmountDynamic", Mountable.unmountDynamic)
 	SpecializationUtil.registerFunction(vehicleType, "getAdditionalMountingDistance", Mountable.getAdditionalMountingDistance)
 	SpecializationUtil.registerFunction(vehicleType, "getAdditionalMountingMass", Mountable.getAdditionalMountingMass)
+	SpecializationUtil.registerFunction(vehicleType, "updateDynamicMountJointForceLimit", Mountable.updateDynamicMountJointForceLimit)
 	SpecializationUtil.registerFunction(vehicleType, "additionalMountingMassRaycastCallback", Mountable.additionalMountingMassRaycastCallback)
 	SpecializationUtil.registerFunction(vehicleType, "getMountObject", Mountable.getMountObject)
 	SpecializationUtil.registerFunction(vehicleType, "getDynamicMountObject", Mountable.getDynamicMountObject)
@@ -44,6 +47,9 @@ function Mountable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getAllowComponentMassReduction", Mountable.getAllowComponentMassReduction)
 	SpecializationUtil.registerFunction(vehicleType, "getDefaultAllowComponentMassReduction", Mountable.getDefaultAllowComponentMassReduction)
 	SpecializationUtil.registerFunction(vehicleType, "getMountableLockPositions", Mountable.getMountableLockPositions)
+	SpecializationUtil.registerFunction(vehicleType, "setDynamicMountType", Mountable.setDynamicMountType)
+	SpecializationUtil.registerFunction(vehicleType, "addMountStateChangeListener", Mountable.addMountStateChangeListener)
+	SpecializationUtil.registerFunction(vehicleType, "removeMountStateChangeListener", Mountable.removeMountStateChangeListener)
 end
 
 function Mountable.registerOverwrittenFunctions(vehicleType)
@@ -58,6 +64,7 @@ end
 function Mountable.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", Mountable)
 	SpecializationUtil.registerEventListener(vehicleType, "onDelete", Mountable)
+	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", Mountable)
 	SpecializationUtil.registerEventListener(vehicleType, "onEnterVehicle", Mountable)
 	SpecializationUtil.registerEventListener(vehicleType, "onPreAttach", Mountable)
 end
@@ -97,6 +104,13 @@ function Mountable:onLoad(savegame)
 	spec.dynamicMountSingleAxisFreeY = self.xmlFile:getValue("vehicle.dynamicMount#singleAxisFreeY")
 	spec.dynamicMountSingleAxisFreeX = self.xmlFile:getValue("vehicle.dynamicMount#singleAxisFreeX")
 	spec.additionalMountDistance = self.xmlFile:getValue("vehicle.dynamicMount#additionalMountDistance", 0)
+	spec.forceLimitUpdate = {
+		raycastActive = false,
+		timer = 0,
+		lastDistance = 0,
+		nextMountingDistance = 0,
+		additionalMass = 0
+	}
 	spec.allowMassReduction = self.xmlFile:getValue("vehicle.dynamicMount#allowMassReduction", self:getDefaultAllowComponentMassReduction())
 	spec.reducedComponentMass = false
 	spec.lockPositions = {}
@@ -117,6 +131,9 @@ function Mountable:onLoad(savegame)
 			Logging.xmlWarning(self.xmlFile, "Invalid lock position '%s'. Missing xmlFilename or jointNode!", key)
 		end
 	end)
+
+	self.dynamicMountType = MountableObject.MOUNT_TYPE_NONE
+	spec.mountStateChangeListeners = {}
 end
 
 function Mountable:onDelete()
@@ -133,6 +150,37 @@ function Mountable:onDelete()
 
 	if spec.dynamicMountTriggerId ~= nil then
 		removeTrigger(spec.dynamicMountTriggerId)
+	end
+end
+
+function Mountable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	if self.isServer then
+		local spec = self.spec_mountable
+
+		if spec.dynamicMountObjectTriggerCount ~= nil and spec.dynamicMountObjectTriggerCount <= 0 then
+			if spec.dynamicMountJointNodeDynamicRefNode ~= nil then
+				local _, _, zOffset = localToLocal(spec.dynamicMountJointNodeDynamic, spec.dynamicMountJointNodeDynamicRefNode, 0, 0, 0)
+
+				if spec.dynamicMountJointNodeDynamicMountOffset < zOffset then
+					spec.dynamicMountJointNodeDynamicMountOffset = nil
+					spec.dynamicMountJointNodeDynamicRefNode = nil
+
+					self:unmountDynamic()
+
+					spec.dynamicMountObjectTriggerCount = nil
+				else
+					self:raiseActive()
+				end
+			else
+				self:unmountDynamic()
+
+				spec.dynamicMountObjectTriggerCount = nil
+			end
+		end
+
+		if self.dynamicMountJointIndex ~= nil then
+			self:updateDynamicMountJointForceLimit(dt)
+		end
 	end
 end
 
@@ -185,7 +233,7 @@ function Mountable:mountableTriggerCallback(triggerId, otherActorId, onEnter, on
 	elseif onLeave and otherActorId == spec.dynamicMountObjectActorId and spec.dynamicMountObjectTriggerCount ~= nil then
 		spec.dynamicMountObjectTriggerCount = spec.dynamicMountObjectTriggerCount - 1
 
-		if spec.dynamicMountObjectTriggerCount == 0 then
+		if spec.dynamicMountJointNodeDynamic == nil and spec.dynamicMountObjectTriggerCount == 0 then
 			self:unmountDynamic()
 
 			spec.dynamicMountObjectTriggerCount = nil
@@ -210,10 +258,14 @@ function Mountable:mount(object, node, x, y, z, rx, ry, rz)
 	self:setWorldPositionQuaternion(wx, wy, wz, wqx, wqy, wqz, wqw, 1, true)
 
 	spec.mountObject = object
+
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_DEFAULT, object)
 end
 
 function Mountable:unmount()
 	local spec = self.spec_mountable
+
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_NONE)
 
 	if spec.mountObject ~= nil then
 		spec.mountObject = nil
@@ -261,10 +313,14 @@ function Mountable:mountKinematic(object, node, x, y, z, rx, ry, rz)
 
 	spec.mountObject = object
 	spec.mountJointNode = node
+
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_KINEMATIC, object)
 end
 
 function Mountable:unmountKinematic()
 	local spec = self.spec_mountable
+
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_NONE)
 
 	if spec.mountObject ~= nil then
 		if spec.mountObject.getParentComponent ~= nil then
@@ -337,30 +393,50 @@ function Mountable:mountDynamic(object, objectActorId, jointNode, mountType, for
 
 		setTranslation(spec.dynamicMountJointNodeDynamic, x, y, z)
 
-		local rx, ry, rz = nil
-
 		if spec.dynamicMountJointLimitToRotY then
-			local dx, _, dz = localDirectionToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 1)
+			local dx, dy, dz = localDirectionToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 1)
+
+			if math.abs(dy) > 0.2 then
+				return false
+			end
+
 			dx, dz = MathUtil.vector2Normalize(dx, dz)
-			rz = 0
-			ry = MathUtil.getYRotationFromDirection(dx, dz)
-			rx = 0
+			local rx = 0
+			local ry = MathUtil.getYRotationFromDirection(dx, dz)
+			local rz = 0
+
+			setRotation(spec.dynamicMountJointNodeDynamic, rx, ry, rz)
+
+			local _, upY, _ = localDirectionToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 1, 0)
+
+			if upY < 0 then
+				rotateAboutLocalAxis(spec.dynamicMountJointNodeDynamic, math.pi, 0, 0, 1)
+			end
 		else
-			rx, ry, rz = localRotationToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 0)
+			local rx, ry, rz = localRotationToLocal(jointNode, getParent(spec.dynamicMountJointNodeDynamic), 0, 0, 0)
+
+			setRotation(spec.dynamicMountJointNodeDynamic, rx, ry, rz)
 		end
 
-		setRotation(spec.dynamicMountJointNodeDynamic, rx, ry, rz)
+		local _ = nil
+		_, _, spec.dynamicMountJointNodeDynamicMountOffset = localToLocal(spec.dynamicMountJointNodeDynamic, jointNode, 0, 0, 0)
+		spec.dynamicMountJointNodeDynamicRefNode = jointNode
 	end
 
-	local additionalWeight = self:getAdditionalMountingMass()
-	local mass = self:getTotalMass()
-	local massFactor = (additionalWeight + mass) / mass
-	forceAcceleration = forceAcceleration * massFactor
+	spec.mountBaseForceAcceleration = forceAcceleration
+	spec.mountBaseMass = self:getTotalMass()
 
-	return DynamicMountUtil.mountDynamic(self, spec.componentNode, object, objectActorId, jointNode, mountType, forceAcceleration * spec.dynamicMountForceLimitScale, spec.dynamicMountJointNodeDynamic)
+	if DynamicMountUtil.mountDynamic(self, spec.componentNode, object, objectActorId, jointNode, mountType, forceAcceleration * spec.dynamicMountForceLimitScale, spec.dynamicMountJointNodeDynamic) then
+		self:setDynamicMountType(MountableObject.MOUNT_TYPE_DYNAMIC, object)
+
+		return true
+	end
+
+	return false
 end
 
 function Mountable:unmountDynamic(isDelete)
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_NONE)
 	DynamicMountUtil.unmountDynamic(self, isDelete)
 	self:setReducedComponentMass(false)
 end
@@ -370,30 +446,51 @@ function Mountable:getAdditionalMountingDistance()
 end
 
 function Mountable:getAdditionalMountingMass()
-	local distance = self:getAdditionalMountingDistance()
-
-	if distance > 0 then
-		local spec = self.spec_mountable
-		local x, y, z = getWorldTranslation(self.rootNode)
-		spec.additionalMountingMass = 0
-
-		raycastAll(x, y + 0.1, z, 0, 1, 0, "additionalMountingMassRaycastCallback", distance, self, CollisionFlag.DYNAMIC_OBJECT, false, false)
-
-		return spec.additionalMountingMass
-	end
-
 	return 0
 end
 
+function Mountable:updateDynamicMountJointForceLimit(dt)
+	local spec = self.spec_mountable
+
+	if not spec.forceLimitUpdate.raycastActive then
+		spec.forceLimitUpdate.timer = spec.forceLimitUpdate.timer - dt
+
+		if spec.forceLimitUpdate.timer <= 0 then
+			spec.forceLimitUpdate.raycastActive = true
+			spec.forceLimitUpdate.timer = Mountable.FORCE_LIMIT_UPDATE_TIME
+			spec.forceLimitUpdate.lastDistance = 0
+			spec.forceLimitUpdate.lastObject = nil
+			spec.forceLimitUpdate.nextMountingDistance = self:getAdditionalMountingDistance()
+			spec.forceLimitUpdate.additionalMass = 0
+			local x, y, z = getWorldTranslation(self.rootNode)
+
+			raycastAll(x, y, z, 0, 1, 0, "additionalMountingMassRaycastCallback", Mountable.FORCE_LIMIT_RAYCAST_DISTANCE, self, CollisionFlag.DYNAMIC_OBJECT, false, true)
+		end
+	end
+end
+
 function Mountable:additionalMountingMassRaycastCallback(hitObjectId, x, y, z, distance, nx, ny, nz, subShapeIndex, shapeId, isLast)
+	local spec = self.spec_mountable
+	spec.forceLimitUpdate.raycastActive = false
 	local vehicle = g_currentMission.nodeToObject[hitObjectId]
 
-	if vehicle ~= self and vehicle ~= nil and vehicle:isa(Vehicle) and vehicle.getAdditionalMountingMass ~= nil then
-		local spec = self.spec_mountable
-		spec.additionalMountingMass = spec.additionalMountingMass + vehicle:getTotalMass()
-		spec.additionalMountingMass = spec.additionalMountingMass + vehicle:getAdditionalMountingMass()
+	if vehicle ~= self and vehicle ~= nil and vehicle:isa(Vehicle) and self.getAdditionalMountingDistance ~= nil and vehicle ~= spec.forceLimitUpdate.lastObject then
+		local offset = distance - spec.forceLimitUpdate.lastDistance
 
-		return false
+		if math.abs(offset - spec.forceLimitUpdate.nextMountingDistance) < 0.25 then
+			spec.forceLimitUpdate.lastDistance = distance
+			spec.forceLimitUpdate.nextMountingDistance = self:getAdditionalMountingDistance()
+			spec.forceLimitUpdate.additionalMass = spec.forceLimitUpdate.additionalMass + vehicle:getTotalMass()
+			spec.forceLimitUpdate.lastObject = vehicle
+		end
+	end
+
+	if isLast and self.dynamicMountJointIndex ~= nil then
+		local massFactor = (spec.forceLimitUpdate.additionalMass + spec.mountBaseMass) / spec.mountBaseMass
+		local forceAcceleration = spec.mountBaseForceAcceleration * massFactor
+		local forceLimit = spec.mountBaseMass * forceAcceleration
+
+		setJointLinearDrive(self.dynamicMountJointIndex, 2, false, true, 0, 0, forceLimit, 0, 0)
 	end
 end
 
@@ -446,6 +543,61 @@ end
 
 function Mountable:getMountableLockPositions()
 	return self.spec_mountable.lockPositions
+end
+
+function Mountable:setDynamicMountType(mountState, mountObject)
+	local spec = self.spec_mountable
+
+	if mountState ~= self.dynamicMountType then
+		self.dynamicMountType = mountState
+
+		for _, listener in ipairs(spec.mountStateChangeListeners) do
+			if type(listener.callbackFunc) == "string" then
+				listener.object[listener.callbackFunc](listener.object, self, mountState, mountObject)
+			elseif type(listener.callbackFunc) == "function" then
+				listener.callbackFunc(listener.object, self, mountState, mountObject)
+			end
+		end
+	end
+end
+
+function Mountable:addMountStateChangeListener(object, callbackFunc)
+	local spec = self.spec_mountable
+
+	if callbackFunc == nil then
+		callbackFunc = "onObjectMountStateChanged"
+	end
+
+	for _, listener in ipairs(spec.mountStateChangeListeners) do
+		if listener.object == object and listener.callbackFunc == callbackFunc then
+			return
+		end
+	end
+
+	table.insert(spec.mountStateChangeListeners, {
+		object = object,
+		callbackFunc = callbackFunc
+	})
+end
+
+function Mountable:removeMountStateChangeListener(object, callbackFunc)
+	local spec = self.spec_mountable
+
+	if callbackFunc == nil then
+		callbackFunc = "onObjectMountStateChanged"
+	end
+
+	local indexToRemove = -1
+
+	for i, listener in ipairs(spec.mountStateChangeListeners) do
+		if listener.object == object and listener.callbackFunc == callbackFunc then
+			indexToRemove = i
+		end
+	end
+
+	if indexToRemove > 0 then
+		table.remove(spec.mountStateChangeListeners, indexToRemove)
+	end
 end
 
 function Mountable:getOwner(superFunc)

@@ -28,14 +28,15 @@ end
 
 function AnimalSystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 	self.customEnvironment = missionInfo.customEnvironment
-	local filename = Utils.getFilename(getXMLString(xmlFile, "map.animals#filename"), baseDirectory)
+	local filename = getXMLString(xmlFile, "map.animals#filename")
 
-	if filename == nil then
-		Logging.xmlError(XMLFile.wrap(xmlFile), "Missing animals configuration file")
+	if filename == nil or filename == "" then
+		Logging.xmlInfo(xmlFile, "No animals xml given at 'map.animals#filename'")
 
 		return false
 	end
 
+	filename = Utils.getFilename(filename, baseDirectory)
 	local xmlFileAnimals = XMLFile.load("animals", filename)
 
 	if xmlFileAnimals == nil then
@@ -141,10 +142,10 @@ function AnimalSystem:loadAnimalConfig(animalType, baseDirectory)
 
 		xmlFile:iterate(key .. ".assets.texture", function (_, textureKey)
 			local variation = {
-				numTilesU = xmlFile:getInt(textureKey .. "#numTilesU", 1)
+				numTilesU = math.max(xmlFile:getInt(textureKey .. "#numTilesU", 1), 1)
 			}
 			variation.tileUIndex = MathUtil.clamp(xmlFile:getInt(textureKey .. "#tileUIndex", 0), 0, variation.numTilesU - 1)
-			variation.numTilesV = xmlFile:getInt(textureKey .. "#numTilesV", 1)
+			variation.numTilesV = math.max(xmlFile:getInt(textureKey .. "#numTilesV", 1), 1)
 			variation.tileVIndex = MathUtil.clamp(xmlFile:getInt(textureKey .. "#tileVIndex", 0), 0, variation.numTilesV - 1)
 			variation.mirrorV = xmlFile:getBool(textureKey .. "#mirrorV", false)
 			variation.multi = xmlFile:getBool(textureKey .. "#multi", true)

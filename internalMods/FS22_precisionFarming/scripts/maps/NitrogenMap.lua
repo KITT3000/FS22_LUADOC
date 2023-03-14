@@ -280,12 +280,17 @@ function NitrogenMap:loadFromXML(xmlFile, key, baseDirectory, configFileName, ma
 
 	self:loadFruitRequirementsFromXML(configFileName, xmlFile, key)
 
+	self.cropSensorFruitTypes = {}
+
+	self:loadCropSensorFruitTypesFromXML(configFileName, xmlFile, key)
+
 	local missionInfo = g_currentMission.missionInfo
 	local mapXMLFilename = Utils.getFilename(missionInfo.mapXMLFilename, g_currentMission.baseDirectory)
 	local mapXMLFile = loadXMLFile("MapXML", mapXMLFilename)
 
 	if mapXMLFile ~= nil then
 		self:loadFruitRequirementsFromXML(missionInfo.mapXMLFilename, mapXMLFile, "map.precisionFarming")
+		self:loadCropSensorFruitTypesFromXML(missionInfo.mapXMLFilename, mapXMLFile, "map.precisionFarming")
 		delete(mapXMLFile)
 	end
 
@@ -408,23 +413,6 @@ function NitrogenMap:loadFromXML(xmlFile, key, baseDirectory, configFileName, ma
 		i = i + 1
 	end
 
-	self.cropSensorFruitTypes = {}
-	local fruitTypesStr = getXMLString(xmlFile, key .. ".cropSensor#fruitTypes")
-
-	if fruitTypesStr ~= nil then
-		local fruitTypes = fruitTypesStr:split(" ")
-
-		for j = 1, #fruitTypes do
-			local fruitType = g_fruitTypeManager:getFruitTypeByName(fruitTypes[j])
-
-			if fruitType ~= nil then
-				table.insert(self.cropSensorFruitTypes, fruitType)
-			else
-				Logging.xmlWarning(xmlFile, "Invalid fruit type '%s' for crop sensor '%s'", fruitTypes[j], key)
-			end
-		end
-	end
-
 	self.choppedStrawStateChange = (getXMLInt(xmlFile, key .. ".choppedStraw#increase") or 25) / self.amountPerState
 	self.catchCropsStateChange = (getXMLInt(xmlFile, key .. ".catchCrops#increase") or 25) / self.amountPerState
 	self.outdatedLabel = g_i18n:convertText(getXMLString(xmlFile, key .. ".texts#outdatedLabel") or "$l10n_ui_precisionFarming_outdatedData", NitrogenMap.MOD_NAME)
@@ -541,6 +529,24 @@ function NitrogenMap:loadFruitRequirementsFromXML(configFileName, xmlFile, key)
 		end
 
 		i = i + 1
+	end
+end
+
+function NitrogenMap:loadCropSensorFruitTypesFromXML(configFileName, xmlFile, key)
+	local fruitTypesStr = getXMLString(xmlFile, key .. ".cropSensor#fruitTypes")
+
+	if fruitTypesStr ~= nil then
+		local fruitTypes = fruitTypesStr:split(" ")
+
+		for j = 1, #fruitTypes do
+			local fruitType = g_fruitTypeManager:getFruitTypeByName(fruitTypes[j])
+
+			if fruitType ~= nil then
+				table.insert(self.cropSensorFruitTypes, fruitType)
+			else
+				Logging.xmlWarning(xmlFile, "Invalid fruit type '%s' for crop sensor '%s'", fruitTypes[j], key)
+			end
+		end
 	end
 end
 

@@ -290,8 +290,13 @@ function Bale:unmountKinematic()
 end
 
 function Bale:mountDynamic(object, objectActorId, jointNode, mountType, forceAcceleration)
-	Bale:superClass().mountDynamic(self, object, objectActorId, jointNode, mountType, forceAcceleration)
+	if not Bale:superClass().mountDynamic(self, object, objectActorId, jointNode, mountType, forceAcceleration) then
+		return false
+	end
+
 	self:setBaleAIObstacle(false)
+
+	return true
 end
 
 function Bale:unmountDynamic(isDelete)
@@ -427,9 +432,11 @@ function Bale:loadFromXMLFile(xmlFile, key, resetVehicles)
 end
 
 function Bale.loadBaleAttributesFromXMLFile(attributes, xmlFile, key, resetVehicles)
+	attributes.xmlFilename = NetworkUtil.convertFromNetworkFilename(xmlFile:getValue(key .. "#filename"))
 	attributes.farmId = xmlFile:getValue(key .. "#farmId", AccessHandler.EVERYONE)
 	attributes.fillLevel = xmlFile:getValue(key .. "#fillLevel")
 	attributes.fillTypeName = xmlFile:getValue(key .. "#fillType")
+	attributes.fillType = g_fillTypeManager:getFillTypeIndexByName(attributes.fillTypeName)
 	local wrapDiffuse = xmlFile:getValue(key .. ".textures#wrapDiffuse")
 
 	if wrapDiffuse ~= nil then
@@ -478,6 +485,30 @@ function Bale:getBaleAttributes()
 	end
 
 	return attributes
+end
+
+function Bale.saveBaleAttributesToXMLFile(attributes, xmlFile, key)
+	xmlFile:setValue(key .. "#filename", HTMLUtil.encodeToHTML(NetworkUtil.convertToNetworkFilename(attributes.xmlFilename)))
+	xmlFile:setValue(key .. "#valueScale", attributes.baleValueScale)
+	xmlFile:setValue(key .. "#fillLevel", attributes.fillLevel)
+	xmlFile:setValue(key .. "#fillType", g_fillTypeManager:getFillTypeNameByIndex(attributes.fillType))
+	xmlFile:setValue(key .. "#farmId", attributes.farmId)
+	xmlFile:setValue(key .. "#isMissionBale", attributes.isMissionBale)
+	xmlFile:setValue(key .. "#wrappingState", attributes.wrappingState)
+	xmlFile:setValue(key .. "#wrappingColor", attributes.wrappingColor[1], attributes.wrappingColor[2], attributes.wrappingColor[3], attributes.wrappingColor[4])
+
+	if attributes.wrapDiffuse ~= nil then
+		xmlFile:setValue(key .. ".textures#wrapDiffuse", HTMLUtil.encodeToHTML(NetworkUtil.convertToNetworkFilename(attributes.wrapDiffuse)))
+	end
+
+	if attributes.wrapNormal ~= nil then
+		xmlFile:setValue(key .. ".textures#wrapNormal", HTMLUtil.encodeToHTML(NetworkUtil.convertToNetworkFilename(attributes.wrapNormal)))
+	end
+
+	if attributes.isFermenting then
+		xmlFile:setValue(key .. ".fermentation#isFermenting", true)
+		xmlFile:setValue(key .. ".fermentation#time", attributes.fermentationTime)
+	end
 end
 
 function Bale:applyBaleAttributes(attributes)
@@ -806,7 +837,7 @@ function Bale:getAdditionalMountingDistance()
 	if self.isRoundbale then
 		return 0
 	else
-		return self.height
+		return self.height * 0.5
 	end
 end
 
@@ -848,6 +879,10 @@ function Bale:getCanBeOpened()
 	end
 
 	if self.isFermenting then
+		return false
+	end
+
+	if self.dynamicMountType ~= MountableObject.MOUNT_TYPE_NONE then
 		return false
 	end
 
@@ -964,7 +999,7 @@ function Bale:showInfo(box)
 	box:addLine(g_i18n:getText("infohud_mass"), g_i18n:formatMass(self:getMass()))
 end
 
-function Bale.createDummyBale(xmlFilename, fillTypeIndex)
+function Bale.createDummyBale(xmlFilename, fillTypeIndex, wrappingState, wrappingColor)
 	local xmlFile = XMLFile.load("TempBale", xmlFilename, BaleManager.baleXMLSchema)
 	local baleId, baleRoot, sharedLoadRequestId = nil
 	local i3dFilename = xmlFile:getValue("bale.filename")
@@ -980,6 +1015,7 @@ function Bale.createDummyBale(xmlFilename, fillTypeIndex)
 			setRigidBodyType(baleId, RigidBodyType.NONE)
 			unlink(baleId)
 
+			wrappingState = wrappingState or 0
 			local fillTypes = {}
 
 			Bale.loadFillTypesFromXML(fillTypes, xmlFile, baseDirectory)
@@ -987,7 +1023,8 @@ function Bale.createDummyBale(xmlFilename, fillTypeIndex)
 
 			local meshes = Bale.loadVisualMeshesFromXML(baleId, xmlFile, baseDirectory)
 
-			Bale.updateVisualMeshVisibility(meshes, fillTypeIndex, false)
+			Bale.updateVisualMeshVisibility(meshes, fillTypeIndex, wrappingState > 0)
+			Bale.updateVisualMeshWrappingState(meshes, wrappingState, wrappingColor)
 			delete(baleRoot)
 		end
 	end
@@ -1144,6 +1181,22 @@ function Bale.updateVisualMeshVisibility(meshes, fillTypeIndex, isWrapped)
 
 					break
 				end
+			end
+		end
+	end
+end
+
+function Bale.updateVisualMeshWrappingState(meshes, wrappingState, wrappingColor)
+	for i = 1, #meshes do
+		local node = meshes[i].node
+
+		setShaderParameter(node, "wrappingState", wrappingState, 0, 0, 0, false)
+
+		if wrappingState > 0 and getHasShaderParameter(node, "colorScale") then
+			if wrappingColor ~= nil and #wrappingColor == 4 then
+				setShaderParameter(node, "colorScale", wrappingColor[1], wrappingColor[2], wrappingColor[3], wrappingColor[4], false)
+			else
+				setShaderParameter(node, "colorScale", 0.85, 0.85, 0.85, 1, false)
 			end
 		end
 	end

@@ -399,6 +399,7 @@ function Enterable:onDelete()
 	g_soundManager:deleteSamples(spec.rainSamples)
 
 	spec.weatherObject = nil
+	g_currentMission.controlledVehicles[self] = nil
 
 	g_currentMission:removeEnterableVehicle(self)
 	g_currentMission:removeInteractiveVehicle(self)
@@ -1079,11 +1080,14 @@ end
 function Enterable:onPlayerStyleChanged(style, userId)
 	if self.isServer then
 		local connection = self:getOwner()
-		local currentUserId = g_currentMission.userManager:getUserIdByConnection(connection)
 
-		if currentUserId == userId then
-			self:setVehicleCharacter(style)
-			g_server:broadcastEvent(VehiclePlayerStyleChangedEvent.new(self, style))
+		if connection ~= nil then
+			local currentUserId = g_currentMission.userManager:getUserIdByConnection(connection)
+
+			if currentUserId == userId then
+				self:setVehicleCharacter(style)
+				g_server:broadcastEvent(VehiclePlayerStyleChangedEvent.new(self, style))
+			end
 		end
 	end
 end

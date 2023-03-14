@@ -17,3 +17,6 @@ end
 
 function Event:writeStream(streamId, connection)
 end
+
+function Event:run(connection)
+end

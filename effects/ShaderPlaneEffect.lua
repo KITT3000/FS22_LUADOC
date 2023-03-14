@@ -175,14 +175,10 @@ end
 function ShaderPlaneEffect:start()
 	if self:canStart() and self.state ~= ShaderPlaneEffect.STATE_TURNING_ON and self.state ~= ShaderPlaneEffect.STATE_ON then
 		self.state = ShaderPlaneEffect.STATE_TURNING_ON
-		self.fadeCur = {
-			-1,
-			1
-		}
-		self.fadeDir = {
-			1,
-			1
-		}
+		self.fadeCur[2] = 1
+		self.fadeCur[1] = -1
+		self.fadeDir[2] = 1
+		self.fadeDir[1] = 1
 		self.currentDelay = self.startDelay
 
 		return true
@@ -194,10 +190,8 @@ end
 function ShaderPlaneEffect:stop()
 	if self.state ~= ShaderPlaneEffect.STATE_TURNING_OFF and self.state ~= ShaderPlaneEffect.STATE_OFF then
 		self.state = ShaderPlaneEffect.STATE_TURNING_OFF
-		self.fadeDir = {
-			1,
-			-1
-		}
+		self.fadeDir[2] = -1
+		self.fadeDir[1] = 1
 		self.currentDelay = self.stopDelay
 
 		return true
@@ -207,14 +201,10 @@ function ShaderPlaneEffect:stop()
 end
 
 function ShaderPlaneEffect:reset()
-	self.fadeCur = {
-		-1,
-		1
-	}
-	self.fadeDir = {
-		1,
-		-1
-	}
+	self.fadeCur[2] = 1
+	self.fadeCur[1] = -1
+	self.fadeDir[2] = -1
+	self.fadeDir[1] = 1
 
 	setShaderParameter(self.node, "fadeProgress", self.fadeCur[1], self.fadeCur[2], 0, 0, false)
 	setVisibility(self.node, false)

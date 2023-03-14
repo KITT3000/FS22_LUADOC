@@ -140,21 +140,26 @@ end
 local AnimCurve_mt = Class(AnimCurve)
 
 function AnimCurve.new(interpolator, interpolatorDegree)
-	local instance = {}
+	local self = setmetatable({}, AnimCurve_mt)
+	self.keyframes = {}
+	self.interpolator = interpolator
+	self.interpolatorDegree = Utils.getNoNil(interpolatorDegree, 2)
+	self.currentTime = 0
+	self.maxTime = 0
+	self.numKeyframes = 0
 
-	setmetatable(instance, AnimCurve_mt)
-
-	instance.keyframes = {}
-	instance.interpolator = interpolator
-	instance.interpolatorDegree = Utils.getNoNil(interpolatorDegree, 2)
-	instance.currentTime = 0
-	instance.maxTime = 0
-	instance.numKeyframes = 0
-
-	return instance
+	return self
 end
 
 function AnimCurve:delete()
+end
+
+function AnimCurve:reset()
+	table.clear(self.keyframes)
+
+	self.numKeyframes = 0
+	self.currentTime = 0
+	self.maxTime = 0
 end
 
 function AnimCurve:addKeyframe(keyframe, xmlFile, key)
@@ -180,6 +185,21 @@ function AnimCurve:addKeyframe(keyframe, xmlFile, key)
 
 	self.maxTime = keyframe.time
 	self.numKeyframes = numKeys + 1
+end
+
+function AnimCurve:removeKeyframe(index)
+	if index ~= nil and (index < 1 or index > #self.keyframes) then
+		return
+	end
+
+	for i = #self.keyframes - 1, index, -1 do
+		self.keyframes[i + 1].time = self.keyframes[i].time
+	end
+
+	table.remove(self.keyframes, index)
+
+	self.maxTime = self.keyframes[#self.keyframes] and self.keyframes[#self.keyframes].time or 0
+	self.numKeyframes = self.numKeyframes - 1
 end
 
 function AnimCurve:getMaximum()

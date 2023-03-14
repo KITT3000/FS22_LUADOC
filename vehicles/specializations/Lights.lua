@@ -1430,6 +1430,8 @@ function Lights:onAIDriveableEnd()
 	if self.getIsControlled ~= nil and not self:getIsControlled() then
 		self:setLightsTypesMask(0)
 	end
+
+	self:setBeaconLightsVisibility(false, true, true)
 end
 
 function Lights:onAIFieldWorkerActive()
@@ -1448,6 +1450,8 @@ function Lights:onAIFieldWorkerEnd()
 	if self.getIsControlled ~= nil and not self:getIsControlled() then
 		self:setLightsTypesMask(0)
 	end
+
+	self:setBeaconLightsVisibility(false, true, true)
 end
 
 function Lights:onVehiclePhysicsUpdate(acceleratorPedal, brakePedal, automaticBrake, currentSpeed)

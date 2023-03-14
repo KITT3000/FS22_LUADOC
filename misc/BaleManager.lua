@@ -27,6 +27,13 @@ function BaleManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 	BaleManager:superClass().loadMapData(self)
 
 	local filename = getXMLString(xmlFile, "map.bales#filename")
+
+	if filename == nil then
+		Logging.xmlInfo(xmlFile, "No bales xml defined in map")
+
+		return false
+	end
+
 	local xmlFilename = Utils.getFilename(filename, baseDirectory)
 	local balesXMLFile = XMLFile.load("TempBales", xmlFilename, BaleManager.mapBalesXMLSchema)
 
@@ -176,6 +183,11 @@ function BaleManager:loadBaleDataFromXML(bale, xmlFile, baseDirectory)
 		bale.height = MathUtil.round(xmlFile:getValue("bale.size#height", 0), 2)
 		bale.length = MathUtil.round(xmlFile:getValue("bale.size#length", 0), 2)
 		bale.diameter = MathUtil.round(xmlFile:getValue("bale.size#diameter", 0), 2)
+		bale.maxStackHeight = xmlFile:getValue("bale.size#maxStackHeight", bale.isRoundbale and 2 or 3)
+		bale.visualWidth = xmlFile:getValue("bale.size#visualWidth", bale.width)
+		bale.visualHeight = xmlFile:getValue("bale.size#visualHeight", bale.height)
+		bale.visualLength = xmlFile:getValue("bale.size#visualLength", bale.length)
+		bale.visualDiameter = xmlFile:getValue("bale.size#visualDiameter", bale.diameter)
 
 		if bale.isRoundbale and (bale.diameter == 0 or bale.width == 0) then
 			Logging.xmlError(xmlFile, "Missing size attributes for round bale. Requires width and diameter.")
@@ -291,6 +303,22 @@ function BaleManager:getBaleIndex(fillTypeIndex, isRoundbale, width, height, len
 	end
 
 	return nil
+end
+
+function BaleManager:getBaleInfoByXMLFilename(xmlFilename, useVisualInfomation)
+	for i = 1, #self.bales do
+		local bale = self.bales[i]
+
+		if bale.xmlFilename == xmlFilename then
+			if useVisualInfomation == true then
+				return bale.isRoundbale, bale.visualWidth, bale.visualHeight, bale.visualLength, bale.visualDiameter, bale.maxStackHeight
+			else
+				return bale.isRoundbale, bale.width, bale.height, bale.length, bale.diameter, bale.maxStackHeight
+			end
+		end
+	end
+
+	return false, 0, 0, 0, 0, 1
 end
 
 function BaleManager:getIsBaleMatching(bale, fillTypeIndex, isRoundbale, width, height, length, diameter)
@@ -483,6 +511,11 @@ function BaleManager.registerBaleXMLPaths(schema)
 	schema:register(XMLValueType.FLOAT, "bale.size#height", "Bale Height", 0)
 	schema:register(XMLValueType.FLOAT, "bale.size#length", "Bale Length", 0)
 	schema:register(XMLValueType.FLOAT, "bale.size#diameter", "Bale Diameter", 0)
+	schema:register(XMLValueType.INT, "bale.size#maxStackHeight", "Max. stack height for automatic spawning of bales", "2 or round bales and 3 for square bales")
+	schema:register(XMLValueType.FLOAT, "bale.size#visualWidth", "Bale Width (Real size of the visuals if different)", "Same as #width")
+	schema:register(XMLValueType.FLOAT, "bale.size#visualHeight", "Bale Height (Real size of the visuals if different)", "Same as #height")
+	schema:register(XMLValueType.FLOAT, "bale.size#visualLength", "Bale Length (Real size of the visuals if different)", "Same as #length")
+	schema:register(XMLValueType.FLOAT, "bale.size#visualDiameter", "Bale Diameter (Real size of the visuals if different)", "Same as #diameter")
 	schema:register(XMLValueType.NODE_INDEX, "bale.mountableObject#triggerNode", "Trigger node")
 	schema:register(XMLValueType.FLOAT, "bale.mountableObject#forceAcceleration", "Acceleration force", 4)
 	schema:register(XMLValueType.FLOAT, "bale.mountableObject#forceLimitScale", "Force limit scale", 1)

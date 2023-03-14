@@ -1394,12 +1394,6 @@ function Wheels:loadWheelSharedData(xmlFile, configKey, wheelKey, wheel, skipCon
 		configIndex = -1
 	end
 
-	local key = "nodeLeft"
-
-	if not wheel.isLeft then
-		key = "nodeRight"
-	end
-
 	wheel.radius = self:getWheelConfigurationValue(xmlFile, configIndex, configKey, wheelKey .. ".physics#radius", wheel.radius)
 
 	if wheel.radius == nil then
@@ -2795,8 +2789,10 @@ function Wheels:addToPhysics(superFunc)
 		local brakeForce = self:getBrakeForce()
 
 		for _, wheel in pairs(spec.wheels) do
-			setWheelShapeProps(wheel.node, wheel.wheelShape, 0, brakeForce * wheel.brakeFactor, wheel.steeringAngle, wheel.rotationDamping)
-			setWheelShapeAutoHoldBrakeForce(wheel.node, wheel.wheelShape, brakeForce * wheel.autoHoldBrakeFactor)
+			if wheel.wheelShape ~= 0 then
+				setWheelShapeProps(wheel.node, wheel.wheelShape, 0, brakeForce * wheel.brakeFactor, wheel.steeringAngle, wheel.rotationDamping)
+				setWheelShapeAutoHoldBrakeForce(wheel.node, wheel.wheelShape, brakeForce * wheel.autoHoldBrakeFactor)
+			end
 		end
 
 		self:brake(brakeForce)
@@ -3874,11 +3870,14 @@ function Wheels:getTurningRadiusByRotTime(rotTime)
 			if wheel.rotSpeed ~= 0 then
 				local rotSpeed = math.abs(wheel.rotSpeed)
 				local wheelRot = math.abs(rotTime * rotSpeed)
-				local diffX, _, diffZ = localToLocal(wheel.node, spec.steeringCenterNode, wheel.positionX, wheel.positionY, wheel.positionZ)
-				local turningRadius = math.abs(diffZ) / math.tan(wheelRot) + math.abs(diffX)
 
-				if maxTurningRadius > turningRadius then
-					maxTurningRadius = turningRadius
+				if wheelRot > 0 then
+					local diffX, _, diffZ = localToLocal(wheel.node, spec.steeringCenterNode, wheel.positionX, wheel.positionY, wheel.positionZ)
+					local turningRadius = math.abs(diffZ) / math.tan(wheelRot) + math.abs(diffX)
+
+					if maxTurningRadius > turningRadius then
+						maxTurningRadius = turningRadius
+					end
 				end
 			end
 		end

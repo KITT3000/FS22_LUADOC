@@ -73,7 +73,7 @@ AIVehicleUtil = {
 		end
 	end,
 	driveAlongCurvature = function (self, dt, curvature, maxSpeed, acceleration)
-		local targetRotTime = self:getSteeringRotTimeByCurvature(curvature)
+		local targetRotTime = self:getSteeringRotTimeByCurvature(curvature) * self:getSteeringDirection()
 		self.rotatedTime = -targetRotTime
 
 		if self.finishedFirstUpdate then

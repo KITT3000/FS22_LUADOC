@@ -429,7 +429,7 @@ function LivestockTrailer:onAnimalLoaded(i3dNode, failedReason, args)
 		local tileU = variations.tileUIndex / variations.numTilesU
 		local tileV = variations.tileVIndex / variations.numTilesV
 
-		I3DUtil.setShaderParameterRec(i3dNode, "atlasInvSizeAndOffsetUV", nil, nil, tileU, tileV, false)
+		I3DUtil.setShaderParameterRec(i3dNode, "atlasInvSizeAndOffsetUV", 1 / variations.numTilesU, 1 / variations.numTilesV, tileU, tileV, false)
 		I3DUtil.setShaderParameterRec(i3dNode, "RDT", nil, 0, nil, nil, false)
 	end
 end

@@ -233,7 +233,7 @@ function AttacherJointControl:onUpdate(dt, isActiveForInput, isActiveForInputIgn
 
 			local newAlpha = control.moveAlpha + moveStep
 
-			self:controlAttacherJoint(control, newAlpha, true, true)
+			self:controlAttacherJoint(control, newAlpha, spec.nextHeightDampingUpdateTime < g_time, true)
 
 			if math.abs(spec.heightTargetAlpha - newAlpha) < 0.01 then
 				spec.heightTargetAlpha = -1

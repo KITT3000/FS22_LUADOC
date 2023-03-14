@@ -210,6 +210,16 @@ function Connection:getIsWindowFull()
 	return self.lastSeqSent - self.highestAckedSeq >= 29
 end
 
+function Connection:getObjectSyncState(objectId)
+	local objectInfo = self.objectsInfo[objectId]
+
+	if objectInfo ~= nil then
+		return objectInfo.sync
+	end
+
+	return nil
+end
+
 function Connection:onPacketSent(i)
 	for objectId, objectInfo in pairs(self.objectsInfo) do
 		local historyEntry = objectInfo.history[i]

@@ -103,6 +103,8 @@ function Foldable.registerFoldingXMLPaths(schema, basePath)
 	schema:register(XMLValueType.FLOAT, basePath .. "#toggleCoverMinLimit", "Toggle cover fold min. limit", 0)
 	schema:register(XMLValueType.FLOAT, basePath .. "#detachingMaxLimit", "Detach fold max. limit", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. "#detachingMinLimit", "Detach fold min. limit", 0)
+	schema:register(XMLValueType.FLOAT, basePath .. "#attachingMaxLimit", "Attach fold max. limit", 1)
+	schema:register(XMLValueType.FLOAT, basePath .. "#attachingMinLimit", "Attach fold min. limit", 0)
 	schema:register(XMLValueType.BOOL, basePath .. "#allowDetachingWhileFolding", "Allow detaching while folding", false)
 	schema:register(XMLValueType.FLOAT, basePath .. "#loweringMaxLimit", "Lowering fold max. limit", 1)
 	schema:register(XMLValueType.FLOAT, basePath .. "#loweringMinLimit", "Lowering fold min. limit", 0)
@@ -173,6 +175,7 @@ function Foldable.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsInWorkPosition", Foldable.getIsInWorkPosition)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getTurnedOnNotAllowedWarning", Foldable.getTurnedOnNotAllowedWarning)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "isDetachAllowed", Foldable.isDetachAllowed)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "isAttachAllowed", Foldable.isAttachAllowed)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAllowsLowering", Foldable.getAllowsLowering)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsLowered", Foldable.getIsLowered)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanAIImplementContinueWork", Foldable.getCanAIImplementContinueWork)
@@ -214,6 +217,7 @@ function Foldable.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsWoodHarvesterTiltStateAllowed", Foldable.getIsWoodHarvesterTiltStateAllowed)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleCrabSteering", Foldable.getCanToggleCrabSteering)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getBrakeForce", Foldable.getBrakeForce)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getRequiresPower", Foldable.getRequiresPower)
 end
 
 function Foldable.registerEventListeners(vehicleType)
@@ -300,6 +304,8 @@ function Foldable:onLoad(savegame)
 	spec.toggleCoverMinLimit = self.xmlFile:getValue(configKey .. "#toggleCoverMinLimit", 0)
 	spec.detachingMaxLimit = self.xmlFile:getValue(configKey .. "#detachingMaxLimit", 1)
 	spec.detachingMinLimit = self.xmlFile:getValue(configKey .. "#detachingMinLimit", 0)
+	spec.attachingMaxLimit = self.xmlFile:getValue(configKey .. "#attachingMaxLimit", 1)
+	spec.attachingMinLimit = self.xmlFile:getValue(configKey .. "#attachingMinLimit", 0)
 	spec.allowDetachingWhileFolding = self.xmlFile:getValue(configKey .. "#allowDetachingWhileFolding", false)
 	spec.loweringMaxLimit = self.xmlFile:getValue(configKey .. "#loweringMaxLimit", 1)
 	spec.loweringMinLimit = self.xmlFile:getValue(configKey .. "#loweringMinLimit", 0)
@@ -1150,6 +1156,16 @@ function Foldable:isDetachAllowed(superFunc)
 	return superFunc(self)
 end
 
+function Foldable:isAttachAllowed(superFunc, farmId, attacherVehicle)
+	local spec = self.spec_foldable
+
+	if spec.attachingMaxLimit < spec.foldAnimTime or spec.foldAnimTime < spec.attachingMinLimit then
+		return false, spec.unfoldWarning
+	end
+
+	return superFunc(self, farmId, attacherVehicle)
+end
+
 function Foldable:getAllowsLowering(superFunc)
 	local spec = self.spec_foldable
 
@@ -1595,6 +1611,10 @@ function Foldable:getBrakeForce(superFunc)
 	end
 
 	return superFunc(self)
+end
+
+function Foldable:getRequiresPower(superFunc)
+	return self.spec_foldable.foldMoveDirection ~= 0 or superFunc(self)
 end
 
 function Foldable:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnoreSelection)

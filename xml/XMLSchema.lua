@@ -749,7 +749,6 @@ function XMLSchema:generateHTML()
 	add("<!DOCTYPE html>")
 	add("<head>")
 	add(string.format("  <title>XML Doc: %s</title>", self.name))
-	add("</head>")
 
 	local currentLine = nil
 	local currentIndent = ""
@@ -759,24 +758,24 @@ function XMLSchema:generateHTML()
 	add("  font-family: \"Courier New\";")
 	add("  overflow-x: scroll;")
 	add("}")
-	add("#tag {")
+	add(".idTag {")
 	add("  color: rgb(0, 0, 255);")
 	add("}")
-	add("#attribute {")
+	add(".idAttr {")
 	add("  color: rgb(255, 0, 0);")
 	add("}")
-	add("#attribute_value {")
+	add(".idAttrVal {")
 	add("  color: rgb(0, 0, 0);")
 	add("}")
-	add("#value {")
+	add(".idVal {")
 	add("  color: rgb(128, 0, 255);")
 	add("}")
-	add(".attribute {")
+	add(".attr {")
 	add("  position: relative;")
 	add("  display: inline-block;")
 	add("  font-weight: normal;")
 	add("}")
-	add(".attribute .attributeInfo {")
+	add(".attr .attrInfo {")
 	add("  visibility: hidden;")
 	add("  width: 350px;")
 	add("  top: 100%;")
@@ -792,24 +791,25 @@ function XMLSchema:generateHTML()
 	add("  position: absolute;")
 	add("  z-index: 1;")
 	add("}")
-	add(".attribute:hover .attributeInfo {")
+	add(".attr:hover .attrInfo {")
 	add("  visibility: visible;")
 	add("}")
-	add(".attribute:hover{")
+	add(".attr:hover{")
 	add("  font-weight: bold;")
 	add("}")
+	add("</style>")
 
-	currentLine = add("</style>") + 1
+	currentLine = add("</head>") + 1
 
 	local function format(str, type)
 		if type == TYPE_TAG then
-			str = string.format("<span id=\"tag\">%s</span>", str)
+			str = string.format("<span class=\"idTag\">%s</span>", str)
 		elseif type == TYPE_ATTRIBUTE then
-			str = string.format("<span id=\"attribute\">%s</span>", str)
+			str = string.format("<span class=\"idAttr\">%s</span>", str)
 		elseif type == TYPE_ATTRIBUTE_VALUE then
-			str = string.format("<span id=\"attribute_value\">%s</span>", str)
+			str = string.format("<span class=\"idAttrVal\">%s</span>", str)
 		elseif type == TYPE_VALUE then
-			str = string.format("<span id=\"value\">%s</span>", str)
+			str = string.format("<span class=\"idVal\">%s</span>", str)
 		end
 
 		return str
@@ -858,11 +858,11 @@ function XMLSchema:generateHTML()
 			if isDirect then
 				attributeRaw = format(valueStr, attributeType or TYPE_VALUE)
 			else
-				attributeRaw = string.format("%s=\"%s\"", format(data.tag, TYPE_ATTRIBUTE), format(valueStr, attributeType or TYPE_VALUE))
+				attributeRaw = string.format("%s=%s", format(data.tag, TYPE_ATTRIBUTE), format(string.format("\"%s\"", valueStr), attributeType or TYPE_VALUE))
 			end
 
 			local attributeInfo = getAttributeInfo(data.data)
-			local attribute = string.format("<div class=\"attribute\">%s<span class=\"attributeInfo\">%s</span></div>", attributeRaw, attributeInfo)
+			local attribute = string.format("<span class=\"attr\">%s<span class=\"attrInfo\">%s</span></span>", attributeRaw, attributeInfo)
 
 			return (spacing or " ") .. attribute
 		end

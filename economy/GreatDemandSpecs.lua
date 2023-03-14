@@ -100,7 +100,7 @@ function GreatDemandSpecs:setUpRandomDemand(weighted, greatDemands, mission)
 
 					for _, fillTypeIndex in pairs(validFillTypes) do
 						local fillType = g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
-						local amountRatio = fillType.totalAmount / amountUberTotal
+						local amountRatio = math.max(fillType.totalAmount / amountUberTotal, 1e-06)
 						local inverseRatio = 1 / amountRatio
 						inverseRatioTotal = inverseRatioTotal + inverseRatio
 						local inverseRatioEntry = {

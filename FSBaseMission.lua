@@ -916,6 +916,8 @@ function FSBaseMission:onConnectionRequestAnswer(connection, answer, difficulty,
 			text = g_i18n:getText("ui_connectionLostKeyInUse")
 		elseif answer == ConnectionRequestAnswerEvent.SLOT_LIMIT_REACHED then
 			text = g_i18n:getText("ui_serverDeniedSlotLimitReached")
+		elseif answer == ConnectionRequestAnswerEvent.MATCH_IN_PROGRESS then
+			text = g_i18n:getText("ui_serverDeniedMatchInProgress")
 		end
 
 		g_gui:showInfoDialog({
@@ -3311,6 +3313,8 @@ function FSBaseMission:consoleCommandReloadVehicle(resetVehicle, radius)
 				return "Warning: No vehicle reloaded. Enter a vehicle first or use the command with the radius parameter given, e.g. 'gsVehicleReload false 25'\n" .. usage
 			end
 
+			simulatePhysics(false)
+
 			local xmlFile = XMLFile.create("vehicleXMLFile", "", "vehicles", Vehicle.xmlSchemaSavegame)
 
 			VehicleLoadingUtil.setSaveIds(affectedVehicles)
@@ -3389,7 +3393,8 @@ function FSBaseMission:consoleCommandReloadVehicle(resetVehicle, radius)
 
 					self.isReloadingVehicles = false
 
-					return string.format("%d vehicle(s) reloaded", #affectedVehicles)
+					simulatePhysics(true)
+					Logging.info(string.format("%d vehicle(s) reloaded", #affectedVehicles))
 				end
 			end
 

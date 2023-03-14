@@ -220,6 +220,8 @@ function BaleLoader.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getCurrentFoldingAnimation", BaleLoader.getCurrentFoldingAnimation)
 	SpecializationUtil.registerFunction(vehicleType, "updateFoldingAnimation", BaleLoader.updateFoldingAnimation)
 	SpecializationUtil.registerFunction(vehicleType, "onBaleMoverBaleRemoved", BaleLoader.onBaleMoverBaleRemoved)
+	SpecializationUtil.registerFunction(vehicleType, "addBaleUnloadTrigger", BaleLoader.addBaleUnloadTrigger)
+	SpecializationUtil.registerFunction(vehicleType, "removeBaleUnloadTrigger", BaleLoader.removeBaleUnloadTrigger)
 end
 
 function BaleLoader.registerOverwrittenFunctions(vehicleType)
@@ -553,6 +555,7 @@ function BaleLoader:onLoad(savegame)
 	spec.lastPickupAutomatedUnloadingDelayTime = 15000
 	spec.lastPickupTime = -spec.lastPickupAutomatedUnloadingDelayTime
 	spec.kinematicMountedBales = {}
+	spec.baleUnloadTriggers = {}
 	spec.baleJoints = {}
 end
 
@@ -783,6 +786,14 @@ function BaleLoader:onDelete()
 		end
 
 		g_animationManager:deleteAnimations(spec.unloadingMover.animationNodes)
+	end
+
+	if spec.baleUnloadTriggers ~= nil then
+		for unloadTrigger, _ in pairs(spec.baleUnloadTriggers) do
+			unloadTrigger:removeDeleteListener(self, BaleLoader.onBaleUnloadTriggerDeleted)
+
+			spec.baleUnloadTriggers[unloadTrigger] = nil
+		end
 	end
 
 	g_effectManager:deleteEffects(spec.grabberEffects)
@@ -1349,6 +1360,27 @@ function BaleLoader:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSel
 	end
 
 	if self.isServer then
+		if Platform.gameplay.automaticBaleDrop then
+			local unloadTrigger, _ = next(spec.baleUnloadTriggers)
+
+			if unloadTrigger ~= nil and self:getIsAutomaticBaleUnloadingAllowed() then
+				local bales = self:getLoadedBales()
+				local unloadingAllowed = false
+
+				for i, bale in ipairs(bales) do
+					if unloadTrigger:getIsBaleSupportedByUnloadTrigger(bale) then
+						unloadingAllowed = true
+
+						break
+					end
+				end
+
+				if unloadingAllowed then
+					self:startAutomaticBaleUnloading()
+				end
+			end
+		end
+
 		if spec.automaticUnloading or spec.automaticUnloadingInProgress then
 			if spec.emptyState == BaleLoader.EMPTY_WAIT_TO_DROP then
 				self:doStateChange(BaleLoader.CHANGE_BUTTON_EMPTY)
@@ -2371,14 +2403,27 @@ function BaleLoader:doStateChange(id, nearestBaleServerId)
 				usedPlaces = usedPlaces - 1
 			end
 
-			local placeTargetTime = 1 - balePlacesTime / self:getAnimationDuration(spec.animations.moveBalePlacesToEmpty)
+			local animDuration = self:getAnimationDuration(spec.animations.moveBalePlacesToEmpty)
+			local placeTargetTime = 1
+
+			if animDuration > 0 then
+				placeTargetTime = 1 - balePlacesTime / animDuration
+			end
+
 			local pusherTargetTime = 1 - usedPlaces / #spec.balePlaces
 			pusherAnimSpeed = spec.animations.moveBalePlacesToEmptySpeed * pusherTargetTime / placeTargetTime
 
 			self:playAnimation(spec.animations.pusherMoveToEmpty, pusherAnimSpeed, 0, true)
 			self:setAnimationStopTime(spec.animations.pusherMoveToEmpty, pusherTargetTime)
 		else
-			self:playAnimation(spec.animations.pusherMoveToEmpty, spec.animations.moveBalePlacesToEmptySpeed, balePlacesTime / self:getAnimationDuration(spec.animations.pusherMoveToEmpty), true)
+			local targetTime = 0
+			local animDuration = self:getAnimationDuration(spec.animations.pusherMoveToEmpty)
+
+			if animDuration > 0 then
+				targetTime = balePlacesTime / animDuration
+			end
+
+			self:playAnimation(spec.animations.pusherMoveToEmpty, spec.animations.moveBalePlacesToEmptySpeed, targetTime, true)
 		end
 
 		local allowOffset = true
@@ -2392,7 +2437,14 @@ function BaleLoader:doStateChange(id, nearestBaleServerId)
 			spec.animations.moveBalePlacesToEmptyPushOffsetDelay = spec.animations.moveBalePlacesToEmptyPushOffset * self:getAnimationDuration(spec.animations.pusherMoveToEmpty) / pusherAnimSpeed
 			spec.animations.moveBalePlacesToEmptyPushOffsetTime = spec.animations.moveBalePlacesToEmptyPushOffsetDelay
 		else
-			self:playAnimation(spec.animations.moveBalePlacesToEmpty, spec.animations.moveBalePlacesToEmptySpeed, balePlacesTime / self:getAnimationDuration(spec.animations.moveBalePlacesToEmpty), true)
+			local targetTime = 0
+			local animDuration = self:getAnimationDuration(spec.animations.moveBalePlacesToEmpty)
+
+			if animDuration > 0 then
+				targetTime = balePlacesTime / animDuration
+			end
+
+			self:playAnimation(spec.animations.moveBalePlacesToEmpty, spec.animations.moveBalePlacesToEmptySpeed, targetTime, true)
 		end
 
 		spec.emptyState = BaleLoader.EMPTY_ROTATE1
@@ -2951,6 +3003,33 @@ end
 function BaleLoader:onBaleMoverBaleRemoved(bale)
 	local spec = self.spec_baleLoader
 	spec.unloadingMover.balesInTrigger[bale] = nil
+end
+
+function BaleLoader:onBaleUnloadTriggerDeleted(unloadTrigger)
+	local spec = self.spec_baleLoader
+
+	if spec.baleUnloadTriggers[unloadTrigger] ~= nil then
+		spec.baleUnloadTriggers[unloadTrigger] = nil
+	end
+end
+
+function BaleLoader:addBaleUnloadTrigger(unloadTrigger)
+	local spec = self.spec_baleLoader
+	spec.baleUnloadTriggers[unloadTrigger] = (spec.baleUnloadTriggers[unloadTrigger] or 0) + 1
+
+	unloadTrigger:addDeleteListener(self, BaleLoader.onBaleUnloadTriggerDeleted)
+	self:raiseActive()
+end
+
+function BaleLoader:removeBaleUnloadTrigger(unloadTrigger)
+	local spec = self.spec_baleLoader
+	spec.baleUnloadTriggers[unloadTrigger] = (spec.baleUnloadTriggers[unloadTrigger] or 0) - 1
+
+	if spec.baleUnloadTriggers[unloadTrigger] <= 0 then
+		spec.baleUnloadTriggers[unloadTrigger] = nil
+
+		unloadTrigger:removeDeleteListener(self, BaleLoader.onBaleUnloadTriggerDeleted)
+	end
 end
 
 function BaleLoader:getCanBeSelected(superFunc)

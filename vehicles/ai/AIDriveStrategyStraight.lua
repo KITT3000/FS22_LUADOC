@@ -147,11 +147,29 @@ function AIDriveStrategyStraight:setAIVehicle(vehicle)
 	self.toolLineStates = {}
 	self.isTurning = false
 	self.isFirstRow = true
+	self.isFirstRun = true
 end
 
 function AIDriveStrategyStraight:update(dt)
 	for _, strategy in ipairs(self.turnStrategies) do
 		strategy:update(dt)
+	end
+
+	if self.isFirstRun then
+		local vX, vY, vZ = getWorldTranslation(self.vehicle:getAISteeringNode())
+		local _, hasField, ownedField = self:getDistanceToEndOfField(dt, vX, vY, vZ)
+
+		if not hasField then
+			if ownedField then
+				self.vehicle:stopCurrentAIJob(AIMessageErrorNoFieldFound.new())
+				self:debugPrint("Stopping AIVehicle - unable to find field (initial)")
+			else
+				self.vehicle:stopCurrentAIJob(AIMessageErrorFieldNotOwned.new())
+				self:debugPrint("Stopping AIVehicle - field not owned (initial)")
+			end
+		end
+
+		self.isFirstRun = false
 	end
 end
 
@@ -569,7 +587,7 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 			local sX, sZ, wX, wZ, hX, hZ = getAreaDimensions(leftMarker, rightMarker, safetyOffset, markerZOffset, size)
 			local area, totalArea = AIVehicleUtil.getAIAreaOfVehicle(implement.object, sX, sZ, wX, wZ, hX, hZ, false)
 
-			if area / totalArea > 0.01 then
+			if totalArea > 0 and area / totalArea > 0.01 then
 				if not self.fieldEndGabDetected then
 					self.toolLineStates[i] = -1
 				end
@@ -705,7 +723,7 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 		local implement = attachedAIImplements[i]
 
 		if implement.aiLastStateChangeDistance == nil then
-			implement.aiLastStateChangeDistance = math.huge
+			implement.aiLastStateChangeDistance = 0.249
 		end
 
 		implement.aiLastStateChangeDistance = implement.aiLastStateChangeDistance + implement.object.lastMovedDistance

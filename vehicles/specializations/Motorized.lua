@@ -409,6 +409,7 @@ function Motorized:onLoad(savegame)
 	spec.isMotorStarted = false
 	spec.motorStopTimerDuration = g_gameSettings:getValue("motorStopTimerDuration")
 	spec.motorStopTimer = spec.motorStopTimerDuration
+	spec.motorNotRequiredTimer = 0
 	spec.ignitionState = 0
 	spec.motorTemperature = {
 		value = 20,
@@ -964,8 +965,26 @@ function Motorized:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSele
 
 		if spec.isMotorStarted then
 			self:updateMotorTemperature(dt)
-		elseif g_currentMission.missionInfo.automaticMotorStartEnabled and self.getIsControlled ~= nil and self:getIsControlled() and self:getCanMotorRun() then
-			self:startMotor(true)
+		end
+
+		if g_currentMission.missionInfo.automaticMotorStartEnabled then
+			if not spec.isMotorStarted then
+				if self.getIsControlled ~= nil and self:getIsControlled() and self:getCanMotorRun() then
+					self:startMotor(true)
+				end
+
+				if self:getRequiresPower() and self:getCanMotorRun() then
+					self:startMotor(true)
+				end
+			elseif self.getIsControlled ~= nil and not self:getIsControlled() and self:getStopMotorOnLeave() then
+				spec.motorNotRequiredTimer = spec.motorNotRequiredTimer + dt
+
+				if spec.motorNotRequiredTimer > 250 then
+					self:stopMotor(true)
+				end
+
+				self:raiseActive()
+			end
 		end
 	end
 
@@ -1644,7 +1663,7 @@ function Motorized:getStopMotorOnLeave()
 		return false
 	end
 
-	return self.spec_motorized.stopMotorOnLeave
+	return self.spec_motorized.stopMotorOnLeave and not self:getRequiresPower()
 end
 
 function Motorized:getMotorNotAllowedWarning()
@@ -1715,6 +1734,7 @@ function Motorized:startMotor(noEventSend)
 		end
 
 		spec.motorStartTime = g_currentMission.time + spec.motorStartDuration
+		spec.motorNotRequiredTimer = 0
 		spec.compressionSoundTime = g_currentMission.time + math.random(5000, 20000)
 		spec.motor.lastMotorRpm = 0
 
@@ -2988,6 +3008,11 @@ function Motorized.loadSpecValueMaxSpeed(xmlFile, customEnvironment, baseDir)
 		local minForwardGearRatio = xmlFile:getValue(motorKey .. ".transmission#minForwardGearRatio", nil)
 		local axleRatio = xmlFile:getValue(motorKey .. ".transmission#axleRatio", 1)
 		local forwardGears = Motorized.loadGears(nil, xmlFile, "forwardGear", motorKey .. ".transmission", maxRpm, axleRatio, 1)
+
+		if minForwardGearRatio == nil and forwardGears == nil then
+			Logging.xmlWarning(xmlFile, "No gear ratios defined for transmission")
+		end
+
 		local calculatedMaxSpeed = math.ceil(VehicleMotor.calculatePhysicalMaximumSpeed(minForwardGearRatio, forwardGears, maxRpm) * 3.6)
 		local storeDataMaxSpeed = xmlFile:getValue("vehicle.storeData.specs.maxSpeed")
 		local maxSpeed = xmlFile:getValue("vehicle.motorized.motorConfigurations.motorConfiguration(0)#maxSpeed")

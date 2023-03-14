@@ -133,7 +133,7 @@ function FSDensityMapUtil.cutFruitArea(fruitIndex, startWorldX, startWorldZ, wid
 	end
 
 	if desc.startSprayState > 0 then
-		sprayLevelModifier:executeSet(math.min(desc.startSprayState, sprayLevelMaxValue), fruitFilter)
+		sprayLevelModifier:executeSet(math.min(desc.startSprayState, sprayLevelMaxValue), fruitFilter, functionData.groundTypeFilter)
 		FSDensityMapUtil.resetSprayArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, true, excludedSprayType)
 	end
 
@@ -1016,7 +1016,7 @@ function FSDensityMapUtil.updateDiscHarrowArea(startWorldX, startWorldZ, widthWo
 					multiModifier:addExecuteSet(functionData.stubbleTillageType, functionData.modifier, fruitFilter, fieldFilter)
 					fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 2, desc.numGrowthStates)
 					fruitFilter:setTypeIndexCompareMode(DensityTypeCompareType.EQUAL)
-					multiModifier:addExecuteAdd(1, sprayLevelModifier, sprayLevelFilter, fruitFilter)
+					multiModifier:addExecuteAdd(1, sprayLevelModifier, sprayLevelFilter, fruitFilter, fieldFilter)
 
 					if fruitModifier == nil then
 						fruitModifier = DensityMapModifier.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
@@ -2395,14 +2395,13 @@ function FSDensityMapUtil.resetSprayArea(startWorldX, startWorldZ, widthWorldX, 
 		local fieldGroundSystem = g_currentMission.fieldGroundSystem
 		local sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_TYPE)
 		local sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_LEVEL)
-		local sprayLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
 		functionData = {
 			resetModifier = DensityMapModifier.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode),
 			excludeFilter = DensityMapFilter.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode),
 			sprayLevelFilter = DensityMapFilter.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
 		}
 
-		functionData.sprayLevelFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 0, sprayLevelMaxValue)
+		functionData.sprayLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
 
 		FSDensityMapUtil.functionCache.resetSprayArea = functionData
 	end

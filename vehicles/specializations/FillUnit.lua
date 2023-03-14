@@ -58,6 +58,7 @@ function FillUnit.initSpecialization()
 	schema:register(XMLValueType.FLOAT, fillUnitPath .. "#capacity", "Capacity", "unlimited")
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#updateMass", "Update vehicle mass while fill level changes", true)
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#canBeUnloaded", "Can be unloaded", true)
+	schema:register(XMLValueType.FLOAT, fillUnitPath .. "#allowFoldingThreshold", "Allow folding threshold", 0.0001)
 	FillUnit.registerUnitDisplaySchema(schema, fillUnitPath)
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#showCapacityInShop", "Show capacity in shop", true)
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#showInShop", "Show in shop", true)
@@ -1466,6 +1467,7 @@ function FillUnit:loadFillUnitFromXML(xmlFile, key, entry, index)
 	entry.defaultCapacity = entry.capacity
 	entry.updateMass = xmlFile:getValue(key .. "#updateMass", true)
 	entry.canBeUnloaded = xmlFile:getValue(key .. "#canBeUnloaded", true)
+	entry.allowFoldingThreshold = xmlFile:getValue(key .. "#allowFoldingThreshold", 0.0001)
 	entry.needsSaving = true
 	entry.fillLevel = 0
 	entry.fillLevelSent = 0
@@ -2233,8 +2235,8 @@ function FillUnit:getIsFoldAllowed(superFunc, direction, onAiTurnOn)
 	local spec = self.spec_fillUnit
 
 	if not spec.allowFoldingWhileFilled then
-		for fillUnitIndex, _ in ipairs(spec.fillUnits) do
-			if spec.allowFoldingThreshold < self:getFillUnitFillLevel(fillUnitIndex) then
+		for fillUnitIndex, fillUnit in ipairs(spec.fillUnits) do
+			if (fillUnit.allowFoldingThreshold or spec.allowFoldingThreshold) < self:getFillUnitFillLevel(fillUnitIndex) then
 				return false, spec.texts.warningFoldingFilled
 			end
 		end

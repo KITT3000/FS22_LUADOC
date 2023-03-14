@@ -15,10 +15,18 @@ end
 function GameplayHintManager:loadMapData(xmlFile, missionInfo)
 	GameplayHintManager:superClass().loadMapData(self)
 
-	local filename = Utils.getFilename(getXMLString(xmlFile, "map.gameplayHints#filename"), g_currentMission.baseDirectory)
+	local filenameStr = getXMLString(xmlFile, "map.gameplayHints#filename")
 
-	if filename == nil or filename == "" then
-		print("Error: Could not load gameplayHint config file '" .. tostring(filename) .. "'!")
+	if filenameStr == nil then
+		Logging.xmlInfo(xmlFile, "No gameplay hints defined for map")
+
+		return false
+	end
+
+	local filename = Utils.getFilename(filenameStr, g_currentMission.baseDirectory)
+
+	if filename == nil or filename == "" or not fileExists(filename) then
+		Logging.xmlError(xmlFile, "Could not load gameplayHint config file '" .. tostring(filenameStr) .. "'!")
 
 		return false
 	end

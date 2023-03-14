@@ -95,6 +95,11 @@ function ForageWagon:onLoad(savegame)
 		litersToFill = 0
 	}
 	spec.pickUpLitersBuffer = ValueBuffer.new(750)
+
+	if spec.startFillEffect == nil or #spec.startFillEffect == 0 then
+		SpecializationUtil.removeEventListener(self, "onFillUnitFillLevelChanged", ForageWagon)
+	end
+
 	spec.dirtyFlag = self:getNextDirtyFlag()
 end
 
@@ -400,7 +405,11 @@ end
 function ForageWagon:onFillUnitFillLevelChanged(fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData, appliedDelta)
 	if self.isClient then
 		local spec = self.spec_forageWagon
-		local density = 1 - math.min(self:getFillUnitFillLevel(spec.fillUnitIndex) / spec.fillStartEffectFadeOff, 1)
+		local density = 1
+
+		if spec.fillStartEffectFadeOff > 0 then
+			density = 1 - math.min(self:getFillUnitFillLevel(spec.fillUnitIndex) / spec.fillStartEffectFadeOff, 1)
+		end
 
 		g_effectManager:setDensity(spec.startFillEffect, density)
 	end

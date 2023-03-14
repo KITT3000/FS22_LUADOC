@@ -166,6 +166,7 @@ function Vehicle.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getDistanceToNode", Vehicle.getDistanceToNode)
 	SpecializationUtil.registerFunction(vehicleType, "getIsAIActive", Vehicle.getIsAIActive)
 	SpecializationUtil.registerFunction(vehicleType, "getIsPowered", Vehicle.getIsPowered)
+	SpecializationUtil.registerFunction(vehicleType, "getRequiresPower", Vehicle.getRequiresPower)
 	SpecializationUtil.registerFunction(vehicleType, "addVehicleToAIImplementList", Vehicle.addVehicleToAIImplementList)
 	SpecializationUtil.registerFunction(vehicleType, "setOperatingTime", Vehicle.setOperatingTime)
 	SpecializationUtil.registerFunction(vehicleType, "requestActionEventUpdate", Vehicle.requestActionEventUpdate)
@@ -3491,6 +3492,10 @@ end
 
 function Vehicle:getIsPowered()
 	return true
+end
+
+function Vehicle:getRequiresPower()
+	return false
 end
 
 function Vehicle:addVehicleToAIImplementList(list)

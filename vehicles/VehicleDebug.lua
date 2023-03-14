@@ -1798,13 +1798,17 @@ function VehicleDebug.drawSoundDebugValues(vehicle)
 			end
 		end
 
-		local widthPerModifier = w / #modifiers
+		local numModifiers = #modifiers
 
-		for i = 1, #modifiers do
-			local modifier = modifiers[i]
-			sample.maxValuePerModifier[modifier.name] = math.max(sample.maxValuePerModifier[modifier.name], modifier.changeValue, 1)
+		if numModifiers > 0 then
+			local widthPerModifier = w / numModifiers
 
-			drawBar(x + widthPerModifier * (i - 1), y, widthPerModifier * (i < #modifiers and 0.95 or 1), h, modifier.changeValue / sample.maxValuePerModifier[modifier.name], -1, string.format("%s raw:%.2f mod:%.2f", modifier.name, modifier.t, modifier.changeValue), 0, 0.5, 0, 0.3, 0.7)
+			for i = 1, numModifiers do
+				local modifier = modifiers[i]
+				sample.maxValuePerModifier[modifier.name] = math.max(sample.maxValuePerModifier[modifier.name], modifier.changeValue, 1)
+
+				drawBar(x + widthPerModifier * (i - 1), y, widthPerModifier * (i < numModifiers and 0.95 or 1), h, modifier.changeValue / sample.maxValuePerModifier[modifier.name], -1, string.format("%s raw:%.2f mod:%.2f", modifier.name, modifier.t, modifier.changeValue), 0, 0.5, 0, 0.3, 0.7)
+			end
 		end
 	end
 

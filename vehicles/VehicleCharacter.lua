@@ -65,6 +65,12 @@ function VehicleCharacter:getParentComponent()
 end
 
 function VehicleCharacter:loadCharacter(playerStyle, asyncCallbackObject, asyncCallbackFunction, asyncCallbackArguments)
+	if playerStyle == nil then
+		asyncCallbackFunction(asyncCallbackObject, false, asyncCallbackArguments)
+
+		return
+	end
+
 	if self.playerModel ~= nil then
 		self.playerModel:delete()
 	end

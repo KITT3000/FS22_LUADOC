@@ -176,6 +176,7 @@ function Drivable:onLoad(savegame)
 	end)
 
 	spec.idleTurningActive = false
+	spec.idleTurningActiveSend = false
 	spec.idleTurningDirection = 0
 	self.customSteeringAngleFunction = self.customSteeringAngleFunction or #spec.idleTurningWheels > 0
 	spec.forceFeedback = {
@@ -331,6 +332,7 @@ function Drivable:onReadUpdateStream(streamId, timestamp, connection)
 		end
 
 		spec.doHandbrake = streamReadBool(streamId)
+		spec.idleTurningActive = streamReadBool(streamId)
 	end
 end
 
@@ -346,6 +348,7 @@ function Drivable:onWriteUpdateStream(streamId, connection, dirtyMask)
 
 		streamWriteUIntN(streamId, axisSide, 10)
 		streamWriteBool(streamId, spec.doHandbrake)
+		streamWriteBool(streamId, spec.idleTurningActive)
 	end
 end
 
@@ -377,7 +380,7 @@ function Drivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 					local speedDifference = targetSpeed - currentSpeed
 
 					if math.abs(speedDifference) > 0.1 and math.abs(targetSpeed) > 0.5 then
-						spec.axisForward = MathUtil.clamp(speedDifference * 0.1, -1, 1)
+						spec.axisForward = MathUtil.clamp(math.pow(math.abs(speedDifference), 1.5) * MathUtil.sign(speedDifference), -1, 1)
 					end
 				end
 
@@ -471,7 +474,7 @@ function Drivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 				end
 			else
 				spec.axisForward = 0
-				spec.idleTurningModeActive = false
+				spec.idleTurningActive = false
 
 				if self.rotatedTime < 0 then
 					spec.axisSide = self.rotatedTime / -self.maxRotTime / self:getSteeringDirection()
@@ -482,17 +485,18 @@ function Drivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection
 		else
 			spec.doHandbrake = true
 			spec.axisForward = 0
-			spec.idleTurningModeActive = false
+			spec.idleTurningActive = false
 		end
 
 		spec.lastInputValues.axisAccelerate = 0
 		spec.lastInputValues.axisBrake = 0
 		spec.lastInputValues.axisSteer = 0
 
-		if spec.axisForward ~= spec.axisForwardSend or spec.axisSide ~= spec.axisSideSend or spec.doHandbrake ~= spec.doHandbrakeSend then
+		if spec.axisForward ~= spec.axisForwardSend or spec.axisSide ~= spec.axisSideSend or spec.doHandbrake ~= spec.doHandbrakeSend or spec.idleTurningActiveSend ~= spec.idleTurningActive then
 			spec.axisForwardSend = spec.axisForward
 			spec.axisSideSend = spec.axisSide
 			spec.doHandbrakeSend = spec.doHandbrake
+			spec.idleTurningActiveSend = spec.idleTurningActive
 
 			self:raiseDirtyFlags(spec.dirtyFlag)
 		end

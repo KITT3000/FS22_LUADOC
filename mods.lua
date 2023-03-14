@@ -10,7 +10,8 @@ local isReloadingDlcs = false
 g_dlcModNameHasPrefix = {}
 g_internalModsDirectory = "dataS/internalMods/"
 local internalMods = {
-	"agcoIdealSimulator"
+	"agcoIdealSimulator",
+	"baleStackingChallenge"
 }
 local internalScriptMods = {
 	"FS22_precisionFarming",
@@ -155,7 +156,7 @@ function loadInternalMods()
 		local modFile = modDir .. "modDesc.xml"
 
 		if fileExists(modFile) then
-			modFileHash = getMD5("DevInternalMod_" .. modName)
+			local modFileHash = getFileMD5(modFile, modDir)
 
 			loadModDesc(modName, modDir, modFile, modFileHash, g_internalModsDirectory .. modName, true, false, true)
 		end
@@ -193,6 +194,18 @@ end
 local function getIsInternalScriptMod(modName)
 	for i = 1, #internalScriptMods do
 		local internalModName = internalScriptMods[i]
+
+		if modName == internalModName or modName == internalModName .. "_update" then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function getIsInternalMod(modName)
+	for i = 1, #internalMods do
+		local internalModName = internalMods[i]
 
 		if modName == internalModName or modName == internalModName .. "_update" then
 			return true
@@ -815,7 +828,7 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	end
 
 	xmlFile:iterate("modDesc.maps.map", function (_, baseName)
-		g_mapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultiplayerSupported, isDLCFile, true)
+		g_mapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultiplayerSupported, isDLCFile, true, isInternalMod)
 	end)
 	xmlFile:iterate("modDesc.scenarios.scenario", function (_, baseName)
 		g_scenarioManager:loadScenarioFromXML(xmlFile, baseName, modDir, modName, isDLCFile)
@@ -912,7 +925,7 @@ function loadMod(modName, modDir, modFile, modTitle)
 		print("  Load mod: " .. modName)
 	end
 
-	local allowScripts = not GS_IS_CONSOLE_VERSION or isDLCFile or g_isDevelopmentConsoleScriptModTesting or getIsInternalScriptMod(modName)
+	local allowScripts = not GS_IS_CONSOLE_VERSION or isDLCFile or g_isDevelopmentConsoleScriptModTesting or getIsInternalScriptMod(modName) or getIsInternalMod(modName)
 	g_currentModDirectory = modDir
 	g_currentModName = modName
 
@@ -1049,6 +1062,12 @@ function loadMod(modName, modDir, modFile, modTitle)
 
 	if fillTypesFilename ~= nil then
 		g_fillTypeManager:addModWithFillTypes(Utils.getFilename(fillTypesFilename, g_currentModDirectory), g_currentModDirectory, modName)
+	end
+
+	local densityMapHeightTypesFilename = xmlFile:getString("modDesc.densityMapHeightTypes#filename")
+
+	if densityMapHeightTypesFilename ~= nil then
+		g_densityMapHeightManager:addModDensityMapHeightTypes(Utils.getFilename(densityMapHeightTypesFilename, g_currentModDirectory))
 	end
 
 	local missionVehiclesFilename = xmlFile:getString("modDesc.missionVehicles#filename")

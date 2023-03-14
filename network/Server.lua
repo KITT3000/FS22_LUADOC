@@ -471,10 +471,19 @@ function Server:packetReceived(packetType, timestamp, streamId)
 
 				for i = 1, numObjects do
 					local objectId = NetworkUtil.readNodeObjectId(streamId)
+
+					if objectId == nil then
+						Logging.devError("Server: Unable to retrieve object id for object index %d of %d", i, numObjects)
+
+						return
+					end
+
 					local object = self:getObject(objectId)
 
 					if object == nil then
 						Logging.devError("Server: Trying to readUpdateStream from not registered object with id '%d'", objectId)
+
+						return
 					end
 
 					object:readUpdateStream(streamId, timestamp, connection)
@@ -618,16 +627,16 @@ end
 function Server:broadcastEvent(event, sendLocal, ignoreConnection, ghostObject, force, connectionList, allowQueuing)
 	local connections = connectionList or self.clientConnections
 
-	for k, v in pairs(connections) do
-		if (k ~= NetworkNode.LOCAL_STREAM_ID or sendLocal) and (ignoreConnection == nil or v ~= ignoreConnection) then
-			if ghostObject == nil or self:hasGhostObject(v, ghostObject) then
-				self.currentSendEventConnection = v
+	for streamId, connection in pairs(connections) do
+		if (streamId ~= NetworkNode.LOCAL_STREAM_ID or sendLocal) and (ignoreConnection == nil or connection ~= ignoreConnection) then
+			if ghostObject == nil or self:hasGhostObject(connection, ghostObject) then
+				self.currentSendEventConnection = connection
 
-				v:sendEvent(event, false, force)
+				connection:sendEvent(event, false, force)
 
 				self.currentSendEventConnection = nil
 			elseif ghostObject ~= nil and allowQueuing then
-				v:queueSendEvent(event, force, ghostObject)
+				connection:queueSendEvent(event, force, ghostObject)
 			end
 		end
 	end

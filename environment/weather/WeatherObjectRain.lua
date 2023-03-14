@@ -100,7 +100,12 @@ function WeatherObjectRain:update(dt)
 	WeatherObjectRain:superClass().update(self, dt)
 
 	if self.alpha ~= 1 then
-		self.alpha = math.min(self.alpha + dt / self.duration, 1)
+		if self.duration ~= 0 then
+			self.alpha = math.min(self.alpha + dt / self.duration, 1)
+		else
+			self.alpha = 1
+		end
+
 		self.currentDropScale = MathUtil.lerp(self.lastDropScale, self.targetDropScale, self.alpha)
 
 		for _, geometry in ipairs(self.geometries) do

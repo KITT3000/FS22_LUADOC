@@ -2,7 +2,9 @@ MountableObject = {
 	MOUNT_TYPE_NONE = 1,
 	MOUNT_TYPE_DEFAULT = 2,
 	MOUNT_TYPE_KINEMATIC = 3,
-	MOUNT_TYPE_DYNAMIC = 4
+	MOUNT_TYPE_DYNAMIC = 4,
+	FORCE_LIMIT_UPDATE_TIME = 1000,
+	FORCE_LIMIT_RAYCAST_DISTANCE = 20
 }
 local MountableObject_mt = Class(MountableObject, PhysicsObject)
 
@@ -13,7 +15,15 @@ function MountableObject.new(isServer, isClient, customMt)
 	self.dynamicMountSingleAxisFreeX = false
 	self.dynamicMountSingleAxisFreeY = false
 	self.dynamicMountType = MountableObject.MOUNT_TYPE_NONE
+	self.forceLimitUpdate = {
+		raycastActive = false,
+		timer = 0,
+		lastDistance = 0,
+		nextMountingDistance = 0,
+		additionalMass = 0
+	}
 	self.lastMoveTime = -100000
+	self.mountStateChangeListeners = {}
 
 	return self
 end
@@ -68,8 +78,35 @@ function MountableObject:getUpdatePriority(skipCount, x, y, z, coeff, connection
 end
 
 function MountableObject:updateTick(dt)
-	if self.isServer and self:updateMove() then
-		self.lastMoveTime = g_currentMission.time
+	if self.isServer then
+		if self:updateMove() then
+			self.lastMoveTime = g_currentMission.time
+		end
+
+		if self.dynamicMountObjectTriggerCount ~= nil and self.dynamicMountObjectTriggerCount <= 0 then
+			if self.dynamicMountJointNodeDynamicRefNode ~= nil then
+				local _, _, zOffset = localToLocal(self.dynamicMountJointNodeDynamic, self.dynamicMountJointNodeDynamicRefNode, 0, 0, 0)
+
+				if self.dynamicMountJointNodeDynamicMountOffset < zOffset then
+					self.dynamicMountJointNodeDynamicMountOffset = nil
+					self.dynamicMountJointNodeDynamicRefNode = nil
+
+					self:unmountDynamic()
+
+					self.dynamicMountObjectTriggerCount = nil
+				else
+					self:raiseActive()
+				end
+			else
+				self:unmountDynamic()
+
+				self.dynamicMountObjectTriggerCount = nil
+			end
+		end
+
+		if self.dynamicMountJointIndex ~= nil then
+			self:updateDynamicMountJointForceLimit(dt)
+		end
 	end
 end
 
@@ -93,11 +130,12 @@ function MountableObject:mount(object, node, x, y, z, rx, ry, rz)
 	self:setLocalPositionQuaternion(x, y, z, quatX, quatY, quatZ, quatW, true)
 
 	self.mountObject = object
-	self.dynamicMountType = MountableObject.MOUNT_TYPE_DEFAULT
+
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_DEFAULT, object)
 end
 
 function MountableObject:unmount()
-	self.dynamicMountType = MountableObject.MOUNT_TYPE_NONE
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_NONE)
 
 	if self.mountObject ~= nil then
 		self.mountObject = nil
@@ -144,11 +182,12 @@ function MountableObject:mountKinematic(object, node, x, y, z, rx, ry, rz)
 
 	self.mountObject = object
 	self.mountJointNode = node
-	self.dynamicMountType = MountableObject.MOUNT_TYPE_KINEMATIC
+
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_KINEMATIC, object)
 end
 
 function MountableObject:unmountKinematic()
-	self.dynamicMountType = MountableObject.MOUNT_TYPE_NONE
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_NONE)
 
 	if self.mountObject ~= nil then
 		local components = self.mountObject.components
@@ -209,15 +248,17 @@ function MountableObject:mountDynamic(object, objectActorId, jointNode, mountTyp
 
 		setTranslation(self.dynamicMountJointNodeDynamic, x, y, z)
 		setRotation(self.dynamicMountJointNodeDynamic, localRotationToLocal(jointNode, getParent(self.dynamicMountJointNodeDynamic), 0, 0, 0))
+
+		local _ = nil
+		_, _, self.dynamicMountJointNodeDynamicMountOffset = localToLocal(self.dynamicMountJointNodeDynamic, jointNode, 0, 0, 0)
+		self.dynamicMountJointNodeDynamicRefNode = jointNode
 	end
 
-	local additionalWeight = self:getAdditionalMountingMass()
-	local mass = self:getMass()
-	local massFactor = (additionalWeight + mass) / mass
-	forceAcceleration = forceAcceleration * massFactor
+	self.mountBaseForceAcceleration = forceAcceleration
+	self.mountBaseMass = self:getMass()
 
 	if DynamicMountUtil.mountDynamic(self, self.nodeId, object, objectActorId, jointNode, mountType, forceAcceleration * self.dynamicMountForceLimitScale, self.dynamicMountJointNodeDynamic) then
-		self.dynamicMountType = MountableObject.MOUNT_TYPE_DYNAMIC
+		self:setDynamicMountType(MountableObject.MOUNT_TYPE_DYNAMIC, object)
 
 		return true
 	end
@@ -227,8 +268,7 @@ end
 
 function MountableObject:unmountDynamic(isDelete)
 	DynamicMountUtil.unmountDynamic(self, isDelete)
-
-	self.dynamicMountType = MountableObject.MOUNT_TYPE_NONE
+	self:setDynamicMountType(MountableObject.MOUNT_TYPE_NONE)
 
 	if self.isServer then
 		self.lastMoveTime = g_currentMission.time
@@ -243,29 +283,49 @@ function MountableObject:getAdditionalMountingDistance()
 	return 0
 end
 
-function MountableObject:getAdditionalMountingMass()
-	local distance = self:getAdditionalMountingDistance()
+function MountableObject:updateDynamicMountJointForceLimit(dt)
+	if not self.forceLimitUpdate.raycastActive then
+		self.forceLimitUpdate.timer = self.forceLimitUpdate.timer - dt
 
-	if distance > 0 then
-		local x, y, z = getWorldTranslation(self.nodeId)
-		self.additionalMountingMass = 0
+		if self.forceLimitUpdate.timer <= 0 then
+			self.forceLimitUpdate.raycastActive = true
+			self.forceLimitUpdate.timer = MountableObject.FORCE_LIMIT_UPDATE_TIME
+			self.forceLimitUpdate.lastDistance = 0
+			self.forceLimitUpdate.lastObject = nil
+			self.forceLimitUpdate.nextMountingDistance = self:getAdditionalMountingDistance()
+			self.forceLimitUpdate.additionalMass = 0
+			local x, y, z = getWorldTranslation(self.nodeId)
 
-		raycastAll(x, y, z, 0, 1, 0, "additionalMountingMassRaycastCallback", distance + 0.1, self, CollisionFlag.VEHICLE, false, false)
-
-		return self.additionalMountingMass
+			raycastAll(x, y, z, 0, 1, 0, "additionalMountingMassRaycastCallback", MountableObject.FORCE_LIMIT_RAYCAST_DISTANCE, self, CollisionFlag.DYNAMIC_OBJECT, false, true)
+		end
 	end
+end
 
+function MountableObject:getAdditionalMountingMass()
 	return 0
 end
 
 function MountableObject:additionalMountingMassRaycastCallback(hitObjectId, x, y, z, distance, nx, ny, nz, subShapeIndex, shapeId, isLast)
+	self.forceLimitUpdate.raycastActive = false
 	local object = g_currentMission.nodeToObject[hitObjectId]
 
-	if object ~= self and object ~= nil and object:isa(MountableObject) then
-		self.additionalMountingMass = self.additionalMountingMass + object:getMass()
-		self.additionalMountingMass = self.additionalMountingMass + object:getAdditionalMountingMass()
+	if object ~= self and object ~= nil and object:isa(MountableObject) and self.getAdditionalMountingDistance ~= nil and object ~= self.forceLimitUpdate.lastObject then
+		local offset = distance - self.forceLimitUpdate.lastDistance
 
-		return false
+		if math.abs(offset - self.forceLimitUpdate.nextMountingDistance) < 0.25 then
+			self.forceLimitUpdate.lastDistance = distance
+			self.forceLimitUpdate.nextMountingDistance = self:getAdditionalMountingDistance()
+			self.forceLimitUpdate.additionalMass = self.forceLimitUpdate.additionalMass + object:getMass()
+			self.forceLimitUpdate.lastObject = object
+		end
+	end
+
+	if isLast and self.dynamicMountJointIndex ~= nil then
+		local massFactor = (self.forceLimitUpdate.additionalMass + self.mountBaseMass) / self.mountBaseMass
+		local forceAcceleration = self.mountBaseForceAcceleration * massFactor
+		local forceLimit = self.mountBaseMass * forceAcceleration
+
+		setJointLinearDrive(self.dynamicMountJointIndex, 2, false, true, 0, 0, forceLimit, 0, 0)
 	end
 end
 
@@ -355,10 +415,14 @@ function MountableObject:dynamicMountTriggerCallback(triggerId, otherActorId, on
 	elseif onLeave and otherActorId == self.dynamicMountObjectActorId and self.dynamicMountObjectTriggerCount ~= nil then
 		self.dynamicMountObjectTriggerCount = self.dynamicMountObjectTriggerCount - 1
 
-		if self.dynamicMountObjectTriggerCount == 0 then
-			self:unmountDynamic()
+		if self.dynamicMountObjectTriggerCount <= 0 then
+			if self.dynamicMountTriggerId == nil then
+				self:unmountDynamic()
 
-			self.dynamicMountObjectTriggerCount = nil
+				self.dynamicMountObjectTriggerCount = nil
+			else
+				self:raiseActive()
+			end
 		end
 	end
 end
@@ -373,4 +437,53 @@ end
 
 function MountableObject:getMeshNodes()
 	return nil
+end
+
+function MountableObject:setDynamicMountType(mountState, mountObject)
+	if mountState ~= self.dynamicMountType then
+		self.dynamicMountType = mountState
+
+		for _, listener in ipairs(self.mountStateChangeListeners) do
+			if type(listener.callbackFunc) == "string" then
+				listener.object[listener.callbackFunc](listener.object, self, mountState, mountObject)
+			elseif type(listener.callbackFunc) == "function" then
+				listener.callbackFunc(listener.object, self, mountState, mountObject)
+			end
+		end
+	end
+end
+
+function MountableObject:addMountStateChangeListener(object, callbackFunc)
+	if callbackFunc == nil then
+		callbackFunc = "onObjectMountStateChanged"
+	end
+
+	for _, listener in ipairs(self.mountStateChangeListeners) do
+		if listener.object == object and listener.callbackFunc == callbackFunc then
+			return
+		end
+	end
+
+	table.insert(self.mountStateChangeListeners, {
+		object = object,
+		callbackFunc = callbackFunc
+	})
+end
+
+function MountableObject:removeMountStateChangeListener(object, callbackFunc)
+	if callbackFunc == nil then
+		callbackFunc = "onObjectMountStateChanged"
+	end
+
+	local indexToRemove = -1
+
+	for i, listener in ipairs(self.mountStateChangeListeners) do
+		if listener.object == object and listener.callbackFunc == callbackFunc then
+			indexToRemove = i
+		end
+	end
+
+	if indexToRemove > 0 then
+		table.remove(self.mountStateChangeListeners, indexToRemove)
+	end
 end

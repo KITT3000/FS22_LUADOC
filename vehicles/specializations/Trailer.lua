@@ -104,6 +104,7 @@ function Trailer.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanDischargeToObject", Trailer.getCanDischargeToObject)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsTurnedOnAnimationActive", Trailer.getIsTurnedOnAnimationActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadTurnedOnAnimationFromXML", Trailer.loadTurnedOnAnimationFromXML)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getRequiresPower", Trailer.getRequiresPower)
 end
 
 function Trailer.registerEventListeners(vehicleType)
@@ -625,6 +626,7 @@ function Trailer:startTipping(tipSideIndex, noEventSend)
 		spec.remainingFillDelta = 0
 
 		SpecializationUtil.raiseEvent(self, "onStartTipping", tipSideIndex)
+		self:raiseActive()
 	end
 end
 
@@ -658,6 +660,7 @@ function Trailer:stopTipping(noEventSend)
 		spec.remainingFillDelta = 0
 
 		SpecializationUtil.raiseEvent(self, "onStopTipping")
+		self:raiseActive()
 	end
 end
 
@@ -922,6 +925,16 @@ function Trailer:loadTurnedOnAnimationFromXML(superFunc, xmlFile, key, turnedOnA
 	turnedOnAnimation.playWhileTipping = xmlFile:getValue(key .. "#playWhileTipping", false)
 
 	return superFunc(self, xmlFile, key, turnedOnAnimation)
+end
+
+function Trailer:getRequiresPower(superFunc)
+	local tipState = self:getTipState()
+
+	if tipState == Trailer.TIPSTATE_OPENING or tipState == Trailer.TIPSTATE_CLOSING then
+		return true
+	end
+
+	return superFunc(self)
 end
 
 function Trailer:getIsTurnedOnAnimationActive(superFunc, turnedOnAnimation)

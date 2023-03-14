@@ -426,6 +426,7 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 
 									if object ~= lastDischargeObject then
 										SpecializationUtil.raiseEvent(self, "onDischargeTargetObjectChanged", object)
+										self.rootVehicle:raiseActive()
 									end
 								end
 							end
@@ -458,6 +459,7 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 
 				if lastDischargeObject ~= nil and dischargeNode.dischargeObject == nil then
 					SpecializationUtil.raiseEvent(self, "onDischargeTargetObjectChanged", nil)
+					self.rootVehicle:raiseActive()
 				end
 			elseif not spec.isAsyncRaycastActive then
 				self:updateRaycast(dischargeNode)
@@ -469,6 +471,7 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 
 			if dischargeNode.dischargeObject ~= nil then
 				SpecializationUtil.raiseEvent(self, "onDischargeTargetObjectChanged", nil)
+				self.rootVehicle:raiseActive()
 			end
 
 			dischargeNode.dischargeObject = nil
@@ -1237,6 +1240,7 @@ function Dischargeable:finishDischargeRaycast()
 
 	if dischargeNode.lastDischargeObject ~= dischargeNode.dischargeObject then
 		SpecializationUtil.raiseEvent(self, "onDischargeTargetObjectChanged", dischargeNode.dischargeObject)
+		self.rootVehicle:raiseActive()
 	end
 end
 

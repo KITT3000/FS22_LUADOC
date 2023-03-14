@@ -91,6 +91,7 @@ function Pipe.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "dischargeToGround", Pipe.dischargeToGround)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleDischargeToObject", Pipe.getCanToggleDischargeToObject)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleDischargeToGround", Pipe.getCanToggleDischargeToGround)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getRequiresPower", Pipe.getRequiresPower)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadMovingToolFromXML", Pipe.loadMovingToolFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsMovingToolActive", Pipe.getIsMovingToolActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadCoverFromXML", Pipe.loadCoverFromXML)
@@ -380,6 +381,10 @@ function Pipe:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection
 				end
 			elseif spec.targetState > 1 then
 				self:setPipeState(1)
+			end
+
+			if unfoldPipe then
+				self:raiseActive()
 			end
 		end
 	end
@@ -894,6 +899,8 @@ function Pipe:unloadingTriggerCallback(triggerId, otherId, onEnter, onLeave, onS
 								end
 
 								spec.objectsInTriggers[object] = spec.objectsInTriggers[object] + 1
+
+								self:raiseActive()
 							else
 								spec.objectsInTriggers[object] = spec.objectsInTriggers[object] - 1
 
@@ -924,6 +931,8 @@ function Pipe:unloadingTriggerCallback(triggerId, otherId, onEnter, onLeave, onS
 				end
 
 				spec.unloadTriggersInTriggers[object] = spec.unloadTriggersInTriggers[object] + 1
+
+				self:raiseActive()
 			else
 				spec.unloadTriggersInTriggers[object] = spec.unloadTriggersInTriggers[object] - 1
 
@@ -1165,6 +1174,28 @@ function Pipe:getCanToggleDischargeToGround(superFunc)
 
 	if spec.automaticDischarge and spec.toggleableDischargeToGround then
 		return false
+	end
+
+	return superFunc(self)
+end
+
+function Pipe:getRequiresPower(superFunc)
+	local spec = self.spec_pipe
+
+	if spec.automaticDischarge then
+		local dischargeNode = self:getDischargeNodeByIndex(self:getPipeDischargeNodeIndex())
+
+		if dischargeNode ~= nil then
+			if spec.isAsyncRaycastActive and dischargeNode.lastDischargeObject ~= nil then
+				return true
+			elseif not spec.isAsyncRaycastActive and dischargeNode.dischargeObject ~= nil then
+				return true
+			end
+		end
+	end
+
+	if spec.currentState ~= spec.targetState then
+		return true
 	end
 
 	return superFunc(self)

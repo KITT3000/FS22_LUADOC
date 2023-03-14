@@ -249,6 +249,7 @@ function AttacherJoints.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getTotalMass", AttacherJoints.getTotalMass)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "addChildVehicles", AttacherJoints.addChildVehicles)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAirConsumerUsage", AttacherJoints.getAirConsumerUsage)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getRequiresPower", AttacherJoints.getRequiresPower)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "addVehicleToAIImplementList", AttacherJoints.addVehicleToAIImplementList)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "collectAIAgentAttachments", AttacherJoints.collectAIAgentAttachments)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "setAIVehicleObstacleStateDirty", AttacherJoints.setAIVehicleObstacleStateDirty)
@@ -913,7 +914,6 @@ function AttacherJoints:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnor
 
 				if implement ~= nil and implement.object.setLoweredAll ~= nil then
 					implement.object:setLoweredAll(doLowering, joint.jointIndex)
-					log("set lowered", doLowering, joint.jointIndex)
 				end
 			end
 		end
@@ -3418,6 +3418,18 @@ function AttacherJoints:getAirConsumerUsage(superFunc)
 	end
 
 	return usage
+end
+
+function AttacherJoints:getRequiresPower(superFunc)
+	local spec = self.spec_attacherJoints
+
+	for _, implement in pairs(spec.attachedImplements) do
+		if implement.object ~= nil and implement.object:getRequiresPower() then
+			return true
+		end
+	end
+
+	return superFunc(self)
 end
 
 function AttacherJoints:addVehicleToAIImplementList(superFunc, list)

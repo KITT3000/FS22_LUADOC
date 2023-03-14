@@ -720,7 +720,7 @@ function MPLoadingScreen:onReadyToStart()
 
 		self.loadingBarPercentage:setText("100%")
 
-		if g_dedicatedServer ~= nil or GS_IS_MOBILE_VERSION or StartParams.getIsSet("autoStart") then
+		if g_dedicatedServer ~= nil or Platform.autoStartAfterLoad or StartParams.getIsSet("autoStart") then
 			self:onClickOk()
 		end
 	else
@@ -746,7 +746,15 @@ function MPLoadingScreen:initializeLoading()
 			netConnect = nil
 
 			if #self.missionDynamicInfo.mods > 0 then
-				table.sort(self.missionDynamicInfo.mods, MPLoadingScreen.modSortFunc)
+				if self.missionInfo.map.prohibitOtherMods then
+					local mapModName = g_mapManager:getModNameFromMapId(self.missionInfo.mapId)
+					local mapMod = g_modManager:getModByName(mapModName)
+					self.missionDynamicInfo.mods = {
+						mapMod
+					}
+				else
+					table.sort(self.missionDynamicInfo.mods, MPLoadingScreen.modSortFunc)
+				end
 
 				for _, modItem in ipairs(self.missionDynamicInfo.mods) do
 					loadMod(modItem.modName, modItem.modDir, modItem.modFile, modItem.title)
@@ -1005,9 +1013,9 @@ function MPLoadingScreen.modSortFunc(mod1, mod2)
 		return string.lower(mod1.modName) < string.lower(mod2.modName)
 	elseif mod1.isDLC then
 		return true
-	elseif mod2.isDLC then
-		return false
 	end
+
+	return false
 end
 
 function MPLoadingScreen:setStatusText(text)

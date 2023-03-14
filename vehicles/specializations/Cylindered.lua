@@ -1094,10 +1094,9 @@ function Cylindered:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 			local transSpeed = 0
 			local animSpeed = 0
 			local move = self:getMovingToolMoveValue(tool)
+			tool.externalMove = 0
 
 			if math.abs(move) > 0 then
-				tool.externalMove = 0
-
 				if tool.rotSpeed ~= nil then
 					rotSpeed = move * tool.rotSpeed
 

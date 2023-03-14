@@ -1,4 +1,5 @@
 Pallet = {
+	PHYSICS_FIX_ENABLED = true,
 	prerequisitesPresent = function (specializations)
 		return true
 	end,
@@ -96,6 +97,9 @@ function Pallet:onLoad(savegame)
 	end
 
 	g_currentMission.slotSystem:addLimitedObject(SlotSystem.LIMITED_OBJECT_PALLET, self)
+
+	self.dynamicMountForkXLimit = 0.01
+	self.dynamicMountForkYLimit = 0.1
 end
 
 function Pallet:onDelete()

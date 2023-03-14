@@ -116,8 +116,8 @@ function WeedSystem:loadWeed(filename)
 	end)
 	self:loadInfoLayer(xmlFile, "map.weed.infoLayer")
 
-	self.sparseStartState = xmlFile:getValue("map.weed.states.sparseStart#value") or 1
-	self.denseStartState = xmlFile:getValue("map.weed.states.denseStart#value") or 2
+	self.sparseStartState = xmlFile:getValue("map.weed.states.sparseStart#value") or self.sparseStartState or 1
+	self.denseStartState = xmlFile:getValue("map.weed.states.denseStart#value") or self.denseStartState or 2
 
 	xmlFile:iterate("map.weed.growth.update", function (_, key)
 		local sourceState = xmlFile:getValue(key .. "#sourceState")

@@ -232,6 +232,8 @@ function FieldManager:unloadMapData()
 	end
 
 	self.fields = {}
+	self.fieldsToCheck = nil
+	self.fieldsToUpdate = nil
 	self.fieldGroundSystem = nil
 	self.sprayLevelModifier = nil
 	self.plowLevelModifier = nil

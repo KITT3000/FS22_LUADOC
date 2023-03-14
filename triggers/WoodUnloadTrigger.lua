@@ -233,7 +233,11 @@ end
 
 function WoodUnloadTrigger:woodTriggerCallback(triggerId, otherId, onEnter, onLeave, onStay, otherShapeId)
 	if otherId ~= 0 then
-		local splitType = g_splitTypeManager:getSplitTypeByIndex(getSplitType(otherId))
+		local splitType = nil
+
+		if getHasClassId(otherId, ClassIds.MESH_SPLIT_SHAPE) then
+			splitType = g_splitTypeManager:getSplitTypeByIndex(getSplitType(otherId))
+		end
 
 		if splitType ~= nil and splitType.pricePerLiter > 0 then
 			if onEnter then

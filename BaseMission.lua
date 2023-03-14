@@ -517,6 +517,11 @@ function BaseMission:loadMapSounds(xmlFilename, baseDirectory)
 	end
 
 	local xmlFile = loadXMLFile("mapSoundXML", xmlFilename)
+
+	if xmlFile == 0 then
+		return
+	end
+
 	self.surfaceSounds = {}
 	local i = 0
 
@@ -1318,7 +1323,7 @@ function BaseMission:requestToEnterVehicle(vehicle)
 	end
 end
 
-function BaseMission:enterVehicleWithPlayer(vehicle, player)
+function BaseMission:enterVehicleWithPlayer(vehicle, player, userId)
 	local enterableSpec = vehicle.spec_enterable
 
 	if vehicle ~= nil and enterableSpec ~= nil and enterableSpec.isControlled == false then
@@ -1328,8 +1333,8 @@ function BaseMission:enterVehicleWithPlayer(vehicle, player)
 
 		vehicle.controllerFarmId = player.farmId
 
-		g_server:broadcastEvent(VehicleEnterResponseEvent.new(NetworkUtil.getObjectId(vehicle), false, player:getStyle(), player.farmId))
-		connection:sendEvent(VehicleEnterResponseEvent.new(NetworkUtil.getObjectId(vehicle), true, player:getStyle(), player.farmId))
+		g_server:broadcastEvent(VehicleEnterResponseEvent.new(NetworkUtil.getObjectId(vehicle), false, player:getStyle(), player.farmId, userId), true, connection, vehicle, false, nil, true)
+		connection:sendEvent(VehicleEnterResponseEvent.new(NetworkUtil.getObjectId(vehicle), true, player:getStyle(), player.farmId, userId))
 	end
 end
 

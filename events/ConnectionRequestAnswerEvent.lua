@@ -10,6 +10,7 @@ ConnectionRequestAnswerEvent.ANSWER_FULL = 3
 ConnectionRequestAnswerEvent.ANSWER_ALWAYS_DENIED = 4
 ConnectionRequestAnswerEvent.ALREADY_IN_USE = 5
 ConnectionRequestAnswerEvent.SLOT_LIMIT_REACHED = 6
+ConnectionRequestAnswerEvent.MATCH_IN_PROGRESS = 7
 
 function ConnectionRequestAnswerEvent.emptyNew()
 	local self = Event.new(ConnectionRequestAnswerEvent_mt)

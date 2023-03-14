@@ -72,7 +72,23 @@ function SeedRateMap:loadFromXML(xmlFile, key, baseDirectory, configFileName, ma
 
 	self.defaultSeedRate = MathUtil.round(#self.rateValues * 0.5)
 	self.fruitTypes = {}
-	i = 0
+
+	self:loadFruitTypeSeedRatesFromXML(xmlFile, key)
+
+	local missionInfo = g_currentMission.missionInfo
+	local mapXMLFilename = Utils.getFilename(missionInfo.mapXMLFilename, g_currentMission.baseDirectory)
+	local mapXMLFile = loadXMLFile("MapXML", mapXMLFilename)
+
+	if mapXMLFile ~= nil then
+		self:loadFruitTypeSeedRatesFromXML(mapXMLFile, "map.precisionFarming.seedRateMap")
+		delete(mapXMLFile)
+	end
+
+	return true
+end
+
+function SeedRateMap:loadFruitTypeSeedRatesFromXML(xmlFile, key)
+	local i = 0
 
 	while true do
 		local baseKey = string.format("%s.fruitTypes.fruitType(%d)", key, i)
@@ -137,8 +153,6 @@ function SeedRateMap:loadFromXML(xmlFile, key, baseDirectory, configFileName, ma
 
 		i = i + 1
 	end
-
-	return true
 end
 
 function SeedRateMap:getRateValues(xmlFile, key, numValues)

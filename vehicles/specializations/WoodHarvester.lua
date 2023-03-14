@@ -1,5 +1,6 @@
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterCutLengthEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterCutTreeEvent.lua")
+source("dataS/scripts/vehicles/specializations/events/WoodHarvesterDropTreeEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterHeaderTiltEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterOnCutTreeEvent.lua")
 source("dataS/scripts/vehicles/specializations/events/WoodHarvesterOnDelimbTreeEvent.lua")
@@ -81,6 +82,7 @@ function WoodHarvester.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getIsWoodHarvesterTiltStateAllowed", WoodHarvester.getIsWoodHarvesterTiltStateAllowed)
 	SpecializationUtil.registerFunction(vehicleType, "setWoodHarvesterTiltState", WoodHarvester.setWoodHarvesterTiltState)
 	SpecializationUtil.registerFunction(vehicleType, "setWoodHarvesterCutLengthIndex", WoodHarvester.setWoodHarvesterCutLengthIndex)
+	SpecializationUtil.registerFunction(vehicleType, "dropWoodHarvesterTree", WoodHarvester.dropWoodHarvesterTree)
 end
 
 function WoodHarvester.registerOverwrittenFunctions(vehicleType)
@@ -850,6 +852,12 @@ function WoodHarvester:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 			end
 
 			g_inputBinding:setActionEventActive(actionEvent.actionEventId, showAction)
+
+			local dropActionEvent = spec.actionEvents[InputAction.WOOD_HARVESTER_DROP]
+
+			if dropActionEvent ~= nil then
+				g_inputBinding:setActionEventActive(dropActionEvent.actionEventId, showAction)
+			end
 		end
 
 		actionEvent = spec.actionEvents[InputAction.IMPLEMENT_EXTRA3]
@@ -905,6 +913,11 @@ function WoodHarvester:onRegisterActionEvents(isActiveForInput, isActiveForInput
 			_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.TOGGLE_CUT_LENGTH_BACK, self, WoodHarvester.actionEventSetCutlength, false, true, false, true, -1)
 
 			g_inputBinding:setActionEventTextVisibility(actionEventId, false)
+
+			_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.WOOD_HARVESTER_DROP, self, WoodHarvester.actionEventDropTree, false, true, false, true, nil)
+
+			g_inputBinding:setActionEventTextVisibility(actionEventId, true)
+			g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_NORMAL)
 
 			if spec.headerJointTilt ~= nil then
 				_, actionEventId = self:addActionEvent(spec.actionEvents, InputAction.TOGGLE_WOOD_HARVESTER_TILT, self, WoodHarvester.actionEventTiltHeader, false, true, false, true, nil)
@@ -1018,6 +1031,27 @@ function WoodHarvester:setWoodHarvesterCutLengthIndex(index, noEventSend)
 	end
 
 	WoodHarvesterCutLengthEvent.sendEvent(self, index, noEventSend)
+end
+
+function WoodHarvester:dropWoodHarvesterTree(noEventSend)
+	if self.isServer then
+		local spec = self.spec_woodHarvester
+
+		if spec.attachedSplitShapeJointIndex ~= nil then
+			removeJoint(spec.attachedSplitShapeJointIndex)
+
+			spec.attachedSplitShapeJointIndex = nil
+		end
+
+		spec.attachedSplitShape = nil
+
+		self:onDelimbTree(false)
+		g_server:broadcastEvent(WoodHarvesterOnDelimbTreeEvent.new(self, false), nil, nil, self)
+		SpecializationUtil.raiseEvent(self, "onCutTree", 0, false, false)
+		g_server:broadcastEvent(WoodHarvesterOnCutTreeEvent.new(self, 0), nil, nil, self)
+	end
+
+	WoodHarvesterDropTreeEvent.sendEvent(self, noEventSend)
 end
 
 function WoodHarvester:findSplitShapesInRange(yOffset, skipCutAnimation)
@@ -1354,6 +1388,10 @@ function WoodHarvester:actionEventSetCutlength(actionName, inputValue, callbackS
 
 		self:setWoodHarvesterCutLengthIndex(cutLengthIndex)
 	end
+end
+
+function WoodHarvester:actionEventDropTree(actionName, inputValue, callbackState, isAnalog)
+	self:dropWoodHarvesterTree()
 end
 
 function WoodHarvester:actionEventTiltHeader(actionName, inputValue, callbackState, isAnalog)

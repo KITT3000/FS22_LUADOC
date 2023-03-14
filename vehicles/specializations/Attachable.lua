@@ -1386,7 +1386,7 @@ function Attachable:postAttach(attacherVehicle, inputJointDescIndex, jointDescIn
 	if actionController ~= nil then
 		local inputJointDesc = self:getActiveInputAttacherJoint()
 
-		if inputJointDesc ~= nil and inputJointDesc.needsLowering and inputJointDesc.allowsLowering and jointDesc.allowsLowering then
+		if inputJointDesc ~= nil and inputJointDesc.needsLowering and inputJointDesc.allowsLowering and jointDesc.allowsLowering and (inputJointDesc.lowerDistanceToGround ~= inputJointDesc.upperDistanceToGround or spec.lowerAnimation ~= nil) then
 			spec.controlledAction = actionController:registerAction("lower", InputAction.LOWER_IMPLEMENT, 2)
 
 			spec.controlledAction:setCallback(self, Attachable.actionControllerLowerImplementEvent)

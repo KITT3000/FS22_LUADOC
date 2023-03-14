@@ -142,6 +142,24 @@ function BaleGrab:removeDynamicMountedObject(object, isDeleting)
 	end
 end
 
+function BaleGrab:onPendingObjectDelete(object)
+	local spec = self.spec_baleGrab
+
+	if spec.pendingDynamicMountObjects[object] ~= nil or spec.dynamicMountedObjects[object] ~= nil then
+		self:removeDynamicMountedObject(object, true)
+	end
+end
+
+function BaleGrab:onPendingObjectMountStateChanged(object, mountState, mountObject)
+	if mountState ~= MountableObject.MOUNT_TYPE_NONE and mountObject ~= self then
+		local spec = self.spec_baleGrab
+
+		if spec.pendingDynamicMountObjects[object] ~= nil or spec.dynamicMountedObjects[object] ~= nil then
+			self:removeDynamicMountedObject(object, true)
+		end
+	end
+end
+
 function BaleGrab:baleGrabTriggerCallback(triggerId, otherActorId, onEnter, onLeave, onStay, otherShapeId)
 	local spec = self.spec_baleGrab
 
@@ -153,7 +171,15 @@ function BaleGrab:baleGrabTriggerCallback(triggerId, otherActorId, onEnter, onLe
 		end
 
 		if object ~= nil and object ~= self and object.getSupportsMountDynamic ~= nil and object:getSupportsMountDynamic() then
-			spec.pendingDynamicMountObjects[object] = Utils.getNoNil(spec.pendingDynamicMountObjects[object], 0) + 1
+			spec.pendingDynamicMountObjects[object] = (spec.pendingDynamicMountObjects[object] or 0) + 1
+
+			if spec.pendingDynamicMountObjects[object] == 1 then
+				object:addDeleteListener(self, BaleGrab.onPendingObjectDelete)
+
+				if object.addMountStateChangeListener ~= nil then
+					object:addMountStateChangeListener(self, BaleGrab.onPendingObjectMountStateChanged)
+				end
+			end
 		end
 	elseif onLeave then
 		local object = g_currentMission:getNodeObject(otherActorId)
@@ -162,17 +188,21 @@ function BaleGrab:baleGrabTriggerCallback(triggerId, otherActorId, onEnter, onLe
 			object = g_currentMission.nodeToObject[otherActorId]
 		end
 
-		if object ~= nil and spec.pendingDynamicMountObjects[object] ~= nil then
-			local count = spec.pendingDynamicMountObjects[object] - 1
+		if object ~= nil then
+			spec.pendingDynamicMountObjects[object] = (spec.pendingDynamicMountObjects[object] or 0) - 1
 
-			if count == 0 then
+			if spec.pendingDynamicMountObjects[object] <= 0 then
 				spec.pendingDynamicMountObjects[object] = nil
 
 				if spec.dynamicMountedObjects[object] ~= nil then
 					self:unmountBaleGrabObject(object)
 				end
-			else
-				spec.pendingDynamicMountObjects[object] = count
+
+				object:removeDeleteListener(self, BaleGrab.onPendingObjectDelete)
+
+				if object.removeMountStateChangeListener ~= nil then
+					object:removeMountStateChangeListener(self, BaleGrab.onPendingObjectMountStateChanged)
+				end
 			end
 		end
 	end

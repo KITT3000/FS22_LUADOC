@@ -32,6 +32,7 @@ FarmStats.STAT_NAMES = {
 	"playTime",
 	"workersHired",
 	"storedBales",
+	"storedPallets",
 	"fieldJobMissionCount",
 	"fieldJobMissionByNPC",
 	"transportMissionCount",
@@ -440,11 +441,7 @@ function FarmStats:getStatisticData()
 	if not g_currentMission.missionDynamicInfo.isMultiplayer or not g_currentMission.missionDynamicInfo.isClient then
 		self:addStatistic("workedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("workedHectares")), g_i18n:getArea(self:getTotalValue("workedHectares")), "%.2f")
 		self:addStatistic("cultivatedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("cultivatedHectares")), g_i18n:getArea(self:getTotalValue("cultivatedHectares")), "%.2f")
-
-		if not GS_IS_MOBILE_VERSION then
-			self:addStatistic("plowedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("plowedHectares")), g_i18n:getArea(self:getTotalValue("plowedHectares")), "%.2f")
-		end
-
+		self:addStatistic("plowedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("plowedHectares")), g_i18n:getArea(self:getTotalValue("plowedHectares")), "%.2f")
 		self:addStatistic("sownHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("sownHectares")), g_i18n:getArea(self:getTotalValue("sownHectares")), "%.2f")
 		self:addStatistic("sprayedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("sprayedHectares")), g_i18n:getArea(self:getTotalValue("sprayedHectares")), "%.2f")
 		self:addStatistic("threshedHectares", g_i18n:getAreaUnit(false), g_i18n:getArea(self:getSessionValue("threshedHectares")), g_i18n:getArea(self:getTotalValue("threshedHectares")), "%.2f")
@@ -464,11 +461,11 @@ function FarmStats:getStatisticData()
 		self:addStatistic("fuelUsage", g_i18n:getText("unit_liter"), g_i18n:getFluid(self:getSessionValue("fuelUsage")), g_i18n:getFluid(self:getTotalValue("fuelUsage")), "%.2f")
 		self:addStatistic("seedUsage", g_i18n:getText("unit_liter"), g_i18n:getFluid(self:getSessionValue("seedUsage")), g_i18n:getFluid(self:getTotalValue("seedUsage")), "%.2f")
 		self:addStatistic("sprayUsage", g_i18n:getText("unit_liter"), g_i18n:getFluid(self:getSessionValue("sprayUsage")), g_i18n:getFluid(self:getTotalValue("sprayUsage")), "%.2f")
+		self:addStatistic("baleCount", nil, self:getSessionValue("baleCount"), self:getTotalValue("baleCount"), "%d")
+		self:addStatistic("plantedTreeCount", nil, self:getSessionValue("plantedTreeCount"), self:getTotalValue("plantedTreeCount"), "%d")
+		self:addStatistic("cutTreeCount", nil, self:getSessionValue("cutTreeCount"), self:getTotalValue("cutTreeCount"), "%d")
 
 		if not GS_IS_MOBILE_VERSION then
-			self:addStatistic("baleCount", nil, self:getSessionValue("baleCount"), self:getTotalValue("baleCount"), "%d")
-			self:addStatistic("plantedTreeCount", nil, self:getSessionValue("plantedTreeCount"), self:getTotalValue("plantedTreeCount"), "%d")
-			self:addStatistic("cutTreeCount", nil, self:getSessionValue("cutTreeCount"), self:getTotalValue("cutTreeCount"), "%d")
 			self:addStatistic("fieldJobMissionCount", nil, self:getSessionValue("fieldJobMissionCount"), self:getTotalValue("fieldJobMissionCount"), "%d")
 
 			if #g_missionManager.transportMissions > 0 then
@@ -486,10 +483,8 @@ function FarmStats:getStatisticData()
 
 		self:addStatistic("yearsPlayed", nil, nil, year, "%s")
 		self:addStatistic("workersHired", nil, self:getSessionValue("workersHired"), nil, "%s")
-
-		if GS_IS_MOBILE_VERSION then
-			self:addStatistic("storedBales", nil, self:getSessionValue("storedBales"), nil, "%s")
-		end
+		self:addStatistic("storedBales", nil, self:getSessionValue("storedBales"), nil, "%s")
+		self:addStatistic("storedPallets", nil, self:getSessionValue("storedPallets"), nil, "%s")
 
 		if g_currentMission.collectiblesSystem:getIsActive() then
 			self:addStatistic("collectibles", nil, nil, g_currentMission.collectiblesSystem:getTotalCollected() .. " / " .. g_currentMission.collectiblesSystem:getTotalCollectable(), "%s")

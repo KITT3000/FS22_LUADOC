@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 14
-g_gameVersionNotification = "1.8.2.0"
-g_gameVersionDisplay = "1.8.2.0"
+g_gameVersion = 15
+g_gameVersionNotification = "1.9.0.0"
+g_gameVersionDisplay = "1.9.0.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 72
+g_maxModDescVersion = 73
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -356,6 +356,7 @@ function init(args)
 
 	g_soundMixer = SoundMixer.new()
 
+	g_soundMixer:loadFromXML("dataS/soundMixer.xml")
 	updateLoadingBarProgress()
 
 	g_autoSaveManager = AutoSaveManager.new()
@@ -663,6 +664,7 @@ function init(args)
 	updateLoadingBarProgress()
 
 	local settingsModel = SettingsModel.new(g_gameSettings, g_savegameXML, g_i18n, g_soundMixer, GS_IS_CONSOLE_VERSION)
+	g_settingsModel = settingsModel
 	g_settingsScreen = SettingsScreen.new(nil, nil, g_messageCenter, g_i18n, g_inputBinding, settingsModel, GS_IS_CONSOLE_VERSION)
 	local savegameController = SavegameController.new()
 	g_careerScreen = CareerScreen.new(nil, nil, savegameController, startMissionInfo)
@@ -805,6 +807,7 @@ function init(args)
 	g_gui:loadGui("dataS/gui/MapSelectionScreen.xml", "MapSelectionScreen", g_mapSelectionScreen)
 	g_gui:loadGui("dataS/gui/ModSelectionScreen.xml", "ModSelectionScreen", g_modSelectionScreen)
 	updateLoadingBarProgress()
+	ObjectStorageDialog.register()
 	g_gui:loadGui("dataS/gui/AchievementsScreen.xml", "AchievementsScreen", g_achievementsScreen)
 	g_gui:loadGui("dataS/gui/AnimalScreen.xml", "AnimalScreen", g_animalScreen)
 

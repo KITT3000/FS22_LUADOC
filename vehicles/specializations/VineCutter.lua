@@ -144,6 +144,10 @@ function VineCutter:handleVinePlaceable(superFunc, node, placeable, x, y, z, dis
 	end
 
 	if combineVehicle == nil then
+		if spec.lastHarvestingNode ~= nil then
+			spec.lastHarvestingPlaceable:setShakingFactor(spec.lastHarvestingNode, 0, 0, 0, 0)
+		end
+
 		return false
 	end
 

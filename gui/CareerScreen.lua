@@ -594,6 +594,14 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 		missionDynamicInfo.mods = {}
 
 		self:startGame(missionInfo, missionDynamicInfo)
+	elseif missionInfo.map.prohibitOtherMods then
+		local mapModName = g_mapManager:getModNameFromMapId(missionInfo.mapId)
+		local mapMod = g_modManager:getModByName(mapModName)
+		missionDynamicInfo.mods = {
+			mapMod
+		}
+
+		self:startGame(missionInfo, missionDynamicInfo)
 	elseif self.isMultiplayer and g_modManager:getNumOfValidMods() > 0 or not self.isMultiplayer and g_modManager:getNumOfMods() > 0 then
 		g_modSelectionScreen:setMissionInfo(missionInfo, missionDynamicInfo)
 

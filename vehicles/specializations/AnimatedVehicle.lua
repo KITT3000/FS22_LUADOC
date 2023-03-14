@@ -695,7 +695,7 @@ function AnimatedVehicle:getAnimationTime(name)
 	local spec = self.spec_animatedVehicle
 	local animation = spec.animations[name]
 
-	if animation ~= nil then
+	if animation ~= nil and animation.duration > 0 then
 		return animation.currentTime / animation.duration
 	end
 

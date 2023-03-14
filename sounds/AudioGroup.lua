@@ -34,6 +34,46 @@ function AudioGroup.getIsValidAudioGroup(audioGroupIndex)
 	return false
 end
 
+function AudioGroup.addGroup(name, id)
+	name = name:upper()
+
+	if AudioGroup[name] == nil then
+		local found = false
+
+		for k, v in pairs(AudioGroup) do
+			if v == id then
+				found = true
+
+				break
+			end
+		end
+
+		if not found then
+			AudioGroup[name] = id
+
+			table.insert(AudioGroup.groups, AudioGroup[name])
+		else
+			Logging.error("AudioGroup id '%d' already defined", id)
+		end
+	else
+		Logging.error("AudioGroup '%s' already defined!", name)
+	end
+end
+
+function AudioGroup.getNextId()
+	local nextFreeId = -1
+
+	for _, index in pairs(AudioGroup.groups) do
+		nextFreeId = math.max(index + 1, nextFreeId)
+	end
+
+	if nextFreeId == -1 or nextFreeId > 255 then
+		return nil
+	end
+
+	return nextFreeId
+end
+
 function AudioGroup.loadGroups()
 	local xmlFile = loadXMLFile("AudioGroups", "shared/audioGroups.xml")
 

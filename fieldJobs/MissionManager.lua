@@ -42,6 +42,15 @@ end
 
 function MissionManager:loadMapData(xmlFile)
 	MissionManager:superClass().loadMapData(self)
+
+	local isEnabled = Utils.getNoNil(getXMLBool(xmlFile, "map.missionManager#enabled"), true)
+
+	if not isEnabled then
+		Logging.xmlInfo(xmlFile, "MissionManager: Disabled missions according to configuration")
+
+		return
+	end
+
 	self:createMissionMap()
 
 	if g_currentMission:getIsServer() then

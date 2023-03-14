@@ -22,6 +22,7 @@ function Baler.initSpecialization()
 	schema:setXMLSpecializationType("Baler")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler#fillScale", "Fill scale", 1)
 	schema:register(XMLValueType.INT, "vehicle.baler#fillUnitIndex", "Fill unit index", 1)
+	schema:register(XMLValueType.BOOL, "vehicle.baler#useDropLandOwnershipForBales", "Defines if the produced bales are always owned by the land owner of the current location while dropping the bale. If not, the owner is either the owner from the last workArea pickup location (if available) or the owner of the bale as default.", false)
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.baleAnimation#spacing", "Spacing between bales", 0)
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.baleAnimation.key(?)#time", "Key time")
 	schema:register(XMLValueType.VECTOR_TRANS, "vehicle.baler.baleAnimation.key(?)#pos", "Key position")
@@ -56,9 +57,13 @@ function Baler.initSpecialization()
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "unload")
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "door")
 	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "knotCleaning")
+	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "bufferOverloadingStart(?)")
+	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "bufferOverloadingStop(?)")
+	SoundManager.registerSampleXMLPaths(schema, "vehicle.baler.sounds", "bufferOverloadingWork(?)")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.baler.animationNodes")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.baler.unloadAnimationNodes")
 	EffectManager.registerEffectXMLPaths(schema, "vehicle.baler.fillEffect")
+	EffectManager.registerEffectXMLPaths(schema, "vehicle.baler.additiveEffects")
 	schema:register(XMLValueType.STRING, "vehicle.baler.knotingAnimation#name", "Knoting animation name")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.knotingAnimation#speed", "Knoting animation speed", 1)
 	schema:register(XMLValueType.STRING, "vehicle.baler.compactingAnimation#name", "Compacting animation name")
@@ -78,8 +83,11 @@ function Baler.initSpecialization()
 	schema:register(XMLValueType.BOOL, "vehicle.baler.platform#automaticDrop", "Bale is automatically dropped from platform", "true on mobile")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.platform#aiSpeed", "Speed of AI while dropping a bale from platform (km/h)", 3)
 	schema:register(XMLValueType.INT, "vehicle.baler.buffer#fillUnitIndex", "Buffer fill unit index")
+	schema:register(XMLValueType.INT, "vehicle.baler.buffer#unloadInfoIndex", "Fill volume unload info index index", 1)
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.buffer#capacityPercentage", "If set, this percentage of the bale capacity is set for the buffer. If not set the defined capacity from the xml is used.")
 	schema:register(XMLValueType.TIME, "vehicle.baler.buffer#overloadingDuration", "Duration of overloading from buffer to baler unit (sec)", 0.5)
+	schema:register(XMLValueType.TIME, "vehicle.baler.buffer#overloadingDelay", "Time until the real overloading is starting (can be used to wait for the effects to be fully fade in) (sec)", 0)
+	schema:register(XMLValueType.FLOAT, "vehicle.baler.buffer#overloadingStartFillLevelPct", "Fill level percentage [0-1] of the buffer to start the overloading", 1)
 	schema:register(XMLValueType.BOOL, "vehicle.baler.buffer#fillMainUnitAfterOverload", "After overloading the full buffer to the main unit it will continue filling the main unit until it's full", false)
 	schema:register(XMLValueType.STRING, "vehicle.baler.buffer#balerDisplayType", "Forced fill type to display on baler unit")
 	schema:register(XMLValueType.NODE_INDEX, "vehicle.baler.buffer.dummyBale#node", "Dummy bale link node")
@@ -88,6 +96,8 @@ function Baler.initSpecialization()
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.buffer.overloadAnimation#speedScale", "Speed of overload animation", 1)
 	schema:register(XMLValueType.STRING, "vehicle.baler.buffer.loadingStateAnimation#name", "Name of loading state animation")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.buffer.loadingStateAnimation#speedScale", "Speed of loading state animation", 1)
+	EffectManager.registerEffectXMLPaths(schema, "vehicle.baler.buffer.overloadingEffect")
+	AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.baler.buffer.overloadingAnimationNodes")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.variableSpeedLimit#targetLiterPerSecond", "Target liters per second", 200)
 	schema:register(XMLValueType.TIME, "vehicle.baler.variableSpeedLimit#changeInterval", "Interval which adjusts speed limit to conditions", 1)
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.variableSpeedLimit#minSpeedLimit", "Min. speed limit", 5)
@@ -99,6 +109,7 @@ function Baler.initSpecialization()
 	schema:register(XMLValueType.INT, "vehicle.baler.additives#fillUnitIndex", "Additives fill unit index")
 	schema:register(XMLValueType.FLOAT, "vehicle.baler.additives#usage", "Usage per picked up liter", 2.75e-05)
 	schema:register(XMLValueType.STRING, "vehicle.baler.additives#fillTypes", "Fill types to apply additives", "GRASS_WINDROW")
+	schema:register(XMLValueType.BOOL, "vehicle.baler.additives#appliedByBufferOverloading", "Additives are applied while the buffer unit is overloaded into main unit", false)
 	schema:register(XMLValueType.BOOL, FillUnit.ALARM_TRIGGER_XML_KEY .. "#needsBaleLoaded", "Alarm triggers only when a full bale is loaded", false)
 	schema:setXMLSpecializationType()
 
@@ -140,6 +151,7 @@ function Baler.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "createDummyBale", Baler.createDummyBale)
 	SpecializationUtil.registerFunction(vehicleType, "handleUnloadingBaleEvent", Baler.handleUnloadingBaleEvent)
 	SpecializationUtil.registerFunction(vehicleType, "dropBaleFromPlatform", Baler.dropBaleFromPlatform)
+	SpecializationUtil.registerFunction(vehicleType, "getBalerBaleOwnerFarmId", Baler.getBalerBaleOwnerFarmId)
 end
 
 function Baler.registerOverwrittenFunctions(vehicleType)
@@ -150,6 +162,7 @@ function Baler.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsFoldAllowed", Baler.getIsFoldAllowed)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsWorkAreaActive", Baler.getIsWorkAreaActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getConsumingLoad", Baler.getConsumingLoad)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getRequiresPower", Baler.getRequiresPower)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeSelected", Baler.getCanBeSelected)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsAttachedTo", Baler.getIsAttachedTo)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAllowDynamicMountFillLevelInfo", Baler.getAllowDynamicMountFillLevelInfo)
@@ -201,6 +214,7 @@ function Baler:onLoad(savegame)
 
 	spec.fillScale = self.xmlFile:getValue("vehicle.baler#fillScale", 1)
 	spec.fillUnitIndex = self.xmlFile:getValue("vehicle.baler#fillUnitIndex", 1)
+	spec.useDropLandOwnershipForBales = self.xmlFile:getValue("vehicle.baler#useDropLandOwnershipForBales", false)
 
 	if self.xmlFile:hasProperty("vehicle.baler.baleAnimation") then
 		local baleAnimCurve = AnimCurve.new(linearInterpolatorN)
@@ -371,6 +385,7 @@ function Baler:onLoad(savegame)
 		spec.unloadAnimationNodes = g_animationManager:loadAnimations(self.xmlFile, "vehicle.baler.unloadAnimationNodes", self.components, self, self.i3dMappings)
 		spec.fillEffects = g_effectManager:loadEffect(self.xmlFile, "vehicle.baler.fillEffect", self.components, self, self.i3dMappings)
 		spec.fillEffectType = FillType.UNKNOWN
+		spec.additiveEffects = g_effectManager:loadEffect(self.xmlFile, "vehicle.baler.additiveEffects", self.components, self, self.i3dMappings)
 		spec.knotingAnimation = self.xmlFile:getValue("vehicle.baler.knotingAnimation#name")
 		spec.knotingAnimationSpeed = self.xmlFile:getValue("vehicle.baler.knotingAnimation#speed", 1)
 		spec.compactingAnimation = self.xmlFile:getValue("vehicle.baler.compactingAnimation#name")
@@ -420,8 +435,12 @@ function Baler:onLoad(savegame)
 	spec.platformMountDelay = -1
 	spec.buffer = {
 		fillUnitIndex = self.xmlFile:getValue("vehicle.baler.buffer#fillUnitIndex"),
+		unloadInfoIndex = self.xmlFile:getValue("vehicle.baler.buffer#unloadInfoIndex", 1),
 		capacityPercentage = self.xmlFile:getValue("vehicle.baler.buffer#capacityPercentage"),
 		overloadingDuration = self.xmlFile:getValue("vehicle.baler.buffer#overloadingDuration", 1),
+		overloadingDelay = self.xmlFile:getValue("vehicle.baler.buffer#overloadingDelay", 0),
+		overloadingTimer = 0,
+		overloadingStartFillLevelPct = MathUtil.round(self.xmlFile:getValue("vehicle.baler.buffer#overloadingStartFillLevelPct", 1), 2),
 		fillMainUnitAfterOverload = self.xmlFile:getValue("vehicle.baler.buffer#fillMainUnitAfterOverload", false),
 		unloadingStarted = false,
 		fillLevelToEmpty = 0,
@@ -434,6 +453,15 @@ function Baler:onLoad(savegame)
 	spec.buffer.overloadAnimationSpeed = self.xmlFile:getValue("vehicle.baler.buffer.overloadAnimation#speedScale", 1)
 	spec.buffer.loadingStateAnimation = self.xmlFile:getValue("vehicle.baler.buffer.loadingStateAnimation#name")
 	spec.buffer.loadingStateAnimationSpeed = self.xmlFile:getValue("vehicle.baler.buffer.loadingStateAnimation#speedScale", 1)
+
+	if self.isClient then
+		spec.buffer.overloadingEffects = g_effectManager:loadEffect(self.xmlFile, "vehicle.baler.buffer.overloadingEffect", self.components, self, self.i3dMappings)
+		spec.buffer.overloadingAnimationNodes = g_animationManager:loadAnimations(self.xmlFile, "vehicle.baler.buffer.overloadingAnimationNodes", self.components, self, self.i3dMappings)
+		spec.buffer.samplesOverloadingStart = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.baler.sounds", "bufferOverloadingStart", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self)
+		spec.buffer.samplesOverloadingStop = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.baler.sounds", "bufferOverloadingStop", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self)
+		spec.buffer.samplesOverloadingWork = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.baler.sounds", "bufferOverloadingWork", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
+	end
+
 	spec.nonStopBaling = spec.buffer.fillUnitIndex ~= nil
 
 	if spec.nonStopBaling ~= nil then
@@ -481,6 +509,9 @@ function Baler:onLoad(savegame)
 	spec.additives.usage = self.xmlFile:getValue("vehicle.baler.additives#usage", 2.75e-05)
 	local additivesFillTypeNames = self.xmlFile:getValue("vehicle.baler.additives#fillTypes", "GRASS_WINDROW")
 	spec.additives.fillTypes = g_fillTypeManager:getFillTypesByNames(additivesFillTypeNames, "Warning: '" .. self.xmlFile:getFilename() .. "' has invalid fillType '%s'.")
+	spec.additives.appliedByBufferOverloading = self.xmlFile:getValue("vehicle.baler.additives#appliedByBufferOverloading", false)
+	spec.additives.isActiveTimer = 0
+	spec.additives.isActive = false
 	spec.isBaleUnloading = false
 	spec.texts = {
 		warningFoldingBaleLoaded = g_i18n:getText("warning_foldingNotWhileBaleLoaded"),
@@ -612,9 +643,15 @@ function Baler:onDelete()
 	end
 
 	g_soundManager:deleteSamples(spec.samples)
+	g_soundManager:deleteSamples(spec.buffer.samplesOverloadingStart)
+	g_soundManager:deleteSamples(spec.buffer.samplesOverloadingWork)
+	g_soundManager:deleteSamples(spec.buffer.samplesOverloadingStop)
 	g_effectManager:deleteEffects(spec.fillEffects)
+	g_effectManager:deleteEffects(spec.additiveEffects)
+	g_effectManager:deleteEffects(spec.buffer.overloadingEffects)
 	g_animationManager:deleteAnimations(spec.animationNodes)
 	g_animationManager:deleteAnimations(spec.unloadAnimationNodes)
+	g_animationManager:deleteAnimations(spec.buffer.overloadingAnimationNodes)
 end
 
 function Baler:saveToXMLFile(xmlFile, key, usedModNames)
@@ -761,6 +798,43 @@ function Baler:onReadUpdateStream(streamId, timestamp, connection)
 		spec.lastAreaBiggerZero = streamReadBool(streamId)
 		spec.fillEffectType = streamReadUIntN(streamId, FillTypeManager.SEND_NUM_BITS)
 		spec.showBaleLimitWarning = streamReadBool(streamId)
+
+		if spec.nonStopBaling then
+			spec.buffer.unloadingStarted = streamReadBool(streamId)
+
+			if spec.buffer.unloadingStarted then
+				local fillType = self:getFillUnitFillType(spec.buffer.fillUnitIndex)
+
+				if fillType == FillType.UNKNOWN then
+					fillType = self:getFillUnitFillType(spec.fillUnitIndex)
+				end
+
+				g_effectManager:setFillType(spec.buffer.overloadingEffects, fillType)
+				g_effectManager:startEffects(spec.buffer.overloadingEffects)
+				g_soundManager:playSamples(spec.buffer.samplesOverloadingStart)
+				g_soundManager:playSamples(spec.buffer.samplesOverloadingWork, 0, spec.buffer.samplesOverloadingStart[0])
+				g_animationManager:startAnimations(spec.buffer.overloadingAnimationNodes)
+			else
+				g_effectManager:stopEffects(spec.buffer.overloadingEffects)
+				g_soundManager:stopSamples(spec.buffer.samplesOverloadingStart)
+
+				if g_soundManager:getIsSamplePlaying(spec.buffer.samplesOverloadingWork[0]) then
+					g_soundManager:stopSamples(spec.buffer.samplesOverloadingWork)
+					g_soundManager:playSamples(spec.buffer.samplesOverloadingStop)
+				end
+
+				g_animationManager:stopAnimations(spec.buffer.overloadingAnimationNodes)
+			end
+		end
+
+		spec.additives.isActive = streamReadBool(streamId)
+
+		if spec.additives.isActive then
+			g_effectManager:setFillType(spec.additiveEffects, FillType.LIQUIDFERTILIZER)
+			g_effectManager:startEffects(spec.additiveEffects)
+		else
+			g_effectManager:stopEffects(spec.additiveEffects)
+		end
 	end
 end
 
@@ -771,6 +845,12 @@ function Baler:onWriteUpdateStream(streamId, connection, dirtyMask)
 		streamWriteBool(streamId, spec.lastAreaBiggerZero)
 		streamWriteUIntN(streamId, spec.fillEffectTypeSent, FillTypeManager.SEND_NUM_BITS)
 		streamWriteBool(streamId, spec.showBaleLimitWarning)
+
+		if spec.nonStopBaling then
+			streamWriteBool(streamId, spec.buffer.unloadingStarted)
+		end
+
+		streamWriteBool(streamId, spec.additives.isActive)
 	end
 end
 
@@ -882,8 +962,9 @@ end
 function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	local spec = self.spec_baler
 	local showBaleLimitWarning = false
+	local isTurnedOn = self:getIsTurnedOn()
 
-	if self:getIsTurnedOn() then
+	if isTurnedOn then
 		if not g_currentMission.slotSystem:getCanAddLimitedObjects(SlotSystem.LIMITED_OBJECT_BALE, 1) then
 			showBaleLimitWarning = true
 		end
@@ -1020,6 +1101,21 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 
 		spec.pickUpLitersBuffer:add(spec.workAreaParameters.lastPickedUpLiters)
 
+		if spec.additives.isActiveTimer > 0 then
+			spec.additives.isActiveTimer = spec.additives.isActiveTimer - dt
+
+			if spec.additives.isActiveTimer < 0 then
+				spec.additives.isActiveTimer = 0
+				spec.additives.isActive = false
+
+				if self.isClient then
+					g_effectManager:stopEffects(spec.additiveEffects)
+				end
+
+				self:raiseDirtyFlags(spec.dirtyFlag)
+			end
+		end
+
 		if spec.platformAutomaticDrop and spec.platformReadyToDrop then
 			self:dropBaleFromPlatform(true)
 		end
@@ -1043,14 +1139,18 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 		end
 
 		if spec.nonStopBaling then
+			local lastUnloadingStarted = spec.buffer.unloadingStarted
 			local bufferLevel = self:getFillUnitFillLevel(spec.buffer.fillUnitIndex)
 
 			if bufferLevel > 0 then
-				if bufferLevel == self:getFillUnitCapacity(spec.buffer.fillUnitIndex) then
+				local capacity = self:getFillUnitCapacity(spec.buffer.fillUnitIndex)
+
+				if isTurnedOn and spec.buffer.overloadingStartFillLevelPct <= MathUtil.round(bufferLevel / capacity, 2) then
 					local capacity = self:getFillUnitCapacity(spec.fillUnitIndex)
 
 					if (capacity == 0 or capacity == math.huge or self:getFillUnitFreeCapacity(spec.fillUnitIndex) > 0) and not spec.buffer.unloadingStarted and spec.unloadingState == Baler.UNLOADING_CLOSED then
 						spec.buffer.unloadingStarted = true
+						spec.buffer.overloadingTimer = 0
 
 						if spec.buffer.overloadAnimation ~= nil then
 							self:playAnimation(spec.buffer.overloadAnimation, spec.buffer.overloadAnimationSpeed)
@@ -1059,13 +1159,60 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 				end
 
 				if spec.buffer.unloadingStarted then
-					if self:getFillUnitFreeCapacity(spec.fillUnitIndex) > 0 then
+					spec.buffer.overloadingTimer = spec.buffer.overloadingTimer + dt
+
+					if spec.buffer.overloadingDelay <= spec.buffer.overloadingTimer and self:getFillUnitFreeCapacity(spec.fillUnitIndex) > 0 then
 						local capacity = self:getFillUnitCapacity(spec.buffer.fillUnitIndex)
 						local delta = math.min(capacity / spec.buffer.overloadingDuration * dt, bufferLevel)
-						local fillType = self:getFillUnitFillType(spec.buffer.fillUnitIndex)
-						local realDelta = self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.buffer.fillUnitIndex, -delta, fillType, ToolType.UNDEFINED, nil)
+						local sourceFillType = self:getFillUnitFillType(spec.buffer.fillUnitIndex)
+						local unloadInfo = self:getFillVolumeUnloadInfo(spec.buffer.unloadInfoIndex)
+						local realDelta = self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.buffer.fillUnitIndex, -delta, sourceFillType, ToolType.UNDEFINED, unloadInfo)
+						local targetFillType = self:getFillUnitFillType(spec.fillUnitIndex)
 
-						self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, -realDelta, fillType, ToolType.UNDEFINED, nil)
+						if targetFillType == FillType.UNKNOWN then
+							targetFillType = sourceFillType
+						end
+
+						local overloadedLiters = -realDelta
+
+						if spec.additives.available and spec.additives.appliedByBufferOverloading then
+							local fillTypeSupported = false
+
+							for i = 1, #spec.additives.fillTypes do
+								if targetFillType == spec.additives.fillTypes[i] then
+									fillTypeSupported = true
+
+									break
+								end
+							end
+
+							if fillTypeSupported then
+								local additivesFillLevel = self:getFillUnitFillLevel(spec.additives.fillUnitIndex)
+
+								if additivesFillLevel > 0 then
+									local usage = spec.additives.usage * overloadedLiters
+
+									if usage > 0 then
+										local availableUsage = math.min(additivesFillLevel / usage, 1)
+										overloadedLiters = overloadedLiters * (1 + 0.05 * availableUsage)
+
+										self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.additives.fillUnitIndex, -usage, self:getFillUnitFillType(spec.additives.fillUnitIndex), ToolType.UNDEFINED)
+
+										spec.additives.isActiveTimer = 250
+										spec.additives.isActive = true
+
+										self:raiseDirtyFlags(spec.dirtyFlag)
+
+										if self.isClient then
+											g_effectManager:setFillType(spec.additiveEffects, FillType.LIQUIDFERTILIZER)
+											g_effectManager:startEffects(spec.additiveEffects)
+										end
+									end
+								end
+							end
+						end
+
+						self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, overloadedLiters, targetFillType, ToolType.UNDEFINED, nil)
 
 						if spec.buffer.fillLevelToEmpty > 0 then
 							spec.buffer.fillLevelToEmpty = math.max(spec.buffer.fillLevelToEmpty - delta, 0)
@@ -1077,7 +1224,7 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 						end
 					end
 
-					if self:getFillUnitFillLevelPercentage(spec.fillUnitIndex) == 1 then
+					if self:getFillUnitFillLevelPercentage(spec.fillUnitIndex) == 1 or not isTurnedOn then
 						spec.buffer.unloadingStarted = false
 					end
 				end
@@ -1085,8 +1232,37 @@ function Baler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelectio
 				spec.buffer.unloadingStarted = false
 			end
 
+			if lastUnloadingStarted ~= spec.buffer.unloadingStarted then
+				if self.isClient then
+					if spec.buffer.unloadingStarted then
+						local fillType = self:getFillUnitFillType(spec.buffer.fillUnitIndex)
+
+						g_effectManager:setFillType(spec.buffer.overloadingEffects, fillType)
+						g_effectManager:startEffects(spec.buffer.overloadingEffects)
+						g_animationManager:startAnimations(spec.buffer.overloadingAnimationNodes)
+						g_soundManager:playSamples(spec.buffer.samplesOverloadingStart)
+						g_soundManager:playSamples(spec.buffer.samplesOverloadingWork, 0, spec.buffer.samplesOverloadingStart[1])
+					else
+						g_effectManager:stopEffects(spec.buffer.overloadingEffects)
+						g_animationManager:stopAnimations(spec.buffer.overloadingAnimationNodes)
+						g_soundManager:stopSamples(spec.buffer.samplesOverloadingStart)
+
+						if g_soundManager:getIsSamplePlaying(spec.buffer.samplesOverloadingWork[1]) then
+							g_soundManager:stopSamples(spec.buffer.samplesOverloadingWork)
+							g_soundManager:playSamples(spec.buffer.samplesOverloadingStop)
+						end
+					end
+				end
+
+				self:raiseDirtyFlags(spec.dirtyFlag)
+			end
+
 			if spec.buffer.overloadAnimation ~= nil and not self:getIsAnimationPlaying(spec.buffer.overloadAnimation) and self:getAnimationTime(spec.buffer.overloadAnimation) > 0.5 then
 				self:playAnimation(spec.buffer.overloadAnimation, -spec.buffer.overloadAnimationSpeed)
+			end
+
+			if isTurnedOn then
+				self:raiseActive()
 			end
 		end
 	end
@@ -1143,22 +1319,30 @@ end
 function Baler:onChangedFillType(fillUnitIndex, fillTypeIndex, oldFillTypeIndex)
 	local spec = self.spec_baler
 
-	if (fillUnitIndex == spec.fillUnitIndex or fillUnitIndex == spec.buffer.fillUnitIndex) and fillTypeIndex ~= FillType.UNKNOWN then
-		local baleTypeDef = spec.baleTypes[spec.currentBaleTypeIndex]
-		spec.currentBaleTypeDefinition = baleTypeDef
-		spec.currentBaleXMLFilename, spec.currentBaleIndex = g_baleManager:getBaleXMLFilename(fillTypeIndex, baleTypeDef.isRoundBale, baleTypeDef.width, baleTypeDef.height, baleTypeDef.length, baleTypeDef.diameter, self.customEnvironment)
-		local baleCapacity = g_baleManager:getBaleCapacityByBaleIndex(spec.currentBaleIndex, fillTypeIndex)
+	if fillUnitIndex == spec.fillUnitIndex or fillUnitIndex == spec.buffer.fillUnitIndex then
+		local mainFillTypeIndex = self:getFillUnitFillType(spec.fillUnitIndex)
 
-		if fillUnitIndex == spec.fillUnitIndex then
-			self:setFillUnitCapacity(fillUnitIndex, baleCapacity, false)
-		elseif spec.buffer.capacityPercentage ~= nil then
-			self:setFillUnitCapacity(fillUnitIndex, baleCapacity * spec.buffer.capacityPercentage, false)
+		if mainFillTypeIndex ~= FillType.UNKNOWN then
+			fillTypeIndex = mainFillTypeIndex
 		end
 
-		ObjectChangeUtil.setObjectChanges(baleTypeDef.changeObjects, true, self, self.setMovingToolDirty)
+		if fillTypeIndex ~= FillType.UNKNOWN then
+			local baleTypeDef = spec.baleTypes[spec.currentBaleTypeIndex]
+			spec.currentBaleTypeDefinition = baleTypeDef
+			spec.currentBaleXMLFilename, spec.currentBaleIndex = g_baleManager:getBaleXMLFilename(fillTypeIndex, baleTypeDef.isRoundBale, baleTypeDef.width, baleTypeDef.height, baleTypeDef.length, baleTypeDef.diameter, self.customEnvironment)
+			local baleCapacity = g_baleManager:getBaleCapacityByBaleIndex(spec.currentBaleIndex, fillTypeIndex)
 
-		if spec.currentBaleXMLFilename == nil then
-			Logging.warning("Could not find bale for given bale type definition '%s'", baleTypeDef.index)
+			if fillUnitIndex == spec.fillUnitIndex then
+				self:setFillUnitCapacity(fillUnitIndex, baleCapacity, false)
+			elseif spec.buffer.capacityPercentage ~= nil then
+				self:setFillUnitCapacity(fillUnitIndex, baleCapacity * spec.buffer.capacityPercentage, false)
+			end
+
+			ObjectChangeUtil.setObjectChanges(baleTypeDef.changeObjects, true, self, self.setMovingToolDirty)
+
+			if spec.currentBaleXMLFilename == nil then
+				Logging.warning("Could not find bale for given bale type definition '%s'", baleTypeDef.index)
+			end
 		end
 	end
 end
@@ -1210,8 +1394,8 @@ function Baler:onFillUnitFillLevelChanged(fillUnitIndex, fillLevelDelta, fillTyp
 end
 
 function Baler:onTurnedOn()
-	if self.setFoldState ~= nil then
-		self:setFoldState(-1, false)
+	if self.setFoldState ~= nil and #self.spec_foldable.foldingParts > 0 then
+		self:setFoldState(self.spec_foldable.turnOnFoldDirection, false, true)
 	end
 
 	if self.isClient then
@@ -1220,6 +1404,8 @@ function Baler:onTurnedOn()
 		g_animationManager:startAnimations(spec.animationNodes)
 		g_soundManager:playSample(spec.samples.work)
 	end
+
+	self:raiseActive()
 end
 
 function Baler:onTurnedOff()
@@ -1227,8 +1413,20 @@ function Baler:onTurnedOff()
 		local spec = self.spec_baler
 
 		g_effectManager:stopEffects(spec.fillEffects)
+		g_effectManager:stopEffects(spec.additiveEffects)
+		g_effectManager:stopEffects(spec.buffer.overloadingEffects)
 		g_animationManager:stopAnimations(spec.animationNodes)
-		g_soundManager:stopSamples(spec.samples)
+		g_soundManager:stopSample(spec.samples.work)
+		g_soundManager:stopSample(spec.samples.eject)
+		g_soundManager:stopSample(spec.samples.unload)
+		g_soundManager:stopSample(spec.samples.door)
+		g_soundManager:stopSample(spec.samples.knotCleaning)
+		g_soundManager:stopSamples(spec.buffer.samplesOverloadingStart)
+
+		if g_soundManager:getIsSamplePlaying(spec.buffer.samplesOverloadingWork[1]) then
+			g_soundManager:stopSamples(spec.buffer.samplesOverloadingWork)
+			g_soundManager:playSamples(spec.buffer.samplesOverloadingStop)
+		end
 	end
 end
 
@@ -1326,6 +1524,24 @@ function Baler:dropBaleFromPlatform(waitForNextBale, noEventSend)
 	end
 
 	BalerDropFromPlatformEvent.sendEvent(self, waitForNextBale, noEventSend)
+end
+
+function Baler:getBalerBaleOwnerFarmId(x, z)
+	local spec = self.spec_baler
+	local ownerFarmId = nil
+
+	if spec.useDropLandOwnershipForBales then
+		local farmlandId = g_farmlandManager:getFarmlandIdAtWorldPosition(x, z)
+		ownerFarmId = g_farmlandManager:getFarmlandOwner(farmlandId)
+	else
+		ownerFarmId = self:getLastTouchedFarmlandFarmId()
+	end
+
+	if ownerFarmId == FarmManager.SPECTATOR_FARM_ID then
+		ownerFarmId = self:getOwnerFarmId()
+	end
+
+	return ownerFarmId
 end
 
 function Baler:setIsUnloadingBale(isUnloadingBale, noEventSend)
@@ -1522,14 +1738,7 @@ function Baler:createBale(baleFillType, fillLevel, baleServerId, baleTime, xmlFi
 			if baleObject:loadFromConfigXML(bale.filename, x, y, z, rx, ry, rz) then
 				baleObject:setFillType(baleFillType)
 				baleObject:setFillLevel(fillLevel)
-
-				local ownerFarmId = self:getLastTouchedFarmlandFarmId()
-
-				if ownerFarmId == FarmManager.SPECTATOR_FARM_ID then
-					ownerFarmId = self:getOwnerFarmId()
-				end
-
-				baleObject:setOwnerFarmId(ownerFarmId, true)
+				baleObject:setOwnerFarmId(self:getBalerBaleOwnerFarmId(x, z), true)
 				baleObject:setIsMissionBale(self:getLastActiveMissionWork())
 				baleObject:register()
 				baleObject:mountKinematic(self, baleTypeDef.baleRootNode, 0, 0, 0, 0, 0, 0)
@@ -1581,14 +1790,7 @@ function Baler:createBale(baleFillType, fillLevel, baleServerId, baleTime, xmlFi
 		if baleObject:loadFromConfigXML(bale.filename, x, y, z, rx, ry, rz) then
 			baleObject:setFillType(baleFillType)
 			baleObject:setFillLevel(fillLevel)
-
-			local ownerFarmId = self:getLastTouchedFarmlandFarmId()
-
-			if ownerFarmId == FarmManager.SPECTATOR_FARM_ID then
-				ownerFarmId = self:getOwnerFarmId()
-			end
-
-			baleObject:setOwnerFarmId(ownerFarmId, true)
+			baleObject:setOwnerFarmId(self:getBalerBaleOwnerFarmId(x, z), true)
 			baleObject:setIsMissionBale(self:getLastActiveMissionWork())
 			baleObject:register()
 			baleObject:setCanBeSold(false)
@@ -1669,9 +1871,8 @@ function Baler:dropBale(baleIndex)
 			local vx, vy, vz = getVelocityAtWorldPos(baleTypeDef.baleNodeComponent or self.components[1].node, x, y, z)
 
 			setLinearVelocity(baleObject.nodeId, vx, vy, vz)
+			g_farmManager:updateFarmStats(self:getBalerBaleOwnerFarmId(x, z), "baleCount", 1)
 		end
-
-		g_farmManager:updateFarmStats(self:getLastTouchedFarmlandFarmId(), "baleCount", 1)
 	elseif spec.hasUnloadingAnimation then
 		local baleObject = NetworkUtil.getObject(bale.baleServerId)
 
@@ -1864,6 +2065,32 @@ function Baler:getConsumingLoad(superFunc)
 	return value + loadPercentage, count + 1
 end
 
+function Baler:getRequiresPower(superFunc)
+	local spec = self.spec_baler
+
+	if spec.nonStopBaling then
+		local bufferLevel = self:getFillUnitFillLevel(spec.buffer.fillUnitIndex)
+
+		if bufferLevel > 0 then
+			return true
+		end
+
+		if spec.buffer.unloadingStarted then
+			return true
+		end
+	end
+
+	if spec.unloadingState ~= Baler.UNLOADING_CLOSED then
+		return true
+	end
+
+	if self:getIsTurnedOn() then
+		return true
+	end
+
+	return superFunc(self)
+end
+
 function Baler:getCanBeSelected(superFunc)
 	return true
 end
@@ -1920,7 +2147,7 @@ function Baler:processBalerArea(workArea, dt)
 			if self.isServer then
 				spec.fillEffectType = fillTypeIndex
 
-				if spec.additives.available then
+				if spec.additives.available and not spec.additives.appliedByBufferOverloading then
 					local fillTypeSupported = false
 
 					for i = 1, #spec.additives.fillTypes do
@@ -1942,6 +2169,16 @@ function Baler:processBalerArea(workArea, dt)
 								pickedUpLiters = pickedUpLiters * (1 + 0.05 * availableUsage)
 
 								self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.additives.fillUnitIndex, -usage, self:getFillUnitFillType(spec.additives.fillUnitIndex), ToolType.UNDEFINED)
+
+								spec.additives.isActiveTimer = 250
+								spec.additives.isActive = true
+
+								self:raiseDirtyFlags(spec.dirtyFlag)
+
+								if self.isClient then
+									g_effectManager:setFillType(spec.additiveEffects, FillType.LIQUIDFERTILIZER)
+									g_effectManager:startEffects(spec.additiveEffects)
+								end
 							end
 						end
 					end
@@ -2104,7 +2341,7 @@ function Baler:updateActionEvents()
 	if actionEvent ~= nil then
 		local showAction = false
 
-		if self:isUnloadingAllowed() and (spec.hasUnloadingAnimation or spec.allowsBaleUnloading) then
+		if not spec.automaticDrop and self:isUnloadingAllowed() and (spec.hasUnloadingAnimation or spec.allowsBaleUnloading) then
 			if spec.unloadingState == Baler.UNLOADING_CLOSED then
 				if self:getCanUnloadUnfinishedBale() then
 					g_inputBinding:setActionEventText(actionEvent.actionEventId, spec.texts.unloadUnfinishedBale)

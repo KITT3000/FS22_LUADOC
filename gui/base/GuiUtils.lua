@@ -127,6 +127,37 @@ GuiUtils = {
 		end
 
 		return defaultValue
+	end,
+	validateUvs = function (str)
+		local parts = string.split(str, " ")
+
+		if #parts ~= 2 and #parts ~= 4 then
+			return false, "Needs to be 2- or 4-vector"
+		end
+
+		for _, part in ipairs(parts) do
+			local number = tonumber(part)
+
+			if number ~= nil then
+				if number < 0 or number > 1 then
+					return false, "Normalized value (without 'px' or 'dp') needs to be between 0 and 1"
+				end
+			elseif string.endsWith(part, "px") or string.endsWith(part, "dp") then
+				number = tonumber(string.sub(part, 1, #part - 2))
+
+				if number == nil then
+					return false, "Missing or invalid number value for 'px' or 'dp' entry"
+				end
+
+				if number ~= math.floor(number) then
+					return false, "px and dp values need to be integers"
+				end
+			else
+				return false, "Invalid format"
+			end
+		end
+
+		return true
 	end
 }
 

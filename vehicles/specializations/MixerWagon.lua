@@ -102,17 +102,6 @@ function MixerWagon:onLoad(savegame)
 	spec.activeTimerMax = self.xmlFile:getValue("vehicle.mixerWagon#mixingTime", 5)
 	spec.activeTimer = 0
 	spec.fillUnitIndex = self.xmlFile:getValue("vehicle.mixerWagon#fillUnitIndex", 1)
-	local fillUnit = self:getFillUnitByIndex(spec.fillUnitIndex)
-
-	if fillUnit ~= nil then
-		fillUnit.needsSaving = false
-
-		if fillUnit.supportedFillTypes[FillType.GRASS_WINDROW] then
-			fillUnit.supportedFillTypes[FillType.GRASS_WINDROW] = nil
-		end
-	end
-
-	fillUnit.synchronizeFillLevel = false
 	spec.mixerWagonFillTypes = {}
 	spec.fillTypeToMixerWagonFillType = {}
 	local recipeFillTypeName = self.xmlFile:getValue("vehicle.mixerWagon#recipe", "")
@@ -145,6 +134,15 @@ function MixerWagon:onLoad(savegame)
 			end
 
 			table.insert(spec.mixerWagonFillTypes, entry)
+		end
+	end
+
+	if #spec.mixerWagonFillTypes > 0 then
+		local fillUnit = self:getFillUnitByIndex(spec.fillUnitIndex)
+
+		if fillUnit ~= nil then
+			fillUnit.needsSaving = false
+			fillUnit.synchronizeFillLevel = false
 		end
 	end
 

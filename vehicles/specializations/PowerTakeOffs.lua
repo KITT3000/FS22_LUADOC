@@ -130,6 +130,7 @@ function PowerTakeOffs.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostLoad", PowerTakeOffs)
 	SpecializationUtil.registerEventListener(vehicleType, "onDelete", PowerTakeOffs)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostUpdate", PowerTakeOffs)
+	SpecializationUtil.registerEventListener(vehicleType, "onUpdateEnd", PowerTakeOffs)
 	SpecializationUtil.registerEventListener(vehicleType, "onPreAttachImplement", PowerTakeOffs)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostAttachImplement", PowerTakeOffs)
 	SpecializationUtil.registerEventListener(vehicleType, "onPreDetachImplement", PowerTakeOffs)
@@ -315,6 +316,10 @@ function PowerTakeOffs:onPostUpdate(dt, isActiveForInput, isActiveForInputIgnore
 			end
 		end
 	end
+end
+
+function PowerTakeOffs:onUpdateEnd(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	PowerTakeOffs.onPostUpdate(self, dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 end
 
 function PowerTakeOffs:getPowerTakeOffConfigIndex()

@@ -93,6 +93,7 @@ function JoinGameScreen:onOpen()
 	self.mapSelectionElement:setTexts(self.mapTable)
 
 	if self.showingDeepLinkingPassword then
+		self.showingPasswordDialog = nil
 		self.showingDeepLinkingPassword = nil
 		g_deepLinkingInfo = nil
 	end
@@ -191,6 +192,7 @@ platformId :%s
 	if g_deepLinkingInfo ~= nil then
 		if g_deepLinkingInfo.platformServerId ~= "" then
 			if hasPassword then
+				self.showingPasswordDialog = true
 				self.showingDeepLinkingPassword = true
 
 				g_gui:showPasswordDialog({
@@ -281,7 +283,9 @@ function JoinGameScreen:onServerInfoEnd()
 end
 
 function JoinGameScreen:getServers()
-	if self.isRequestPending then
+	if self.isRequestPending or self.serverDetailsPending or self.showingPasswordDialog then
+		Logging.devInfo("getServers cancel; isRequestPending=%s serverDetailsPending=%s showingPasswordDialog=%s", self.isRequestPending, self.serverDetailsPending, self.showingPasswordDialog)
+
 		return
 	end
 
@@ -367,7 +371,7 @@ function JoinGameScreen:updateDisplayedServers()
 			end
 		end
 
-		self.refreshTimer = 500
+		self.refreshTimer = 2500
 	end
 end
 
@@ -503,6 +507,7 @@ function JoinGameScreen:onClickOk(isMouseClick)
 					self:startGame("", server.id)
 				else
 					local password = Utils.getNoNil(g_gameSettings:getTableValue("joinGame", "password"), "")
+					self.showingPasswordDialog = true
 
 					g_gui:showPasswordDialog({
 						callback = self.onPasswordEntered,
@@ -710,9 +715,10 @@ function JoinGameScreen:isSelectedServerValid()
 end
 
 function JoinGameScreen:onPasswordEntered(password, clickOk, args)
-	if clickOk then
-		self.showingDeepLinkingPassword = nil
+	self.showingPasswordDialog = nil
+	self.showingDeepLinkingPassword = nil
 
+	if clickOk then
 		if g_deepLinkingInfo == nil then
 			g_gameSettings:setTableValue("joinGame", "password", password)
 			g_gameSettings:saveToXMLFile(g_savegameXML)
@@ -768,7 +774,7 @@ function JoinGameScreen:update(dt)
 	JoinGameScreen:superClass().update(self, dt)
 	Platform.verifyMultiplayerAvailabilityInMenu()
 
-	if not self.requestPending then
+	if not self.requestPending and not self.serverDetailsPending and not self.showingPasswordDialog then
 		self.refreshTimer = self.refreshTimer - dt
 
 		if self.refreshTimer <= 0 then

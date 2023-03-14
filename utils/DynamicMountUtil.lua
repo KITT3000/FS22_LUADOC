@@ -33,13 +33,17 @@ function DynamicMountUtil.mountDynamic(mountable, nodeId, object, objectActorId,
 		if mountable.dynamicMountSingleAxisFreeX then
 			constr:setTranslationLimit(0, false, 0, 0)
 		else
-			constr:setTranslationLimit(0, true, -0.01, 0.01)
+			local limit = mountable.dynamicMountForkXLimit or 0.01
+
+			constr:setTranslationLimit(0, true, -limit, limit)
 		end
 
 		if mountable.dynamicMountSingleAxisFreeY then
 			constr:setTranslationLimit(1, false, 0, 0)
 		else
-			constr:setTranslationLimit(1, true, -0.01, 0.01)
+			local limit = mountable.dynamicMountForkYLimit or 0.01
+
+			constr:setTranslationLimit(1, true, -limit, limit)
 		end
 
 		constr:setTranslationLimit(2, false, 0, 0)

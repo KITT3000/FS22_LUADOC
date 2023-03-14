@@ -46,14 +46,15 @@ function AnimalFoodSystem:delete()
 end
 
 function AnimalFoodSystem:loadMapData(xmlFile, missionInfo)
-	local filename = Utils.getFilename(getXMLString(xmlFile, "map.animals.food#filename"), self.mission.baseDirectory)
+	local filename = getXMLString(xmlFile, "map.animals.food#filename")
 
-	if filename == nil then
-		Logging.xmlError(xmlFile, "Missing animals food configuration file")
+	if filename == nil or filename == "" then
+		Logging.xmlInfo(xmlFile, "No animals food xml given at 'map.animals.food#filename'")
 
 		return false
 	end
 
+	filename = Utils.getFilename(filename, self.mission.baseDirectory)
 	local xmlFileFood = XMLFile.load("animalFood", filename, AnimalFoodSystem.xmlSchema)
 
 	if xmlFileFood == nil then

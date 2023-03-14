@@ -115,6 +115,12 @@ function MathUtil.getAngleDifference(alpha, beta)
 	return MathUtil.getValidLimit(a)
 end
 
+function MathUtil.eulerToDirection(yaw, pitch)
+	local xzLength = math.cos(-pitch)
+
+	return xzLength * math.sin(yaw), math.sin(-pitch), xzLength * math.cos(yaw)
+end
+
 function MathUtil.vector2Length(x, y)
 	return math.sqrt(x * x + y * y)
 end

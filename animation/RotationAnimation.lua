@@ -116,7 +116,19 @@ function RotationAnimation:load(xmlFile, key, rootNodes, owner, i3dMapping)
 			else
 				setRotation(self.node, 0, 0, self.turnedOffRotation)
 			end
+
+			self.currentRot = self.turnedOffRotation
 		end
+	end
+
+	local _ = nil
+
+	if self.rotAxis == 1 then
+		self.currentRot, _, _ = getRotation(self.node)
+	elseif self.rotAxis == 2 then
+		_, self.currentRot, _ = getRotation(self.node)
+	else
+		_, _, self.currentRot = getRotation(self.node)
 	end
 
 	return self
@@ -134,25 +146,22 @@ function RotationAnimation:update(dt)
 	if self.currentAlpha > 0 then
 		local speedFactor = self.speedFunc(self.speedFuncTarget, self.speedFuncParam)
 		local rot = self.currentAlpha * dt * self.rotSpeed * speedFactor
+		self.currentRot = (self.currentRot + rot) % (2 * math.pi)
 
 		if self.shaderParameterName == nil then
+			local rx, ry, rz = getRotation(self.node)
+
 			if self.rotAxis == 2 then
-				rotate(self.node, 0, rot, 0)
+				setRotation(self.node, rx, self.currentRot, rz)
 			elseif self.rotAxis == 1 then
-				rotate(self.node, rot, 0, 0)
+				setRotation(self.node, self.currentRot, ry, rz)
 			else
-				rotate(self.node, 0, 0, rot)
+				setRotation(self.node, rx, ry, self.currentRot)
 			end
-
-			self.currentRot = self.currentRot + rot
+		elseif self.shaderParameterPrevName ~= nil then
+			g_animationManager:setPrevShaderParameter(self.node, self.shaderParameterName, self.currentRot * self.shaderComponentScale[1], self.currentRot * self.shaderComponentScale[2], self.currentRot * self.shaderComponentScale[3], self.currentRot * self.shaderComponentScale[4], false, self.shaderParameterPrevName)
 		else
-			self.currentRot = self.currentRot + rot
-
-			if self.shaderParameterPrevName ~= nil then
-				g_animationManager:setPrevShaderParameter(self.node, self.shaderParameterName, self.currentRot * self.shaderComponentScale[1], self.currentRot * self.shaderComponentScale[2], self.currentRot * self.shaderComponentScale[3], self.currentRot * self.shaderComponentScale[4], false, self.shaderParameterPrevName)
-			else
-				setShaderParameter(self.node, self.shaderParameterName, self.currentRot * self.shaderComponentScale[1], self.currentRot * self.shaderComponentScale[2], self.currentRot * self.shaderComponentScale[3], self.currentRot * self.shaderComponentScale[4], false)
-			end
+			setShaderParameter(self.node, self.shaderParameterName, self.currentRot * self.shaderComponentScale[1], self.currentRot * self.shaderComponentScale[2], self.currentRot * self.shaderComponentScale[3], self.currentRot * self.shaderComponentScale[4], false)
 		end
 
 		if self.owner ~= nil and self.owner.setMovingToolDirty ~= nil then

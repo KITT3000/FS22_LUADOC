@@ -229,9 +229,9 @@ function InputHelpDisplay:refreshHUDExtensions()
 				hudExtension = VehicleHUDExtension.createHUDExtensionForSpecialization(spec, vehicle, uiScale, InputHelpDisplay.COLOR.HELP_TEXT, self.helpTextSize)
 
 				if drawableWhileNotActive then
-					function hudExtension.canDraw()
-						return g_currentMission.accessHandler:canPlayerAccess(hudExtension.vehicle)
-					end
+					hudExtension.canDraw = Utils.overwrittenFunction(hudExtension.canDraw, function (self, superFunc)
+						return superFunc(self) and g_currentMission.accessHandler:canPlayerAccess(hudExtension.vehicle)
+					end)
 				end
 
 				table.addElement(self.vehicleHudExtensions, hudExtension)

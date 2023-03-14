@@ -39,7 +39,11 @@ end
 
 function Object:delete()
 	for _, listener in ipairs(self.deleteListeners) do
-		listener.object[listener.callbackName](listener.object, self)
+		if type(listener.callbackFunc) == "string" then
+			listener.object[listener.callbackFunc](listener.object, self)
+		elseif type(listener.callbackFunc) == "function" then
+			listener.callbackFunc(listener.object, self)
+		end
 	end
 
 	if self.isRegistered then
@@ -174,32 +178,32 @@ function Object:getOwnerFarmId()
 	return self.ownerFarmId
 end
 
-function Object:addDeleteListener(object, callbackName)
-	if callbackName == nil then
-		callbackName = "onDeleteObject"
+function Object:addDeleteListener(object, callbackFunc)
+	if callbackFunc == nil then
+		callbackFunc = "onDeleteObject"
 	end
 
 	for _, listener in ipairs(self.deleteListeners) do
-		if listener.object == object and listener.callbackName == callbackName then
+		if listener.object == object and listener.callbackFunc == callbackFunc then
 			return
 		end
 	end
 
 	table.insert(self.deleteListeners, {
 		object = object,
-		callbackName = callbackName
+		callbackFunc = callbackFunc
 	})
 end
 
-function Object:removeDeleteListener(object, callbackName)
-	if callbackName == nil then
-		callbackName = "onDeleteObject"
+function Object:removeDeleteListener(object, callbackFunc)
+	if callbackFunc == nil then
+		callbackFunc = "onDeleteObject"
 	end
 
 	local indexToRemove = -1
 
 	for i, listener in ipairs(self.deleteListeners) do
-		if listener.object == object and listener.callbackName == callbackName then
+		if listener.object == object and listener.callbackFunc == callbackFunc then
 			indexToRemove = i
 		end
 	end

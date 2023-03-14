@@ -104,6 +104,7 @@ function HUDTextDisplay:draw()
 	local posX, posY = self:getPosition()
 
 	setTextAlignment(self.textAlignment)
+	setTextVerticalAlignment(RenderText.VERTICAL_ALIGN_BASELINE)
 	setTextWrapWidth(0.9)
 
 	if self.hasShadow then

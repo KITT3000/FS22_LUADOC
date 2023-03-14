@@ -26,10 +26,18 @@ end
 function HelpLineManager:loadMapData(xmlFile, missionInfo)
 	HelpLineManager:superClass().loadMapData(self)
 
-	local filename = Utils.getFilename(getXMLString(xmlFile, "map.helpline#filename"), g_currentMission.baseDirectory)
+	local filenameStr = getXMLString(xmlFile, "map.helpline#filename")
 
-	if filename == nil or filename == "" then
-		print("Error: Could not load helpline config file '" .. tostring(filename) .. "'!")
+	if filenameStr == nil then
+		Logging.xmlInfo(xmlFile, "No helpline defined for map")
+
+		return false
+	end
+
+	local filename = Utils.getFilename(filenameStr, g_currentMission.baseDirectory)
+
+	if filename == nil or filename == "" or not fileExists(filename) then
+		Logging.xmlError(xmlFile, "Could not load helpline config file '" .. tostring(filenameStr) .. "'!")
 
 		return false
 	end

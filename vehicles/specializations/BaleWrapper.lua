@@ -127,9 +127,9 @@ function BaleWrapper.registerWrapperXMLPaths(schema, basePath)
 	schema:register(XMLValueType.INT, basePath .. ".wrappingCollisions.collision(?)#inActiveCollisionMask", "Collision mask in active")
 	schema:register(XMLValueType.L10N_STRING, basePath .. "#unloadBaleText", "Unload bale text", "'action_unloadRoundBale' for round bales and 'action_unloadSquareBale' for square bales")
 	schema:register(XMLValueType.BOOL, basePath .. "#skipUnsupportedBales", "Skip unsupported bales (pick them up and drop them instantly)")
-	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "wrap")
-	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "start")
-	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "stop")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "wrap(?)")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "start(?)")
+	SoundManager.registerSampleXMLPaths(schema, basePath .. ".sounds", "stop(?)")
 	schema:register(XMLValueType.FLOAT, basePath .. ".sounds#wrappingEndTime", "Wrapping time to play end wrapping sound", 1)
 end
 
@@ -162,6 +162,8 @@ function BaleWrapper.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "allowsGrabbingBale", BaleWrapper.allowsGrabbingBale)
 	SpecializationUtil.registerFunction(vehicleType, "pickupWrapperBale", BaleWrapper.pickupWrapperBale)
 	SpecializationUtil.registerFunction(vehicleType, "getIsBaleWrappable", BaleWrapper.getIsBaleWrappable)
+	SpecializationUtil.registerFunction(vehicleType, "getIsBaleDropAllowed", BaleWrapper.getIsBaleDropAllowed)
+	SpecializationUtil.registerFunction(vehicleType, "getIsBaleWrappingAllowed", BaleWrapper.getIsBaleWrappingAllowed)
 	SpecializationUtil.registerFunction(vehicleType, "updateWrappingState", BaleWrapper.updateWrappingState)
 	SpecializationUtil.registerFunction(vehicleType, "doStateChange", BaleWrapper.doStateChange)
 	SpecializationUtil.registerFunction(vehicleType, "updateWrapNodes", BaleWrapper.updateWrapNodes)
@@ -255,7 +257,8 @@ function BaleWrapper:onLoad(savegame)
 	spec.toggleAutomaticDropTextPos = self.xmlFile:getValue("vehicle.baleWrapper.automaticDrop#textPos", "action_toggleAutomaticBaleDropPos", self.customEnvironment)
 	spec.toggleAutomaticDropTextNeg = self.xmlFile:getValue("vehicle.baleWrapper.automaticDrop#textNeg", "action_toggleAutomaticBaleDropNeg", self.customEnvironment)
 	spec.texts = {
-		warningFoldingWrapping = g_i18n:getText("warning_foldingNotWhileWrapping")
+		warningFoldingWrapping = g_i18n:getText("warning_foldingNotWhileWrapping"),
+		warningBaleNotSupported = g_i18n:getText("warning_baleNotSupported")
 	}
 
 	ObjectChangeUtil.updateObjectChanges(self.xmlFile, baseKey .. ".wrappingAnimationConfigurations.wrappingAnimationConfiguration", self.configurations.wrappingAnimation or 1, self.components, self)
@@ -380,9 +383,9 @@ function BaleWrapper:loadWrapperFromXML(wrapper, xmlFile, baseKey, wrapperName)
 
 	if self.isClient then
 		wrapper.samples = {
-			wrap = g_soundManager:loadSampleFromXML(self.xmlFile, baseKey .. ".sounds", "wrap", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self),
-			start = g_soundManager:loadSampleFromXML(self.xmlFile, baseKey .. ".sounds", "start", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self),
-			stop = g_soundManager:loadSampleFromXML(self.xmlFile, baseKey .. ".sounds", "stop", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self)
+			wrap = g_soundManager:loadSamplesFromXML(self.xmlFile, baseKey .. ".sounds", "wrap", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self),
+			start = g_soundManager:loadSamplesFromXML(self.xmlFile, baseKey .. ".sounds", "start", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self),
+			stop = g_soundManager:loadSamplesFromXML(self.xmlFile, baseKey .. ".sounds", "stop", self.baseDirectory, self.components, 1, AudioGroup.VEHICLE, self.i3dMappings, self)
 		}
 		wrapper.wrappingSoundEndTime = xmlFile:getValue(baseKey .. ".sounds#wrappingEndTime", 1)
 	end
@@ -680,22 +683,27 @@ function BaleWrapper:onLoadFinished(savegame)
 			if baleObject.nodeId ~= nil and baleObject.nodeId ~= 0 then
 				self:doStateChange(BaleWrapper.CHANGE_GRAB_BALE, NetworkUtil.getObjectId(baleObject))
 				self:doStateChange(BaleWrapper.CHANGE_DROP_BALE_AT_GRABBER)
-
-				local wrapperState = math.min(v.wrapperTime / spec.currentWrapper.animTime, 1)
-
-				baleObject:setWrappingState(wrapperState)
 				self:doStateChange(BaleWrapper.CHANGE_WRAPPING_START)
 
 				spec.currentWrapper.currentTime = v.wrapperTime
-				local wrapAnimationName = spec.currentWrapper.animations.wrapBale.animName
+				local wrapperState = math.min(v.wrapperTime / spec.currentWrapper.animTime, 1)
+
+				baleObject:setWrappingState(wrapperState)
+
+				local wrapAnimation = spec.currentWrapper.animations.wrapBale
 				local wrappingTime = spec.currentWrapper.currentTime / spec.currentWrapper.animTime
 
-				self:setAnimationStopTime(wrapAnimationName, wrappingTime)
-				AnimatedVehicle.updateAnimationByName(self, wrapAnimationName, 9999999, true)
 				self:updateWrappingState(wrappingTime)
+				AnimatedVehicle.updateAnimations(self, 99999999, true)
 
 				if wrappingTime < 1 then
-					self:playAnimation(wrapAnimationName, spec.currentWrapper.animations.wrapBale.animSpeed, self:getAnimationTime(wrapAnimationName), true, false)
+					self:setAnimationTime(wrapAnimation.animName, wrappingTime, true)
+					self:playAnimation(wrapAnimation.animName, wrapAnimation.animSpeed, wrappingTime, true)
+				else
+					self:doStateChange(BaleWrapper.CHANGE_WRAPPING_BALE_FINSIHED)
+					self:setAnimationTime(wrapAnimation.animName, wrappingTime, true)
+
+					spec.setWrappingStateFinished = false
 				end
 			end
 		end
@@ -737,11 +745,15 @@ function BaleWrapper:onDelete()
 	end
 
 	if spec.roundBaleWrapper ~= nil then
-		g_soundManager:deleteSamples(spec.roundBaleWrapper.samples)
+		g_soundManager:deleteSamples(spec.roundBaleWrapper.samples.wrap)
+		g_soundManager:deleteSamples(spec.roundBaleWrapper.samples.start)
+		g_soundManager:deleteSamples(spec.roundBaleWrapper.samples.stop)
 	end
 
 	if spec.squareBaleWrapper ~= nil then
-		g_soundManager:deleteSamples(spec.squareBaleWrapper.samples)
+		g_soundManager:deleteSamples(spec.squareBaleWrapper.samples.wrap)
+		g_soundManager:deleteSamples(spec.squareBaleWrapper.samples.start)
+		g_soundManager:deleteSamples(spec.squareBaleWrapper.samples.stop)
 	end
 end
 
@@ -775,11 +787,10 @@ function BaleWrapper:onReadStream(streamId, connection)
 		local wrapperState = streamReadUIntN(streamId, BaleWrapper.STATE_NUM_BITS)
 
 		if BaleWrapper.STATE_MOVING_BALE_TO_WRAPPER <= wrapperState then
-			local baleServerId, isRoundBale = nil
+			local baleServerId = nil
 
 			if wrapperState ~= BaleWrapper.STATE_WRAPPER_RESETTING_PLATFORM then
 				baleServerId = NetworkUtil.readNodeObjectId(streamId)
-				isRoundBale = streamReadBool(streamId)
 			end
 
 			if wrapperState == BaleWrapper.STATE_MOVING_BALE_TO_WRAPPER then
@@ -791,36 +802,38 @@ function BaleWrapper:onReadStream(streamId, connection)
 				self:doStateChange(BaleWrapper.CHANGE_DROP_BALE_AT_GRABBER)
 				AnimatedVehicle.updateAnimations(self, 99999999, true)
 			elseif wrapperState ~= BaleWrapper.STATE_WRAPPER_RESETTING_PLATFORM then
-				spec.currentWrapper = isRoundBale and spec.roundBaleWrapper or spec.squareBaleWrapper
-
-				self:setBaleWrapperType(isRoundBale, baleTypeIndex)
-
-				local attachNode = spec.currentWrapper.baleNode
-				spec.baleToMount = {
-					serverId = baleServerId,
-					linkNode = attachNode,
-					trans = {
-						0,
-						0,
-						0
-					},
-					rot = {
-						0,
-						0,
-						0
-					}
-				}
-
-				self:updateWrapNodes(true, false, 0)
+				self:doStateChange(BaleWrapper.CHANGE_GRAB_BALE, baleServerId)
+				AnimatedVehicle.updateAnimations(self, 99999999, true)
 
 				spec.currentWrapper.currentBale = baleServerId
 
+				self:doStateChange(BaleWrapper.CHANGE_DROP_BALE_AT_GRABBER)
+				AnimatedVehicle.updateAnimations(self, 99999999, true)
+				self:updateWrapNodes(true, false, 0)
+
 				if wrapperState == BaleWrapper.STATE_WRAPPER_WRAPPING_BALE then
+					self:doStateChange(BaleWrapper.CHANGE_WRAPPING_START)
+
 					local wrapperTime = streamReadFloat32(streamId)
 					spec.currentWrapper.currentTime = wrapperTime
+					local wrapAnimation = spec.currentWrapper.animations.wrapBale
+					local wrappingTime = spec.currentWrapper.currentTime / spec.currentWrapper.animTime
 
-					self:updateWrappingState(spec.currentWrapper.currentTime / spec.currentWrapper.animTime, true)
+					self:setAnimationStopTime(wrapAnimation.animName, wrappingTime)
+					AnimatedVehicle.updateAnimationByName(self, wrapAnimation.animName, 9999999, true)
+					self:updateWrappingState(wrappingTime, true)
+
+					if wrappingTime < 1 then
+						self:playAnimation(wrapAnimation.animName, wrapAnimation.animSpeed, self:getAnimationTime(wrapAnimation.animName), true, false)
+					end
 				else
+					local wrapAnimation = spec.currentWrapper.animations.wrapBale
+
+					if wrapAnimation.animName ~= nil then
+						self:playAnimation(wrapAnimation.animName, wrapAnimation.animSpeed, nil, true)
+						AnimatedVehicle.updateAnimationByName(self, wrapAnimation.animName, 9999999, true)
+					end
+
 					spec.currentWrapper.currentTime = spec.currentWrapper.animTime
 
 					self:updateWrappingState(1, true)
@@ -851,19 +864,11 @@ function BaleWrapper:onWriteStream(streamId, connection)
 		streamWriteUIntN(streamId, wrapperState, BaleWrapper.STATE_NUM_BITS)
 
 		if BaleWrapper.STATE_MOVING_BALE_TO_WRAPPER <= wrapperState and wrapperState ~= BaleWrapper.STATE_WRAPPER_RESETTING_PLATFORM then
-			local bale = nil
-
 			if wrapperState == BaleWrapper.STATE_MOVING_BALE_TO_WRAPPER then
 				NetworkUtil.writeNodeObjectId(streamId, spec.baleGrabber.currentBale)
-
-				bale = NetworkUtil.getObject(spec.baleGrabber.currentBale)
 			else
 				NetworkUtil.writeNodeObjectId(streamId, spec.currentWrapper.currentBale)
-
-				bale = NetworkUtil.getObject(spec.currentWrapper.currentBale)
 			end
-
-			streamWriteBool(streamId, (bale or {}).diameter ~= nil)
 		end
 
 		if wrapperState == BaleWrapper.STATE_WRAPPER_WRAPPING_BALE then
@@ -903,12 +908,12 @@ function BaleWrapper:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelect
 
 		if self.isClient then
 			if wrapper.wrappingSoundEndTime <= wrappingTime then
-				if g_soundManager:getIsSamplePlaying(wrapper.samples.wrap) then
-					g_soundManager:stopSample(wrapper.samples.wrap)
-					g_soundManager:playSample(wrapper.samples.stop)
+				if g_soundManager:getIsSamplePlaying(wrapper.samples.wrap[1]) then
+					g_soundManager:stopSamples(wrapper.samples.wrap)
+					g_soundManager:playSamples(wrapper.samples.stop)
 				end
-			elseif not g_soundManager:getIsSamplePlaying(wrapper.samples.wrap) then
-				g_soundManager:playSample(wrapper.samples.wrap)
+			elseif not g_soundManager:getIsSamplePlaying(wrapper.samples.wrap[1]) then
+				g_soundManager:playSamples(wrapper.samples.wrap)
 			end
 		end
 	end
@@ -932,36 +937,42 @@ function BaleWrapper:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSe
 		end
 	end
 
-	if self.isServer then
-		if spec.baleWrapperState ~= BaleWrapper.STATE_NONE then
-			if spec.baleWrapperState == BaleWrapper.STATE_MOVING_BALE_TO_WRAPPER then
-				if not self:getIsAnimationPlaying(spec.currentWrapper.animations.moveToWrapper.animName) then
-					g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_DROP_BALE_AT_GRABBER), true, nil, self)
-				end
-			elseif spec.baleWrapperState == BaleWrapper.STATE_MOVING_GRABBER_TO_WORK then
-				if not self:getIsAnimationPlaying(spec.currentWrapper.animations.moveToWrapper.animName) then
-					local bale = NetworkUtil.getObject(spec.currentWrapper.currentBale)
-
-					if bale ~= nil and not bale.supportsWrapping then
-						g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPER_START_DROP_BALE), true, nil, self)
-					else
-						g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPING_START), true, nil, self)
-					end
-				end
-			elseif spec.baleWrapperState == BaleWrapper.STATE_WRAPPER_DROPPING_BALE then
-				if not self:getIsAnimationPlaying(spec.currentWrapper.animations.dropFromWrapper.animName) then
-					g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPER_BALE_DROPPED), true, nil, self)
-				end
-			elseif spec.baleWrapperState == BaleWrapper.STATE_WRAPPER_RESETTING_PLATFORM and not self:getIsAnimationPlaying(spec.currentWrapper.animations.resetAfterDrop.animName) then
-				g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPER_PLATFORM_RESET), true, nil, self)
+	if self.isServer and spec.baleWrapperState ~= BaleWrapper.STATE_NONE then
+		if spec.baleWrapperState == BaleWrapper.STATE_MOVING_BALE_TO_WRAPPER then
+			if not self:getIsAnimationPlaying(spec.currentWrapper.animations.moveToWrapper.animName) then
+				g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_DROP_BALE_AT_GRABBER), true, nil, self)
 			end
+		elseif spec.baleWrapperState == BaleWrapper.STATE_MOVING_GRABBER_TO_WORK then
+			if not self:getIsAnimationPlaying(spec.currentWrapper.animations.moveToWrapper.animName) then
+				local bale = NetworkUtil.getObject(spec.currentWrapper.currentBale)
+
+				if bale ~= nil and not bale.supportsWrapping then
+					g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPER_START_DROP_BALE), true, nil, self)
+				elseif self:getIsBaleWrappingAllowed() then
+					g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPING_START), true, nil, self)
+				end
+			end
+		elseif spec.baleWrapperState == BaleWrapper.STATE_WRAPPER_DROPPING_BALE then
+			if not self:getIsAnimationPlaying(spec.currentWrapper.animations.dropFromWrapper.animName) then
+				g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPER_BALE_DROPPED), true, nil, self)
+			end
+		elseif spec.baleWrapperState == BaleWrapper.STATE_WRAPPER_RESETTING_PLATFORM and not self:getIsAnimationPlaying(spec.currentWrapper.animations.resetAfterDrop.animName) then
+			g_server:broadcastEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_WRAPPER_PLATFORM_RESET), true, nil, self)
 		end
+	end
 
-		if spec.automaticDrop or self:getIsAIActive() then
-			local isPowered, _ = self:getIsPowered()
+	if spec.automaticDrop or self:getIsAIActive() then
+		local isPowered, _ = self:getIsPowered()
 
-			if isPowered and spec.baleWrapperState == BaleWrapper.STATE_WRAPPER_FINSIHED then
-				self:doStateChange(BaleWrapper.CHANGE_BUTTON_EMPTY)
+		if isPowered and spec.baleWrapperState == BaleWrapper.STATE_WRAPPER_FINSIHED then
+			local dropIsAllowed, warning = self:getIsBaleDropAllowed()
+
+			if dropIsAllowed then
+				if self.isServer then
+					self:doStateChange(BaleWrapper.CHANGE_BUTTON_EMPTY)
+				end
+			elseif warning ~= nil and isActiveForInputIgnoreSelection and self.isClient then
+				g_currentMission:showBlinkingWarning(warning, 2000)
 			end
 		end
 	end
@@ -980,7 +991,7 @@ function BaleWrapper:onDraw(isActiveForInput, isActiveForInputIgnoreSelection, i
 		local spec = self.spec_baleWrapper
 
 		if spec.showInvalidBaleWarning then
-			g_currentMission:showBlinkingWarning(g_i18n:getText("warning_baleNotSupported"), 500)
+			g_currentMission:showBlinkingWarning(spec.texts.warningBaleNotSupported, 500)
 		end
 	end
 end
@@ -1350,8 +1361,8 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 		spec.baleWrapperState = BaleWrapper.STATE_WRAPPER_WRAPPING_BALE
 
 		if self.isClient then
-			g_soundManager:playSample(spec.currentWrapper.samples.start)
-			g_soundManager:playSample(spec.currentWrapper.samples.wrap, 0, spec.currentWrapper.samples.start)
+			g_soundManager:playSamples(spec.currentWrapper.samples.start)
+			g_soundManager:playSamples(spec.currentWrapper.samples.wrap, 0, spec.currentWrapper.samples.start[1])
 		end
 
 		if spec.currentWrapper.animations.wrapBale.animName ~= nil then
@@ -1359,16 +1370,14 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 		end
 	elseif id == BaleWrapper.CHANGE_WRAPPING_BALE_FINSIHED then
 		if self.isClient then
-			g_soundManager:stopSample(spec.currentWrapper.samples.wrap)
-			g_soundManager:stopSample(spec.currentWrapper.samples.stop)
+			g_soundManager:stopSamples(spec.currentWrapper.samples.wrap)
+			g_soundManager:stopSamples(spec.currentWrapper.samples.stop)
 
 			if spec.currentWrapper.wrappingSoundEndTime == 1 then
-				g_soundManager:playSample(spec.currentWrapper.samples.stop)
+				g_soundManager:playSamples(spec.currentWrapper.samples.stop)
 			end
 
-			if g_soundManager:getIsSamplePlaying(spec.currentWrapper.samples.start) then
-				g_soundManager:stopSample(spec.currentWrapper.samples.start)
-			end
+			g_soundManager:stopSamples(spec.currentWrapper.samples.start)
 		end
 
 		self:updateWrappingState(1, true)
@@ -1423,6 +1432,13 @@ function BaleWrapper:doStateChange(id, nearestBaleServerId)
 		spec.currentWrapper.currentTime = 0
 
 		if spec.currentWrapper.animations.resetAfterDrop.animName ~= nil then
+			local dropAnimationName = spec.currentWrapper.animations.dropFromWrapper.animName
+
+			if self:getIsAnimationPlaying(dropAnimationName) then
+				self:stopAnimation(dropAnimationName, true)
+				self:setAnimationTime(dropAnimationName, 1, true, false)
+			end
+
 			self:playAnimation(spec.currentWrapper.animations.resetAfterDrop.animName, spec.currentWrapper.animations.resetAfterDrop.animSpeed, nil, true)
 		end
 
@@ -1463,6 +1479,14 @@ function BaleWrapper:getIsBaleWrappable(bale)
 	return false, sizeMatch
 end
 
+function BaleWrapper:getIsBaleDropAllowed()
+	return true, nil
+end
+
+function BaleWrapper:getIsBaleWrappingAllowed()
+	return true
+end
+
 function BaleWrapper:pickupWrapperBale(bale, baleTypeIndex)
 	local spec = self.spec_baleWrapper
 
@@ -1489,7 +1513,7 @@ function BaleWrapper:getBaleInRange(refNode, distance)
 	local spec = self.spec_baleWrapper
 
 	for bale, _ in pairs(spec.baleGrabber.balesInTrigger) do
-		if bale.mountObject == nil and bale.nodeId ~= 0 and calcDistanceFrom(refNode, bale.nodeId) < nearestDistance then
+		if bale.dynamicMountType == MountableObject.MOUNT_TYPE_NONE and bale.nodeId ~= 0 and calcDistanceFrom(refNode, bale.nodeId) < nearestDistance then
 			local isWrappable, sizeMatches, baleTypeIndex = self:getIsBaleWrappable(bale)
 			nearestBale = bale
 			nearestDistance = distance
@@ -1562,9 +1586,9 @@ function BaleWrapper:onDeactivate()
 	spec.showInvalidBaleWarning = false
 
 	if self.isClient then
-		for _, sample in pairs(spec.currentWrapper.samples) do
-			g_soundManager:stopSample(sample)
-		end
+		g_soundManager:stopSamples(spec.currentWrapper.samples.wrap)
+		g_soundManager:stopSamples(spec.currentWrapper.samples.start)
+		g_soundManager:stopSamples(spec.currentWrapper.samples.stop)
 	end
 end
 
@@ -1580,7 +1604,13 @@ function BaleWrapper:actionEventEmpty(actionName, inputValue, callbackState, isA
 	local spec = self.spec_baleWrapper
 
 	if spec.baleWrapperState == BaleWrapper.STATE_WRAPPER_FINSIHED then
-		g_client:getServerConnection():sendEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_BUTTON_EMPTY))
+		local dropIsAllowed, warning = self:getIsBaleDropAllowed()
+
+		if dropIsAllowed then
+			g_client:getServerConnection():sendEvent(BaleWrapperStateEvent.new(self, BaleWrapper.CHANGE_BUTTON_EMPTY))
+		elseif warning ~= nil then
+			g_currentMission:showBlinkingWarning(warning, 2000)
+		end
 	end
 end
 

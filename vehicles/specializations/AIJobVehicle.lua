@@ -537,10 +537,12 @@ function AIJobVehicle:updateActionEvents()
 		if self:getShowAIToggleActionEvent() then
 			if self:getIsAIActive() then
 				g_inputBinding:setActionEventText(actionEvent.actionEventId, spec.texts.dismissEmployee)
+				g_inputBinding:setActionEventTextPriority(actionEvent.actionEventId, GS_PRIO_HIGH)
 			else
 				local text = self:getStartAIJobText()
 
 				g_inputBinding:setActionEventText(actionEvent.actionEventId, text)
+				g_inputBinding:setActionEventTextPriority(actionEvent.actionEventId, self:getHasStartableAIJob() and GS_PRIO_HIGH or GS_PRIO_NORMAL)
 			end
 
 			g_inputBinding:setActionEventActive(actionEvent.actionEventId, true)

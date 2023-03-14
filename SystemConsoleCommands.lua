@@ -399,6 +399,21 @@ SystemConsoleCommands = {
 			end
 
 			local class = ClassUtil.getClassObject(guiName)
+
+			if class == nil then
+				for customEnv, _ in pairs(g_modIsLoaded) do
+					for k, v in pairs(_G[customEnv]) do
+						if k == guiName then
+							class = v
+						end
+					end
+				end
+			end
+
+			if class == nil then
+				return "Given GUI class not found"
+			end
+
 			g_dummyGui = nil
 
 			if class.createFromExistingGui ~= nil then

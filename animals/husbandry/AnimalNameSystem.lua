@@ -13,14 +13,15 @@ function AnimalNameSystem:delete()
 end
 
 function AnimalNameSystem:loadMapData(xmlFile, missionInfo)
-	local filename = Utils.getFilename(getXMLString(xmlFile, "map.animals.names#filename"), self.mission.baseDirectory)
+	local filename = getXMLString(xmlFile, "map.animals.names#filename")
 
-	if filename == nil then
-		Logging.xmlError(xmlFile, "Missing animal name configuration file")
+	if filename == nil or filename == "" then
+		Logging.xmlInfo(xmlFile, "No animals names xml given at 'map.animals.names#filename'")
 
 		return false
 	end
 
+	filename = Utils.getFilename(filename, self.mission.baseDirectory)
 	local xmlFileNames = XMLFile.load("animalNames", filename)
 
 	if xmlFileNames ~= nil then

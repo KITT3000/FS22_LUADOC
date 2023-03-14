@@ -203,7 +203,7 @@ function AIDrivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 
 				self:updateAIAgentPoseData()
 
-				local curvature, maxSpeedCurvature, status = getVehicleNavigationAgentNextCurvature(spec.agentId, spec.poseData, lastSpeed)
+				local curvature, maxSpeedCurvature, status = getVehicleNavigationAgentNextCurvature(spec.agentId, spec.poseData, math.abs(lastSpeed))
 
 				if spec.debugDump ~= nil then
 					spec.debugDump:addData(dt, x, y, z, dirX, dirY, dirZ, lastSpeed, curvature, maxSpeed, status)

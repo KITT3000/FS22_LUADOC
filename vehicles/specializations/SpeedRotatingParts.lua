@@ -297,7 +297,7 @@ function SpeedRotatingParts:loadSpeedRotatingPartFromXML(speedRotatingPart, xmlF
 			speedRotatingPart.tireTrackWidth = xmlFile:getValue(key .. "#tireTrackWidth", 0.5)
 			speedRotatingPart.tireTrackInverted = xmlFile:getValue(key .. "#tireTrackInverted", false)
 
-			if speedRotatingPart.hasTireTracks then
+			if speedRotatingPart.hasTireTracks and Platform.gameplay.wheelTireTracks then
 				local function activeFunc()
 					return self:getIsSpeedRotatingPartActive(speedRotatingPart)
 				end

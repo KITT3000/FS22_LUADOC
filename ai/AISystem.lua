@@ -19,6 +19,7 @@ function AISystem.new(isServer, mission, customMt)
 	self.isServer = isServer
 	self.mission = mission
 	self.filename = "vehicleNavigationCostmap.dat"
+	self.filenameGenerated = "vehicleNavigationCostmapGenerated.dat"
 	self.navigationMap = nil
 	self.activeJobs = {}
 	self.activeJobVehicles = {}
@@ -193,7 +194,7 @@ function AISystem:removeRoadSpline(spline)
 	end
 end
 
-function AISystem:onTerrainLoad(terrainNode)
+function AISystem:onTerrainLoad(terrainNode, filename)
 	if self.isServer then
 		self.navigationMap = createVehicleNavigationMap(self.cellSizeMeters, terrainNode, self.maxSlopeAngle, self.infoLayerName, self.infoLayerChannel, self.aiDrivableCollisionMask, self.obstacleCollisionMask, self.vehicleMaxHeight, self.isLeftHandTraffic)
 
@@ -220,6 +221,21 @@ function AISystem:onTerrainLoad(terrainNode)
 				Logging.info("Loaded navigation cost map from savegame")
 
 				loadFromSave = true
+			end
+		end
+
+		if not loadFromSave then
+			local directory = Utils.getDirectory(filename)
+			local path = directory .. self.filenameGenerated
+
+			if fileExists(path) then
+				local success = loadVehicleNavigationCostMapFromFile(self.navigationMap, path)
+
+				if success then
+					Logging.info("Loaded pregenerated navigation cost map")
+
+					loadFromSave = true
+				end
 			end
 		end
 
