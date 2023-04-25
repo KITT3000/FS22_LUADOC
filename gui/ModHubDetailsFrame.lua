@@ -235,9 +235,7 @@ function ModHubDetailsFrame:openShop(isUpdate)
 			})
 		end
 	else
-		local hasSpecialDLCLink = GS_IS_STEAM_VERSION or GS_IS_EPIC_VERSION or GS_IS_MSSTORE_VERSION
-
-		if isUpdate and not hasSpecialDLCLink then
+		if isUpdate then
 			url = "updates.php"
 		end
 

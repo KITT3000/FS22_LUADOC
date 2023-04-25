@@ -740,11 +740,11 @@ function Trailer:getDischargeNodeEmptyFactor(superFunc, dischargeNode)
 	local tipSide = spec.dischargeNodeIndexToTipSide[dischargeNode.index]
 
 	if tipSide ~= nil then
-		if tipSide.animation.name ~= nil and tipSide.animation.startTipTime ~= 0 and self:getAnimationTime(tipSide.animation.name) < tipSide.animation.startTipTime then
+		if tipSide.animation.name ~= nil and tipSide.animation.startTipTime ~= 0 and self:getAnimationDuration(tipSide.animation.name) > 0 and self:getAnimationTime(tipSide.animation.name) < tipSide.animation.startTipTime then
 			return 0
 		end
 
-		if tipSide.doorAnimation.name ~= nil and tipSide.doorAnimation.startTipTime ~= 0 and self:getAnimationTime(tipSide.doorAnimation.name) < tipSide.doorAnimation.startTipTime then
+		if tipSide.doorAnimation.name ~= nil and tipSide.doorAnimation.startTipTime ~= 0 and self:getAnimationDuration(tipSide.doorAnimation.name) > 0 and self:getAnimationTime(tipSide.doorAnimation.name) < tipSide.doorAnimation.startTipTime then
 			return 0
 		end
 

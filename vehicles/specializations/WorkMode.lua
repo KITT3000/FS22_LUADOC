@@ -277,9 +277,15 @@ function WorkMode:onPostLoad(savegame)
 			AnimatedVehicle.updateAnimations(self, 99999999, true)
 
 			if self.getFoldAnimTime ~= nil and self.spec_foldable.foldMoveDirection == 0 then
-				if self:getFoldAnimTime() <= 0 then
+				local foldAnimTime = self:getFoldAnimTime()
+
+				if foldAnimTime <= 0 then
 					self.spec_foldable.foldMoveDirection = -1
 				else
+					if self.spec_foldable.foldMiddleAnimTime == foldAnimTime then
+						self.spec_foldable.moveToMiddle = true
+					end
+
 					self.spec_foldable.foldMoveDirection = 1
 				end
 			end

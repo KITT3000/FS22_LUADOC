@@ -20,7 +20,8 @@ function MountableObject.new(isServer, isClient, customMt)
 		timer = 0,
 		lastDistance = 0,
 		nextMountingDistance = 0,
-		additionalMass = 0
+		additionalMass = 0,
+		isAllowed = false
 	}
 	self.lastMoveTime = -100000
 	self.mountStateChangeListeners = {}
@@ -104,7 +105,7 @@ function MountableObject:updateTick(dt)
 			end
 		end
 
-		if self.dynamicMountJointIndex ~= nil then
+		if self.dynamicMountJointIndex ~= nil and self.forceLimitUpdate.isAllowed then
 			self:updateDynamicMountJointForceLimit(dt)
 		end
 	end
@@ -256,6 +257,7 @@ function MountableObject:mountDynamic(object, objectActorId, jointNode, mountTyp
 
 	self.mountBaseForceAcceleration = forceAcceleration
 	self.mountBaseMass = self:getMass()
+	self.forceLimitUpdate.isAllowed = mountType == DynamicMountUtil.TYPE_FORK
 
 	if DynamicMountUtil.mountDynamic(self, self.nodeId, object, objectActorId, jointNode, mountType, forceAcceleration * self.dynamicMountForceLimitScale, self.dynamicMountJointNodeDynamic) then
 		self:setDynamicMountType(MountableObject.MOUNT_TYPE_DYNAMIC, object)
@@ -314,7 +316,7 @@ function MountableObject:additionalMountingMassRaycastCallback(hitObjectId, x, y
 
 		if math.abs(offset - self.forceLimitUpdate.nextMountingDistance) < 0.25 then
 			self.forceLimitUpdate.lastDistance = distance
-			self.forceLimitUpdate.nextMountingDistance = self:getAdditionalMountingDistance()
+			self.forceLimitUpdate.nextMountingDistance = self:getAdditionalMountingDistance() * 2
 			self.forceLimitUpdate.additionalMass = self.forceLimitUpdate.additionalMass + object:getMass()
 			self.forceLimitUpdate.lastObject = object
 		end
@@ -327,6 +329,8 @@ function MountableObject:additionalMountingMassRaycastCallback(hitObjectId, x, y
 
 		setJointLinearDrive(self.dynamicMountJointIndex, 2, false, true, 0, 0, forceLimit, 0, 0)
 	end
+
+	return true
 end
 
 function MountableObject:setNodeId(nodeId)

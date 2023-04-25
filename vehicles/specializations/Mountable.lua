@@ -492,6 +492,8 @@ function Mountable:additionalMountingMassRaycastCallback(hitObjectId, x, y, z, d
 
 		setJointLinearDrive(self.dynamicMountJointIndex, 2, false, true, 0, 0, forceLimit, 0, 0)
 	end
+
+	return true
 end
 
 function Mountable:getIsActive(superFunc)

@@ -4607,7 +4607,10 @@ end
 function FSBaseMission:onAppResumed()
 	if not g_gui:getIsGuiVisible() then
 		g_autoSaveManager:resetTime()
-		g_gui:changeScreen(nil, InGameMenu)
+
+		if not g_sleepManager:getIsSleeping() then
+			g_gui:changeScreen(nil, InGameMenu)
+		end
 	end
 end
 

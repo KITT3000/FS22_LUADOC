@@ -353,7 +353,6 @@ function SettingsAdvancedFrame:onClickDLSS(state)
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
-		self.settingsModel:setValue(SettingsModel.SETTING.VALAR, self.settingsModel.valarMapping[ValarQuality.OFF])
 	end
 
 	self.settingsModel:setValue(SettingsModel.SETTING.DLSS, state)
@@ -368,7 +367,6 @@ function SettingsAdvancedFrame:onClickFidelityFxSR(state)
 		self.settingsModel:setValue(SettingsModel.SETTING.DLSS, self.settingsModel.dlssMapping[DLSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.VALAR, self.settingsModel.valarMapping[ValarQuality.OFF])
 	end
 
 	self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, state)
@@ -383,7 +381,6 @@ function SettingsAdvancedFrame:onClickFidelityFxSR20(state)
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
-		self.settingsModel:setValue(SettingsModel.SETTING.VALAR, self.settingsModel.valarMapping[ValarQuality.OFF])
 	end
 
 	self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, state)
@@ -394,14 +391,6 @@ end
 function SettingsAdvancedFrame:onClickValar(state)
 	if state ~= self.settingsModel.valarMapping[ValarQuality.OFF] then
 		self.settingsModel:setValue(SettingsModel.SETTING.MSAA, 1)
-		self.settingsModel:setValue(SettingsModel.SETTING.DLSS, self.settingsModel.dlssMapping[DLSSQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
-
-		if self.settingsModel:getValue(SettingsModel.SETTING.POST_PROCESS_AA) ~= PostProcessAntiAliasing.TAA + 1 then
-			self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
-		end
 	end
 
 	self.settingsModel:setValue(SettingsModel.SETTING.VALAR, state)
@@ -416,7 +405,6 @@ function SettingsAdvancedFrame:onClickXeSS(state)
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
-		self.settingsModel:setValue(SettingsModel.SETTING.VALAR, self.settingsModel.valarMapping[ValarQuality.OFF])
 	end
 
 	self.settingsModel:setValue(SettingsModel.SETTING.XESS, state)

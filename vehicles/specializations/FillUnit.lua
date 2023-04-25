@@ -58,7 +58,7 @@ function FillUnit.initSpecialization()
 	schema:register(XMLValueType.FLOAT, fillUnitPath .. "#capacity", "Capacity", "unlimited")
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#updateMass", "Update vehicle mass while fill level changes", true)
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#canBeUnloaded", "Can be unloaded", true)
-	schema:register(XMLValueType.FLOAT, fillUnitPath .. "#allowFoldingThreshold", "Allow folding threshold", 0.0001)
+	schema:register(XMLValueType.FLOAT, fillUnitPath .. "#allowFoldingThreshold", "Allow folding threshold", "Value of fillUnits#allowFoldingThreshold")
 	FillUnit.registerUnitDisplaySchema(schema, fillUnitPath)
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#showCapacityInShop", "Show capacity in shop", true)
 	schema:register(XMLValueType.BOOL, fillUnitPath .. "#showInShop", "Show in shop", true)
@@ -1467,7 +1467,7 @@ function FillUnit:loadFillUnitFromXML(xmlFile, key, entry, index)
 	entry.defaultCapacity = entry.capacity
 	entry.updateMass = xmlFile:getValue(key .. "#updateMass", true)
 	entry.canBeUnloaded = xmlFile:getValue(key .. "#canBeUnloaded", true)
-	entry.allowFoldingThreshold = xmlFile:getValue(key .. "#allowFoldingThreshold", 0.0001)
+	entry.allowFoldingThreshold = xmlFile:getValue(key .. "#allowFoldingThreshold")
 	entry.needsSaving = true
 	entry.fillLevel = 0
 	entry.fillLevelSent = 0

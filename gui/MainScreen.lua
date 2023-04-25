@@ -441,6 +441,8 @@ function MainScreen:updateNotifications(dt)
 			if self.notificationsReady then
 				local notificationCount = getNumOfNotifications()
 
+				Logging.devInfo("Loaded %d notification(s)", notificationCount)
+
 				for i = 0, notificationCount - 1 do
 					local notification = {
 						url = "",
@@ -453,6 +455,14 @@ function MainScreen:updateNotifications(dt)
 
 					if notification.title ~= "" and notification.message ~= "" then
 						table.insert(self.notifications, notification)
+					else
+						Logging.devWarning([[
+Recieved invalid notification '%d'.
+    Title: %s
+    Message: %s
+    Url: %s
+    Image: %s
+    Date: %s]], i, notification.title, notification.message, notification.url, notification.image, notification.date)
 					end
 				end
 

@@ -4,6 +4,9 @@ TextInputElement.INPUT_CONTEXT_NAME = "TEXT_INPUT"
 TextInputElement.inputContextActive = false
 TextInputElement.INITIAL_REPEAT_DELAY = 250
 TextInputElement.MIN_REPEAT_DELAY = 50
+local localGetClipboard = getClipboard or function ()
+	return ""
+end
 
 function TextInputElement.new(target, custom_mt)
 	local self = ButtonElement.new(target, custom_mt or TextInputElement_mt)
@@ -475,6 +478,12 @@ function TextInputElement:keyEvent(unicode, sym, modifier, isDown, eventUsed)
 				wasSpecialKey = true
 			elseif sym == Input.KEY_return then
 				self.isReturnDown = true
+				wasSpecialKey = true
+			elseif sym == Input.KEY_v and bitAND(modifier, Input.MOD_LCTRL) > 0 then
+				local clipboardText = localGetClipboard()
+
+				self:setText(self:getText() .. clipboardText)
+
 				wasSpecialKey = true
 			end
 

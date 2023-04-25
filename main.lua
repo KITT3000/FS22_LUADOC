@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 15
-g_gameVersionNotification = "1.9.0.0"
-g_gameVersionDisplay = "1.9.0.0"
+g_gameVersion = 16
+g_gameVersionNotification = "1.9.1.0"
+g_gameVersionDisplay = "1.9.1.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 73
+g_maxModDescVersion = 74
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -289,6 +289,10 @@ function init(args)
 
 	initPlatform()
 	source("dataS/scripts/game.lua")
+
+	getClipboard = nil
+	addFoliageTypFromXML = nil
+
 	Platform.init()
 
 	local settingsXML = XMLFile.load("SettingsFile", "dataS/settings.xml")

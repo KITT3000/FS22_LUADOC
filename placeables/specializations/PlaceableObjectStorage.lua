@@ -942,10 +942,6 @@ function AbstractBaleObject.isObjectSupported(storage, object)
 		return false
 	end
 
-	if object.isMissionBale then
-		return false
-	end
-
 	if not storage:getObjectStorageSupportsFillType(object:getFillType()) then
 		return false
 	end

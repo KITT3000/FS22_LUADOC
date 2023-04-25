@@ -1278,7 +1278,7 @@ function FSDensityMapUtil.updatePlowArea(startWorldX, startWorldZ, widthWorldX, 
 	end
 
 	angleModifier:executeSet(angle, fieldFilter)
-	FSDensityMapUtil.resetSprayArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, false)
+	FSDensityMapUtil.resetSprayArea(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, true)
 
 	if g_currentMission.missionInfo.weedsEnabled then
 		FSDensityMapUtil.setWeedBlockingState(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, plowStateFilter)
@@ -2395,13 +2395,14 @@ function FSDensityMapUtil.resetSprayArea(startWorldX, startWorldZ, widthWorldX, 
 		local fieldGroundSystem = g_currentMission.fieldGroundSystem
 		local sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_TYPE)
 		local sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.SPRAY_LEVEL)
+		local sprayLevelMaxValue = fieldGroundSystem:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
 		functionData = {
 			resetModifier = DensityMapModifier.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode),
 			excludeFilter = DensityMapFilter.new(sprayTypeMapId, sprayTypeFirstChannel, sprayTypeNumChannels, terrainRootNode),
 			sprayLevelFilter = DensityMapFilter.new(sprayLevelMapId, sprayLevelFirstChannel, sprayLevelNumChannels, terrainRootNode)
 		}
 
-		functionData.sprayLevelFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+		functionData.sprayLevelFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, 0, sprayLevelMaxValue)
 
 		FSDensityMapUtil.functionCache.resetSprayArea = functionData
 	end

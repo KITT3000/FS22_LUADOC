@@ -54,7 +54,7 @@ function MixerWagonHUDExtension.new(vehicle, uiScale, uiTextColor, uiTextSize)
 end
 
 function MixerWagonHUDExtension:canDraw()
-	return self.vehicle:getIsActiveForInput(true)
+	return true
 end
 
 function MixerWagonHUDExtension:getDisplayHeight()

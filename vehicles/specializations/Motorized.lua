@@ -976,11 +976,13 @@ function Motorized:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSele
 				if self:getRequiresPower() and self:getCanMotorRun() then
 					self:startMotor(true)
 				end
-			elseif self.getIsControlled ~= nil and not self:getIsControlled() and self:getStopMotorOnLeave() then
-				spec.motorNotRequiredTimer = spec.motorNotRequiredTimer + dt
+			elseif self.getIsControlled ~= nil and not self:getIsControlled() then
+				if self:getStopMotorOnLeave() then
+					spec.motorNotRequiredTimer = spec.motorNotRequiredTimer + dt
 
-				if spec.motorNotRequiredTimer > 250 then
-					self:stopMotor(true)
+					if spec.motorNotRequiredTimer > 250 then
+						self:stopMotor(true)
+					end
 				end
 
 				self:raiseActive()

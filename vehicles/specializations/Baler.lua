@@ -2069,9 +2069,9 @@ function Baler:getRequiresPower(superFunc)
 	local spec = self.spec_baler
 
 	if spec.nonStopBaling then
-		local bufferLevel = self:getFillUnitFillLevel(spec.buffer.fillUnitIndex)
+		local bufferFillLevelPercentage = self:getFillUnitFillLevelPercentage(spec.buffer.fillUnitIndex)
 
-		if bufferLevel > 0 then
+		if spec.buffer.overloadingStartFillLevelPct < bufferFillLevelPercentage then
 			return true
 		end
 
