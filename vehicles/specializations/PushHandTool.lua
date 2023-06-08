@@ -72,6 +72,8 @@ end
 function PushHandTool.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", PushHandTool)
 	SpecializationUtil.registerEventListener(vehicleType, "onDelete", PushHandTool)
+	SpecializationUtil.registerEventListener(vehicleType, "onReadUpdateStream", PushHandTool)
+	SpecializationUtil.registerEventListener(vehicleType, "onWriteUpdateStream", PushHandTool)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", PushHandTool)
 	SpecializationUtil.registerEventListener(vehicleType, "onEnterVehicle", PushHandTool)
 	SpecializationUtil.registerEventListener(vehicleType, "onLeaveVehicle", PushHandTool)
@@ -183,6 +185,9 @@ function PushHandTool:onLoad(savegame)
 	end)
 
 	spec.effectDirtyFlag = self:getNextDirtyFlag()
+	spec.effectsAreRunning = false
+	spec.lastFruitTypeIndex = FruitType.UNKNOWN
+	spec.lastFruitGrowthState = 0
 	spec.raycastsValid = true
 	spec.lastSmoothSpeed = 0
 
@@ -198,6 +203,37 @@ function PushHandTool:onDelete()
 	removePostAnimationCallback(spec.postAnimationCallback)
 end
 
+function PushHandTool:onReadUpdateStream(streamId, timestamp, connection)
+	if connection:getIsServer() then
+		local spec = self.spec_pushHandTool
+		local effectsAreRunning = streamReadBool(streamId)
+
+		if effectsAreRunning then
+			spec.lastFruitGrowthState = streamReadUIntN(streamId, 4)
+			spec.lastFruitTypeIndex = streamReadUIntN(streamId, FruitTypeManager.SEND_NUM_BITS)
+		end
+
+		if effectsAreRunning ~= spec.effectsAreRunning then
+			spec.effectsAreRunning = effectsAreRunning
+
+			if not effectsAreRunning then
+				g_effectManager:stopEffects(spec.cutterEffects)
+			end
+		end
+	end
+end
+
+function PushHandTool:onWriteUpdateStream(streamId, connection, dirtyMask)
+	if not connection:getIsServer() then
+		local spec = self.spec_pushHandTool
+
+		if streamWriteBool(streamId, spec.effectsAreRunning) then
+			streamWriteUIntN(streamId, spec.lastFruitGrowthState, 4)
+			streamWriteUIntN(streamId, spec.lastFruitTypeIndex, FruitTypeManager.SEND_NUM_BITS)
+		end
+	end
+end
+
 function PushHandTool:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
 	local spec = self.spec_pushHandTool
 
@@ -205,7 +241,7 @@ function PushHandTool:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelec
 		local currentTestAreaMinX, currentTestAreaMaxX, testAreaMinX, testAreaMaxX = self:getTestAreaWidthByWorkAreaIndex(1)
 		local reset = false
 
-		if currentTestAreaMinX == math.huge and currentTestAreaMaxX == -math.huge then
+		if currentTestAreaMinX == -math.huge and currentTestAreaMaxX == math.huge then
 			currentTestAreaMinX = 0
 			currentTestAreaMaxX = 0
 			reset = true
@@ -222,9 +258,11 @@ function PushHandTool:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelec
 			end
 		end
 
-		if self.isClient then
-			local inputFruitType = FruitType.UNKNOWN
-			local inputGrowthState = 3
+		local inputFruitType, inputGrowthState, isActive = nil
+
+		if self.isServer then
+			inputGrowthState = 3
+			inputFruitType = FruitType.UNKNOWN
 
 			if self.spec_mower ~= nil then
 				local specMower = self.spec_mower
@@ -235,22 +273,41 @@ function PushHandTool:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelec
 				end
 			end
 
-			if inputFruitType ~= nil and inputFruitType ~= FruitType.UNKNOWN then
-				g_effectManager:setFruitType(spec.cutterEffects, inputFruitType, inputGrowthState)
-				g_effectManager:setMinMaxWidth(spec.cutterEffects, currentTestAreaMinX, currentTestAreaMaxX, currentTestAreaMinX / testAreaMinX, currentTestAreaMaxX / testAreaMaxX, reset)
-				g_effectManager:startEffects(spec.cutterEffects)
+			isActive = not reset and inputFruitType ~= nil and inputFruitType ~= FruitType.UNKNOWN
 
-				spec.effectsAreRunning = not reset
+			if isActive then
+				if not spec.effectsAreRunning then
+					spec.effectsAreRunning = true
+
+					self:raiseDirtyFlags(spec.effectDirtyFlag)
+				end
 			elseif spec.effectsAreRunning then
 				g_effectManager:stopEffects(spec.cutterEffects)
 
 				spec.effectsAreRunning = false
+
+				self:raiseDirtyFlags(spec.effectDirtyFlag)
 			end
+
+			spec.lastFruitGrowthState = inputGrowthState
+			spec.lastFruitTypeIndex = inputFruitType
+		else
+			inputGrowthState = spec.lastFruitGrowthState
+			inputFruitType = spec.lastFruitTypeIndex
+			isActive = spec.effectsAreRunning and spec.lastFruitTypeIndex ~= FruitType.UNKNOWN
+		end
+
+		if isActive then
+			g_effectManager:setFruitType(spec.cutterEffects, inputFruitType, inputGrowthState)
+			g_effectManager:setMinMaxWidth(spec.cutterEffects, currentTestAreaMinX, currentTestAreaMaxX, currentTestAreaMinX / testAreaMinX, currentTestAreaMaxX / testAreaMaxX, reset)
+			g_effectManager:startEffects(spec.cutterEffects)
 		end
 	elseif spec.effectsAreRunning then
 		g_effectManager:stopEffects(spec.cutterEffects)
 
 		spec.effectsAreRunning = false
+
+		self:raiseDirtyFlags(spec.effectDirtyFlag)
 	end
 
 	local lastSpeed = self.lastSignedSpeed * 1000
@@ -326,7 +383,7 @@ function PushHandTool:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelec
 			local cx = spec.lastWorldTrans[1]
 			local cy = spec.lastWorldTrans[2]
 			local cz = spec.lastWorldTrans[3]
-			local smoothFactor = 0.5 - math.abs(math.min(self.rotatedTime / 0.5), 1) * 0.15
+			local smoothFactor = 0.5 - math.min(math.abs(self.rotatedTime / 0.5), 1) * 0.15
 			local moveX = (cx - tx) * smoothFactor
 			local moveY = (cy - ty) * smoothFactor
 			local moveZ = (cz - tz) * smoothFactor

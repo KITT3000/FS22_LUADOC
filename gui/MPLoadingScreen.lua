@@ -110,7 +110,7 @@ function MPLoadingScreen:cancelLoading(showConnectionLost)
 
 	if self.state == MPLoadingScreen.STATE_PORT_TESTING then
 		netShutdown(0, 0)
-		g_gui:showGui("MultiplayerScreen")
+		g_gui:changeScreen(nil, self.returnScreenClass or MultiplayerScreen)
 	elseif self.isClient then
 		if g_currentMission ~= nil then
 			OnInGameMenuMenu()
@@ -119,10 +119,16 @@ function MPLoadingScreen:cancelLoading(showConnectionLost)
 		end
 
 		if masterServerConnectFront == nil then
-			RestartManager:setStartScreen(RestartManager.START_SCREEN_MULTIPLAYER)
+			local restartScreen = RestartManager.START_SCREEN_MULTIPLAYER
+
+			if self.returnScreenClass == EsportsScreen then
+				restartScreen = RestartManager.START_SCREEN_ESPORTS
+			end
+
+			RestartManager:setStartScreen(restartScreen)
 			doRestart(false, "")
 		else
-			g_gui:showGui("MultiplayerScreen")
+			g_gui:changeScreen(nil, self.returnScreenClass or MultiplayerScreen)
 		end
 	else
 		OnInGameMenuMenu()
@@ -419,9 +425,9 @@ function MPLoadingScreen:startServer()
 
 		g_server:start(self.missionDynamicInfo.serverPort, self.missionDynamicInfo.serverAddress, self.missionDynamicInfo.capacity)
 	end)
-	g_connectToMasterServerScreen:setNextScreenName("MPLoadingScreen")
-	g_connectToMasterServerScreen:setPrevScreenName("CreateGameScreen")
-	g_gui:showGui("ConnectToMasterServerScreen")
+	g_connectToMasterServerScreen:setNextScreenClass(MPLoadingScreen)
+	g_connectToMasterServerScreen:setPrevScreenClass(CreateGameScreen)
+	g_gui:changeScreen(nil, ConnectToMasterServerScreen)
 	g_asyncTaskManager:addTask(function ()
 		g_connectToMasterServerScreen:connectToFront()
 	end)
@@ -463,7 +469,7 @@ end
 
 function MPLoadingScreen:onCancelSavegameLoading()
 	self:cancelLoading()
-	g_gui:showGui("CareerScreen")
+	g_gui:changeScreen(nil, self.returnScreenClass or CareerScreen)
 end
 
 function MPLoadingScreen:onSavegameLoaded(errorCode, savegameDirectory)
@@ -682,7 +688,7 @@ end
 
 function MPLoadingScreen:onOkSavegameCloudConflict()
 	self:cancelLoading()
-	g_gui:showGui("CareerScreen")
+	g_gui:changeScreen(nil, self.returnScreenClass or CareerScreen)
 	self.savegameController:tryToResolveConflict(self.missionInfo.savegameIndex)
 end
 
@@ -746,7 +752,7 @@ function MPLoadingScreen:initializeLoading()
 			netConnect = nil
 
 			if #self.missionDynamicInfo.mods > 0 then
-				if self.missionInfo.map.prohibitOtherMods then
+				if self.missionInfo.map.prohibitOtherMods and not g_isDevelopmentVersion then
 					local mapModName = g_mapManager:getModNameFromMapId(self.missionInfo.mapId)
 					local mapMod = g_modManager:getModByName(mapModName)
 					self.missionDynamicInfo.mods = {

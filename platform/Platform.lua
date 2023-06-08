@@ -69,6 +69,7 @@ function Platform.Default:apply()
 	self.supportsFoliageBending = true
 	self.canQuitApplication = true
 	self.supportsMultiplayer = true
+	self.hasEsports = true
 	self.safeFrameOffsetX = 25
 	self.safeFrameOffsetY = 25
 	self.safeFrameMajorOffsetX = 25
@@ -247,6 +248,7 @@ Platform.Mobile = {
 		self.hasAdjustableFrameLimit = false
 		self.canQuitApplication = false
 		self.supportsMultiplayer = false
+		self.hasEsports = false
 		self.hasPlayer = true
 		self.allowPlayerPickUp = false
 		self.safeFrameOffsetX = 50

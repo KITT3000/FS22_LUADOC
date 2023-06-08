@@ -12,7 +12,7 @@ function MapManager:initDataStructures()
 	self.idToMap = {}
 end
 
-function MapManager:addMapItem(id, scriptFilename, className, configFile, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, title, description, iconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, isModMap, prohibitOtherMods)
+function MapManager:addMapItem(id, scriptFilename, className, configFile, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, title, description, iconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, isModMap, prohibitOtherMods, isSelectable)
 	if self.idToMap[id] ~= nil then
 		Logging.warning("Duplicate map id '%s'. Ignoring this map definition.", id)
 
@@ -34,7 +34,8 @@ function MapManager:addMapItem(id, scriptFilename, className, configFile, defaul
 		customEnvironment = customEnvironment,
 		isMultiplayerSupported = isMultiplayerSupported,
 		isModMap = isModMap,
-		prohibitOtherMods = prohibitOtherMods
+		prohibitOtherMods = prohibitOtherMods,
+		isSelectable = isSelectable
 	}
 
 	table.insert(self.maps, item)
@@ -92,12 +93,6 @@ function MapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultipl
 		return false
 	end
 
-	if mapDesc == "" then
-		Logging.error("Failed to load map '%s'. Missing element '%s.description'.", mapName, baseName)
-
-		return false
-	end
-
 	if mapFilename == "" then
 		Logging.error("Failed to load map '%s'. Missing attribute '%s#filename'.", mapName, baseName)
 
@@ -142,6 +137,12 @@ function MapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultipl
 		prohibitOtherMods = xmlFile:getBool(baseName .. ".prohibitOtherMods", nil) or nil
 	end
 
+	local isSelectable = true
+
+	if isDLCFile or isInternalMod then
+		isSelectable = xmlFile:getBool(baseName .. ".isSelectable", isSelectable)
+	end
+
 	local fullConfigFilename = Utils.getFilename(configFilename, baseDirectory)
 	local customEnvironment, _ = Utils.getModNameAndBaseDirectory(fullConfigFilename)
 
@@ -155,7 +156,7 @@ function MapManager:loadMapFromXML(xmlFile, baseName, modDir, modName, isMultipl
 	defaultItemsXMLFilename = Utils.getFilename(defaultItemsXMLFilename, baseDirectory)
 
 	if not GS_IS_CONSOLE_VERSION or isDLCFile or not useModDirectory or isInternalMod then
-		return self:addMapItem(mapId, mapFilename, mapClassName, configFilename, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, mapTitle, mapDesc, mapIconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, isModMap, prohibitOtherMods)
+		return self:addMapItem(mapId, mapFilename, mapClassName, configFilename, defaultVehiclesXMLFilename, defaultPlaceablesXMLFilename, defaultItemsXMLFilename, mapTitle, mapDesc, mapIconFilename, baseDirectory, customEnvironment, isMultiplayerSupported, isModMap, prohibitOtherMods, isSelectable)
 	end
 
 	Logging.error("Can't register map '%s' with scripts on consoles.", mapId)

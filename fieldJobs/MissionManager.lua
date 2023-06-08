@@ -932,6 +932,10 @@ function MissionManager:convertWorldToAccessPosition(x, z)
 end
 
 function MissionManager:getMissionMapValue(x, z)
+	if self.missionMap == nil then
+		return 0
+	end
+
 	local lx, lz = self:convertWorldToAccessPosition(x, z)
 
 	return getBitVectorMapPoint(self.missionMap, lx, lz, 0, self.missionMapNumChannels)

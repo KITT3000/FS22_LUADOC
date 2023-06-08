@@ -374,7 +374,7 @@ function ConfigurationUtil.loadConfigurationNameFromXML(xmlFile, configKey, cust
 		params = params:split("|")
 
 		for i = 1, #params do
-			params[i] = g_i18n:convertText(params[i])
+			params[i] = g_i18n:convertText(params[i], customEnvironment)
 		end
 
 		configName = string.format(configName, unpack(params))

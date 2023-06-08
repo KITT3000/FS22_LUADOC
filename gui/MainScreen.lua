@@ -4,19 +4,20 @@ MainScreen.CONTROLS = {
 	NOTIFICATION_INDEX_STATE = "indexState",
 	NOTIFICATION_IMAGE = "notificationImage",
 	CHANGEUSERBUTTON = "changeUserButton",
-	DOWNLOADMODSBUTTON = "downloadModsButton",
+	ESPORTSBUTTON = "esportsButton",
 	NOTIFICATION_DATE = "notificationDate",
 	MULTIPLAYERBUTTON = "multiplayerButton",
 	BACKGROUND_BLURRY = "backgroundBlurImage",
 	NOTIFICATION_TITLE = "notificationTitle",
 	CAREERBUTTON = "careerButton",
-	ACHIEVEMENTSBUTTON = "achievementsButton",
+	DOWNLOADMODSBUTTON = "downloadModsButton",
 	LOGO = "logo",
-	SETTINGSBUTTON = "settingsButton",
+	ACHIEVEMENTSBUTTON = "achievementsButton",
 	GAMER_TAG_ELEMENT = "gamerTagElement",
 	NOTIFICATION_BOX = "notificationElement",
-	SCENARIOSBUTTON = "scenariosButton",
+	SETTINGSBUTTON = "settingsButton",
 	BUTTON_NOTIFICATION_RIGHT = "notificationButtonRight",
+	SCENARIOSBUTTON = "scenariosButton",
 	QUITBUTTON = "quitButton",
 	CREDITSBUTTON = "creditsButton",
 	BUTTON_BOX = "buttonBox",
@@ -91,6 +92,10 @@ function MainScreen:setupButtons()
 
 	if Platform.supportsMultiplayer then
 		table.insert(buttonSetup, self.multiplayerButton)
+	end
+
+	if Platform.hasEsports then
+		table.insert(buttonSetup, self.esportsButton)
 	end
 
 	if g_scenarioManager:getNumScenarios() > 0 then
@@ -281,6 +286,12 @@ function MainScreen:onMultiplayerClickPerform()
 		g_gui:setIsMultiplayer(true)
 		g_gui:showGui("MultiplayerScreen")
 	end
+end
+
+function MainScreen:onEsportsClick(element)
+	self.lastActiveButton = element
+
+	g_gui:showGui("EsportsScreen")
 end
 
 function MainScreen:onCareerClick(element)

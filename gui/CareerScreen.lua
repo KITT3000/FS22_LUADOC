@@ -615,15 +615,15 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 	end
 end
 
-function CareerScreen:startGame(missionInfo, missionDynamicInfo)
+function CareerScreen:startGame(missionInfo, missionDynamicInfo, returnScreenClass)
 	if self.isMultiplayer then
 		self.startMissionInfo.createGame = true
 
 		g_createGameScreen:setMissionInfo(missionInfo, missionDynamicInfo)
-		self:changeScreen(CreateGameScreen)
+		g_gui:changeScreen(nil, CreateGameScreen, returnScreenClass or CareerScreen)
 	else
 		g_mpLoadingScreen:setMissionInfo(missionInfo, missionDynamicInfo)
-		self:changeScreen(MPLoadingScreen)
+		g_gui:changeScreen(nil, MPLoadingScreen, CareerScreen)
 		g_mpLoadingScreen:loadSavegameAndStart()
 		self.startMissionInfo:reset()
 	end

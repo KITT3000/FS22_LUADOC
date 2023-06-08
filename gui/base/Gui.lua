@@ -37,10 +37,12 @@ function Gui.new(messageCenter, languageSuffix, inputManager, guiSoundPlayer)
 	self.dialogs = {}
 	self.profiles = {}
 	self.traits = {}
+	self.presets = {}
 	self.focusElements = {}
 	self.guis = {}
 	self.nameScreenTypes = {}
 	self.currentGuiName = ""
+	self.currentlyReloading = false
 	self.frames = {}
 	self.isInputListening = false
 	self.actionEventIds = {}
@@ -98,7 +100,12 @@ function Gui:loadPresets(xmlFile, rootKey)
 				end
 			end
 
-			presets[name] = value
+			if self.presets[name] == nil or self.currentlyReloading then
+				presets[name] = value
+				self.presets[name] = value
+			else
+				Logging.xmlDevError(xmlFile, "GUI-Preset name '%s' already defined!", name)
+			end
 		end
 
 		i = i + 1
@@ -117,7 +124,12 @@ function Gui:loadTraits(xmlFile, rootKey, presets)
 			break
 		end
 
-		self.traits[trait.name] = trait
+		if self.traits[trait.name] == nil or self.currentlyReloading then
+			self.traits[trait.name] = trait
+		else
+			Logging.xmlDevError(xmlFile, "GUI-Trait name '%s' already defined!", trait.name)
+		end
+
 		i = i + 1
 	end
 end
@@ -132,36 +144,45 @@ function Gui:loadProfileSet(xmlFile, rootKey, presets, categoryName)
 			break
 		end
 
-		profile.category = categoryName
-		self.profiles[profile.name] = profile
-		local j = 0
+		if self.profiles[profile.name] == nil or self.currentlyReloading then
+			profile.category = categoryName
+			self.profiles[profile.name] = profile
+			local j = 0
 
-		while true do
-			local k = rootKey .. ".Profile(" .. i .. ").Variant(" .. j .. ")"
+			while true do
+				local k = rootKey .. ".Profile(" .. i .. ").Variant(" .. j .. ")"
 
-			if not hasXMLProperty(xmlFile, k) then
-				break
-			end
-
-			local variantName = getXMLString(xmlFile, k .. "#name")
-
-			if variantName ~= nil then
-				local variantProfile = GuiProfile.new(self.profiles, self.traits)
-
-				if not variantProfile:loadFromXML(xmlFile, k, presets, false, true) then
+				if not hasXMLProperty(xmlFile, k) then
 					break
 				end
 
-				if variantProfile.parent == nil then
-					variantProfile.parent = profile.name
+				local variantName = getXMLString(xmlFile, k .. "#name")
+
+				if variantName ~= nil then
+					local variantProfile = GuiProfile.new(self.profiles, self.traits)
+
+					if not variantProfile:loadFromXML(xmlFile, k, presets, false, true) then
+						break
+					end
+
+					if variantProfile.parent == nil then
+						variantProfile.parent = profile.name
+					end
+
+					variantProfile.category = categoryName
+					variantProfile.name = variantName .. "_" .. profile.name
+
+					if self.profiles[variantProfile.name] == nil or self.currentlyReloading then
+						self.profiles[variantProfile.name] = variantProfile
+					else
+						Logging.xmlDevError(xmlFile, "GUI-Profile name '%s' already defined!", variantProfile.name)
+					end
 				end
 
-				variantProfile.category = categoryName
-				variantProfile.name = variantName .. "_" .. profile.name
-				self.profiles[variantProfile.name] = variantProfile
+				j = j + 1
 			end
-
-			j = j + 1
+		else
+			Logging.xmlDevError(xmlFile, "GUI-Profile name '%s' already defined!", profile.name)
 		end
 
 		i = i + 1
@@ -172,10 +193,9 @@ function Gui:loadProfiles(xmlFilename)
 	local xmlFile = loadXMLFile("Temp", xmlFilename)
 
 	if xmlFile ~= nil and xmlFile ~= 0 then
-		local presets = self:loadPresets(xmlFile, "GuiProfiles.Presets")
-
-		self:loadTraits(xmlFile, "GuiProfiles.Traits", presets)
-		self:loadProfileSet(xmlFile, "GuiProfiles", presets)
+		self:loadPresets(xmlFile, "GuiProfiles.Presets")
+		self:loadTraits(xmlFile, "GuiProfiles.Traits", self.presets)
+		self:loadProfileSet(xmlFile, "GuiProfiles", self.presets)
 
 		local i = 0
 
@@ -188,7 +208,7 @@ function Gui:loadProfiles(xmlFilename)
 
 			local categoryName = getXMLString(xmlFile, key .. "#name")
 
-			self:loadProfileSet(xmlFile, key, presets, categoryName)
+			self:loadProfileSet(xmlFile, key, self.presets, categoryName)
 
 			i = i + 1
 		end
@@ -207,7 +227,8 @@ function Gui:loadGui(xmlFilename, name, controller, isFrame)
 	local xmlFile = loadXMLFile("Temp", xmlFilename)
 	local gui = nil
 
-	if xmlFile ~= nil and xmlFile ~= 0 then
+	if xmlFile ~= nil and xmlFile ~= 0 or self.currentlyReloading then
+		self:loadProfileSet(xmlFile, "GUI.GuiProfiles", self.presets)
 		FocusManager:setGui(name)
 
 		gui = GuiElement.new(controller)
@@ -283,6 +304,11 @@ function Gui:loadGuiRec(xmlFile, xmlNodePath, parentGuiElement, target)
 		end
 
 		self:loadGuiRec(xmlFile, currentXmlPath, newGuiElement, target)
+
+		if newGuiElement.onElementCreated ~= nil then
+			newGuiElement:onElementCreated()
+		end
+
 		newGuiElement:raiseCallback("onCreateCallback", newGuiElement, newGuiElement.onCreateArgs)
 
 		i = i + 1
@@ -376,6 +402,10 @@ end
 
 function Gui:getIsGuiVisible()
 	return self.currentGui ~= nil or self:getIsDialogVisible()
+end
+
+function Gui:getIsMenuVisible()
+	return self.currentGui ~= nil
 end
 
 function Gui:getIsDialogVisible()

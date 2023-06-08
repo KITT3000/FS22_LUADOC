@@ -771,6 +771,13 @@ function SavegameController:deleteSavegame(index, callback, callbackTarget)
 end
 
 function SavegameController:saveSavegame(savegame, blocking)
+	if savegame.supportsSaving == false then
+		print("Warning: Saving not supported by savegame/mission")
+		self.onSaveCompleteCallback(self.onSaveCompleteCallbackTarget, Savegame.ERROR_OK)
+
+		return
+	end
+
 	if self.isSavingGame then
 		print("Warning: Saving while already saving")
 		self.onSaveCompleteCallback(self.onSaveCompleteCallbackTarget, Savegame.ERROR_OPERATION_IN_PROGRESS)

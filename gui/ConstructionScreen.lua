@@ -758,8 +758,9 @@ function ConstructionScreen:setDetailAttributes(storeItem, displayItem)
 		nextAttributeIndex = self:assignItemFillTypesData("constructionListAttributeIconFillTypes", displayItem.foodFillTypeIconFilenames, nextAttributeIndex)
 		nextAttributeIndex = self:assignItemFillTypesData("constructionListAttributeIconInput", displayItem.prodPointInputFillTypeIconFilenames, nextAttributeIndex)
 		nextAttributeIndex = self:assignItemFillTypesData("constructionListAttributeIconOutput", displayItem.prodPointOutputFillTypeIconFilenames, nextAttributeIndex)
+		nextAttributeIndex = self:assignItemFillTypesData("constructionListAttributeIconInput", displayItem.sellingStationFillTypesIconFilenames, nextAttributeIndex)
 
-		self:assignItemFillTypesData("constructionListAttributeIconInput", displayItem.sellingStationFillTypesIconFilenames, nextAttributeIndex)
+		self:assignItemFillTypesData("constructionListAttributeIconFillTypes", displayItem.objectStorageFillTypesIconFilenames, nextAttributeIndex)
 	end
 
 	self.detailsAttributesLayout:invalidateLayout()

@@ -124,14 +124,14 @@ function TextElement.new(target, custom_mt)
 end
 
 function TextElement:loadFromXML(xmlFile, key)
-	TextElement:superClass().loadFromXML(self, xmlFile, key)
-
 	local xmlFilename = getXMLFilename(xmlFile)
 	local modName, _ = Utils.getModNameAndBaseDirectory(xmlFilename)
 
 	if modName ~= nil then
 		self.customEnvironment = modName
 	end
+
+	TextElement:superClass().loadFromXML(self, xmlFile, key)
 
 	self.textColor = GuiUtils.getColorArray(getXMLString(xmlFile, key .. "#textColor"), self.textColor)
 	self.textSelectedColor = GuiUtils.getColorArray(getXMLString(xmlFile, key .. "#textSelectedColor"), self.textSelectedColor)

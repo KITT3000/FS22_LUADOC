@@ -754,11 +754,17 @@ function Server:sendObjects(connection, x, y, z, viewDistanceCoeff)
 end
 
 function Server:setClientPosition(client, x, y, z)
-	self.clientPositions[client] = {
-		x,
-		y,
-		z
-	}
+	if self.clientPositions[client] == nil then
+		self.clientPositions[client] = {
+			x,
+			y,
+			z
+		}
+	end
+
+	self.clientPositions[client][1] = x
+	self.clientPositions[client][2] = y
+	self.clientPositions[client][3] = z
 end
 
 function Server:getClientPosition(client)

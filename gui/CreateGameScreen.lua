@@ -22,6 +22,8 @@ function CreateGameScreen.new(target, custom_mt, startMissionInfo)
 
 	self:registerControls(CreateGameScreen.CONTROLS)
 
+	self.temporarilyHiddenElements = {}
+
 	if not GS_IS_CONSOLE_VERSION then
 		self.capacityTable = {
 			"2"
@@ -113,7 +115,6 @@ function CreateGameScreen.new(target, custom_mt, startMissionInfo)
 	self.autoAccept = false
 	self.usePendingInvites = false
 	self.mpLanguage = g_gameSettings:getValue(GameSettings.SETTING.MP_LANGUAGE)
-	self.returnScreenName = "CareerScreen"
 	self.blockTime = 0
 
 	return self
@@ -242,9 +243,34 @@ function CreateGameScreen:onOpen()
 	end
 
 	self.capacityElement:setState(capacityState)
+	self.settingsBox:invalidateLayout()
 
 	self.isTyping = false
 	self.isPortTesting = false
+end
+
+function CreateGameScreen:onClose()
+	CreateGameScreen:superClass().onClose(self)
+
+	if next(self.temporarilyHiddenElements) ~= nil then
+		for element in pairs(self.temporarilyHiddenElements) do
+			element:setVisible(true)
+		end
+
+		table.clear(self.temporarilyHiddenElements)
+	end
+end
+
+function CreateGameScreen:hideElementTemporarily(elementName)
+	local element = self[elementName]
+
+	if element == nil then
+		return
+	end
+
+	self.temporarilyHiddenElements[element] = true
+
+	element:setVisible(false)
 end
 
 function CreateGameScreen:onClickUseUpnp(element)

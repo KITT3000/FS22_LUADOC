@@ -113,8 +113,9 @@ function TextInputElement:loadProfile(profile, applyProfile)
 	self.cursorOffset = GuiUtils.getNormalizedValues(profile:getValue("cursorOffset"), self.outputSize, self.cursorOffset)
 	self.cursorSize = GuiUtils.getNormalizedValues(profile:getValue("cursorSize"), self.outputSize, self.cursorSize)
 	self.isPassword = profile:getBool("isPassword", self.isPassword)
+	self.cursorImageSize = GuiUtils.getNormalizedValues(profile:getValue("cursorImageSize"), self.outputSize, self.imageSize)
 
-	GuiOverlay.loadOverlay(self, self.cursor, "cursor", self.imageSize, profile, nil, nil)
+	GuiOverlay.loadOverlay(self, self.cursor, "cursor", self.cursorImageSize, profile, nil, nil)
 
 	if g_screenWidth > 1 then
 		self.cursorSize[1] = math.max(self.cursorSize[1], 1 / g_screenWidth)

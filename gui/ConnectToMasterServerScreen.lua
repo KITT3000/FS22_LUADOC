@@ -40,12 +40,12 @@ function ConnectToMasterServerScreen:onClickCancel()
 	end
 end
 
-function ConnectToMasterServerScreen:setNextScreenName(nextScreenName)
-	self.nextScreenName = nextScreenName
+function ConnectToMasterServerScreen:setNextScreenClass(nextScreenClass)
+	self.nextScreenClass = nextScreenClass
 end
 
-function ConnectToMasterServerScreen:setPrevScreenName(prevScreenName)
-	self.prevScreenName = prevScreenName
+function ConnectToMasterServerScreen:setPrevScreenClass(prevScreenClass)
+	self.prevScreenClass = prevScreenClass
 end
 
 function ConnectToMasterServerScreen:connectToFront()
@@ -76,13 +76,13 @@ function ConnectToMasterServerScreen:onMasterServerConnectionFailed(reason)
 	self.startMissionInfo.canStart = false
 
 	ConnectToMasterServerScreen.goBackCleanup()
-	ConnectionFailedDialog.showMasterServerConnectionFailedReason(reason, self.prevScreenName)
+	ConnectionFailedDialog.showMasterServerConnectionFailedReason(reason, ClassUtil.getClassName(self.prevScreenClass))
 end
 
 function ConnectToMasterServerScreen:onMasterServerConnectionReady()
-	local gui = g_gui:showGui(self.nextScreenName)
+	local screen = g_gui:changeScreen(nil, self.nextScreenClass, self.prevScreenClass)
 
-	gui.target:onMasterServerConnectionReady()
+	screen.target:onMasterServerConnectionReady()
 end
 
 function ConnectToMasterServerScreen.goBackCleanup()

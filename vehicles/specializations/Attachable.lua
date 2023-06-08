@@ -1454,10 +1454,12 @@ function Attachable:setLowered(lowered)
 	local spec = self.spec_attachable
 
 	if spec.lowerAnimation ~= nil and self.playAnimation ~= nil then
-		if lowered then
-			self:playAnimation(spec.lowerAnimation, spec.lowerAnimationSpeed, self:getAnimationTime(spec.lowerAnimation), true)
-		else
-			self:playAnimation(spec.lowerAnimation, -spec.lowerAnimationSpeed, self:getAnimationTime(spec.lowerAnimation), true)
+		local animationTime = self:getAnimationTime(spec.lowerAnimation)
+
+		if lowered and animationTime < 1 then
+			self:playAnimation(spec.lowerAnimation, spec.lowerAnimationSpeed, animationTime, true)
+		elseif not lowered and animationTime > 0 then
+			self:playAnimation(spec.lowerAnimation, -spec.lowerAnimationSpeed, animationTime, true)
 		end
 	end
 

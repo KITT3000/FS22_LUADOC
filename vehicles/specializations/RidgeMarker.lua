@@ -6,22 +6,15 @@ RidgeMarker = {
 RidgeMarker.MAX_NUM_RIDGEMARKERS = 2^RidgeMarker.SEND_NUM_BITS
 
 function RidgeMarker.initSpecialization()
+	g_configurationManager:addConfigurationType("ridgeMarker", g_i18n:getText("configuration_ridgeMarker"), "ridgeMarker", nil, nil, nil, ConfigurationUtil.SELECTOR_MULTIOPTION)
 	g_workAreaTypeManager:addWorkAreaType("ridgemarker", false)
 
 	local schema = Vehicle.xmlSchema
 
 	schema:setXMLSpecializationType("RidgeMarker")
-	schema:register(XMLValueType.STRING, "vehicle.ridgeMarker#inputButton", "Input action name", "IMPLEMENT_EXTRA4")
-	schema:register(XMLValueType.STRING, "vehicle.ridgeMarker.marker(?)#animName", "Animation name")
-	schema:register(XMLValueType.FLOAT, "vehicle.ridgeMarker.marker(?)#minWorkLimit", "Min. work limit", 0.99)
-	schema:register(XMLValueType.FLOAT, "vehicle.ridgeMarker.marker(?)#maxWorkLimit", "Max. work limit", 1)
-	schema:register(XMLValueType.FLOAT, "vehicle.ridgeMarker.marker(?)#liftedAnimTime", "Lifted animation time")
-	schema:register(XMLValueType.INT, "vehicle.ridgeMarker.marker(?)#workAreaIndex", "Work area index")
-	schema:register(XMLValueType.FLOAT, "vehicle.ridgeMarker#foldMinLimit", "Fold min. limit", 0)
-	schema:register(XMLValueType.FLOAT, "vehicle.ridgeMarker#foldMaxLimit", "Fold max. limit", 1)
-	schema:register(XMLValueType.INT, "vehicle.ridgeMarker#foldDisableDirection", "Fold disable direction")
-	schema:register(XMLValueType.BOOL, "vehicle.ridgeMarker#onlyActiveWhenLowered", "Only active while lowered", true)
-	schema:register(XMLValueType.NODE_INDEX, "vehicle.ridgeMarker#directionNode", "Direction node")
+	RidgeMarker.registerRidgeMarkerXMLPaths(schema, "vehicle.ridgeMarker")
+	RidgeMarker.registerRidgeMarkerXMLPaths(schema, "vehicle.ridgeMarker.ridgeMarkerConfigurations.ridgeMarkerConfiguration(?)")
+	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.ridgeMarker.ridgeMarkerConfigurations.ridgeMarkerConfiguration(?)")
 	RidgeMarker.registerRidgeMarkerAreaXMLPaths(schema, WorkArea.WORK_AREA_XML_KEY)
 	RidgeMarker.registerRidgeMarkerAreaXMLPaths(schema, WorkArea.WORK_AREA_XML_CONFIG_KEY)
 	schema:register(XMLValueType.STRING, SpeedRotatingParts.SPEED_ROTATING_PART_XML_KEY .. "#ridgeMarkerAnim", "Ridge marker animation")
@@ -31,6 +24,20 @@ function RidgeMarker.initSpecialization()
 	local schemaSavegame = Vehicle.xmlSchemaSavegame
 
 	schemaSavegame:register(XMLValueType.INT, "vehicles.vehicle(?).ridgeMarker#state", "Ridge marker state")
+end
+
+function RidgeMarker.registerRidgeMarkerXMLPaths(schema, baseKey)
+	schema:register(XMLValueType.STRING, baseKey .. "#inputButton", "Input action name", "IMPLEMENT_EXTRA4")
+	schema:register(XMLValueType.STRING, baseKey .. ".marker(?)#animName", "Animation name")
+	schema:register(XMLValueType.FLOAT, baseKey .. ".marker(?)#minWorkLimit", "Min. work limit", 0.99)
+	schema:register(XMLValueType.FLOAT, baseKey .. ".marker(?)#maxWorkLimit", "Max. work limit", 1)
+	schema:register(XMLValueType.FLOAT, baseKey .. ".marker(?)#liftedAnimTime", "Lifted animation time")
+	schema:register(XMLValueType.INT, baseKey .. ".marker(?)#workAreaIndex", "Work area index")
+	schema:register(XMLValueType.FLOAT, baseKey .. "#foldMinLimit", "Fold min. limit", 0)
+	schema:register(XMLValueType.FLOAT, baseKey .. "#foldMaxLimit", "Fold max. limit", 1)
+	schema:register(XMLValueType.INT, baseKey .. "#foldDisableDirection", "Fold disable direction")
+	schema:register(XMLValueType.BOOL, baseKey .. "#onlyActiveWhenLowered", "Only active while lowered", true)
+	schema:register(XMLValueType.NODE_INDEX, baseKey .. "#directionNode", "Direction node")
 end
 
 function RidgeMarker.registerRidgeMarkerAreaXMLPaths(schema, baseKey)
@@ -77,7 +84,16 @@ function RidgeMarker:onLoad(savegame)
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.ridgeMarkers.ridgeMarker", "vehicle.ridgeMarker.marker")
 	XMLUtil.checkDeprecatedXMLElements(self.xmlFile, "vehicle.ridgeMarker.ridgeMarker", "vehicle.ridgeMarker.marker")
 
-	local inputButtonStr = self.xmlFile:getValue("vehicle.ridgeMarker#inputButton")
+	local configurationId = Utils.getNoNil(self.configurations.ridgeMarker, 1)
+	local configKey = string.format("vehicle.ridgeMarker.ridgeMarkerConfigurations.ridgeMarkerConfiguration(%d)", configurationId - 1)
+
+	ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.ridgeMarker.ridgeMarkerConfigurations.ridgeMarkerConfiguration", configurationId, self.components, self)
+
+	if not self.xmlFile:hasProperty(configKey) then
+		configKey = "vehicle.ridgeMarker"
+	end
+
+	local inputButtonStr = self.xmlFile:getValue(configKey .. "#inputButton")
 
 	if inputButtonStr ~= nil then
 		spec.ridgeMarkerInputButton = InputAction[inputButtonStr]
@@ -89,7 +105,7 @@ function RidgeMarker:onLoad(savegame)
 	local i = 0
 
 	while true do
-		local key = string.format("vehicle.ridgeMarker.marker(%d)", i)
+		local key = string.format("%s.marker(%d)", configKey, i)
 
 		if not self.xmlFile:hasProperty(key) then
 			break
@@ -113,12 +129,12 @@ function RidgeMarker:onLoad(savegame)
 	end
 
 	spec.numRigdeMarkers = #spec.ridgeMarkers
-	spec.ridgeMarkerMinFoldTime = self.xmlFile:getValue("vehicle.ridgeMarker#foldMinLimit", 0)
-	spec.ridgeMarkerMaxFoldTime = self.xmlFile:getValue("vehicle.ridgeMarker#foldMaxLimit", 1)
-	spec.foldDisableDirection = self.xmlFile:getValue("vehicle.ridgeMarker#foldDisableDirection")
-	spec.onlyActiveWhenLowered = self.xmlFile:getValue("vehicle.ridgeMarker#onlyActiveWhenLowered", true)
+	spec.ridgeMarkerMinFoldTime = self.xmlFile:getValue(configKey .. "#foldMinLimit", 0)
+	spec.ridgeMarkerMaxFoldTime = self.xmlFile:getValue(configKey .. "#foldMaxLimit", 1)
+	spec.foldDisableDirection = self.xmlFile:getValue(configKey .. "#foldDisableDirection")
+	spec.onlyActiveWhenLowered = self.xmlFile:getValue(configKey .. "#onlyActiveWhenLowered", true)
 	spec.ridgeMarkerState = 0
-	spec.directionNode = self.xmlFile:getValue("vehicle.ridgeMarker#directionNode", nil, self.components, self.i3dMappings)
+	spec.directionNode = self.xmlFile:getValue(configKey .. "#directionNode", nil, self.components, self.i3dMappings)
 
 	if not self.isClient then
 		SpecializationUtil.removeEventListener(self, "onUpdateTick", RidgeMarker)

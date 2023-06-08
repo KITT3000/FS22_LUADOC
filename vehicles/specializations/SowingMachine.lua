@@ -650,22 +650,38 @@ function SowingMachine:updateChooseSeedActionEvent()
 end
 
 function SowingMachine:onTurnedOn()
-	if self.isClient then
-		local spec = self.spec_sowingMachine
+	local spec = self.spec_sowingMachine
 
+	if self.isClient then
 		g_soundManager:playSample(spec.samples.airBlower)
 		g_animationManager:startAnimations(spec.animationNodes)
+	end
+
+	if self.isServer and spec.fillTypeSources[FillType.SEEDS] ~= nil then
+		for _, src in ipairs(spec.fillTypeSources[FillType.SEEDS]) do
+			if src.vehicle.setIsTurnedOn ~= nil then
+				src.vehicle:setIsTurnedOn(true)
+			end
+		end
 	end
 
 	SowingMachine.updateAiParameters(self)
 end
 
 function SowingMachine:onTurnedOff()
-	if self.isClient then
-		local spec = self.spec_sowingMachine
+	local spec = self.spec_sowingMachine
 
+	if self.isClient then
 		g_soundManager:stopSample(spec.samples.airBlower)
 		g_animationManager:stopAnimations(spec.animationNodes)
+	end
+
+	if self.isServer and spec.fillTypeSources[FillType.SEEDS] ~= nil then
+		for _, src in ipairs(spec.fillTypeSources[FillType.SEEDS]) do
+			if src.vehicle.setIsTurnedOn ~= nil then
+				src.vehicle:setIsTurnedOn(false)
+			end
+		end
 	end
 
 	SowingMachine.updateAiParameters(self)
@@ -857,20 +873,22 @@ function SowingMachine:updateAiParameters()
 		local vehicles = self.rootVehicle:getChildVehicles()
 
 		for i = 1, #vehicles do
-			if SpecializationUtil.hasSpecialization(Cultivator, vehicles[i].specializations) then
+			local vehicle = vehicles[i]
+
+			if SpecializationUtil.hasSpecialization(Cultivator, vehicle.specializations) and vehicle:getIsCultivationEnabled() then
 				isCultivatorAttached = true
 
 				vehicles[i]:updateCultivatorAIRequirements()
 				vehicles[i]:updateCultivatorEnabledState()
 			end
 
-			if SpecializationUtil.hasSpecialization(Weeder, vehicles[i].specializations) then
+			if SpecializationUtil.hasSpecialization(Weeder, vehicle.specializations) then
 				isWeederAttached = true
 
 				vehicles[i]:updateWeederAIRequirements()
 			end
 
-			if SpecializationUtil.hasSpecialization(Roller, vehicles[i].specializations) then
+			if SpecializationUtil.hasSpecialization(Roller, vehicle.specializations) then
 				isRollerAttached = true
 
 				vehicles[i]:updateRollerAIRequirements()

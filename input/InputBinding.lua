@@ -251,6 +251,7 @@ function InputBinding.new(modManager, messageCenter, isConsoleVersion)
 	self.currentContextName = InputBinding.ROOT_CONTEXT_NAME
 	self.contexts = {
 		[InputBinding.ROOT_CONTEXT_NAME] = {
+			eventOrderCounter = 0,
 			previousContextName = "",
 			actionEvents = {}
 		}

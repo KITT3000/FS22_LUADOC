@@ -44,6 +44,10 @@ function DebugInfoTable:draw()
 			local key = pair.name
 			local value = pair.value
 
+			if pair.color ~= nil then
+				setTextColor(pair.color[1], pair.color[2], pair.color[3], pair.color[4] or 1)
+			end
+
 			setTextAlignment(RenderText.ALIGN_RIGHT)
 			renderText3D(self.x, self.y + yOffset, self.z, self.rotX, self.rotY, self.rotZ, self.size, key)
 			setTextAlignment(RenderText.ALIGN_LEFT)
@@ -52,6 +56,10 @@ function DebugInfoTable:draw()
 				renderText3D(self.x, self.y + yOffset, self.z, self.rotX, self.rotY, self.rotZ, self.size, " " .. string.format("%.4f", value))
 			else
 				renderText3D(self.x, self.y + yOffset, self.z, self.rotX, self.rotY, self.rotZ, self.size, " " .. tostring(value))
+			end
+
+			if pair.color ~= nil then
+				setTextColor(self.r, self.g, self.b, self.a)
 			end
 
 			yOffset = yOffset + self.size

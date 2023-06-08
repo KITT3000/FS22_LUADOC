@@ -30,6 +30,13 @@ function MultiTextOptionElement.new(target, custom_mt)
 end
 
 function MultiTextOptionElement:loadFromXML(xmlFile, key)
+	local xmlFilename = getXMLFilename(xmlFile)
+	local modName, _ = Utils.getModNameAndBaseDirectory(xmlFilename)
+
+	if modName ~= nil then
+		self.customEnvironment = modName
+	end
+
 	MultiTextOptionElement:superClass().loadFromXML(self, xmlFile, key)
 	self:addCallback(xmlFile, key .. "#onClick", "onClickCallback")
 	self:addCallback(xmlFile, key .. "#onFocus", "onFocusCallback")
@@ -46,7 +53,7 @@ function MultiTextOptionElement:loadFromXML(xmlFile, key)
 
 		for _, textPart in pairs(texts) do
 			if textPart:sub(1, 6) == "$l10n_" then
-				textPart = g_i18n:getText(textPart:sub(7))
+				textPart = g_i18n:getText(textPart:sub(7), self.customEnvironment)
 			end
 
 			table.insert(self.texts, textPart)
@@ -370,8 +377,8 @@ function MultiTextOptionElement:onRightButtonClicked(steps, noFocus)
 	end
 end
 
-function MultiTextOptionElement:raiseClickCallback(v)
-	self:raiseCallback("onClickCallback", self.state, self, v)
+function MultiTextOptionElement:raiseClickCallback(isLeftButtonEvent)
+	self:raiseCallback("onClickCallback", self.state, self, isLeftButtonEvent)
 end
 
 function MultiTextOptionElement:onLeftButtonClicked(steps, noFocus)

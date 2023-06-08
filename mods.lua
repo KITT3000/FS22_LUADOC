@@ -8,10 +8,19 @@ g_globalMods = {}
 g_modNameToDirectory = {}
 local isReloadingDlcs = false
 g_dlcModNameHasPrefix = {}
-g_internalModsDirectory = "dataS/internalMods/"
+g_internalModsDirectory = "internalMods/"
 local internalMods = {
-	"agcoIdealSimulator",
-	"baleStackingChallenge"
+	{
+		name = "agcoIdealSimulator"
+	},
+	{
+		version = "1.0.0.0",
+		name = "baleStacking"
+	},
+	{
+		version = "1.0.0.0",
+		name = "arena"
+	}
 }
 local internalScriptMods = {
 	"FS22_precisionFarming",
@@ -151,13 +160,20 @@ end
 function loadInternalMods()
 	haveModsChanged()
 
-	for _, modName in pairs(internalMods) do
+	for _, modInfo in pairs(internalMods) do
+		local modName = modInfo.name
 		local modDir = g_internalModsDirectory .. modName .. "/"
 		local modFile = modDir .. "modDesc.xml"
+		local modFileHash = nil
+		local garFile = g_internalModsDirectory .. modName .. ".gar"
 
-		if fileExists(modFile) then
-			local modFileHash = getFileMD5(modFile, modDir)
+		if fileExists(garFile) then
+			modFileHash = getFileMD5(garFile, modName)
+		elseif (g_isDevelopmentVersion or GS_IS_CONSOLE_VERSION) and fileExists(modFile) then
+			modFileHash = getFileMD5(modFile, modName)
+		end
 
+		if modFileHash ~= nil then
 			loadModDesc(modName, modDir, modFile, modFileHash, g_internalModsDirectory .. modName, true, false, true)
 		end
 	end
@@ -204,8 +220,8 @@ local function getIsInternalScriptMod(modName)
 end
 
 local function getIsInternalMod(modName)
-	for i = 1, #internalMods do
-		local internalModName = internalMods[i]
+	for _, modInfo in ipairs(internalMods) do
+		local internalModName = modInfo.name
 
 		if modName == internalModName or modName == internalModName .. "_update" then
 			return true
@@ -213,6 +229,18 @@ local function getIsInternalMod(modName)
 	end
 
 	return false
+end
+
+local function getIsInternalModInfo(modName)
+	for _, modInfo in ipairs(internalMods) do
+		local internalModName = modInfo.name
+
+		if modName == internalModName or modName == internalModName .. "_update" then
+			return modInfo
+		end
+	end
+
+	return nil
 end
 
 local function resolveInternalScriptModFilename(filename, modName, modDir)
@@ -243,6 +271,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	end
 
 	if g_modNameToDirectory[modName] ~= nil then
+		Logging.error("Mod name '" .. modName .. "' already in use. Ignore it!")
+
 		return
 	end
 
@@ -276,6 +306,17 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 
 	if modVersion ~= nil and modVersion ~= "" then
 		versionStr = " (Version: " .. modVersion .. ")"
+	end
+
+	if isInternalMod then
+		local modInfo = getIsInternalModInfo(modName)
+
+		if modVersion ~= modInfo.version then
+			print("Error: Outdated mod version in mod " .. modName)
+			xmlFile:delete()
+
+			return
+		end
 	end
 
 	local hashStr = ""

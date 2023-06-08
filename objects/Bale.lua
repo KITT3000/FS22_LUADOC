@@ -617,7 +617,7 @@ function Bale:setReducedComponentMass(state)
 end
 
 function Bale:getAllowComponentMassReduction()
-	return true
+	return self.defaultMass > 0.1
 end
 
 function Bale:setFillType(fillTypeIndex, fillBale)

@@ -6,6 +6,7 @@ Windrower = {
 
 		schema:setXMLSpecializationType("Windrower")
 		EffectManager.registerEffectXMLPaths(schema, "vehicle.windrower.effects.effect(?)")
+		SoundManager.registerSampleXMLPaths(schema, "vehicle.windrower.effects.effect(?).sounds", "work")
 		schema:register(XMLValueType.INT, "vehicle.windrower.effects.effect(?)#workAreaIndex", "Work area index", 1)
 		schema:register(XMLValueType.INT, "vehicle.windrower.effects.effect(?)#dropAreaIndex", "Drop area index (if defined the effect is only active if this drop area is set on workArea)")
 		AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.windrower.animationNodes")
@@ -83,8 +84,10 @@ function Windrower:onLoad(savegame)
 					activeTime = -1,
 					activeTimeDuration = 250,
 					isActive = false,
-					isActiveSent = false
+					isActiveSent = false,
+					samples = {}
 				}
+				effect.samples.work = g_soundManager:loadSampleFromXML(self.xmlFile, key .. ".sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
 
 				table.insert(spec.effects, effect)
 
@@ -149,6 +152,7 @@ function Windrower:onDelete()
 	if spec.effects ~= nil then
 		for _, effect in ipairs(spec.effects) do
 			g_effectManager:deleteEffects(effect.effects)
+			g_soundManager:deleteSamples(effect.samples)
 		end
 	end
 end
@@ -167,8 +171,13 @@ function Windrower:onReadStream(streamId, connection)
 
 			g_effectManager:setFillType(effect.effects, fillType)
 			g_effectManager:startEffects(effect.effects)
+
+			if not g_soundManager:getIsSamplePlaying(effect.samples.work) then
+				g_soundManager:playSample(effect.samples.work)
+			end
 		else
 			g_effectManager:stopEffects(effect.effects)
+			g_soundManager:stopSample(effect.samples.work)
 		end
 	end
 end
@@ -203,8 +212,13 @@ function Windrower:onReadUpdateStream(streamId, timestamp, connection)
 
 					g_effectManager:setFillType(effect.effects, fillType)
 					g_effectManager:startEffects(effect.effects)
+
+					if not g_soundManager:getIsSamplePlaying(effect.samples.work) then
+						g_soundManager:playSample(effect.samples.work)
+					end
 				else
 					g_effectManager:stopEffects(effect.effects)
+					g_soundManager:stopSample(effect.samples.work)
 				end
 			end
 		end
@@ -244,6 +258,7 @@ function Windrower:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSele
 				end
 
 				g_effectManager:stopEffects(effect.effects)
+				g_soundManager:stopSample(effect.samples.work)
 			end
 		end
 	end
@@ -265,6 +280,7 @@ function Windrower:onTurnedOff()
 
 	for _, effect in ipairs(spec.effects) do
 		g_effectManager:stopEffects(effect.effects)
+		g_soundManager:stopSample(effect.samples.work)
 	end
 
 	g_animationManager:stopAnimations(spec.animationNodes)
@@ -459,6 +475,7 @@ function Windrower:processWindrowerArea(workArea, dt)
 							if not effect.isActive then
 								g_effectManager:setFillType(effect.effects, dropType)
 								g_effectManager:startEffects(effect.effects)
+								g_soundManager:playSample(effect.samples.work)
 							end
 
 							effect.isActive = true

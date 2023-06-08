@@ -381,7 +381,7 @@ function DynamicMountAttacher:addDynamicMountedObject(object)
 			end
 		end
 
-		if not lockedToPosition then
+		if not lockedToPosition and object:isa(Vehicle) then
 			for i = 1, #spec.lockPositions do
 				local position = spec.lockPositions[i]
 
@@ -401,7 +401,7 @@ function DynamicMountAttacher:addDynamicMountedObject(object)
 			setCollisionMask(info.node, info.mountedCollisionMask)
 		end
 
-		if spec.transferMass and object.setReducedComponentMass ~= nil then
+		if spec.transferMass and object.setReducedComponentMass ~= nil and object:getAllowComponentMassReduction() then
 			object:setReducedComponentMass(true)
 			self:setMassDirty()
 		end
@@ -757,15 +757,27 @@ function DynamicMountAttacher:updateDebugValues(values)
 		for object, _ in pairs(spec.pendingDynamicMountObjects) do
 			table.insert(values, {
 				name = "pendingDynamicMountObject:",
-				value = string.format("%s timeToMount: %d", object.configFileName or object, math.max(object.lastMoveTime + spec.dynamicMountAttacherTimeToMount - g_currentMission.time, 0))
+				value = string.format("%s timeToMount: %d", object.configFileNameClean or object, math.max(object.lastMoveTime + spec.dynamicMountAttacherTimeToMount - g_currentMission.time, 0))
 			})
 		end
 
 		for object, _ in pairs(spec.dynamicMountedObjects) do
+			local objectName = object.configFileNameClean or object.xmlFilename and Utils.getFilenameFromPath(object.xmlFilename) or object
+			local objectColor = DebugUtil.tableToColor(object)
+
 			table.insert(values, {
 				name = "dynamicMountedObjects:",
-				value = string.format("%s", object.configFileName or object)
+				value = string.format("%s jointIndex:%s mountOffset:%.3f triggerCount:%s", objectName, object.dynamicMountJointIndex, object.dynamicMountJointNodeDynamicMountOffset or -1, object.dynamicMountObjectTriggerCount),
+				color = objectColor
 			})
+
+			local objectNode = object.nodeId or object.rootNode
+
+			if objectNode ~= nil then
+				local x, y, z = getWorldTranslation(objectNode)
+
+				drawDebugPoint(x, y, z, objectColor[1], objectColor[2], objectColor[3], objectColor[4], false)
+			end
 		end
 	end
 

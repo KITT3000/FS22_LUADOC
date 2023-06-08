@@ -1,5 +1,5 @@
 RandomlyMovingParts = {
-	DEFAULT_MAX_UPDATE_DISTANCE = 100,
+	DEFAULT_MAX_UPDATE_DISTANCE = 50,
 	RANDOMLY_MOVING_PART_XML_KEY = "vehicle.randomlyMovingParts.randomlyMovingPart(?)",
 	prerequisitesPresent = function (specializations)
 		return true

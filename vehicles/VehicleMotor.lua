@@ -1493,7 +1493,7 @@ function VehicleMotor:updateGear(acceleratorPedal, brakePedal, dt)
 							if self.gear == 1 and self.lastRealMotorRpm < self.minRpm + (self.maxRpm - self.minRpm) * 0.25 then
 								local _, maxFactorGroup = self:getBestStartGear(self.currentGears)
 
-								if maxFactorGroup < self.activeGearGroupIndex then
+								if maxFactorGroup < self.activeGearGroupIndex and MathUtil.sign(self.gearGroups[maxFactorGroup].ratio) == MathUtil.sign(self.gearGroups[self.activeGearGroupIndex].ratio) then
 									self:setGearGroup(maxFactorGroup)
 								end
 							end

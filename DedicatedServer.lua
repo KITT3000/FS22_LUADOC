@@ -72,6 +72,8 @@ function DedicatedServer:load(filename)
 		xmlFile:delete()
 	end
 
+	setCaption(g_caption .. " | " .. self.name)
+
 	self.gameStatsInterval = self.gameStatsInterval * 1000
 
 	if string.endsWith(self.mapFileName, ".dlc") and not string.startsWith(self.mapFileName, "pdlc_") then

@@ -1,9 +1,11 @@
 PlaceableObjectStorageErrorEvent = {
-	SEND_NUM_BITS = 2,
+	SEND_NUM_BITS = 3,
 	ERROR_NOT_ENOUGH_SPACE = 0,
 	ERROR_STORAGE_IS_FULL = 1,
 	ERROR_SLOT_LIMIT_REACHED_BALES = 2,
 	ERROR_SLOT_LIMIT_REACHED_PALLETS = 3,
+	ERROR_OBJECT_NOT_SUPPORTED = 4,
+	ERROR_MAX_AMOUNT_FOR_OBJECT_REACHED = 5,
 	SHOW_WARNING_DISTANCE = 75
 }
 local PlaceableObjectStorageErrorEvent_mt = Class(PlaceableObjectStorageErrorEvent, Event)
@@ -42,13 +44,17 @@ function PlaceableObjectStorageErrorEvent:run(connection)
 
 		if distance < PlaceableObjectStorageErrorEvent.SHOW_WARNING_DISTANCE then
 			if self.errorId == PlaceableObjectStorageErrorEvent.ERROR_NOT_ENOUGH_SPACE then
-				g_currentMission:showBlinkingWarning(g_i18n:getText("warning_objectStorageNotEnoughSpace"), 2000)
+				g_currentMission:showBlinkingWarning(g_i18n:getText("warning_objectStorageNotEnoughSpace"), 2500)
 			elseif self.errorId == PlaceableObjectStorageErrorEvent.ERROR_STORAGE_IS_FULL then
-				g_currentMission:showBlinkingWarning(string.format(g_i18n:getText("warning_objectStorageIsFull"), self.placeable:getName()), 2000)
+				g_currentMission:showBlinkingWarning(string.format(g_i18n:getText("warning_objectStorageIsFull"), self.placeable:getName()), 2500)
 			elseif self.errorId == PlaceableObjectStorageErrorEvent.ERROR_SLOT_LIMIT_REACHED_BALES then
-				g_currentMission:showBlinkingWarning(g_i18n:getText("warning_tooManyBales"), 2000)
+				g_currentMission:showBlinkingWarning(g_i18n:getText("warning_tooManyBales"), 2500)
 			elseif self.errorId == PlaceableObjectStorageErrorEvent.ERROR_SLOT_LIMIT_REACHED_PALLETS then
-				g_currentMission:showBlinkingWarning(g_i18n:getText("warning_tooManyPallets"), 2000)
+				g_currentMission:showBlinkingWarning(g_i18n:getText("warning_tooManyPallets"), 2500)
+			elseif self.errorId == PlaceableObjectStorageErrorEvent.ERROR_OBJECT_NOT_SUPPORTED then
+				g_currentMission:showBlinkingWarning(string.format(g_i18n:getText("warning_objectStorageObjectNotSupported"), self.placeable:getName()), 3500)
+			elseif self.errorId == PlaceableObjectStorageErrorEvent.ERROR_MAX_AMOUNT_FOR_OBJECT_REACHED then
+				g_currentMission:showBlinkingWarning(string.format(g_i18n:getText("warning_objectStorageMaxAmountForObjectReached"), self.placeable:getName()), 3500)
 			end
 		end
 	end

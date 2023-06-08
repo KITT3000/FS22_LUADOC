@@ -233,7 +233,7 @@ function GuiElement:loadFromXML(xmlFile, key)
 	end
 
 	if self.toolTipText ~= nil and self.toolTipText:sub(1, 6) == "$l10n_" then
-		self.toolTipText = g_i18n:getText(self.toolTipText:sub(7))
+		self.toolTipText = g_i18n:getText(self.toolTipText:sub(7), self.customEnvironment)
 	end
 
 	FocusManager:loadElementFromXML(xmlFile, key, self)

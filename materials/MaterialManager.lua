@@ -205,14 +205,16 @@ function MaterialManager:loadModMaterialHolders()
 end
 
 function MaterialManager:materialHolderLoaded(i3dNode, failedReason, args)
-	for i = getNumOfChildren(i3dNode) - 1, 0, -1 do
-		local child = getChildAt(i3dNode, i)
+	if i3dNode ~= 0 then
+		for i = getNumOfChildren(i3dNode) - 1, 0, -1 do
+			local child = getChildAt(i3dNode, i)
 
-		unlink(child)
-		table.insert(self.loadedMaterialHolderNodes, child)
+			unlink(child)
+			table.insert(self.loadedMaterialHolderNodes, child)
+		end
+
+		delete(i3dNode)
 	end
-
-	delete(i3dNode)
 end
 
 function MaterialManager:getFontMaterial(materialName, customEnvironment)

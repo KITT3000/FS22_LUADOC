@@ -65,7 +65,9 @@ function PowerTakeOffs.registerOutputXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#outputNode", "Output node")
 	schema:register(XMLValueType.VECTOR_N, basePath .. "#attacherJointIndices", "Attacher joint indices")
 	schema:register(XMLValueType.STRING, basePath .. "#ptoName", "Output name", "DEFAULT_PTO")
+	AnimationManager.registerAnimationNodesXMLPaths(schema, basePath .. ".animationNodes")
 	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, basePath)
+	Dashboard.registerDashboardXMLPaths(schema, basePath, "state")
 end
 
 function PowerTakeOffs.registerInputXMLPaths(schema, basePath)
@@ -77,6 +79,7 @@ function PowerTakeOffs.registerInputXMLPaths(schema, basePath)
 	schema:register(XMLValueType.COLOR, basePath .. "#decalColor", "Color of decals")
 	schema:register(XMLValueType.STRING, basePath .. "#filename", "Path to pto xml file", "$data/shared/assets/powerTakeOffs/walterscheidW.xml")
 	schema:register(XMLValueType.STRING, basePath .. "#ptoName", "Pto name", "DEFAULT_PTO")
+	AnimationManager.registerAnimationNodesXMLPaths(schema, basePath .. ".animationNodes")
 	ObjectChangeUtil.registerObjectChangeXMLPaths(schema, basePath)
 end
 
@@ -85,6 +88,7 @@ function PowerTakeOffs.registerLocalXMLPaths(schema, basePath)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. "#endNode", "End node")
 	schema:register(XMLValueType.COLOR, basePath .. "#color", "Color")
 	schema:register(XMLValueType.COLOR, basePath .. "#decalColor", "Color of decals")
+	schema:register(XMLValueType.FLOAT, basePath .. "#length", "Predefined length of the PTO (Otherwise calculated from the distance between startNode and endNode, while loading. Can be useful if the tool is loaded in different states to always get the same length.)")
 	schema:register(XMLValueType.STRING, basePath .. "#filename", "Path to pto xml file", "$data/shared/assets/powerTakeOffs/walterscheidW.xml")
 end
 
@@ -215,6 +219,8 @@ function PowerTakeOffs:onDelete()
 				output.sharedLoadRequestId = nil
 			end
 
+			g_animationManager:deleteAnimations(output.localAnimationNodes)
+
 			if output.rootNode ~= nil then
 				delete(output.rootNode)
 				delete(output.attachNode)
@@ -236,12 +242,13 @@ function PowerTakeOffs:onDelete()
 				input.sharedLoadRequestId = nil
 			end
 
+			g_animationManager:deleteAnimations(input.animationNodes)
+			g_animationManager:deleteAnimations(input.localAnimationNodes)
+
 			if input.rootNode ~= nil then
 				delete(input.rootNode)
 				delete(input.attachNode)
 			end
-
-			g_animationManager:deleteAnimations(input.animationNodes)
 		end
 	end
 
@@ -297,8 +304,19 @@ function PowerTakeOffs:onPostUpdate(dt, isActiveForInput, isActiveForInputIgnore
 
 					if isPowerTakeOffActive and input.connectedVehicle ~= nil then
 						g_animationManager:startAnimations(input.animationNodes)
+						g_animationManager:startAnimations(input.localAnimationNodes)
+						g_animationManager:startAnimations(input.connectedOutput.localAnimationNodes)
+
+						input.connectedOutput.isActive = true
 					else
 						g_animationManager:stopAnimations(input.animationNodes)
+						g_animationManager:stopAnimations(input.localAnimationNodes)
+
+						if input.connectedOutput ~= nil then
+							g_animationManager:stopAnimations(input.connectedOutput.localAnimationNodes)
+
+							input.connectedOutput.isActive = false
+						end
 					end
 				end
 
@@ -388,10 +406,21 @@ function PowerTakeOffs:loadOutputPowerTakeOff(xmlFile, baseName, powerTakeOffOut
 	powerTakeOffOutput.attacherJointIndices = attacherJointIndices
 	powerTakeOffOutput.connectedInput = nil
 	powerTakeOffOutput.ptoName = xmlFile:getValue(baseName .. "#ptoName", "DEFAULT_PTO")
+	powerTakeOffOutput.localAnimationNodes = g_animationManager:loadAnimations(xmlFile, baseName .. ".animationNodes", self.components, self, self.i3dMappings)
 	powerTakeOffOutput.objectChanges = {}
 
 	ObjectChangeUtil.loadObjectChangeFromXML(xmlFile, baseName, powerTakeOffOutput.objectChanges, self.components, self)
 	ObjectChangeUtil.setObjectChanges(powerTakeOffOutput.objectChanges, false)
+
+	powerTakeOffOutput.isActive = false
+
+	if self.loadDashboardsFromXML ~= nil then
+		self:loadDashboardsFromXML(xmlFile, baseName, {
+			valueFunc = "isActive",
+			valueTypeToLoad = "state",
+			valueObject = powerTakeOffOutput
+		})
+	end
 
 	return true
 end
@@ -425,6 +454,7 @@ function PowerTakeOffs:loadInputPowerTakeOff(xmlFile, baseName, powerTakeOffInpu
 	powerTakeOffInput.color = xmlFile:getValue(baseName .. "#color", nil, true)
 	powerTakeOffInput.decalColor = xmlFile:getValue(baseName .. "#decalColor", nil, true)
 	powerTakeOffInput.ptoName = xmlFile:getValue(baseName .. "#ptoName", "DEFAULT_PTO")
+	powerTakeOffInput.localAnimationNodes = g_animationManager:loadAnimations(xmlFile, baseName .. ".animationNodes", self.components, self, self.i3dMappings)
 	powerTakeOffInput.objectChanges = {}
 
 	ObjectChangeUtil.loadObjectChangeFromXML(xmlFile, baseName, powerTakeOffInput.objectChanges, self.components, self)
@@ -459,6 +489,7 @@ function PowerTakeOffs:loadLocalPowerTakeOff(xmlFile, baseName, powerTakeOffLoca
 
 	powerTakeOffLocal.color = xmlFile:getValue(baseName .. "#color", nil, true)
 	powerTakeOffLocal.decalColor = xmlFile:getValue(baseName .. "#decalColor", nil, true)
+	powerTakeOffLocal.predefinedLength = xmlFile:getValue(baseName .. "#length")
 	local filename = xmlFile:getValue(baseName .. "#filename", "$data/shared/assets/powerTakeOffs/walterscheidW.xml")
 
 	if filename ~= nil then
@@ -609,6 +640,12 @@ function PowerTakeOffs:detachPowerTakeOff(detachingVehicle, implement, jointDesc
 
 			if input.detachFunc ~= nil then
 				input.detachFunc(self, input, output)
+			end
+
+			if input.connectedOutput ~= nil then
+				g_animationManager:stopAnimations(input.connectedOutput.localAnimationNodes)
+
+				input.connectedOutput.isActive = false
 			end
 
 			input.connectedVehicle = nil
@@ -882,7 +919,7 @@ function PowerTakeOffs:loadBasicPowerTakeOff(powerTakeOff, xmlFile, rootNode)
 end
 
 function PowerTakeOffs:updateDistanceOfTypedPowerTakeOff(powerTakeOff)
-	local attachLength = calcDistanceFrom(powerTakeOff.linkNode, powerTakeOff.startNode)
+	local attachLength = powerTakeOff.predefinedLength or calcDistanceFrom(powerTakeOff.linkNode, powerTakeOff.startNode)
 	local transPartScale = math.max(attachLength - powerTakeOff.connectorLength, 0) / powerTakeOff.betweenLength
 
 	setScale(powerTakeOff.translationPart, 1, 1, transPartScale)

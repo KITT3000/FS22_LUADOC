@@ -55,6 +55,9 @@ function PlaceableObjectStorage.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.STRING, basePath .. ".objectStorage#fillTypes", "List of supported fill types (if no fill types defined, all are allowed)")
 	schema:register(XMLValueType.BOOL, basePath .. ".objectStorage#supportsBales", "Bales can be stored", true)
 	schema:register(XMLValueType.BOOL, basePath .. ".objectStorage#supportsPallets", "Pallets can be stored", true)
+	schema:register(XMLValueType.STRING, basePath .. ".objectStorage.supportedObject(?)#filename", "End part of the xml filename that can be stored (pallet or bale)")
+	schema:register(XMLValueType.INT, basePath .. ".objectStorage.supportedObject(?)#amount", "Amount of this single object that can be stored (total capacity of the storage will still limit on top of this)", "unlimited")
+	schema:register(XMLValueType.STRING, basePath .. ".objectStorage.supportedObject(?)#fillType", "FillType name to show in the shop")
 	schema:register(XMLValueType.INT, basePath .. ".objectStorage#capacity", "Max. capacity", 250)
 	schema:register(XMLValueType.FLOAT, basePath .. ".objectStorage#maxLength", "Max. length of objects to store", "unlimited")
 	schema:register(XMLValueType.FLOAT, basePath .. ".objectStorage#maxHeight", "Max. height of objects to store", "unlimited")
@@ -62,8 +65,10 @@ function PlaceableObjectStorage.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.INT, basePath .. ".objectStorage#maxUnloadAmount", "Max. amount of objects that can be unloaded at a time", 25)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".objectStorage.spawnAreas.spawnArea(?)#startNode", "Start node")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".objectStorage.spawnAreas.spawnArea(?)#endNode", "End node")
+	schema:register(XMLValueType.FLOAT, basePath .. ".objectStorage.spawnAreas.spawnArea(?)#maxHeight", "Max. stacked height of spawned objects in the area", 4)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".objectStorage.storageAreas.storageArea(?)#startNode", "Start node")
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".objectStorage.storageAreas.storageArea(?)#endNode", "End node")
+	schema:register(XMLValueType.FLOAT, basePath .. ".objectStorage.storageAreas.storageArea(?)#maxHeight", "Max. stacked height of spawned objects in the area", 4)
 	schema:setXMLSpecializationType()
 end
 
@@ -73,6 +78,11 @@ function PlaceableObjectStorage.registerSavegameXMLPaths(schema, basePath)
 	for _, abstractObject in pairs(PlaceableObjectStorage.ABSTRACT_OBJECTS) do
 		abstractObject.registerXMLPaths(schema, basePath .. ".object(?)")
 	end
+end
+
+function PlaceableObjectStorage.initSpecialization()
+	g_storeManager:addSpecType("objectStorageCapacity", "shopListAttributeIconCapacity", PlaceableObjectStorage.loadSpecValueCapacity, PlaceableObjectStorage.getSpecValueCapacity, "placeable")
+	g_storeManager:addSpecType("objectStorageFillTypes", "shopListAttributeIconFillTypes", PlaceableObjectStorage.loadSpecValueFillTypes, PlaceableObjectStorage.getSpecValueFillTypes, "placeable")
 end
 
 function PlaceableObjectStorage:onLoad(savegame)
@@ -98,6 +108,20 @@ function PlaceableObjectStorage:onLoad(savegame)
 	spec.supportedFillTypes = g_fillTypeManager:getFillTypesFromXML(self.xmlFile, "placeable.objectStorage#fillTypeCategories", "placeable.objectStorage#fillTypes", false)
 	spec.supportsBales = self.xmlFile:getValue("placeable.objectStorage#supportsBales", true)
 	spec.supportsPallets = self.xmlFile:getValue("placeable.objectStorage#supportsPallets", true)
+	spec.supportedObjects = {}
+
+	self.xmlFile:iterate("placeable.objectStorage.supportedObject", function (index, objectKey)
+		local entry = {
+			filename = self.xmlFile:getValue(objectKey .. "#filename")
+		}
+
+		if entry.filename ~= nil then
+			entry.amount = self.xmlFile:getValue(objectKey .. "#amount", math.huge)
+
+			table.insert(spec.supportedObjects, entry)
+		end
+	end)
+
 	spec.capacity = self.xmlFile:getValue("placeable.objectStorage#capacity", 250)
 	spec.maxLength = self.xmlFile:getValue("placeable.objectStorage#maxLength", math.huge)
 	spec.maxHeight = self.xmlFile:getValue("placeable.objectStorage#maxHeight", math.huge)
@@ -137,6 +161,7 @@ function PlaceableObjectStorage:onLoad(savegame)
 		if spawnArea.startNode ~= nil and spawnArea.endNode ~= nil then
 			local _ = nil
 			spawnArea.sizeX, _, spawnArea.sizeZ = localToLocal(spawnArea.endNode, spawnArea.startNode, 0, 0, 0)
+			spawnArea.maxHeight = self.xmlFile:getValue(areaKey .. "#maxHeight", 3)
 
 			table.insert(spec.objectSpawn.area, spawnArea)
 		else
@@ -170,6 +195,7 @@ function PlaceableObjectStorage:onLoad(savegame)
 		if storageArea.startNode ~= nil and storageArea.endNode ~= nil then
 			local _ = nil
 			storageArea.sizeX, _, storageArea.sizeZ = localToLocal(storageArea.endNode, storageArea.startNode, 0, 0, 0)
+			storageArea.maxHeight = self.xmlFile:getValue(areaKey .. "#maxHeight", 3)
 
 			table.insert(spec.storageArea.area, storageArea)
 		else
@@ -426,6 +452,36 @@ function PlaceableObjectStorage:getObjectStorageCanStoreObject(object)
 		return false, PlaceableObjectStorageErrorEvent.ERROR_STORAGE_IS_FULL
 	end
 
+	if #spec.supportedObjects > 0 then
+		local isSupported = false
+		local filename = object.configFileName or object.xmlFilename
+
+		for i = 1, #spec.supportedObjects do
+			local supportedObject = spec.supportedObjects[i]
+
+			if filename:endsWith(supportedObject.filename) then
+				isSupported = true
+				local storedAmount = 0
+
+				for j = 1, #spec.storedObjects do
+					local objectFilename = spec.storedObjects[j]:getXMLFilename()
+
+					if objectFilename == filename then
+						storedAmount = storedAmount + 1
+					end
+				end
+
+				if supportedObject.amount <= storedAmount then
+					return false, PlaceableObjectStorageErrorEvent.ERROR_MAX_AMOUNT_FOR_OBJECT_REACHED
+				end
+			end
+		end
+
+		if not isSupported then
+			return false, PlaceableObjectStorageErrorEvent.ERROR_OBJECT_NOT_SUPPORTED
+		end
+	end
+
 	local abstractObjectClass = PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME[ClassUtil.getClassNameByObject(object)]
 
 	if abstractObjectClass ~= nil and not abstractObjectClass.canStoreObject(self, object) then
@@ -497,17 +553,18 @@ function PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex, ox, 
 
 	if spawnArea ~= nil then
 		if spawnArea.sizeX <= width then
-			return PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex + 1, 0, 0, 0, maxStackHeight, math.huge, false)
+			return PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex + 1, 0, 0, 0, 0, 0, width, height, length, maxStackHeight, math.huge, false)
 		end
 
 		if spawnArea.sizeZ <= length then
-			return PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex + 1, 0, 0, 0, maxStackHeight, math.huge, false)
+			return PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex + 1, 0, 0, 0, 0, 0, width, height, length, maxStackHeight, math.huge, false)
 		end
 
 		ox = ox + width * 0.5
 		oz = oz + length * 0.5
+		local limitedStackHeight = math.min(maxStackHeight, math.floor(spawnArea.maxHeight / height))
 
-		if stackIndex < maxStackHeight and lastSuccess ~= false then
+		if stackIndex < limitedStackHeight and lastSuccess ~= false then
 			stackIndex = stackIndex + 1
 			oz = oz - length
 			oy = (stackIndex - 1) * height
@@ -527,7 +584,7 @@ function PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex, ox, 
 		nextX = math.max(nextX, ox + width * 0.5)
 
 		if spawnArea.sizeX < ox then
-			return PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex + 1, 0, 0, 0, maxStackHeight, math.huge, false)
+			return PlaceableObjectStorage.getNextSpawnAreaAndOffset(areas, areaIndex + 1, 0, 0, 0, 0, 0, width, height, length, maxStackHeight, math.huge, false)
 		end
 
 		return areaIndex, ox, oy, oz, ox - width * 0.5, 0, oz + length * 0.5, nextX, nextZ, stackIndex
@@ -547,6 +604,11 @@ function PlaceableObjectStorage:spawnNextObjectStorageObject(lastSuccess)
 
 		if limitedObjectId == nil or g_currentMission.slotSystem:getCanAddLimitedObjects(limitedObjectId, 1) then
 			local _, _, _, width, height, length, maxStackHeight = objectToSpawn:getSpawnInfo()
+
+			if maxStackHeight > 1.001 then
+				maxStackHeight = math.huge
+			end
+
 			local areaIndex, spawnX, spawnY, spawnZ, offsetX, offsetY, offsetZ, nextOffsetX, nextOffsetZ, stackIndex = PlaceableObjectStorage.getNextSpawnAreaAndOffset(spec.objectSpawn.area, spec.objectSpawn.spawnAreaIndex, spec.objectSpawn.spawnAreaData[1], spec.objectSpawn.spawnAreaData[2], spec.objectSpawn.spawnAreaData[3], spec.objectSpawn.spawnAreaData[4], spec.objectSpawn.spawnAreaData[5], width, height, length, maxStackHeight, spec.objectSpawn.spawnAreaData[6], lastSuccess)
 
 			if areaIndex ~= nil then
@@ -723,6 +785,10 @@ function PlaceableObjectStorage:updateObjectStorageVisualAreas()
 		area.spawnAreaData[6] = math.huge
 		local objectToSpawn = objectInfo.objects[1]
 		local ox, oy, oz, width, height, length, maxStackHeight = objectToSpawn:getSpawnInfo()
+
+		if maxStackHeight > 1.001 then
+			maxStackHeight = math.huge
+		end
 
 		for j = 1, objectInfo.numObjects do
 			local areaIndex, spawnX, spawnY, spawnZ, offsetX, offsetY, offsetZ, nextOffsetX, nextOffsetZ, stackIndex = PlaceableObjectStorage.getNextSpawnAreaAndOffset(area.area, area.spawnAreaIndex, area.spawnAreaData[1], area.spawnAreaData[2], area.spawnAreaData[3], area.spawnAreaData[4], area.spawnAreaData[5], width, height, length, maxStackHeight, area.spawnAreaData[6], true)
@@ -902,6 +968,63 @@ function PlaceableObjectStorage:updateInfo(superFunc, infoTable)
 	end
 end
 
+function PlaceableObjectStorage.loadSpecValueCapacity(xmlFile, customEnvironment, baseDir)
+	if not xmlFile:hasProperty("placeable.objectStorage") then
+		return nil
+	end
+
+	local totalCapacity = xmlFile:getValue("placeable.objectStorage#capacity", 250)
+	local limitedObjectAmount = 0
+
+	xmlFile:iterate("placeable.objectStorage.supportedObject", function (index, objectKey)
+		if xmlFile:getValue(objectKey .. "#filename") ~= nil then
+			limitedObjectAmount = limitedObjectAmount + xmlFile:getValue(objectKey .. "#amount")
+		end
+	end)
+
+	if limitedObjectAmount > 0 then
+		totalCapacity = math.min(totalCapacity, limitedObjectAmount)
+	end
+
+	return totalCapacity
+end
+
+function PlaceableObjectStorage.getSpecValueCapacity(storeItem, realItem)
+	if storeItem.specs.objectStorageCapacity == nil then
+		return nil
+	end
+
+	return string.format("%d %s", storeItem.specs.objectStorageCapacity, g_i18n:getText("unit_pieces"))
+end
+
+function PlaceableObjectStorage.loadSpecValueFillTypes(xmlFile, customEnvironment, baseDir)
+	local fillTypes = {}
+
+	xmlFile:iterate("placeable.objectStorage.supportedObject", function (index, objectKey)
+		local fillTypeName = xmlFile:getValue(objectKey .. "#fillType")
+
+		if fillTypeName ~= nil then
+			local fillTypeIndex = g_fillTypeManager:getFillTypeIndexByName(fillTypeName:upper())
+
+			if fillTypeIndex ~= nil then
+				table.insert(fillTypes, fillTypeIndex)
+			end
+		end
+	end)
+
+	return fillTypes
+end
+
+function PlaceableObjectStorage.getSpecValueFillTypes(storeItem, realItem)
+	local fillTypes = storeItem.specs.objectStorageFillTypes
+
+	if fillTypes == nil or #fillTypes == 0 then
+		return nil
+	end
+
+	return fillTypes
+end
+
 PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME = {}
 PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_ID = {}
 PlaceableObjectStorage.ABSTRACT_OBJECTS = {}
@@ -1065,6 +1188,14 @@ end
 
 function AbstractBaleObject:getRealObject()
 	return self.baleObject
+end
+
+function AbstractBaleObject:getXMLFilename()
+	if self.baleObject ~= nil then
+		return self.baleObject.xmlFilename
+	elseif self.baleAttributes ~= nil then
+		return self.baleAttributes.xmlFilename
+	end
 end
 
 function AbstractBaleObject:getIsIdentical(otherAbstractObject)
@@ -1401,6 +1532,12 @@ end
 
 function AbstractPalletObject:getRealObject()
 	return nil
+end
+
+function AbstractPalletObject:getXMLFilename()
+	if self.palletAttributes ~= nil then
+		return self.palletAttributes.configFileName
+	end
 end
 
 function AbstractPalletObject:getIsIdentical(otherAbstractObject)

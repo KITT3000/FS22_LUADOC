@@ -47,9 +47,9 @@ function MasterServerConnection:onConnectionFailed(reason)
 	self.masterServerCallbackTarget:onMasterServerConnectionFailed(reason)
 end
 
-function MasterServerConnection:onServerInfo(id, name, language, capacity, numPlayers, mapName, hasPassword, allModsAvailable, isLanServer, isFriendServer, allowCrossPlay, platformId)
+function MasterServerConnection:onServerInfo(id, name, language, capacity, numPlayers, mapName, mapId, hasPassword, allModsAvailable, isLanServer, isFriendServer, allowCrossPlay, platformId)
 	if self.masterServerCallbackTarget.onServerInfo ~= nil then
-		self.masterServerCallbackTarget:onServerInfo(id, name, language, capacity, numPlayers, mapName, hasPassword, allModsAvailable, isLanServer, isFriendServer, allowCrossPlay, platformId)
+		self.masterServerCallbackTarget:onServerInfo(id, name, language, capacity, numPlayers, mapName, mapId, hasPassword, allModsAvailable, isLanServer, isFriendServer, allowCrossPlay, platformId)
 	else
 		Logging.devWarning("Warning: Callback target is missing onServerInfo")
 	end
@@ -128,6 +128,8 @@ end
 function MasterServerConnection:disconnectFromMasterServer()
 	if not GS_IS_MOBILE_VERSION then
 		masterServerDisconnect()
+
+		self.lastBackServerIndex = -1
 	end
 
 	self.isInit = false

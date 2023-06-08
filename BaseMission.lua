@@ -230,8 +230,10 @@ function BaseMission:delete()
 		self.environment = nil
 	end
 
-	for k, v in pairs(self.updateables) do
-		v:delete()
+	for k, updateable in pairs(self.updateables) do
+		if updateable.delete ~= nil then
+			updateable:delete()
+		end
 
 		self.updateables[k] = nil
 	end

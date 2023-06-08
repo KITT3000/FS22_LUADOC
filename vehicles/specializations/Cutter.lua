@@ -590,7 +590,7 @@ function Cutter:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 		if self.isClient then
 			local cutSoundActive = false
 
-			if fillType ~= FillType.UNKNOWN and isCollecting then
+			if fillType ~= nil and fillType ~= FillType.UNKNOWN and isCollecting then
 				g_effectManager:setFillType(spec.fillEffects, fillType)
 				g_effectManager:setMinMaxWidth(spec.fillEffects, currentTestAreaMinX, currentTestAreaMaxX, currentTestAreaMinX / testAreaMinX, currentTestAreaMaxX / testAreaMaxX, reset)
 				g_effectManager:startEffects(spec.fillEffects)
@@ -753,6 +753,7 @@ function Cutter:processCutterArea(workArea, dt)
 
 					if fruitTypeIndex ~= spec.currentInputFruitType then
 						spec.currentInputFruitType = fruitTypeIndex
+						spec.currentGrowthState = growthState
 						spec.currentOutputFillType = g_fruitTypeManager:getFillTypeIndexByFruitTypeIndex(spec.currentInputFruitType)
 
 						if spec.fruitTypeConverters[spec.currentInputFruitType] ~= nil then

@@ -187,7 +187,7 @@ function Shovel:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 				local freeCapacity = math.huge
 
 				if not shovelNode.ignoreFillLevel then
-					freeCapacity = self:getFillUnitFreeCapacity(shovelNode.fillUnitIndex)
+					freeCapacity = math.min(capacity - fillLevel, self:getFillUnitFreeCapacity(shovelNode.fillUnitIndex))
 				end
 
 				freeCapacity = math.min(freeCapacity, shovelNode.fillLitersPerSecond * dt)

@@ -21,22 +21,16 @@ function FlowLayoutElement:invalidateLayout(ignoreVisibility)
 	end
 
 	local posX = 0
-
-	if self.alignmentX == FlowLayoutElement.ALIGN_CENTER then
-		posX = self.absSize[1] * 0.5 - totalWidth * 0.5
-	elseif self.alignmentX == FlowLayoutElement.ALIGN_RIGHT then
-		posX = self.absSize[1] - totalWidth
-	end
-
 	local currentX = posX
 	local currentLine = 0
+	local lineLengths = {}
 
 	for currentIndex, element in ipairs(self.elements) do
 		if self:getIsElementIncluded(element, ignoreVisibility) then
 			local x = currentX + element.margin[1]
 			element.line = currentLine
 
-			if x + element.absSize[1] - self.absSize[1] > 0.0001 and self.alignmentX == FlowLayoutElement.ALIGN_LEFT then
+			if x + element.absSize[1] - self.absSize[1] > 0.0001 then
 				x = 0
 				currentLine = currentLine + 1
 				local cutIndex = currentIndex
@@ -77,6 +71,7 @@ function FlowLayoutElement:invalidateLayout(ignoreVisibility)
 
 			x = x + element.absSize[1] + element.margin[3]
 			currentX = x
+			lineLengths[currentLine] = x
 		else
 			element.line = nil
 		end
@@ -103,6 +98,26 @@ function FlowLayoutElement:invalidateLayout(ignoreVisibility)
 			end
 
 			element:setPosition(nil, y)
+		end
+	end
+
+	if self.alignmentX == BoxLayoutElement.ALIGN_CENTER or self.alignmentX == BoxLayoutElement.ALIGN_RIGHT then
+		for _, element in pairs(self.elements) do
+			if lineLengths[element.line] ~= nil then
+				local lineLength = lineLengths[element.line]
+				local offset = 0
+				local size = self.absSize[1]
+
+				if self.alignmentX == BoxLayoutElement.ALIGN_CENTER then
+					offset = size / 2 - lineLength / 2
+				elseif self.alignmentX == BoxLayoutElement.ALIGN_RIGHT then
+					offset = size - lineLength
+				end
+
+				local x = element.position[1] + offset
+
+				element:setPosition(x, nil)
+			end
 		end
 	end
 end

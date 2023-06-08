@@ -53,7 +53,7 @@ function MapSelectionScreen:loadAvailableMaps()
 	for i = 1, g_mapManager:getNumOfMaps() do
 		local map = g_mapManager:getMapDataByIndex(i)
 
-		if not map.isModMap or not self.startMissionInfo.isMultiplayer or map.isMultiplayerSupported then
+		if (not map.isModMap or not self.startMissionInfo.isMultiplayer or map.isMultiplayerSupported) and map.isSelectable then
 			table.insert(self.maps, map)
 
 			if map.id == self.startMissionInfo.mapId then

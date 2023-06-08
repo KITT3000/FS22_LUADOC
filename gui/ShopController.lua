@@ -319,6 +319,7 @@ function ShopController:makeDisplayItem(storeItem, realItem, configurations, sal
 		prodPointInputFillTypes = true,
 		prodPointOutputFillTypes = true,
 		sellingStationFillTypes = true,
+		objectStorageFillTypes = true,
 		powerConfig = true
 	}
 
@@ -419,7 +420,8 @@ function ShopController:makeDisplayItem(storeItem, realItem, configurations, sal
 	local prodPointInputFillTypesSpec = self.storeManager:getSpecTypeByName("prodPointInputFillTypes")
 	local prodPointOutputFillTypesSpec = self.storeManager:getSpecTypeByName("prodPointOutputFillTypes")
 	local sellingStationFillTypesSpec = self.storeManager:getSpecTypeByName("sellingStationFillTypes")
-	local fillTypeIconFilenames, seedTypeIconFilenames, foodFillTypeIconFilenames, prodPointInputFillTypeIconFilenames, prodPointOutputFillTypeIconFilenames, sellingStationFillTypesIconFilenames = nil
+	local objectStorageFillTypesSpec = g_storeManager:getSpecTypeByName("objectStorageFillTypes")
+	local fillTypeIconFilenames, seedTypeIconFilenames, foodFillTypeIconFilenames, prodPointInputFillTypeIconFilenames, prodPointOutputFillTypeIconFilenames, sellingStationFillTypesIconFilenames, objectStorageFillTypesIconFilenames = nil
 
 	local function getIconFilenamesForSpec(spec, _storeItem, _realItem, _configurations)
 		local iconFilenames = {}
@@ -462,6 +464,7 @@ function ShopController:makeDisplayItem(storeItem, realItem, configurations, sal
 		prodPointInputFillTypeIconFilenames = getIconFilenamesForSpec(prodPointInputFillTypesSpec, storeItem, realItem)
 		prodPointOutputFillTypeIconFilenames = getIconFilenamesForSpec(prodPointOutputFillTypesSpec, storeItem, realItem)
 		sellingStationFillTypesIconFilenames = getIconFilenamesForSpec(sellingStationFillTypesSpec, storeItem, realItem)
+		objectStorageFillTypesIconFilenames = getIconFilenamesForSpec(objectStorageFillTypesSpec, storeItem, realItem)
 	end
 
 	local iconFilenames = {
@@ -470,7 +473,8 @@ function ShopController:makeDisplayItem(storeItem, realItem, configurations, sal
 		foodFillTypeIconFilenames = foodFillTypeIconFilenames,
 		prodPointInputFillTypeIconFilenames = prodPointInputFillTypeIconFilenames,
 		prodPointOutputFillTypeIconFilenames = prodPointOutputFillTypeIconFilenames,
-		sellingStationFillTypesIconFilenames = sellingStationFillTypesIconFilenames
+		sellingStationFillTypesIconFilenames = sellingStationFillTypesIconFilenames,
+		objectStorageFillTypesIconFilenames = objectStorageFillTypesIconFilenames
 	}
 	local descriptionText = table.concat(storeItem.functions, " ")
 	local category = self.storeManager:getCategoryByName(storeItem.categoryName)

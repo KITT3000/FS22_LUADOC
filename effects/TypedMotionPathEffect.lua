@@ -79,6 +79,9 @@ function TypedMotionPathEffect:setFruitType(fruitTypeIndex, growthState)
 end
 
 function TypedMotionPathEffect:setFillType(fillTypeIndex, growthState)
+	fillTypeIndex = fillTypeIndex or self.fillTypeIndex
+	growthState = growthState or self.growthState
+
 	if fillTypeIndex ~= self.fillTypeIndex or growthState ~= self.growthState then
 		local changed = false
 

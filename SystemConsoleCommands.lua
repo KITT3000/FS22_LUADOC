@@ -433,6 +433,59 @@ SystemConsoleCommands = {
 
 		return "No GUI active!"
 	end,
+	reloadCurrentDialog = function (self)
+		if g_gui.currentDialogName ~= nil and g_gui.currentDialogName ~= "" then
+			g_gui.currentlyReloading = true
+			local guiName = g_gui.currentDialogName
+			local guiController = g_gui.currentListener.target
+
+			g_gui:closeDialog(g_gui.currentListener)
+			g_i18n:delete()
+			g_i18n:load()
+
+			local success = g_gui:loadProfiles("dataS/guiProfiles.xml")
+
+			if not success then
+				g_gui.currentlyReloading = false
+
+				return "Failed to reload profiles"
+			end
+
+			local class = ClassUtil.getClassObject(guiName)
+
+			if class == nil then
+				for customEnv, _ in pairs(g_modIsLoaded) do
+					for k, v in pairs(_G[customEnv]) do
+						if k == guiName then
+							class = v
+						end
+					end
+				end
+			end
+
+			if class == nil then
+				return "Given GUI Dialog class not found"
+			end
+
+			g_dummyGui = nil
+
+			if class.createFromExistingGui ~= nil then
+				g_dummyGui = class.createFromExistingGui(guiController, guiName)
+			else
+				g_dummyGui = class.new()
+
+				g_gui.guis[guiName]:delete()
+				g_gui.guis[guiName].target:delete()
+				g_gui:loadGui(guiController.xmlFilename, guiName, g_dummyGui)
+			end
+
+			g_gui.currentlyReloading = false
+
+			return "Reloaded dialog " .. tostring(guiName)
+		end
+
+		return "No Dialog active!"
+	end,
 	toggleUiDebug = function (self)
 		if g_uiDebugEnabled then
 			g_uiDebugEnabled = false

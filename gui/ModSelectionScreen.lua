@@ -167,7 +167,7 @@ function ModSelectionScreen:onClickOk()
 
 		self.missionDynamicInfo.mods = mods
 
-		g_careerScreen:startGame(self.missionInfo, self.missionDynamicInfo)
+		g_careerScreen:startGame(self.missionInfo, self.missionDynamicInfo, ModSelectionScreen)
 	else
 		if g_dedicatedServer == nil then
 			local modsToActivate = {}

@@ -306,7 +306,9 @@ function AIVehicleUtil.getMaxToolRadius(implement)
 			else
 				for _, compJoint in pairs(implement.object.componentJoints) do
 					if refNode == compJoint.jointNode then
-						rotMax = compJoint.rotLimit[2]
+						for i = 1, 3 do
+							rotMax = math.max(rotMax or 0, compJoint.rotLimit[i])
+						end
 
 						break
 					end

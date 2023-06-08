@@ -420,6 +420,8 @@ function Wheels.registerConnectorXMLPaths(schema, key)
 	schema:register(XMLValueType.FLOAT, key .. "#width", "Width for shader")
 	schema:register(XMLValueType.FLOAT, key .. "#startPos", "Start pos for shader")
 	schema:register(XMLValueType.FLOAT, key .. "#endPos", "End pos for shader")
+	schema:register(XMLValueType.FLOAT, key .. "#startPosOffset", "Start pos offset for shader (will be added on top if it's automatically calculated)")
+	schema:register(XMLValueType.FLOAT, key .. "#endPosOffset", "End pos offset for shader (will be added on top if it's automatically calculated)")
 	schema:register(XMLValueType.FLOAT, key .. "#uniformScale", "Uniform scale for shader")
 	schema:register(XMLValueType.COLOR, key .. "#color", "Connector color")
 end
@@ -1751,6 +1753,8 @@ function Wheels:loadAdditionalWheelConnectorFromXML(wheel, additionalWheel, xmlF
 			connector.width = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#width")
 			connector.startPos = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#startPos")
 			connector.endPos = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#endPos")
+			connector.startPosOffset = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#startPosOffset")
+			connector.endPosOffset = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#endPosOffset")
 			connector.scale = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#uniformScale")
 			connector.color = self:getWheelConfigurationValue(xmlFile, wheel.configIndex, configKey, wheelKey .. ".connector#color", nil, true)
 
@@ -2738,7 +2742,7 @@ function Wheels:onAdditionalWheelConnectorI3DLoaded(i3dNode, failedReason, args)
 
 			if not connector.useWidthAndDiam then
 				if getHasShaderParameter(connector.node, "connectorPos") then
-					I3DUtil.setShaderParameterRec(connector.node, "connectorPos", 0, baseWheelWidth, wheelDistance, dualWheelWidth, false)
+					I3DUtil.setShaderParameterRec(connector.node, "connectorPos", 0, baseWheelWidth + (connector.startPosOffset or 0), wheelDistance + (connector.endPosOffset or 0), dualWheelWidth, false)
 				end
 
 				local x, _, z, w = I3DUtil.getShaderParameterRec(connector.node, "widthAndDiam")

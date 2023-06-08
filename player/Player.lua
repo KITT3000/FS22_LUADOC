@@ -343,7 +343,11 @@ function Player.new(isServer, isClient)
 	self.debugFlightCoolDown = 0
 	self.requestedFieldData = false
 	self.playerStateMachine = PlayerStateMachine.new(self)
-	self.hudUpdater = PlayerHUDUpdater.new()
+
+	if not Platform.isMobile then
+		self.hudUpdater = PlayerHUDUpdater.new()
+	end
+
 	self.farmId = FarmManager.SPECTATOR_FARM_ID
 	self.cameraBobbingEnabled = g_gameSettings:getValue(GameSettings.SETTING.CAMERA_BOBBING)
 	self.playerHotspot = PlayerHotspot.new()
@@ -494,7 +498,11 @@ function Player:delete()
 	delete(self.rootNode)
 	delete(self.graphicsRootNode)
 	self.playerStateMachine:delete()
-	self.hudUpdater:delete()
+
+	if self.hudUpdater ~= nil then
+		self.hudUpdater:delete()
+	end
+
 	self:deleteStartleAnimalData()
 
 	if self.foliageBendingId ~= nil then
@@ -952,7 +960,7 @@ function Player:update(dt)
 
 	self:resetCameraInputsInformation()
 
-	if self.isEntered then
+	if self.isEntered and self.hudUpdater ~= nil then
 		self.hudUpdater:update(dt, self:getPositionData())
 	end
 end
@@ -1964,7 +1972,9 @@ function Player:checkObjectInRange()
 
 			self.isObjectInRange = self.lastFoundObject ~= nil
 
-			self.hudUpdater:setCurrentRaycastTarget(self.lastFoundAnyObject)
+			if self.hudUpdater ~= nil then
+				self.hudUpdater:setCurrentRaycastTarget(self.lastFoundAnyObject)
+			end
 		elseif self.pickedUpObject ~= nil and not entityExists(self.pickedUpObject) then
 			Player.PICKED_UP_OBJECTS[self.pickedUpObject] = false
 			self.pickedUpObject = nil
@@ -1977,7 +1987,10 @@ function Player:checkObjectInRange()
 		self.lastFoundAnyObject = nil
 
 		raycastAll(x, y, z, dx, dy, dz, "pickUpObjectRaycastCallback", Player.MAX_PICKABLE_OBJECT_DISTANCE, self)
-		self.hudUpdater:setCurrentRaycastTarget(self.lastFoundAnyObject)
+
+		if self.hudUpdater ~= nil then
+			self.hudUpdater:setCurrentRaycastTarget(self.lastFoundAnyObject)
+		end
 	end
 end
 

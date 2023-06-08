@@ -43,6 +43,7 @@ end
 function FSCareerMissionInfo:loadDefaults()
 	FSCareerMissionInfo:superClass().loadDefaults(self)
 
+	self.supportsSaving = true
 	self.isValid = false
 	self.isInvalidUser = false
 	self.isCorruptFile = false

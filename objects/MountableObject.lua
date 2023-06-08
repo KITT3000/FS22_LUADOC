@@ -23,6 +23,7 @@ function MountableObject.new(isServer, isClient, customMt)
 		additionalMass = 0,
 		isAllowed = false
 	}
+	self.supportsForkJointOffset = true
 	self.lastMoveTime = -100000
 	self.mountStateChangeListeners = {}
 
@@ -240,7 +241,7 @@ function MountableObject:mountDynamic(object, objectActorId, jointNode, mountTyp
 	if self.dynamicMountTriggerId ~= nil then
 		local x, y, z = nil
 
-		if mountType == DynamicMountUtil.TYPE_FORK then
+		if mountType == DynamicMountUtil.TYPE_FORK and self.supportsForkJointOffset then
 			local _, _, zOffset = worldToLocal(jointNode, localToWorld(self.nodeId, getCenterOfMass(self.nodeId)))
 			x, y, z = localToLocal(jointNode, getParent(self.dynamicMountJointNodeDynamic), 0, 0, zOffset)
 		else
@@ -388,6 +389,18 @@ function MountableObject:dynamicMountTriggerCallback(triggerId, otherActorId, on
 
 	if vehicle ~= nil and vehicle:isa(Vehicle) then
 		otherActorId = vehicle.components[1].node
+
+		if vehicle.spec_dynamicMountAttacher ~= nil then
+			local dynamicMountAttacherNode = vehicle.spec_dynamicMountAttacher.dynamicMountAttacherNode
+
+			if dynamicMountAttacherNode ~= nil then
+				local componentNode = vehicle:getParentComponent(dynamicMountAttacherNode)
+
+				if componentNode ~= 0 then
+					otherActorId = componentNode
+				end
+			end
+		end
 	end
 
 	if onEnter then

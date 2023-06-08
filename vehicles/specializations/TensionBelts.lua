@@ -760,7 +760,7 @@ function TensionBelts:lockTensionBeltObject(objectId, objectsToJointTable, isDyn
 			local jointIndex = constr:finalize()
 
 			if object ~= nil then
-				if object.setReducedComponentMass ~= nil then
+				if object.setReducedComponentMass ~= nil and object:getAllowComponentMassReduction() then
 					object:setReducedComponentMass(true)
 					self:setMassDirty()
 				end
@@ -938,7 +938,7 @@ function TensionBelts:createTensionBelt(belt, isDummy, objects, playSound)
 			if getSplitType(node) ~= 0 then
 				tensionBelt:addShape(node, -100, 100, -100, 100)
 			else
-				tensionBelt:addShape(node, 0, 1, 0, 1)
+				tensionBelt:addShape(node, 0, 10, 0, 10)
 			end
 		end
 	end

@@ -3,6 +3,8 @@ local loadedOverlays = false
 local PIXEL = 1
 local TOUCH_SIDE = 2
 local TOUCH_MIDDLE = 3
+local TOUCH_SIDE_BG = 4
+local TOUCH_MIDDLE_BG = 5
 local PIXEL_X_SIZE, PIXEL_Y_SIZE, TOUCH_HEIGHT, TOUCH_SIDE_WIDTH = nil
 
 function onProfileUiResolutionScalingChanged()
@@ -18,7 +20,7 @@ end
 local function loadOverlays()
 	overlays[PIXEL] = createImageOverlay("dataS/scripts/shared/graph_pixel.png")
 
-	if GS_IS_MOBILE_VERSION then
+	if Platform.isMobile then
 		overlays[TOUCH_SIDE] = createImageOverlay(g_baseUIFilename)
 
 		setOverlayUVs(overlays[TOUCH_SIDE], unpack(GuiUtils.getUVs({
@@ -32,6 +34,24 @@ local function loadOverlays()
 
 		setOverlayUVs(overlays[TOUCH_MIDDLE], unpack(GuiUtils.getUVs({
 			651,
+			502,
+			1,
+			120
+		})))
+
+		overlays[TOUCH_SIDE_BG] = createImageOverlay(g_baseUIFilename)
+
+		setOverlayUVs(overlays[TOUCH_SIDE_BG], unpack(GuiUtils.getUVs({
+			212,
+			502,
+			58,
+			120
+		})))
+
+		overlays[TOUCH_MIDDLE_BG] = createImageOverlay(g_baseUIFilename)
+
+		setOverlayUVs(overlays[TOUCH_MIDDLE_BG], unpack(GuiUtils.getUVs({
+			279,
 			502,
 			1,
 			120
@@ -113,7 +133,7 @@ local function alignHorizontalToScreenPixels(x)
 	return math.floor(x / PIXEL_X_SIZE) * PIXEL_X_SIZE
 end
 
-function drawTouchButton(x, y, width, isPressed)
+function drawTouchButton(x, y, width, isPressed, hasBackground)
 	if not loadedOverlays then
 		loadOverlays()
 	end
@@ -121,18 +141,73 @@ function drawTouchButton(x, y, width, isPressed)
 	x = alignHorizontalToScreenPixels(x)
 	width = alignHorizontalToScreenPixels(width)
 	y = y - TOUCH_HEIGHT * 0.5
+	local overlaySide, overlayMiddle = nil
 
-	if isPressed then
-		setOverlayColor(overlays[TOUCH_SIDE], 0.718, 0.716, 0.715, 0.25)
-		setOverlayColor(overlays[TOUCH_MIDDLE], 0.718, 0.716, 0.715, 0.25)
+	if hasBackground then
+		overlaySide = overlays[TOUCH_SIDE_BG]
+		overlayMiddle = overlays[TOUCH_MIDDLE_BG]
 	else
-		setOverlayColor(overlays[TOUCH_SIDE], 1, 1, 1, 1)
-		setOverlayColor(overlays[TOUCH_MIDDLE], 1, 1, 1, 1)
+		overlaySide = overlays[TOUCH_SIDE]
+		overlayMiddle = overlays[TOUCH_MIDDLE]
 	end
 
-	setOverlayRotation(overlays[TOUCH_SIDE], 0, 0, 0)
-	renderOverlay(overlays[TOUCH_SIDE], x, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
-	setOverlayRotation(overlays[TOUCH_SIDE], math.pi, TOUCH_SIDE_WIDTH * 0.5, TOUCH_HEIGHT * 0.5)
-	renderOverlay(overlays[TOUCH_SIDE], x + width - TOUCH_SIDE_WIDTH, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
-	renderOverlay(overlays[TOUCH_MIDDLE], x + TOUCH_SIDE_WIDTH, y, width - 2 * TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
+	if isPressed then
+		setOverlayColor(overlaySide, 0.718, 0.716, 0.715, 0.25)
+		setOverlayColor(overlayMiddle, 0.718, 0.716, 0.715, 0.25)
+	else
+		setOverlayColor(overlaySide, 1, 1, 1, 1)
+		setOverlayColor(overlayMiddle, 1, 1, 1, 1)
+	end
+
+	setOverlayRotation(overlaySide, 0, 0, 0)
+	renderOverlay(overlaySide, x, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
+	setOverlayRotation(overlaySide, math.pi, TOUCH_SIDE_WIDTH * 0.5, TOUCH_HEIGHT * 0.5)
+	renderOverlay(overlaySide, x + width - TOUCH_SIDE_WIDTH, y, TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
+	renderOverlay(overlayMiddle, x + TOUCH_SIDE_WIDTH, y, width - 2 * TOUCH_SIDE_WIDTH, TOUCH_HEIGHT)
+end
+
+function drawLine2D(startX, startY, endX, endY, thickness, r, g, b, a)
+	if not loadedOverlays then
+		loadOverlays()
+	end
+
+	local overlay = overlays[PIXEL]
+
+	setOverlayColor(overlay, r, g, b, a)
+
+	local deltaX = endX - startX
+	local deltaY = endY - startY
+	deltaY = deltaY / g_screenAspectRatio
+	local deltaXSq = deltaX * deltaX
+	local deltaYSq = deltaY * deltaY
+	local length = math.sqrt(deltaXSq + deltaYSq)
+	local angle = math.acos(deltaX / math.sqrt(deltaXSq + deltaYSq))
+
+	if deltaY < 0 then
+		angle = math.pi * 2 - angle
+	end
+
+	setOverlayRotation(overlay, angle, 0, 0)
+	renderOverlay(overlay, startX, startY, length, thickness)
+	setOverlayRotation(overlay, 0, 0, 0)
+end
+
+function drawOutlineCircle2D(x, y, radius, thickness, numSegments, r, g, b, a)
+	drawPoint(x, y, 4 / g_screenWidth, 4 / g_screenHeight, 0, 0, 1, 1)
+
+	local radiusX = radius
+	local radiusY = radius * g_screenAspectRatio
+	local startX = x + radiusX
+	local startY = y
+	local angle = math.pi * 2 / numSegments
+
+	for i = 1, numSegments do
+		local endX = x + radiusX * math.cos(angle * i)
+		local endY = y + radiusY * math.sin(angle * i)
+
+		drawLine2D(startX, startY, endX, endY, thickness, r, g, b, a)
+
+		startY = endY
+		startX = endX
+	end
 end

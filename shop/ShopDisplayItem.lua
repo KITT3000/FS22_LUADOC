@@ -16,6 +16,7 @@ function ShopDisplayItem.new(storeItem, concreteItem, attributeIconProfiles, att
 		self.prodPointInputFillTypeIconFilenames = iconFilenames.prodPointInputFillTypeIconFilenames or {}
 		self.prodPointOutputFillTypeIconFilenames = iconFilenames.prodPointOutputFillTypeIconFilenames or {}
 		self.sellingStationFillTypesIconFilenames = iconFilenames.sellingStationFillTypesIconFilenames or {}
+		self.objectStorageFillTypesIconFilenames = iconFilenames.objectStorageFillTypesIconFilenames or {}
 	end
 
 	self.functionText = functionText

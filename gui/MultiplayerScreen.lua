@@ -49,8 +49,8 @@ end
 
 function MultiplayerScreen:initJoinGameScreen()
 	g_connectionManager:startupWithWorkingPort(g_gameSettings:getValue("defaultServerPort"))
-	g_connectToMasterServerScreen:setNextScreenName("JoinGameScreen")
-	g_connectToMasterServerScreen:setPrevScreenName("MultiplayerScreen")
+	g_connectToMasterServerScreen:setNextScreenClass(JoinGameScreen)
+	g_connectToMasterServerScreen:setPrevScreenClass(MultiplayerScreen)
 end
 
 function MultiplayerScreen:onContinue()

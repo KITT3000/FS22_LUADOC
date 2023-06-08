@@ -345,12 +345,33 @@ function ConveyorBelt:getIsEnterable(superFunc)
 	return (self.getAttacherVehicle == nil or self:getAttacherVehicle() == nil) and superFunc(self)
 end
 
+function ConveyorBelt.getHasConveyorBeltLoop(rootVehicle, vehicle, fillUnitIndex)
+	if vehicle.getCurrentDischargeNode ~= nil then
+		local currentDischargeNode = vehicle:getCurrentDischargeNode()
+
+		if currentDischargeNode.fillUnitIndex == fillUnitIndex then
+			local object = currentDischargeNode.dischargeHitObject
+			local targetFillUnitIndex = currentDischargeNode.dischargeHitObjectUnitIndex
+
+			if object ~= nil and object.spec_conveyorBelt ~= nil and targetFillUnitIndex ~= nil then
+				if object == rootVehicle then
+					return true
+				end
+
+				return ConveyorBelt.getHasConveyorBeltLoop(rootVehicle, object, targetFillUnitIndex)
+			end
+		end
+	end
+
+	return false
+end
+
 function ConveyorBelt:getFillUnitAllowsFillType(superFunc, fillUnitIndex, fillType)
 	if not superFunc(self, fillUnitIndex, fillType) then
 		return false
 	end
 
-	if self.getCurrentDischargeNode ~= nil then
+	if not ConveyorBelt.getHasConveyorBeltLoop(self, self, fillUnitIndex) and self.getCurrentDischargeNode ~= nil then
 		local currentDischargeNode = self:getCurrentDischargeNode()
 
 		if currentDischargeNode.fillUnitIndex == fillUnitIndex then
@@ -377,7 +398,7 @@ end
 function ConveyorBelt:getFillUnitFreeCapacity(superFunc, fillUnitIndex, fillTypeIndex, farmId)
 	local freeCapacity = superFunc(self, fillUnitIndex, fillTypeIndex, farmId)
 
-	if self.getCurrentDischargeNode ~= nil then
+	if not ConveyorBelt.getHasConveyorBeltLoop(self, self, fillUnitIndex) and self.getCurrentDischargeNode ~= nil then
 		local currentDischargeNode = self:getCurrentDischargeNode()
 
 		if currentDischargeNode.fillUnitIndex == fillUnitIndex then

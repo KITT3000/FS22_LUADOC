@@ -29,6 +29,7 @@ function JoinGameScreen.new(target, custom_mt, startMissionInfo, messageCenter, 
 
 	self:registerControls(JoinGameScreen.CONTROLS)
 
+	self.temporarilyHiddenElements = {}
 	self.startMissionInfo = startMissionInfo
 	self.messageCenter = messageCenter
 	self.inputManager = inputManager
@@ -87,7 +88,7 @@ function JoinGameScreen:onOpen()
 		title = Utils.limitTextToWidth(title, 0.025, 0.245, false, "..")
 
 		table.insert(self.mapTable, title)
-		table.insert(self.mapIds, map.title)
+		table.insert(self.mapIds, map.id)
 	end
 
 	self.mapSelectionElement:setTexts(self.mapTable)
@@ -159,7 +160,27 @@ function JoinGameScreen:onClose()
 	self.mapTable = {}
 	self.mapIds = {}
 
-	self.messageCenter:unsubscribeAll(self)
+	if next(self.temporarilyHiddenElements) ~= nil then
+		for element in pairs(self.temporarilyHiddenElements) do
+			element:setVisible(true)
+		end
+
+		table.clear(self.temporarilyHiddenElements)
+	end
+
+	g_messageCenter:unsubscribeAll(self)
+end
+
+function JoinGameScreen:hideElementTemporarily(elementName)
+	local element = self[elementName]
+
+	if element == nil then
+		return
+	end
+
+	self.temporarilyHiddenElements[element] = true
+
+	element:setVisible(false)
 end
 
 function JoinGameScreen:triggerRebuildOnFilterChange()
@@ -252,7 +273,7 @@ function JoinGameScreen:onServerInfoStart(numServers, totalNumServers)
 	self.serversBufferNextIndex = 1
 end
 
-function JoinGameScreen:onServerInfo(id, name, language, capacity, numPlayers, mapName, hasPassword, allModsAvailable, isLanServer, isFriendServer, allowCrossPlay, platformId)
+function JoinGameScreen:onServerInfo(id, name, language, capacity, numPlayers, mapName, mapId, hasPassword, allModsAvailable, isLanServer, isFriendServer, allowCrossPlay, platformId)
 	local server = self.serversBuffer[self.serversBufferNextIndex] or {}
 	server.id = id
 	server.name = name
@@ -261,6 +282,7 @@ function JoinGameScreen:onServerInfo(id, name, language, capacity, numPlayers, m
 	server.capacity = capacity
 	server.numPlayers = numPlayers
 	server.mapName = mapName
+	server.mapId = mapId
 	server.allModsAvailable = allModsAvailable
 	server.isLanServer = isLanServer
 	server.isFriendServer = isFriendServer
@@ -378,7 +400,7 @@ end
 function JoinGameScreen:filterServer(server)
 	local pwOk = not self.hasNoPassword or not server.hasPassword
 	local notFullOk = not self.isNotFull or server.numPlayers < server.capacity
-	local mapOk = self.selectedMap == "" or server.mapName == self.selectedMap
+	local mapOk = self.selectedMap == "" or server.mapId == self.selectedMap
 	local modsOk = not self.onlyWithAllModsAvailable or server.allModsAvailable
 	local languageOk = server.language == self.selectedLanguageId
 	local capOk = server.capacity <= self.selectedMaxNumPlayers
@@ -766,7 +788,7 @@ function JoinGameScreen:startGame(password, serverId)
 	}
 
 	g_mpLoadingScreen:setMissionInfo(missionInfo, missionDynamicInfo)
-	g_gui:showGui("MPLoadingScreen")
+	g_gui:changeScreen(nil, MPLoadingScreen, self.returnScreenClass or MultiplayerScreen)
 	g_mpLoadingScreen:startClient()
 end
 

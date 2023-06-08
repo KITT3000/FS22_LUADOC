@@ -8,8 +8,6 @@ function Timer.new(duration)
 	self.isRunning = false
 	self.timeLeft = duration
 
-	self:reset()
-
 	return self
 end
 
@@ -79,6 +77,10 @@ end
 
 function Timer:getTimeLeft()
 	return self.timeLeft
+end
+
+function Timer:setTimeLeft(timeLeftMs)
+	self.timeLeft = timeLeftMs
 end
 
 function Timer:update(dt)

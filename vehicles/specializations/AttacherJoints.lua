@@ -105,6 +105,8 @@ function AttacherJoints.registerAttacherJointXMLPaths(schema, baseName)
 	schema:register(XMLValueType.BOOL, baseName .. ".topArm#useBrandDecal", "Defines if the brand decal on the top arm is allowed or not", true)
 	schema:register(XMLValueType.INT, baseName .. ".topArm#material", "Top arm material index")
 	schema:register(XMLValueType.INT, baseName .. ".topArm#material2", "Top arm material index 2")
+	schema:register(XMLValueType.STRING, baseName .. ".topArm.rotationNode(?)#node", "Local index path inside the topArm")
+	schema:register(XMLValueType.VECTOR_ROT, baseName .. ".topArm.rotationNode(?)#rotation", "Rotation to be used while not active")
 	schema:register(XMLValueType.NODE_INDEX, baseName .. ".topArm#rotationNode", "Rotation node if top arm not loaded from i3d")
 	schema:register(XMLValueType.NODE_INDEX, baseName .. ".topArm#translationNode", "Translation node if top arm not loaded from i3d")
 	schema:register(XMLValueType.NODE_INDEX, baseName .. ".topArm#referenceNode", "Reference node if top arm not loaded from i3d")
@@ -115,6 +117,8 @@ function AttacherJoints.registerAttacherJointXMLPaths(schema, baseName)
 	schema:register(XMLValueType.INT, baseName .. ".bottomArm#zScale", "Inverts bottom arm direction", 1)
 	schema:register(XMLValueType.BOOL, baseName .. ".bottomArm#lockDirection", "Lock direction", true)
 	schema:register(XMLValueType.ANGLE, baseName .. ".bottomArm#resetSpeed", "Speed of bottom arm to return to idle position (deg/sec)", 45)
+	schema:register(XMLValueType.BOOL, baseName .. ".bottomArm#updateReferenceDistance", "If 'true', the reference distance will be updated dynamically. So it's possible to adjust the bottom arm length.", false)
+	schema:register(XMLValueType.NODE_INDEX, baseName .. ".bottomArm#jointPositionNode", "Node that will be equalized with the current attacher joint position of the attached implement")
 	schema:register(XMLValueType.BOOL, baseName .. ".bottomArm#toggleVisibility", "Bottom arm will be hidden on detach", false)
 	schema:register(XMLValueType.STRING, baseName .. ".toolbar#filename", "Filename to toolbar i3d", "$data/shared/assets/toolbar.i3d")
 	SoundManager.registerSampleXMLPaths(schema, baseName, "attachSound")
@@ -1236,7 +1240,19 @@ function AttacherJoints:updateAttacherJointGraphics(implement, dt, forceUpdate)
 			end
 
 			if jointDesc.bottomArm.translationNode ~= nil and not implement.attachingIsInProgress then
+				if jointDesc.bottomArm.updateReferenceDistance then
+					jointDesc.bottomArm.referenceDistance = calcDistanceFrom(jointDesc.bottomArm.referenceNode, jointDesc.bottomArm.translationNode)
+				end
+
 				setTranslation(jointDesc.bottomArm.translationNode, 0, 0, (distance - jointDesc.bottomArm.referenceDistance) * jointDesc.bottomArm.zScale)
+			end
+
+			if jointDesc.bottomArm.jointPositionNode ~= nil and not implement.attachingIsInProgress then
+				setWorldTranslation(jointDesc.bottomArm.jointPositionNode, bx, by, bz)
+
+				if self.setMovingToolDirty ~= nil then
+					self:setMovingToolDirty(jointDesc.bottomArm.jointPositionNode, forceUpdate, dt)
+				end
 			end
 
 			if self.setMovingToolDirty ~= nil then
@@ -1791,8 +1807,16 @@ function AttacherJoints:postAttachImplement(implement)
 	local objectAttacherJoint = object.spec_attachable.inputAttacherJoints[inputJointDescIndex]
 	local jointDesc = spec.attacherJoints[jointDescIndex]
 
-	if objectAttacherJoint.topReferenceNode ~= nil and jointDesc.topArm ~= nil and jointDesc.topArm.toggleVisibility then
-		setVisibility(jointDesc.topArm.rotationNode, true)
+	if objectAttacherJoint.topReferenceNode ~= nil and jointDesc.topArm ~= nil then
+		if jointDesc.topArm.toggleVisibility then
+			setVisibility(jointDesc.topArm.rotationNode, true)
+		end
+
+		for i = 1, #jointDesc.topArm.rotationNodes do
+			local rotationNode = jointDesc.topArm.rotationNodes[i]
+
+			setRotation(rotationNode.node, rotationNode.activeRotation[1], rotationNode.activeRotation[2], rotationNode.activeRotation[3])
+		end
 	end
 
 	if jointDesc.bottomArm ~= nil then
@@ -2262,6 +2286,12 @@ function AttacherJoints:detachImplement(implementIndex, noEventSend)
 
 				if jointDesc.topArm.toggleVisibility then
 					setVisibility(jointDesc.topArm.rotationNode, false)
+				end
+
+				for i = 1, #jointDesc.topArm.rotationNodes do
+					local rotationNode = jointDesc.topArm.rotationNodes[i]
+
+					setRotation(rotationNode.node, rotationNode.inactiveRotation[1], rotationNode.inactiveRotation[2], rotationNode.inactiveRotation[3])
 				end
 			end
 
@@ -3021,6 +3051,7 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 				setVisibility(topArm.rotationNode, false)
 			end
 
+			topArm.rotationNodes = {}
 			attacherJoint.topArm = topArm
 		end
 	end
@@ -3069,6 +3100,7 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 
 		if translationNode ~= nil and referenceNode ~= nil then
 			bottomArm.translationNode = translationNode
+			bottomArm.referenceNode = referenceNode
 			local x, y, z = getTranslation(translationNode)
 
 			if math.abs(x) >= 0.0001 or math.abs(y) >= 0.0001 or math.abs(z) >= 0.0001 then
@@ -3081,6 +3113,8 @@ function AttacherJoints:loadAttacherJointFromXML(attacherJoint, xmlFile, baseNam
 		bottomArm.zScale = MathUtil.sign(xmlFile:getValue(baseName .. ".bottomArm#zScale", 1))
 		bottomArm.lockDirection = xmlFile:getValue(baseName .. ".bottomArm#lockDirection", true)
 		bottomArm.resetSpeed = xmlFile:getValue(baseName .. ".bottomArm#resetSpeed", 45)
+		bottomArm.updateReferenceDistance = xmlFile:getValue(baseName .. ".bottomArm#updateReferenceDistance", false)
+		bottomArm.jointPositionNode = xmlFile:getValue(baseName .. ".bottomArm#jointPositionNode", nil, self.components, self.i3dMappings)
 		bottomArm.toggleVisibility = xmlFile:getValue(baseName .. ".bottomArm#toggleVisibility", false)
 
 		if bottomArm.toggleVisibility then
@@ -3268,6 +3302,33 @@ function AttacherJoints:onTopArmI3DLoaded(i3dNode, failedReason, args)
 		if decalColor ~= nil then
 			I3DUtil.setShaderParameterRec(rootNode, "colorMat2", decalColor[1], decalColor[2], decalColor[3], 1)
 		end
+
+		topArm.rotationNodes = {}
+
+		xmlFile:iterate(baseName .. ".topArm.rotationNode", function (index, key)
+			local nodePath = xmlFile:getValue(key .. "#node")
+
+			if nodePath ~= nil then
+				local node = I3DUtil.indexToObject(rootNode, nodePath)
+
+				if node ~= nil then
+					local rotation = xmlFile:getValue(key .. "#rotation", nil, true)
+
+					if rotation ~= nil then
+						local rotationNode = {
+							node = node,
+							activeRotation = {
+								getRotation(node)
+							},
+							inactiveRotation = rotation
+						}
+
+						setRotation(node, rotationNode.inactiveRotation[1], rotationNode.inactiveRotation[2], rotationNode.inactiveRotation[3])
+						table.insert(topArm.rotationNodes, rotationNode)
+					end
+				end
+			end
+		end)
 
 		attacherJoint.topArm = topArm
 	end

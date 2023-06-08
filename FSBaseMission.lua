@@ -3164,6 +3164,91 @@ function FSBaseMission:setMoneyUnit(unit)
 	self.hud:setMoneyUnit(unit)
 end
 
+function FSBaseMission:teleportVehicle(teleportVehicle, targetX, targetZ, rotY)
+	local vehicleCombos = {}
+	local vehicles = {}
+	local attachedVehicles = {}
+
+	local function addVehiclePositions(vehicle)
+		local x, y, z = getWorldTranslation(vehicle.rootNode)
+		local rx, ry, rz = getWorldRotation(vehicle.rootNode)
+		local ox, oy, oz = worldToLocal(teleportVehicle.rootNode, x, y, z)
+		local rox, roy, roz = worldRotationToLocal(teleportVehicle.rootNode, rx, ry, rz)
+		local data = {
+			vehicle = vehicle,
+			offset = {
+				ox,
+				oy,
+				oz
+			},
+			rotationOffset = {
+				rox,
+				roy,
+				roz
+			}
+		}
+
+		table.insert(vehicles, data)
+
+		if vehicle.getAttachedImplements ~= nil then
+			local attachedImplements = vehicle:getAttachedImplements()
+
+			for k, implement in ipairs(attachedImplements) do
+				if not implement.object:getIsAdditionalAttachment() then
+					addVehiclePositions(implement.object)
+					table.insert(attachedVehicles, implement.object)
+					table.insert(vehicleCombos, {
+						vehicle = vehicle,
+						object = implement.object,
+						jointDescIndex = implement.jointDescIndex,
+						inputAttacherJointDescIndex = implement.object:getActiveInputAttacherJointDescIndex()
+					})
+				end
+			end
+		end
+	end
+
+	addVehiclePositions(teleportVehicle)
+
+	for _, attachedVehicle in ipairs(attachedVehicles) do
+		local attacherVehicle = attachedVehicle:getAttacherVehicle()
+
+		if attacherVehicle ~= nil then
+			attacherVehicle:detachImplementByObject(attachedVehicle, true)
+		end
+	end
+
+	for k, data in pairs(vehicles) do
+		data.vehicle:removeFromPhysics()
+	end
+
+	for k, data in pairs(vehicles) do
+		local x = targetX
+		local z = targetZ
+		local _ = nil
+		local xRot = 0
+		local yRot = rotY
+		local zRot = 0
+
+		if k > 1 then
+			x, _, z = localToWorld(teleportVehicle.rootNode, unpack(data.offset))
+			xRot, yRot, zRot = localRotationToWorld(teleportVehicle.rootNode, unpack(data.rotationOffset))
+		end
+
+		local terrainHeight = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, 300, z)
+
+		data.vehicle:setAbsolutePosition(x, terrainHeight + 0.5, z, xRot, yRot, zRot)
+	end
+
+	for k, data in pairs(vehicles) do
+		data.vehicle:addToPhysics()
+	end
+
+	for _, combo in pairs(vehicleCombos) do
+		combo.vehicle:attachImplement(combo.object, combo.inputAttacherJointDescIndex, combo.jointDescIndex, true)
+	end
+end
+
 function FSBaseMission:consoleCommandCheatMoney(amount)
 	amount = tonumber(Utils.getNoNil(amount, 10000000))
 	local farmId = self.player.farmId
@@ -3225,6 +3310,98 @@ function FSBaseMission:consoleCommandExportStoreItems()
 	else
 		printf("Error: Unable to create csv file '%s'", csvFile)
 	end
+end
+
+function FSBaseMission:consoleCommandExportVehicleSets()
+	local rootVehicles = {}
+
+	for _, v in ipairs(self.vehicles) do
+		local rootVehicle = v:getRootVehicle()
+
+		if rootVehicle ~= nil then
+			rootVehicles[rootVehicle] = rootVehicle
+		end
+	end
+
+	local function addVehicle(xmlFile, key, vehicle, baseVehicle)
+		setXMLString(xmlFile, key .. ".xmlFilename", vehicle.configFileName)
+		setXMLFloat(xmlFile, key .. ".rotY", 0)
+		setXMLFloat(xmlFile, key .. ".captainFoldingState", 0)
+
+		local offsetX, offsetY, offsetZ = localToLocal(vehicle.rootNode, baseVehicle.rootNode, 0, 0, 0)
+
+		setXMLString(xmlFile, key .. ".offset", string.format("%.2f %.2f %.2f", offsetX, offsetY, offsetZ))
+
+		local configIndex = 0
+
+		for configName, configId in pairs(vehicle.configurations) do
+			local saveId = ConfigurationUtil.getSaveIdByConfigId(vehicle.configFileName, configName, configId)
+
+			if saveId ~= nil then
+				local configKey = string.format("%s.configurations.configuration(%d)", key, configIndex)
+
+				setXMLString(xmlFile, configKey .. "#name", configName)
+				setXMLString(xmlFile, configKey .. "#id", saveId)
+
+				configIndex = configIndex + 1
+			end
+		end
+	end
+
+	setFileLogPrefixTimestamp(false)
+
+	local vehicleSetIndex = 0
+
+	for _, vehicle in pairs(rootVehicles) do
+		local xmlFile = loadXMLFileFromMemory("vehicleSets", "<vehicleSets></vehicleSets>")
+		local key = string.format("vehicleSets.vehicleSet(%d)", vehicleSetIndex)
+		local children = vehicle:getChildVehicles()
+		local vehicleIndex = 0
+		local childToIndex = {}
+
+		for k = #children, 1, -1 do
+			local childVehicle = children[k]
+			local vehicleKey = string.format("%s.vehicle(%d)", key, vehicleIndex)
+
+			addVehicle(xmlFile, vehicleKey, childVehicle, vehicle)
+
+			vehicleIndex = vehicleIndex + 1
+			childToIndex[childVehicle] = vehicleIndex
+		end
+
+		local attacherIndex = 0
+
+		for k = #children, 1, -1 do
+			local child = children[k]
+			local attacherVehicle = nil
+
+			if child.getAttacherVehicle ~= nil then
+				attacherVehicle = child:getAttacherVehicle()
+			end
+
+			if attacherVehicle ~= nil then
+				local attachKey = string.format("%s.attach(%d)", key, attacherIndex)
+				local rootVehicleIndex = childToIndex[attacherVehicle]
+				local attachVehicleIndex = childToIndex[child]
+				local implement = attacherVehicle:getImplementByObject(child)
+				local inputAttacherJointIndex = child:getActiveInputAttacherJointDescIndex()
+
+				setXMLInt(xmlFile, attachKey .. "#element0", rootVehicleIndex)
+				setXMLInt(xmlFile, attachKey .. "#element1", attachVehicleIndex)
+				setXMLInt(xmlFile, attachKey .. "#attacherJointIndex", implement.jointDescIndex)
+				setXMLInt(xmlFile, attachKey .. "#inputAttacherJointIndex", inputAttacherJointIndex)
+
+				attacherIndex = attacherIndex + 1
+			end
+		end
+
+		local xmlString = saveXMLFileToMemory(xmlFile)
+
+		print(xmlString)
+		delete(xmlFile)
+	end
+
+	setFileLogPrefixTimestamp(g_logFilePrefixTimestamp)
 end
 
 function FSBaseMission:consoleStartGreatDemand()
@@ -3502,58 +3679,12 @@ function FSBaseMission:consoleCommandTeleport(fieldIdOrX, zPos, useWorldCoords)
 	if self.controlledVehicle == nil then
 		self.player:moveTo(targetX, 0.5, targetZ, false, false)
 	else
-		local vehicleCombos = {}
-		local vehicles = {}
+		self.isTeleporting = true
+		local _, ry, _ = getWorldRotation(self.controlledVehicle.rootNode)
 
-		local function addVehiclePositions(vehicle)
-			local x, y, z = getWorldTranslation(vehicle.rootNode)
+		self:teleportVehicle(self.controlledVehicle, targetX, targetZ, ry)
 
-			table.insert(vehicles, {
-				vehicle = vehicle,
-				offset = {
-					worldToLocal(self.controlledVehicle.rootNode, x, y, z)
-				}
-			})
-
-			if vehicle.getAttachedImplements ~= nil then
-				for _, impl in pairs(vehicle:getAttachedImplements()) do
-					addVehiclePositions(impl.object)
-					table.insert(vehicleCombos, {
-						vehicle = vehicle,
-						object = impl.object,
-						jointDescIndex = impl.jointDescIndex,
-						inputAttacherJointDescIndex = impl.object:getActiveInputAttacherJointDescIndex()
-					})
-				end
-
-				for _ = #vehicle:getAttachedImplements(), 1, -1 do
-					vehicle:detachImplement(1, true)
-				end
-			end
-
-			vehicle:removeFromPhysics()
-		end
-
-		addVehiclePositions(self.controlledVehicle)
-
-		for k, data in pairs(vehicles) do
-			local x = targetX
-			local z = targetZ
-			local _ = nil
-
-			if k > 1 then
-				x, _, z = localToWorld(self.controlledVehicle.rootNode, unpack(data.offset))
-			end
-
-			local _, ry, _ = getWorldRotation(data.vehicle.rootNode)
-
-			data.vehicle:setRelativePosition(x, 0.5, z, ry, true)
-			data.vehicle:addToPhysics()
-		end
-
-		for _, combo in pairs(vehicleCombos) do
-			combo.vehicle:attachImplement(combo.object, combo.inputAttacherJointDescIndex, combo.jointDescIndex, true, nil, nil, false)
-		end
+		self.isTeleporting = false
 	end
 
 	return string.format("Teleported to world coordinates x=%d z=%d", targetX, targetZ)

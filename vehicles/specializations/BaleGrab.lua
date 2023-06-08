@@ -161,47 +161,49 @@ function BaleGrab:onPendingObjectMountStateChanged(object, mountState, mountObje
 end
 
 function BaleGrab:baleGrabTriggerCallback(triggerId, otherActorId, onEnter, onLeave, onStay, otherShapeId)
-	local spec = self.spec_baleGrab
+	if not getHasTrigger(otherActorId) then
+		local spec = self.spec_baleGrab
 
-	if onEnter then
-		local object = g_currentMission:getNodeObject(otherActorId)
+		if onEnter then
+			local object = g_currentMission:getNodeObject(otherActorId)
 
-		if object == nil then
-			object = g_currentMission.nodeToObject[otherActorId]
-		end
+			if object == nil then
+				object = g_currentMission.nodeToObject[otherActorId]
+			end
 
-		if object ~= nil and object ~= self and object.getSupportsMountDynamic ~= nil and object:getSupportsMountDynamic() then
-			spec.pendingDynamicMountObjects[object] = (spec.pendingDynamicMountObjects[object] or 0) + 1
+			if object ~= nil and object ~= self and object.getSupportsMountDynamic ~= nil and object:getSupportsMountDynamic() then
+				spec.pendingDynamicMountObjects[object] = (spec.pendingDynamicMountObjects[object] or 0) + 1
 
-			if spec.pendingDynamicMountObjects[object] == 1 then
-				object:addDeleteListener(self, BaleGrab.onPendingObjectDelete)
+				if spec.pendingDynamicMountObjects[object] == 1 then
+					object:addDeleteListener(self, BaleGrab.onPendingObjectDelete)
 
-				if object.addMountStateChangeListener ~= nil then
-					object:addMountStateChangeListener(self, BaleGrab.onPendingObjectMountStateChanged)
+					if object.addMountStateChangeListener ~= nil then
+						object:addMountStateChangeListener(self, BaleGrab.onPendingObjectMountStateChanged)
+					end
 				end
 			end
-		end
-	elseif onLeave then
-		local object = g_currentMission:getNodeObject(otherActorId)
+		elseif onLeave then
+			local object = g_currentMission:getNodeObject(otherActorId)
 
-		if object == nil then
-			object = g_currentMission.nodeToObject[otherActorId]
-		end
+			if object == nil then
+				object = g_currentMission.nodeToObject[otherActorId]
+			end
 
-		if object ~= nil then
-			spec.pendingDynamicMountObjects[object] = (spec.pendingDynamicMountObjects[object] or 0) - 1
+			if object ~= nil then
+				spec.pendingDynamicMountObjects[object] = (spec.pendingDynamicMountObjects[object] or 0) - 1
 
-			if spec.pendingDynamicMountObjects[object] <= 0 then
-				spec.pendingDynamicMountObjects[object] = nil
+				if spec.pendingDynamicMountObjects[object] <= 0 then
+					spec.pendingDynamicMountObjects[object] = nil
 
-				if spec.dynamicMountedObjects[object] ~= nil then
-					self:unmountBaleGrabObject(object)
-				end
+					if spec.dynamicMountedObjects[object] ~= nil then
+						self:unmountBaleGrabObject(object)
+					end
 
-				object:removeDeleteListener(self, BaleGrab.onPendingObjectDelete)
+					object:removeDeleteListener(self, BaleGrab.onPendingObjectDelete)
 
-				if object.removeMountStateChangeListener ~= nil then
-					object:removeMountStateChangeListener(self, BaleGrab.onPendingObjectMountStateChanged)
+					if object.removeMountStateChangeListener ~= nil then
+						object:removeMountStateChangeListener(self, BaleGrab.onPendingObjectMountStateChanged)
+					end
 				end
 			end
 		end

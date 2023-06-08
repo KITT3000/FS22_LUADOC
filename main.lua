@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 16
-g_gameVersionNotification = "1.9.1.0"
-g_gameVersionDisplay = "1.9.1.0"
+g_gameVersion = 17
+g_gameVersionNotification = "1.10.1.0"
+g_gameVersionDisplay = "1.10.1.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 74
+g_maxModDescVersion = 75
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -377,7 +377,7 @@ function init(args)
 
 	g_lifetimeStats:load()
 
-	local isServerStart = StartParams.getIsSet("server")
+	local isServerStart = StartParams.getIsSet("server") or StartParams.getIsSet("serverWithGui")
 	local autoStartSavegameId = StartParams.getValue("autoStartSavegameId")
 	local devStartServer = StartParams.getValue("devStartServer")
 	local devStartClient = StartParams.getValue("devStartClient")
@@ -458,6 +458,8 @@ function init(args)
 	if I3DManager.loadingDelay ~= nil then
 		caption = caption .. " - I3D Delay " .. I3DManager.loadingDelay .. "ms"
 	end
+
+	g_caption = caption
 
 	setCaption(caption)
 	addNotificationFilter(GS_PRODUCT_ID, g_gameVersionNotification)
@@ -662,6 +664,7 @@ function init(args)
 	g_gui:loadProfiles("dataS/guiProfiles.xml")
 
 	local startMissionInfo = StartMissionInfo.new()
+	g_startMissionInfo = startMissionInfo
 	g_mainScreen = MainScreen.new(nil, nil, startMissionInfo)
 	g_creditsScreen = CreditsScreen.new(nil, nil, startMissionInfo)
 
@@ -716,6 +719,11 @@ function init(args)
 
 	if Platform.needsSignIn then
 		g_gamepadSigninScreen = GamepadSigninScreen.new(inGameMenu, shopMenu, g_achievementManager, settingsModel)
+	end
+
+	if Platform.hasEsports then
+		g_esportsScreen = EsportsScreen.register()
+		g_esportsVideoScreen = EsportsVideoScreen.register()
 	end
 
 	g_animalScreen = AnimalScreen.new()
@@ -990,6 +998,22 @@ function init(args)
 
 	if devStartClient ~= nil then
 		startDevClient(devUniqueUserId)
+	end
+
+	if StartParams.getValue("devStartArenaServer") then
+		startDevArenaServer()
+	end
+
+	if StartParams.getValue("devStartArenaClient") then
+		startDevArenaClient()
+	end
+
+	if StartParams.getValue("devStartBaleStackingServer") then
+		startDevBaleStackingServer()
+	end
+
+	if StartParams.getValue("devStartBaleStackingClient") then
+		startDevBaleStackingClient()
 	end
 
 	if autoStartSavegameId ~= nil then
@@ -1725,6 +1749,54 @@ function startDevClient(uniqueUserId)
 	}
 
 	g_multiplayerScreen:onContinue()
+end
+
+function startDevArenaServer()
+	if StartParams.getIsSet("restart") then
+		print("Skipping client auto join due to restart")
+
+		return
+	end
+
+	print("Start developer arena mode mp server")
+	g_mainScreen:onEsportsClick()
+	g_esportsScreen:onClickArenaStartMatch()
+end
+
+function startDevArenaClient()
+	if StartParams.getIsSet("restart") then
+		print("Skipping client auto join due to restart")
+
+		return
+	end
+
+	print("Start developer arena mode mp client")
+	g_mainScreen:onEsportsClick()
+	g_esportsScreen:onClickArenaJoinRandom()
+end
+
+function startDevBaleStackingServer()
+	if StartParams.getIsSet("restart") then
+		print("Skipping client auto join due to restart")
+
+		return
+	end
+
+	print("Start developer bale stacking mode mp server")
+	g_mainScreen:onEsportsClick()
+	g_esportsScreen:onClickBaleStackingStartMatch()
+end
+
+function startDevBaleStackingClient()
+	if StartParams.getIsSet("restart") then
+		print("Skipping client auto join due to restart")
+
+		return
+	end
+
+	print("Start developer bale stacking mode mp client")
+	g_mainScreen:onEsportsClick()
+	g_esportsScreen:onClickBaleStackingJoinRandom()
 end
 
 function autoStartLocalSavegame(savegameId)

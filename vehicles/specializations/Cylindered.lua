@@ -963,6 +963,8 @@ function Cylindered:onWriteStream(streamId, connection)
 				end
 
 				if tool.animSpeed ~= nil then
+					tool.curAnimTime = self:getAnimationTime(tool.animName)
+
 					streamWriteFloat32(streamId, tool.curAnimTime)
 				end
 			end
@@ -1023,10 +1025,15 @@ function Cylindered:onReadUpdateStream(streamId, timestamp, connection)
 				end
 
 				if tool.animSpeed ~= nil then
+					local resetAnimInterpolation = streamReadBool(streamId)
 					local newAnimTime = NetworkUtil.readCompressedRange(streamId, tool.animMinTime, tool.animMaxTime, tool.animSendNumBits)
 
 					if math.abs(newAnimTime - tool.curAnimTime) > 0.0001 then
 						tool.networkInterpolators.animation:setTargetValue(newAnimTime)
+
+						if resetAnimInterpolation then
+							tool.networkInterpolators.animation:setValue(newAnimTime)
+						end
 					end
 				end
 			end
@@ -1073,6 +1080,14 @@ function Cylindered:onWriteUpdateStream(streamId, connection, dirtyMask)
 				end
 
 				if tool.animSpeed ~= nil then
+					local curAnimTime = self:getAnimationTime(tool.animName)
+					local hasChanged = math.abs(curAnimTime - tool.curAnimTime) > 0.001
+
+					streamWriteBool(streamId, hasChanged or tool.networkInterpolators.resetAnimInterpolation)
+
+					tool.networkInterpolators.resetAnimInterpolation = false
+					tool.curAnimTime = curAnimTime
+
 					NetworkUtil.writeCompressedRange(streamId, tool.curAnimTime, tool.animMinTime, tool.animMaxTime, tool.animSendNumBits)
 				end
 			end
@@ -2366,6 +2381,8 @@ function Cylindered:loadMovingToolFromXML(xmlFile, key, entry)
 			entry.networkInterpolators.animation = InterpolatorValue.new(entry.curAnimTime)
 
 			entry.networkInterpolators.animation:setMinMax(0, 1)
+
+			entry.networkInterpolators.resetAnimInterpolation = false
 		end
 
 		XMLUtil.checkDeprecatedXMLElements(xmlFile, key .. ".controls#iconFilename", key .. ".controls#iconName")
@@ -3388,6 +3405,11 @@ function Cylindered:onDeactivate()
 		g_soundManager:stopSample(spec.samples.hydraulic)
 
 		spec.isHydraulicSamplePlaying = false
+
+		for _, movingTool in ipairs(spec.movingTools) do
+			movingTool.move = 0
+			movingTool.externalMove = 0
+		end
 	end
 end
 
@@ -3515,7 +3537,13 @@ function Cylindered:setAbsoluteToolRotation(tool, rotation, updateDelayedNodes)
 end
 
 function Cylindered:setToolAnimation(tool, animSpeed, dt)
-	tool.curAnimTime = self:getAnimationTime(tool.animName)
+	local curAnimTime = self:getAnimationTime(tool.animName)
+
+	if math.abs(curAnimTime - tool.curAnimTime) > 0.001 then
+		tool.networkInterpolators.resetAnimInterpolation = true
+	end
+
+	tool.curAnimTime = curAnimTime
 	local newAnimTime = tool.curAnimTime + animSpeed * dt
 	local oldAnimTime = tool.curAnimTime
 
