@@ -1812,10 +1812,12 @@ function AttacherJoints:postAttachImplement(implement)
 			setVisibility(jointDesc.topArm.rotationNode, true)
 		end
 
-		for i = 1, #jointDesc.topArm.rotationNodes do
-			local rotationNode = jointDesc.topArm.rotationNodes[i]
+		if jointDesc.topArm.rotationNodes ~= nil then
+			for i = 1, #jointDesc.topArm.rotationNodes do
+				local rotationNode = jointDesc.topArm.rotationNodes[i]
 
-			setRotation(rotationNode.node, rotationNode.activeRotation[1], rotationNode.activeRotation[2], rotationNode.activeRotation[3])
+				setRotation(rotationNode.node, rotationNode.activeRotation[1], rotationNode.activeRotation[2], rotationNode.activeRotation[3])
+			end
 		end
 	end
 
@@ -2288,10 +2290,12 @@ function AttacherJoints:detachImplement(implementIndex, noEventSend)
 					setVisibility(jointDesc.topArm.rotationNode, false)
 				end
 
-				for i = 1, #jointDesc.topArm.rotationNodes do
-					local rotationNode = jointDesc.topArm.rotationNodes[i]
+				if jointDesc.topArm.rotationNodes ~= nil then
+					for i = 1, #jointDesc.topArm.rotationNodes do
+						local rotationNode = jointDesc.topArm.rotationNodes[i]
 
-					setRotation(rotationNode.node, rotationNode.inactiveRotation[1], rotationNode.inactiveRotation[2], rotationNode.inactiveRotation[3])
+						setRotation(rotationNode.node, rotationNode.inactiveRotation[1], rotationNode.inactiveRotation[2], rotationNode.inactiveRotation[3])
+					end
 				end
 			end
 
