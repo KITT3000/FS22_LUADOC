@@ -6,6 +6,7 @@ function CultivatorMotionPathEffect.new(customMt)
 	self.shapeVariationStateDelay = ValueDelay.new(500)
 	self.shapeVariationStateSmoothed = 0
 	self.densityScale = math.random(75, 100) * 0.01
+	self.autoTurnOffSpeed = 1
 
 	return self
 end
@@ -45,7 +46,7 @@ function CultivatorMotionPathEffect:update(dt)
 		self.effectSpeedScale = self.effectSpeedScaleOrig * (0.5 + speedScale * 0.5)
 	end
 
-	if self.state == MotionPathEffect.STATE_ON and lastSpeed < 1 then
+	if self.state == MotionPathEffect.STATE_ON and lastSpeed < self.autoTurnOffSpeed then
 		g_effectManager:stopEffect(self)
 	end
 

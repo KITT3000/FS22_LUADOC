@@ -602,7 +602,7 @@ function CareerScreen:startCurrentSavegame(useStartMissionInfo)
 		}
 
 		self:startGame(missionInfo, missionDynamicInfo)
-	elseif self.isMultiplayer and g_modManager:getNumOfValidMods() > 0 or not self.isMultiplayer and g_modManager:getNumOfMods() > 0 then
+	elseif self.isMultiplayer and g_modManager:getHasSelectableValidMod() or not self.isMultiplayer and g_modManager:getHasSelectableMod() then
 		g_modSelectionScreen:setMissionInfo(missionInfo, missionDynamicInfo)
 
 		self.startMissionInfo.canStart = false

@@ -947,7 +947,7 @@ function MPLoadingScreen:onMasterServerConnectionReady()
 	for i = 1, table.getn(self.missionDynamicInfo.mods) do
 		local modItem = self.missionDynamicInfo.mods[i]
 
-		assert(modItem.fileHash ~= nil and modItem.isSelectable)
+		assert(modItem.fileHash ~= nil)
 
 		local modTitleStr = ServerDetailScreen.packModInfo(modItem.title, modItem.version, modItem.author, modItem.modName)
 

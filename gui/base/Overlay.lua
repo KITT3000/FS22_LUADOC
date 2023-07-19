@@ -213,6 +213,8 @@ function Overlay:render(clipX1, clipY1, clipX2, clipY2)
 	end
 end
 
+Overlay.draw = Overlay.render
+
 function Overlay:setAlignment(vertical, horizontal)
 	if vertical == Overlay.ALIGN_VERTICAL_TOP then
 		self.offsetY = -self.height
@@ -238,6 +240,14 @@ end
 function Overlay:setIsVisible(visible)
 	self.visible = visible
 end
+
+Overlay.setVisible = Overlay.setIsVisible
+
+function Overlay:getIsVisible()
+	return self.visible
+end
+
+Overlay.getVisible = Overlay.getIsVisible
 
 function Overlay:setImage(overlayFilename)
 	if self.filename ~= overlayFilename then

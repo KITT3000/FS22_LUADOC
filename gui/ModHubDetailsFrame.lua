@@ -42,6 +42,7 @@ function ModHubDetailsFrame:copyAttributes(src)
 	self.modHubController = src.modHubController
 	self.isConsoleVersion = src.isConsoleVersion
 	self.hasCustomMenuButtons = src.hasCustomMenuButtons
+	self.isSteamVersion = src.isSteamVersion
 end
 
 function ModHubDetailsFrame:initialize()

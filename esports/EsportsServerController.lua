@@ -107,7 +107,7 @@ function EsportsServerController:findGames(mapId, callbackFunc, callbackTarget)
 	end
 end
 
-function EsportsServerController:joinServer(password, serverId)
+function EsportsServerController:joinServer(password, serverId, languageId)
 	g_maxUploadRate = 30.72
 	local missionInfo = FSCareerMissionInfo.new("", nil, 0)
 
@@ -119,6 +119,7 @@ function EsportsServerController:joinServer(password, serverId)
 		isMultiplayer = true,
 		isClient = true,
 		password = password,
+		languageId = languageId,
 		allowOnlyFriends = false,
 		joinedRandomServer = self.joinRandom
 	}
@@ -299,12 +300,14 @@ function EsportsServerController:onServerInfoDetails(id, name, language, capacit
 
 	if numPlayers < capacity then
 		self.callbackFunc(self.callbackTarget, EsportsServerController.CALLBACK_TYPE.JOINING_SERVER)
-		self:joinServer("", id)
+		self:joinServer("", id, language)
 
 		return
 	end
 
 	self.ignoredServers[name] = true
+	local nameWithoutTimestamp = string.gsub(name, "^%d+:%d%d ", "")
+	self.ignoredServers[nameWithoutTimestamp] = true
 
 	if self.currentServerIndex + 1 < #self.servers then
 		self.currentServerIndex = self.currentServerIndex + 1

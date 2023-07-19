@@ -385,6 +385,7 @@ function CreateGameScreen:onClickOk()
 		self.missionDynamicInfo.isMultiplayer = true
 		self.missionDynamicInfo.isClient = false
 		self.missionDynamicInfo.password = self.passwordElement.text
+		self.missionDynamicInfo.languageId = self.mpLanguage
 		self.missionDynamicInfo.allowOnlyFriends = self.allowOnlyFriends
 		self.missionDynamicInfo.allowCrossPlay = self.allowCrossPlay
 		self.missionDynamicInfo.serverName = self.serverNameElement.text

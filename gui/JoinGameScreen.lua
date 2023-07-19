@@ -221,11 +221,12 @@ platformId :%s
 					callback = self.onPasswordEntered,
 					target = self,
 					args = {
-						serverId = id
+						serverId = id,
+						language = language
 					}
 				})
 			else
-				self:startGame(password, id)
+				self:startGame(password, id, language)
 			end
 		end
 	elseif id == self.requestedDetailsServerId then
@@ -526,7 +527,7 @@ function JoinGameScreen:onClickOk(isMouseClick)
 
 			if server ~= nil and server.allModsAvailable then
 				if not server.hasPassword then
-					self:startGame("", server.id)
+					self:startGame("", server.id, server.language)
 				else
 					local password = Utils.getNoNil(g_gameSettings:getTableValue("joinGame", "password"), "")
 					self.showingPasswordDialog = true
@@ -768,11 +769,11 @@ function JoinGameScreen:onPasswordEntered(password, clickOk, args)
 			return
 		end
 
-		self:startGame(password, serverId)
+		self:startGame(password, serverId, args.language)
 	end
 end
 
-function JoinGameScreen:startGame(password, serverId)
+function JoinGameScreen:startGame(password, serverId, languageId)
 	g_maxUploadRate = 30.72
 	local missionInfo = FSCareerMissionInfo.new("", nil, 0)
 
@@ -784,6 +785,7 @@ function JoinGameScreen:startGame(password, serverId)
 		isMultiplayer = true,
 		isClient = true,
 		password = password,
+		languageId = languageId,
 		allowOnlyFriends = false
 	}
 

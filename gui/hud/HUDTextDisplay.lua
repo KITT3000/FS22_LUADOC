@@ -99,6 +99,10 @@ function HUDTextDisplay:update(dt)
 end
 
 function HUDTextDisplay:draw()
+	if not self:getVisible() then
+		return
+	end
+
 	setTextBold(self.textBold)
 
 	local posX, posY = self:getPosition()

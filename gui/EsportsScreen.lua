@@ -81,47 +81,40 @@ function EsportsScreen:updateOnlinePresenceName()
 	end
 end
 
-function EsportsScreen:checkForMultiplayer()
-	if getNetworkError() or getMultiplayerAvailability() == MultiplayerAvailability.NOT_AVAILABLE then
-		g_gui:showInfoDialog({
-			text = g_i18n:getText("ui_connectionFailed"),
-			dialogType = DialogElement.TYPE_WARNING
-		})
-
-		return false
-	end
-
-	return true
-end
-
 function EsportsScreen:onClickArenaTraining()
 	self:startTraining(EsportsScreen.MAP_ID_ARENA)
 end
 
 function EsportsScreen:onClickArenaStartMatch()
-	if self:checkForMultiplayer() then
-		self:startMatch(EsportsScreen.MAP_ID_ARENA)
+	if not PlatformPrivilegeUtil.checkMultiplayer(self.onClickArenaStartMatch, self) then
+		return
 	end
+
+	self:startMatch(EsportsScreen.MAP_ID_ARENA)
 end
 
 function EsportsScreen:onClickArenaJoinRandom()
-	if self:checkForMultiplayer() then
-		g_gui:showMessageDialog({
-			text = g_i18n:getText("ui_esports_searchForRandomMatch"),
-			dialogType = DialogElement.TYPE_LOADING
-		})
-		self.serverController:joinRandomGame(EsportsScreen.MAP_ID_ARENA, self.onControllerCallback, self)
+	if not PlatformPrivilegeUtil.checkMultiplayer(self.onClickArenaJoinRandom, self) then
+		return
 	end
+
+	g_gui:showMessageDialog({
+		text = g_i18n:getText("ui_esports_searchForRandomMatch"),
+		dialogType = DialogElement.TYPE_LOADING
+	})
+	self.serverController:joinRandomGame(EsportsScreen.MAP_ID_ARENA, self.onControllerCallback, self)
 end
 
 function EsportsScreen:onClickArenaJoin()
-	if self:checkForMultiplayer() then
-		g_gui:showMessageDialog({
-			text = g_i18n:getText("ui_esports_searchForMatches"),
-			dialogType = DialogElement.TYPE_LOADING
-		})
-		self.serverController:findGames(EsportsScreen.MAP_ID_ARENA, self.onControllerCallback, self)
+	if not PlatformPrivilegeUtil.checkMultiplayer(self.onClickArenaJoin, self) then
+		return
 	end
+
+	g_gui:showMessageDialog({
+		text = g_i18n:getText("ui_esports_searchForMatches"),
+		dialogType = DialogElement.TYPE_LOADING
+	})
+	self.serverController:findGames(EsportsScreen.MAP_ID_ARENA, self.onControllerCallback, self)
 end
 
 function EsportsScreen:onClickBaleStackingTraining()
@@ -129,30 +122,36 @@ function EsportsScreen:onClickBaleStackingTraining()
 end
 
 function EsportsScreen:onClickBaleStackingStartMatch()
-	if self:checkForMultiplayer() then
-		self:startMatch(EsportsScreen.MAP_ID_BALESTACKING)
+	if not PlatformPrivilegeUtil.checkMultiplayer(self.onClickBaleStackingStartMatch, self) then
+		return
 	end
+
+	self:startMatch(EsportsScreen.MAP_ID_BALESTACKING)
 end
 
 function EsportsScreen:onClickBaleStackingJoinRandom()
-	if self:checkForMultiplayer() then
-		g_gui:showMessageDialog({
-			text = g_i18n:getText("ui_esports_searchForRandomMatch"),
-			dialogType = DialogElement.TYPE_LOADING
-		})
-		self.serverController:joinRandomGame(EsportsScreen.MAP_ID_BALESTACKING, self.onControllerCallback, self)
+	if not PlatformPrivilegeUtil.checkMultiplayer(self.onClickBaleStackingJoinRandom, self) then
+		return
 	end
+
+	g_gui:showMessageDialog({
+		text = g_i18n:getText("ui_esports_searchForRandomMatch"),
+		dialogType = DialogElement.TYPE_LOADING
+	})
+	self.serverController:joinRandomGame(EsportsScreen.MAP_ID_BALESTACKING, self.onControllerCallback, self)
 end
 
 function EsportsScreen:onClickBaleStackingJoin()
-	if self:checkForMultiplayer() then
-		g_gui:showMessageDialog({
-			visible = true,
-			text = g_i18n:getText("ui_esports_searchForMatches"),
-			dialogType = DialogElement.TYPE_LOADING
-		})
-		self.serverController:findGames(EsportsScreen.MAP_ID_BALESTACKING, self.onControllerCallback, self)
+	if not PlatformPrivilegeUtil.checkMultiplayer(self.onClickBaleStackingJoin, self) then
+		return
 	end
+
+	g_gui:showMessageDialog({
+		visible = true,
+		text = g_i18n:getText("ui_esports_searchForMatches"),
+		dialogType = DialogElement.TYPE_LOADING
+	})
+	self.serverController:findGames(EsportsScreen.MAP_ID_BALESTACKING, self.onControllerCallback, self)
 end
 
 function EsportsScreen:onControllerCallback(callbackType, callbackArguments)

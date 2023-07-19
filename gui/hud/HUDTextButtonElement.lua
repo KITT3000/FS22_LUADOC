@@ -42,6 +42,11 @@ function HUDTextButtonElement:delete()
 	self.onClickedCallback = nil
 end
 
+function HUDTextButtonElement:setVisible(isVisible)
+	self.frame:setVisible(isVisible)
+	self.textDisplay:setVisible(isVisible)
+end
+
 function HUDTextButtonElement:setText(text, textSize, textAlignment, textColor, textBold)
 	self.textDisplay:setText(text, textSize, textAlignment, textColor, textBold)
 end
