@@ -58,7 +58,7 @@ end
 function PowerConsumer.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", PowerConsumer)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", PowerConsumer)
-	SpecializationUtil.registerEventListener(vehicleType, "onPostDetach", PowerConsumer)
+	SpecializationUtil.registerEventListener(vehicleType, "onStateChange", PowerConsumer)
 	SpecializationUtil.registerEventListener(vehicleType, "onTurnedOn", PowerConsumer)
 end
 
@@ -113,7 +113,7 @@ function PowerConsumer:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSele
 	if self.isActive then
 		local spec = self.spec_powerConsumer
 
-		if spec.forceNode ~= nil and self.movingDirection == spec.forceDir then
+		if spec.forceNode ~= nil and self.movingDirection == spec.forceDir and self.lastSpeedReal > 0.0001 then
 			local multiplier = self:getPowerMultiplier()
 
 			if multiplier ~= 0 then
@@ -271,20 +271,22 @@ function PowerConsumer:getRawSpeedLimit(superFunc)
 	return rawSpeedLimit
 end
 
-function PowerConsumer:onPostDetach()
-	self.spec_powerConsumer.sourceMotorPeakPower = math.huge
+function PowerConsumer:onStateChange(state, data)
+	if state == Vehicle.STATE_CHANGE_ATTACH or state == Vehicle.STATE_CHANGE_DETACH then
+		local spec = self.spec_powerConsumer
+		local rootVehicle = self.rootVehicle
+
+		if rootVehicle ~= nil and rootVehicle.getMotor ~= nil then
+			local rootMotor = rootVehicle:getMotor()
+			spec.sourceMotorPeakPower = rootMotor.peakMotorPower
+		else
+			spec.sourceMotorPeakPower = math.huge
+		end
+	end
 end
 
 function PowerConsumer:onTurnedOn()
 	self.spec_powerConsumer.turnOnPeakPowerTimer = self.spec_powerConsumer.turnOnPeakPowerDuration * 1.5
-	local spec = self.spec_powerConsumer
-	local rootVehicle = self.rootVehicle
-
-	if rootVehicle ~= nil and rootVehicle.getMotor ~= nil then
-		local rootMotor = rootVehicle:getMotor()
-		local peakMotorPower = rootMotor.peakMotorPower
-		spec.sourceMotorPeakPower = peakMotorPower
-	end
 end
 
 function PowerConsumer:getTotalConsumedPtoTorque(excludeVehicle, expected, ignoreTurnOnPeak)

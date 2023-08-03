@@ -5,7 +5,7 @@ Weeder = {
 		local schema = Vehicle.xmlSchema
 
 		schema:setXMLSpecializationType("Weeder")
-		SoundManager.registerSampleXMLPaths(schema, "vehicle.weeder.sounds", "work")
+		SoundManager.registerSampleXMLPaths(schema, "vehicle.weeder.sounds", "work(?)")
 		schema:register(XMLValueType.BOOL, "vehicle.weeder#isHoe", "Is hoe weeder", false)
 		schema:register(XMLValueType.BOOL, "vehicle.weeder#isGrasslandWeeder", "Is a grassland weeder (grass fertilizer state + grass grwoth reset)", false)
 		schema:register(XMLValueType.BOOL, WorkParticles.PARTICLE_MAPPING_XML_PATH .. "#adjustColor", "Adjust color", false)
@@ -46,7 +46,7 @@ function Weeder:onLoad(savegame)
 
 	if self.isClient then
 		spec.samples = {
-			work = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.weeder.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
+			work = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.weeder.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
 		}
 		spec.isWorkSamplePlaying = false
 	end
@@ -69,7 +69,7 @@ end
 function Weeder:onDelete()
 	local spec = self.spec_weeder
 
-	g_soundManager:deleteSamples(spec.samples)
+	g_soundManager:deleteSamples(spec.samples.work)
 end
 
 function Weeder:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
@@ -306,12 +306,12 @@ function Weeder:onEndWorkAreaProcessing(dt, hasProcessed)
 	if self.isClient then
 		if spec.isWorking then
 			if not spec.isWorkSamplePlaying then
-				g_soundManager:playSample(spec.samples.work)
+				g_soundManager:playSamples(spec.samples.work)
 
 				spec.isWorkSamplePlaying = true
 			end
 		elseif spec.isWorkSamplePlaying then
-			g_soundManager:stopSample(spec.samples.work)
+			g_soundManager:stopSamples(spec.samples.work)
 
 			spec.isWorkSamplePlaying = false
 		end
@@ -328,7 +328,7 @@ function Weeder:onDeactivate()
 	if self.isClient then
 		local spec = self.spec_weeder
 
-		g_soundManager:stopSamples(spec.samples)
+		g_soundManager:stopSamples(spec.samples.work)
 
 		spec.isWorkSamplePlaying = false
 	end

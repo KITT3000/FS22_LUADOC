@@ -2053,6 +2053,8 @@ function Cylindered:updateDirtyMovingParts(dt, updateSound)
 				spec.movingToolNeedsSound = true
 			end
 
+			Cylindered.updateWheels(self, tool)
+
 			if self.isServer then
 				Cylindered.updateComponentJoints(self, tool, false)
 			end

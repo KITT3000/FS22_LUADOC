@@ -542,7 +542,7 @@ function Foldable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelec
 		end
 	end
 
-	if self.isServer and spec.ignoreFoldMiddleWhileFolded and math.abs(spec.foldAnimTime - spec.foldMiddleAnimTime) < 0.001 and spec.foldMoveDirection == 1 == (spec.turnOnFoldDirection == 1) then
+	if self.isServer and spec.ignoreFoldMiddleWhileFolded and self.getAttacherVehicle ~= nil and math.abs(spec.foldAnimTime - spec.foldMiddleAnimTime) < 0.001 and spec.foldMoveDirection == 1 == (spec.turnOnFoldDirection == 1) then
 		local attacherVehicle = self:getAttacherVehicle()
 
 		if attacherVehicle ~= nil then
@@ -2043,7 +2043,7 @@ function Foldable:actionEventFoldMiddle(actionName, inputValue, callbackState, i
 					end
 				end
 			end
-		else
+		elseif self.getAttacherVehicle ~= nil then
 			local attacherVehicle = self:getAttacherVehicle()
 
 			if attacherVehicle ~= nil then

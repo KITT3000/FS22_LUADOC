@@ -51,7 +51,11 @@ function Assert.lessThanOrEqualTo(actual, upperLimit, message)
 end
 
 function Assert.isType(object, expectedType, message)
-	assert(type(object) == expectedType, string.format("%s expected: %s, actual: %s", message, expectedType, object and type(object) or "nil"))
+	assert(type(object) == expectedType, string.format("%s type expected: %s, actual: %s", message, expectedType, object and type(object) or "nil"))
+end
+
+function Assert.isNilOrType(object, expectedType, message)
+	assert(object == nil or type(object) == expectedType, string.format("%s type or nil expected: %s, actual: %s", message, expectedType, object and type(object) or "nil"))
 end
 
 function Assert.isNotNil(actual, message)

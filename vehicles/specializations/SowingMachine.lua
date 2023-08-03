@@ -43,6 +43,7 @@ function SowingMachine.initSpecialization()
 	schema:register(XMLValueType.STRING, "vehicle.sowingMachine.changeSeedInputButton", "Input action name", "IMPLEMENT_EXTRA3")
 	schema:register(XMLValueType.INT, "vehicle.sowingMachine#fillUnitIndex", "Fill unit index", 1)
 	schema:register(XMLValueType.INT, "vehicle.sowingMachine#unloadInfoIndex", "Unload info index", 1)
+	schema:register(XMLValueType.FLOAT, "vehicle.sowingMachine#seedUsageScale", "Seed usage scale (Can be used to increase or decrease the usage for certain tools)", 1)
 	EffectManager.registerEffectXMLPaths(schema, "vehicle.sowingMachine.effects")
 	schema:register(XMLValueType.STRING, "vehicle.storeData.specs.seedFruitTypeCategories", "Seed fruit type categories")
 	schema:register(XMLValueType.STRING, "vehicle.storeData.specs.seedFruitTypes", "Seed fruit types")
@@ -180,6 +181,7 @@ function SowingMachine:onLoad(savegame)
 	}
 	spec.fillUnitIndex = self.xmlFile:getValue("vehicle.sowingMachine#fillUnitIndex", 1)
 	spec.unloadInfoIndex = self.xmlFile:getValue("vehicle.sowingMachine#unloadInfoIndex", 1)
+	spec.seedUsageScale = self.xmlFile:getValue("vehicle.sowingMachine#seedUsageScale", 1)
 
 	if self:getFillUnitByIndex(spec.fillUnitIndex) == nil then
 		Logging.xmlError(self.xmlFile, "FillUnit '%d' not defined!", spec.fillUnitIndex)
@@ -743,6 +745,7 @@ function SowingMachine:onStartWorkAreaProcessing(dt)
 		isPlantingSeason = g_currentMission.growthSystem:canFruitBePlanted(seedsFruitType)
 	end
 
+	local seedVehicleChanged = seedsVehicle ~= spec.workAreaParameters.seedsVehicle or seedsVehicleFillUnitIndex ~= spec.workAreaParameters.seedsVehicleFillUnitIndex
 	spec.showFruitCanNotBePlantedWarning = not canFruitBePlanted
 	spec.showWrongPlantingTimeWarning = not isPlantingSeason and (isTurnedOn or not spec.needsActivation and self:getIsLowered())
 	spec.workAreaParameters.isActive = not spec.needsActivation or isTurnedOn
@@ -756,6 +759,10 @@ function SowingMachine:onStartWorkAreaProcessing(dt)
 	spec.workAreaParameters.lastTotalArea = 0
 	spec.workAreaParameters.lastChangedArea = 0
 	spec.workAreaParameters.lastStatsArea = 0
+
+	if seedVehicleChanged then
+		SowingMachine.updateAiParameters(self)
+	end
 end
 
 function SowingMachine:onEndWorkAreaProcessing(dt, hasProcessed)
@@ -767,7 +774,7 @@ function SowingMachine:onEndWorkAreaProcessing(dt, hasProcessed)
 		if spec.workAreaParameters.lastChangedArea > 0 then
 			local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(spec.workAreaParameters.seedsFruitType)
 			local lastHa = MathUtil.areaToHa(spec.workAreaParameters.lastChangedArea, g_currentMission:getFruitPixelsToSqm())
-			local usage = fruitDesc.seedUsagePerSqm * lastHa * 10000
+			local usage = fruitDesc.seedUsagePerSqm * lastHa * 10000 * spec.seedUsageScale
 			local ha = MathUtil.areaToHa(spec.workAreaParameters.lastStatsArea, g_currentMission:getFruitPixelsToSqm())
 			local damage = self:getVehicleDamage()
 
@@ -875,23 +882,26 @@ function SowingMachine:updateAiParameters()
 		for i = 1, #vehicles do
 			local vehicle = vehicles[i]
 
-			if SpecializationUtil.hasSpecialization(Cultivator, vehicle.specializations) and vehicle:getIsCultivationEnabled() then
-				isCultivatorAttached = true
+			if SpecializationUtil.hasSpecialization(Cultivator, vehicle.specializations) then
+				vehicle:updateCultivatorEnabledState()
 
-				vehicles[i]:updateCultivatorAIRequirements()
-				vehicles[i]:updateCultivatorEnabledState()
+				if vehicle:getIsCultivationEnabled() then
+					isCultivatorAttached = true
+
+					vehicle:updateCultivatorAIRequirements()
+				end
 			end
 
 			if SpecializationUtil.hasSpecialization(Weeder, vehicle.specializations) then
 				isWeederAttached = true
 
-				vehicles[i]:updateWeederAIRequirements()
+				vehicle:updateWeederAIRequirements()
 			end
 
 			if SpecializationUtil.hasSpecialization(Roller, vehicle.specializations) then
 				isRollerAttached = true
 
-				vehicles[i]:updateRollerAIRequirements()
+				vehicle:updateRollerAIRequirements()
 			end
 		end
 

@@ -279,6 +279,17 @@ function table.isRealSubset(set1, set2)
 	return false
 end
 
+function table.pack(...)
+	return {
+		n = select("#", ...),
+		...
+	}
+end
+
+function table.unpack(t, startIndex, length)
+	return unpack(t, startIndex, length)
+end
+
 function table.push(t, v)
 	t[#t + 1] = v
 end

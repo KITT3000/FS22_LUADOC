@@ -45,7 +45,7 @@ Cultivator = {
 		schema:register(XMLValueType.BOOL, "vehicle.cultivator#isSubsoiler", "Is subsoiler", false)
 		schema:register(XMLValueType.BOOL, "vehicle.cultivator#useDeepMode", "If true the implement acts like a cultivator. If false it's a discharrow or seedbed combination", true)
 		schema:register(XMLValueType.BOOL, "vehicle.cultivator#isPowerHarrow", "If this is set the cultivator works standalone like a cultivator, but as soon as a sowing machine is attached to it, it's only using the sowing machine", false)
-		SoundManager.registerSampleXMLPaths(schema, "vehicle.cultivator.sounds", "work")
+		SoundManager.registerSampleXMLPaths(schema, "vehicle.cultivator.sounds", "work(?)")
 		schema:setXMLSpecializationType()
 	end,
 	prerequisitesPresent = function (specializations)
@@ -91,7 +91,7 @@ function Cultivator:onLoad(savegame)
 
 	if self.isClient then
 		spec.samples = {
-			work = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.cultivator.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
+			work = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.cultivator.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
 		}
 		spec.isWorkSamplePlaying = false
 	end
@@ -122,7 +122,7 @@ end
 function Cultivator:onDelete()
 	local spec = self.spec_cultivator
 
-	g_soundManager:deleteSamples(spec.samples)
+	g_soundManager:deleteSamples(spec.samples.work)
 end
 
 function Cultivator:processCultivatorArea(workArea, dt)
@@ -211,9 +211,15 @@ function Cultivator:updateCultivatorEnabledState()
 			end
 		end
 	elseif SpecializationUtil.hasSpecialization(SowingMachine, self.specializations) and self:getUseSowingMachineAIRequirements() and self.spec_sowingMachine.useDirectPlanting then
-		spec.isEnabled = false
+		if self.spec_sowingMachine.workAreaParameters.seedsVehicle ~= nil then
+			spec.isEnabled = false
 
-		return
+			return
+		elseif self:getIsAIActive() and g_currentMission.missionInfo.helperBuySeeds then
+			spec.isEnabled = false
+
+			return
+		end
 	end
 
 	spec.isEnabled = true
@@ -284,7 +290,7 @@ function Cultivator:onDeactivate()
 	if self.isClient then
 		local spec = self.spec_cultivator
 
-		g_soundManager:stopSamples(spec.samples)
+		g_soundManager:stopSamples(spec.samples.work)
 
 		spec.isWorkSamplePlaying = false
 	end
@@ -333,12 +339,12 @@ function Cultivator:onEndWorkAreaProcessing(dt)
 	if self.isClient then
 		if spec.isWorking then
 			if not spec.isWorkSamplePlaying then
-				g_soundManager:playSample(spec.samples.work)
+				g_soundManager:playSamples(spec.samples.work)
 
 				spec.isWorkSamplePlaying = true
 			end
 		elseif spec.isWorkSamplePlaying then
-			g_soundManager:stopSample(spec.samples.work)
+			g_soundManager:stopSamples(spec.samples.work)
 
 			spec.isWorkSamplePlaying = false
 		end
@@ -346,7 +352,7 @@ function Cultivator:onEndWorkAreaProcessing(dt)
 end
 
 function Cultivator:onStateChange(state, data)
-	if state == Vehicle.STATE_CHANGE_ATTACH or state == Vehicle.STATE_CHANGE_DETACH then
+	if state == Vehicle.STATE_CHANGE_ATTACH or state == Vehicle.STATE_CHANGE_DETACH or state == Vehicle.STATE_CHANGE_AI_START_LINE then
 		self:updateCultivatorAIRequirements()
 		self:updateCultivatorEnabledState()
 	end

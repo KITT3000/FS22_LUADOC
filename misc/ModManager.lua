@@ -139,8 +139,28 @@ function ModManager:getNumOfMods()
 	return #self.mods
 end
 
+function ModManager:getHasSelectableMod()
+	for _, modItem in ipairs(self.mods) do
+		if modItem.isSelectable then
+			return true
+		end
+	end
+
+	return false
+end
+
 function ModManager:getNumOfValidMods()
 	return #self.validMods
+end
+
+function ModManager:getHasSelectableValidMod()
+	for _, modItem in ipairs(self.validMods) do
+		if modItem.isSelectable then
+			return true
+		end
+	end
+
+	return false
 end
 
 function ModManager:getAreAllModsAvailable(modHashes)

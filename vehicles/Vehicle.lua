@@ -285,6 +285,7 @@ function Vehicle.postInit()
 		schema:register(XMLValueType.BOOL, configrationKey .. "#isDefault", "Is selected by default in shop config screen", false)
 		schema:register(XMLValueType.BOOL, configrationKey .. "#isSelectable", "Configuration can be selected in the shop", true)
 		schema:register(XMLValueType.STRING, configrationKey .. "#saveId", "Custom save id", "Number of configuration")
+		schema:register(XMLValueType.L10N_STRING, configrationKey .. "#typeDesc", "Custom type desc")
 		schema:register(XMLValueType.STRING, configrationKey .. "#displayBrand", "If defined a brand icon is displayed in the shop config screen")
 		schema:register(XMLValueType.STRING, configrationKey .. "#vehicleBrand", "Custom brand to display after bought with this configuration")
 		schema:register(XMLValueType.STRING, configrationKey .. "#vehicleName", "Custom vehicle name to display after bought with this configuration")
@@ -397,6 +398,7 @@ function Vehicle.registers()
 	end
 
 	schema:register(XMLValueType.BOOL, "vehicle.designConfigurations#preLoad", "Defines if the design configurations are applied before the execution of load or after. Can help if the configurations manipulate the wheel positions for example.", false)
+	schema:register(XMLValueType.BOOL, "vehicle.designConfigurations#postLoad", "Defines if the design configurations are applied after the execution of postLoad or prior. Can help if the configurations manipulate the component joint positions for example.", false)
 	StoreItemUtil.registerConfigurationSetXMLPaths(schema, "vehicle")
 	schemaSavegame:register(XMLValueType.BOOL, "vehicles#loadAnyFarmInSingleplayer", "Load any farm in singleplayer", false)
 	schemaSavegame:register(XMLValueType.STRING, "vehicles.vehicle(?)#filename", "XML filename")
@@ -942,13 +944,31 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 	ObjectChangeUtil.loadObjectChangeFromXML(self.xmlFile, "vehicle.base.objectChanges", objectChanges, self.components, self)
 	ObjectChangeUtil.setObjectChanges(objectChanges, true)
 
+	for name, id in pairs(g_configurationManager:getConfigurations()) do
+		local specializationKey = g_configurationManager:getConfigurationAttribute(name, "xmlKey")
+
+		if specializationKey ~= nil then
+			specializationKey = "." .. specializationKey
+		else
+			specializationKey = ""
+		end
+
+		local key = string.format("vehicle%s.%sConfigurations.%sConfiguration(%d)", specializationKey, name, name, (self.configurations[name] or 1) - 1)
+
+		if self.xmlFile:hasProperty(key) then
+			local typeDesc = self.xmlFile:getValue(key .. "#typeDesc", nil, self.customEnvironment, false)
+			self.typeDesc = typeDesc or self.typeDesc
+		end
+	end
+
 	if self.configurations.vehicleType ~= nil then
 		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.vehicleTypeConfigurations.vehicleTypeConfiguration", self.configurations.vehicleType, self.components, self)
 	end
 
 	local preLoadDesignConfigurations = self.xmlFile:getValue("vehicle.designConfigurations#preLoad", false)
+	local postLoadDesignConfigurations = self.xmlFile:getValue("vehicle.designConfigurations#postLoad", false)
 
-	if preLoadDesignConfigurations and self.configurations.design ~= nil then
+	if preLoadDesignConfigurations and not postLoadDesignConfigurations and self.configurations.design ~= nil then
 		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.designConfigurations.designConfiguration", self.configurations.design, self.components, self)
 	end
 
@@ -971,7 +991,7 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 		ConfigurationUtil.applyConfigMaterials(self, self.xmlFile, configName, configId)
 	end
 
-	if not preLoadDesignConfigurations and self.configurations.design ~= nil then
+	if not preLoadDesignConfigurations and not postLoadDesignConfigurations and self.configurations.design ~= nil then
 		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.designConfigurations.designConfiguration", self.configurations.design, self.components, self)
 	end
 
@@ -1018,6 +1038,10 @@ function Vehicle:loadFinished(i3dNode, failedReason, arguments, i3dLoadingId)
 		asyncCallbackFunction(asyncCallbackObject, self, self.loadingState, asyncCallbackArguments)
 
 		return
+	end
+
+	if not preLoadDesignConfigurations and postLoadDesignConfigurations and self.configurations.design ~= nil then
+		ObjectChangeUtil.updateObjectChanges(self.xmlFile, "vehicle.designConfigurations.designConfiguration", self.configurations.design, self.components, self)
 	end
 
 	if self.isServer then

@@ -97,8 +97,8 @@ function ExtendedSowingMachine:onEndWorkAreaProcessing(dt, hasProcessed)
 		local fruitDesc = g_fruitTypeManager:getFruitTypeByIndex(spec.workAreaParameters.seedsFruitType)
 		local realHa = MathUtil.areaToHa(self.spec_extendedSowingMachine.lastRealChangedArea, g_currentMission:getFruitPixelsToSqm())
 		local lastHa = MathUtil.areaToHa(spec.workAreaParameters.lastChangedArea, g_currentMission:getFruitPixelsToSqm())
-		local usage = fruitDesc.seedUsagePerSqm * lastHa * 10000
-		local usageRegular = fruitDesc.seedUsagePerSqm * realHa * 10000
+		local usage = fruitDesc.seedUsagePerSqm * lastHa * 10000 * spec.seedUsageScale
+		local usageRegular = fruitDesc.seedUsagePerSqm * realHa * 10000 * spec.seedUsageScale
 		local damage = self:getVehicleDamage()
 
 		if damage > 0 then

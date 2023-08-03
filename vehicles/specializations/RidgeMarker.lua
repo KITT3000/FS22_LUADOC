@@ -365,6 +365,11 @@ end
 function RidgeMarker:getIsWorkAreaActive(superFunc, workArea)
 	if workArea.type == WorkAreaType.RIDGEMARKER then
 		local spec = self.spec_ridgeMarker
+
+		if spec.numRigdeMarkers == 0 then
+			return false
+		end
+
 		local ridgeMarker = spec.workAreaToRidgeMarker[workArea.index]
 
 		if ridgeMarker ~= nil then

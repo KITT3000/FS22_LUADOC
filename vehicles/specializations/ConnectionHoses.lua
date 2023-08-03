@@ -135,6 +135,7 @@ function ConnectionHoses.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onPreLoad", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoadFinished", ConnectionHoses)
+	SpecializationUtil.registerEventListener(vehicleType, "onDelete", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostUpdate", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdateEnd", ConnectionHoses)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostAttach", ConnectionHoses)
@@ -169,12 +170,15 @@ function ConnectionHoses:onLoad(savegame)
 	spec.customHoseTargets = {}
 	spec.customHoseTargetsByAttacher = {}
 	spec.customHoseTargetsByInputAttacher = {}
+	spec.additionalSharedLoadRequestIds = {}
 
 	self:loadConnectionHosesFromXML(self.xmlFile, "vehicle.connectionHoses")
 
 	if self.xmlFile:hasProperty(configKey) then
 		self:loadConnectionHosesFromXML(self.xmlFile, configKey)
 	end
+
+	ConnectionHoses.registerAdditionalToolConnectionHoses(self)
 
 	spec.maxUpdateDistance = self.xmlFile:getValue("vehicle.connectionHoses#maxUpdateDistance", ConnectionHoses.DEFAULT_MAX_UPDATE_DISTANCE)
 	spec.targetNodesAvailable = #spec.targetNodes > 0
@@ -193,6 +197,18 @@ function ConnectionHoses:onLoadFinished(savegame)
 
 	for _, localHoseNode in ipairs(spec.localHoseNodes) do
 		self:connectHose(localHoseNode.hose, self, localHoseNode.target, false)
+	end
+end
+
+function ConnectionHoses:onDelete()
+	local spec = self.spec_connectionHoses
+
+	if spec.additionalSharedLoadRequestIds ~= nil then
+		for i = 1, #spec.additionalSharedLoadRequestIds do
+			g_i3DManager:releaseSharedI3DFile(spec.additionalSharedLoadRequestIds[i])
+		end
+
+		spec.additionalSharedLoadRequestIds = nil
 	end
 end
 
@@ -1611,5 +1627,108 @@ function ConnectionHoses:onPreDetach(attacherVehicle, implement)
 				self:disconnectCustomHoseNode(customTarget.connectedHose, customTarget)
 			end
 		end
+	end
+end
+
+local ADDITIONAL_TOOL_CONNECTION_HOSES = {
+	TOOL_CONNECTOR_TOP_RIGHT = {
+		sourceLength = 3.045,
+		name = "TOOL_CONNECTOR_TOP_RIGHT_02",
+		filename = "data/shared/connectionHoses/AdditionalTopRightHose.i3d"
+	}
+}
+
+function ConnectionHoses:registerAdditionalToolConnectionHoses()
+	local spec = self.spec_connectionHoses
+
+	for i = 1, #spec.toolConnectorHoses do
+		local toolConnectorHose = spec.toolConnectorHoses[i]
+		local startTarget = spec.targetNodes[toolConnectorHose.startTargetNodeIndex]
+		local endTarget = spec.targetNodes[toolConnectorHose.endTargetNodeIndex]
+
+		for sourceType, data in pairs(ADDITIONAL_TOOL_CONNECTION_HOSES) do
+			if startTarget ~= nil and startTarget.type == sourceType and endTarget ~= nil and endTarget.type == sourceType then
+				local length = calcDistanceFrom(startTarget.node, endTarget.node)
+
+				if length > 0 then
+					local arguments = {
+						spec = spec,
+						startTarget = startTarget,
+						endTarget = endTarget,
+						data = data
+					}
+					local sharedLoadRequestId = self:loadSubSharedI3DFile(data.filename, false, false, ConnectionHoses.onAdditionalI3DFileLoaded, self, arguments)
+
+					table.insert(spec.additionalSharedLoadRequestIds, sharedLoadRequestId)
+				end
+			end
+		end
+	end
+end
+
+local function addHoseTarget(spec, node, sourceTarget, newType)
+	local hoseTarget = {
+		node = node,
+		attacherJointIndices = sourceTarget.attacherJointIndices,
+		type = newType,
+		straighteningFactor = sourceTarget.straighteningFactor,
+		adapterName = sourceTarget.adapterName,
+		adapter = {}
+	}
+	hoseTarget.adapter.node = node
+	hoseTarget.adapter.refNode = node
+	hoseTarget.objectChanges = {}
+
+	table.insert(spec.targetNodes, hoseTarget)
+
+	hoseTarget.index = #spec.targetNodes
+
+	if spec.targetNodesByType[hoseTarget.type] == nil then
+		spec.targetNodesByType[hoseTarget.type] = {}
+	end
+
+	table.insert(spec.targetNodesByType[hoseTarget.type], hoseTarget)
+
+	return hoseTarget.index
+end
+
+function ConnectionHoses:onAdditionalI3DFileLoaded(node, failedReason, args)
+	if node ~= 0 then
+		local spec = args.spec
+		local newMounting = getChildAt(node, 0)
+		local newStartNode = getChildAt(newMounting, 1)
+		local newEndNode = getChildAt(newMounting, 0)
+
+		link(getParent(args.endTarget.node), newMounting)
+		setTranslation(newMounting, getTranslation(args.endTarget.node))
+		setRotation(newMounting, getRotation(args.endTarget.node))
+
+		local length = calcDistanceFrom(args.startTarget.node, args.endTarget.node)
+
+		setScale(newMounting, 1, 1, length / args.data.sourceLength)
+		setScale(newStartNode, 1, 1, 1 / (length / args.data.sourceLength))
+		setScale(newEndNode, 1, 1, 1 / (length / args.data.sourceLength))
+		delete(node)
+
+		local newToolConnectionHose = {
+			startTargetNodeIndex = addHoseTarget(spec, newStartNode, args.startTarget, args.data.name),
+			endTargetNodeIndex = addHoseTarget(spec, newEndNode, args.endTarget, args.data.name),
+			mountingNode = newMounting,
+			moveNodes = true,
+			additionalHose = true
+		}
+
+		setVisibility(newMounting, false)
+
+		if getHasShaderParameter(newToolConnectionHose.mountingNode, "colorMat0") then
+			newToolConnectionHose.mountingNodeDefaultColor = {
+				getShaderParameter(newToolConnectionHose.mountingNode, "colorMat0")
+			}
+		end
+
+		table.insert(args.spec.toolConnectorHoses, newToolConnectionHose)
+
+		args.spec.targetNodeToToolConnection[newToolConnectionHose.startTargetNodeIndex] = newToolConnectionHose
+		args.spec.targetNodeToToolConnection[newToolConnectionHose.endTargetNodeIndex] = newToolConnectionHose
 	end
 end

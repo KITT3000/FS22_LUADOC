@@ -38,25 +38,43 @@ function FertilizingCultivator:processCultivatorArea(superFunc, workArea, dt)
 	local xh, _, zh = getWorldTranslation(workArea.height)
 	local cultivatorParams = specCultivator.workAreaParameters
 	local sprayerParams = specSpray.workAreaParameters
+
+	if (specSpray.isSlurryTanker and g_currentMission.missionInfo.helperSlurrySource == 1 or specSpray.isManureSpreader and g_currentMission.missionInfo.helperManureSource == 1 or specSpray.isFertilizerSprayer and not g_currentMission.missionInfo.helperBuyFertilizer) and self:getIsAIActive() then
+		if sprayerParams.sprayFillType == nil or sprayerParams.sprayFillType == FillType.UNKNOWN then
+			if sprayerParams.lastAIHasSprayed ~= nil then
+				local rootVehicle = self.rootVehicle
+
+				rootVehicle:stopCurrentAIJob(AIMessageErrorOutOfFill.new())
+
+				sprayerParams.lastAIHasSprayed = nil
+			end
+		else
+			sprayerParams.lastAIHasSprayed = true
+		end
+	end
+
 	local sprayTypeIndex = SprayType.FERTILIZER
 
 	if sprayerParams.sprayFillLevel <= 0 or spec.needsSetIsTurnedOn and not self:getIsTurnedOn() then
 		sprayTypeIndex = nil
 	end
 
-	local cultivatorChangedArea, cultivatorTotalArea = nil
+	local cultivatorChangedArea = 0
+	local cultivatorTotalArea = 0
 
-	if specCultivator.useDeepMode then
-		cultivatorChangedArea, cultivatorTotalArea = FSDensityMapUtil.updateCultivatorArea(xs, zs, xw, zw, xh, zh, not cultivatorParams.limitToField, cultivatorParams.limitFruitDestructionToField, cultivatorParams.angle, sprayTypeIndex)
-		cultivatorChangedArea = cultivatorChangedArea + FSDensityMapUtil.updateVineCultivatorArea(xs, zs, xw, zw, xh, zh)
-	else
-		cultivatorChangedArea, cultivatorTotalArea = FSDensityMapUtil.updateDiscHarrowArea(xs, zs, xw, zw, xh, zh, not cultivatorParams.limitToField, cultivatorParams.limitFruitDestructionToField, cultivatorParams.angle, sprayTypeIndex)
-		cultivatorChangedArea = cultivatorChangedArea + FSDensityMapUtil.updateVineCultivatorArea(xs, zs, xw, zw, xh, zh)
+	if specCultivator.isEnabled then
+		if specCultivator.useDeepMode then
+			cultivatorChangedArea, cultivatorTotalArea = FSDensityMapUtil.updateCultivatorArea(xs, zs, xw, zw, xh, zh, not cultivatorParams.limitToField, cultivatorParams.limitFruitDestructionToField, cultivatorParams.angle, sprayTypeIndex)
+			cultivatorChangedArea = cultivatorChangedArea + FSDensityMapUtil.updateVineCultivatorArea(xs, zs, xw, zw, xh, zh)
+		else
+			cultivatorChangedArea, cultivatorTotalArea = FSDensityMapUtil.updateDiscHarrowArea(xs, zs, xw, zw, xh, zh, not cultivatorParams.limitToField, cultivatorParams.limitFruitDestructionToField, cultivatorParams.angle, sprayTypeIndex)
+			cultivatorChangedArea = cultivatorChangedArea + FSDensityMapUtil.updateVineCultivatorArea(xs, zs, xw, zw, xh, zh)
+		end
+
+		cultivatorParams.lastChangedArea = cultivatorParams.lastChangedArea + cultivatorChangedArea
+		cultivatorParams.lastTotalArea = cultivatorParams.lastTotalArea + cultivatorTotalArea
+		cultivatorParams.lastStatsArea = cultivatorParams.lastStatsArea + cultivatorChangedArea
 	end
-
-	cultivatorParams.lastChangedArea = cultivatorParams.lastChangedArea + cultivatorChangedArea
-	cultivatorParams.lastTotalArea = cultivatorParams.lastTotalArea + cultivatorTotalArea
-	cultivatorParams.lastStatsArea = cultivatorParams.lastStatsArea + cultivatorChangedArea
 
 	if specCultivator.isSubsoiler then
 		FSDensityMapUtil.updateSubsoilerArea(xs, zs, xw, zw, xh, zh)
@@ -73,7 +91,7 @@ function FertilizingCultivator:processCultivatorArea(superFunc, workArea, dt)
 		sprayerParams.isActive = true
 	end
 
-	specCultivator.isWorking = true
+	specCultivator.isWorking = self:getLastSpeed() > 0.5
 
 	return cultivatorChangedArea, cultivatorTotalArea
 end

@@ -121,6 +121,10 @@ function MathUtil.eulerToDirection(yaw, pitch)
 	return xzLength * math.sin(yaw), math.sin(-pitch), xzLength * math.cos(yaw)
 end
 
+function MathUtil.directionToPitchYaw(directionX, directionY, directionZ)
+	return math.asin(-directionY), math.atan2(directionX, directionZ)
+end
+
 function MathUtil.vector2Length(x, y)
 	return math.sqrt(x * x + y * y)
 end

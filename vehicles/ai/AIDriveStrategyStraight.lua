@@ -803,8 +803,9 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 	end
 
 	if canContinueWork and self.vehicle:getLastSpeed() > 1 and self.vehicle.movingDirection > 0 then
-		self.gabAllowTurnLeft = true
-		self.gabAllowTurnRight = true
+		local isValid = false
+		local gabAllowTurnLeft = true
+		local gabAllowTurnRight = true
 		local changeCounter = 0
 		local lastBit = false
 		local gabBits = ""
@@ -812,7 +813,10 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 		local fieldEndBits = ""
 
 		for _, implement in ipairs(attachedAIImplements) do
+			self.vehicle:addAIDebugText(string.format("===> %s aiStartLineCalled: %s", tostring(_), implement.aiStartLineCalled))
+
 			if implement.aiStartLineCalled then
+				isValid = true
 				local hasNoFullCoverageArea, _ = implement.object:getAIHasNoFullCoverageArea()
 				local leftMarker, rightMarker, _, markersInverted = implement.object:getAIMarkers()
 				local markerDir = markersInverted and -1 or 1
@@ -906,11 +910,11 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 					if self.isFirstRow then
 						local hasLeftGab = gabPos > 0 and gabPos < 0.5
 						local hasRightGab = gabPos >= 0.5
-						self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and not hasLeftGab
-						self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and not hasRightGab
+						gabAllowTurnLeft = gabAllowTurnLeft and values[1] and not hasLeftGab
+						gabAllowTurnRight = gabAllowTurnRight and values[#values] and not hasRightGab
 					else
-						self.gabAllowTurnLeft = self.gabAllowTurnLeft and values[1] and gabPos < 0
-						self.gabAllowTurnRight = self.gabAllowTurnRight and values[#values] and gabPos < 0
+						gabAllowTurnLeft = gabAllowTurnLeft and values[1] and gabPos < 0
+						gabAllowTurnRight = gabAllowTurnRight and values[#values] and gabPos < 0
 					end
 				end
 
@@ -955,12 +959,17 @@ function AIDriveStrategyStraight:getDriveStraightData(dt, vX, vY, vZ, distanceTo
 			end
 		end
 
+		if isValid then
+			self.gabAllowTurnLeft = gabAllowTurnLeft
+			self.gabAllowTurnRight = gabAllowTurnRight
+		end
+
 		if self.resetGabDetection then
 			self.resetGabDetection = false
 		end
 
 		if VehicleDebug.state == VehicleDebug.DEBUG_AI then
-			self.vehicle:addAIDebugText(string.format("===> gab bits: %s", gabBits))
+			self.vehicle:addAIDebugText(string.format("===> gab bits: %s (Valid: %s)", gabBits, isValid))
 
 			if gabPos > 0 then
 				self.vehicle:addAIDebugText(string.format("===> gab pos: %s%% side: %s", gabPos * 100, gabPos < 0.5 and "left" or "right"))
@@ -1074,10 +1083,24 @@ function AIDriveStrategyStraight:updateTurnData()
 
 	self.turnData.useExtraStraightLeft = self.turnData.radius < self.turnData.sideOffsetLeft
 	self.turnData.useExtraStraightRight = self.turnData.sideOffsetRight < -self.turnData.radius
-	self.turnData.toolOverhang = {
-		front = {},
-		back = {}
-	}
+
+	if self.turnData.toolOverhang == nil then
+		self.turnData.toolOverhang = {
+			front = {
+				xb = 0,
+				xt = 0,
+				zb = 0,
+				zt = 0
+			},
+			back = {
+				xb = 0,
+				xt = 0,
+				zb = 0,
+				zt = 0
+			}
+		}
+	end
+
 	self.turnData.allToolsAtFront = true
 	local xt = self.vehicle.size.width * 0.5
 	local zt = self.vehicle.size.length * 0.75
@@ -1085,52 +1108,42 @@ function AIDriveStrategyStraight:updateTurnData()
 	local alphaZ = math.atan((xt + self.turnData.radius) / zt)
 	local xb = math.cos(alphaX) * xt - math.sin(alphaX) * zt + math.cos(alphaX) * self.turnData.radius
 	local zb = math.sin(alphaZ) * xt + math.cos(alphaZ) * zt + math.sin(alphaZ) * self.turnData.radius
+	self.turnData.toolOverhang.front.xt = xt
+	self.turnData.toolOverhang.front.xt = xt
+	self.turnData.toolOverhang.front.zt = zt
+	self.turnData.toolOverhang.front.zt = zt
+	self.turnData.toolOverhang.front.xb = xb
+	self.turnData.toolOverhang.front.xb = xb
+	self.turnData.toolOverhang.front.zb = zb
+	self.turnData.toolOverhang.front.zb = zb
+	local aiRootNode = self.vehicle:getAIRootNode()
+	local width, length, lengthOffset, _, _ = self.vehicle:getAIAgentSize()
+	length = length + 0.75
+	width = width + 0.25
 
-	for _, side in pairs({
-		"front",
-		"back"
-	}) do
-		self.turnData.toolOverhang[side].xt = xt
-		self.turnData.toolOverhang[side].zt = zt
-		self.turnData.toolOverhang[side].xb = xb
-		self.turnData.toolOverhang[side].zb = zb
-	end
+	local function addNodeOffsetToOverhang(node, ox, oy, oz)
+		local x, _, z = localToLocal(node, vehicleDirectionNode, ox, oy, oz)
+		self.turnData.allToolsAtFront = self.turnData.allToolsAtFront and z > 0
+		local xt = math.abs(x)
+		local zt = math.abs(z)
+		local xb = math.sqrt(xt * xt + zt * zt) + self.turnData.radius
+		local zb = math.sqrt(xt * xt + zt * zt) + self.turnData.radius
+		local side = "back"
 
-	for _, implement in pairs(attachedAIImplements) do
-		local staticObject = implement.object
-		local isStaticImplement = staticObject:getAIAllowTurnBackward()
-
-		if isStaticImplement and staticObject.getAttacherVehicle ~= nil then
-			local attacherVehicle = staticObject:getAttacherVehicle()
-
-			if attacherVehicle ~= nil and attacherVehicle.getAIAllowTurnBackward ~= nil and not attacherVehicle:getAIAllowTurnBackward() then
-				isStaticImplement = false
-			end
+		if z > 0 then
+			side = "front"
 		end
 
-		if isStaticImplement then
-			local leftMarker, rightMarker, backMarker = staticObject:getAIMarkers()
-			local leftSizeMarker, rightSizeMarker, backSizeMarker = staticObject:getAISizeMarkers()
-			local xL, _, zL = localToLocal(leftSizeMarker or leftMarker, vehicleDirectionNode, 0, 0, 0)
-			local xR, _, zR = localToLocal(rightSizeMarker or rightMarker, vehicleDirectionNode, 0, 0, 0)
-			local xB, _, zB = localToLocal(backSizeMarker or backMarker, vehicleDirectionNode, 0, 0, 0)
-			self.turnData.allToolsAtFront = self.turnData.allToolsAtFront and zB > 0
-			local xt = math.max(math.abs(xL), math.abs(xR), math.abs(xB))
-			local zt = math.max(math.abs(zL), math.abs(zR), math.abs(zB))
-			local xb = math.sqrt(xt * xt + zt * zt) + self.turnData.radius
-			local zb = math.sqrt(xt * xt + zt * zt) + self.turnData.radius
-			local side = "back"
-
-			if zB > 0 then
-				side = "front"
-			end
-
-			self.turnData.toolOverhang[side].xb = math.max(xb, self.turnData.toolOverhang[side].xb)
-			self.turnData.toolOverhang[side].zb = math.max(zb, self.turnData.toolOverhang[side].zb)
-			self.turnData.toolOverhang[side].xt = math.max(xt, self.turnData.toolOverhang[side].xt)
-			self.turnData.toolOverhang[side].zt = math.max(zt, self.turnData.toolOverhang[side].zt)
-		end
+		self.turnData.toolOverhang[side].xb = math.max(xb, self.turnData.toolOverhang[side].xb)
+		self.turnData.toolOverhang[side].zb = math.max(zb, self.turnData.toolOverhang[side].zb)
+		self.turnData.toolOverhang[side].xt = math.max(xt, self.turnData.toolOverhang[side].xt)
+		self.turnData.toolOverhang[side].zt = math.max(zt, self.turnData.toolOverhang[side].zt)
 	end
+
+	addNodeOffsetToOverhang(aiRootNode, width * 0.5, 0, length * 0.5 + lengthOffset)
+	addNodeOffsetToOverhang(aiRootNode, -width * 0.5, 0, length * 0.5 + lengthOffset)
+	addNodeOffsetToOverhang(aiRootNode, width * 0.5, 0, -length * 0.5 + lengthOffset)
+	addNodeOffsetToOverhang(aiRootNode, -width * 0.5, 0, -length * 0.5 + lengthOffset)
 
 	local rotTime = 1 / self.vehicle.wheelSteeringDuration * math.atan(1 / self.turnData.radius) / math.atan(1 / self.vehicle.maxTurningRadius)
 	local angle = nil

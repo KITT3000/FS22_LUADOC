@@ -1103,7 +1103,7 @@ function Sprayer:onStartWorkAreaProcessing(dt)
 
 	local isExternallyFilled = self:getIsSprayerExternallyFilled()
 
-	if isExternallyFilled and self:getIsTurnedOn() then
+	if isExternallyFilled and (self.rootVehicle.getAIFieldWorkerIsTurning == nil or not self.rootVehicle:getAIFieldWorkerIsTurning() and not self.rootVehicle:getAIFieldWorkerIsBlocked()) then
 		fillType, usage = self:getExternalFill(fillType, dt)
 		sprayFillLevel = usage
 		sprayVehicle, sprayVehicleFillUnitIndex = nil

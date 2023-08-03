@@ -51,7 +51,7 @@ function FertilizingSowingMachine:processSowingMachineArea(superFunc, workArea, 
 		return 0, 0
 	end
 
-	if not g_currentMission.missionInfo.helperBuyFertilizer and self:getIsAIActive() then
+	if (specSpray.isSlurryTanker and g_currentMission.missionInfo.helperSlurrySource == 1 or specSpray.isManureSpreader and g_currentMission.missionInfo.helperManureSource == 1 or specSpray.isFertilizerSprayer and not g_currentMission.missionInfo.helperBuyFertilizer) and self:getIsAIActive() then
 		if sprayerParams.sprayFillType == nil or sprayerParams.sprayFillType == FillType.UNKNOWN then
 			if sprayerParams.lastAIHasSprayed ~= nil then
 				local rootVehicle = self.rootVehicle

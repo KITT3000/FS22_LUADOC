@@ -18,7 +18,8 @@ Mulcher = {
 		EffectManager.registerEffectXMLPaths(schema, "vehicle.mulcher.effects.effect(?)")
 		schema:register(XMLValueType.INT, "vehicle.mulcher.effects.effect(?)#workAreaIndex", "Work area index", 1)
 		schema:register(XMLValueType.INT, "vehicle.mulcher.effects.effect(?)#activeDirection", "If vehicle is driving into this direction the effect will be activated (0 = any direction)", 0)
-		SoundManager.registerSampleXMLPaths(schema, "vehicle.mulcher.sounds", "work")
+		SoundManager.registerSampleXMLPaths(schema, "vehicle.mulcher.sounds", "idle(?)")
+		SoundManager.registerSampleXMLPaths(schema, "vehicle.mulcher.sounds", "work(?)")
 		schema:setXMLSpecializationType()
 	end,
 	prerequisitesPresent = function (specializations)
@@ -60,9 +61,11 @@ function Mulcher:onLoad(savegame)
 
 	if self.isClient then
 		spec.samples = {
-			work = g_soundManager:loadSampleFromXML(self.xmlFile, "vehicle.mulcher.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
+			idle = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.mulcher.sounds", "idle", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self),
+			work = g_soundManager:loadSamplesFromXML(self.xmlFile, "vehicle.mulcher.sounds", "work", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
 		}
 		spec.isWorkSamplePlaying = false
+		spec.isIdleSamplePlaying = false
 	end
 
 	spec.effects = {}
@@ -89,6 +92,12 @@ function Mulcher:onLoad(savegame)
 				isActiveSent = false
 			}
 
+			for _, effectObject in ipairs(effects) do
+				if effectObject:isa(CultivatorMotionPathEffect) then
+					effectObject.autoTurnOffSpeed = -math.huge
+				end
+			end
+
 			table.insert(spec.effects, effect)
 		end
 
@@ -113,6 +122,7 @@ function Mulcher:onLoad(savegame)
 	end
 
 	spec.isWorking = false
+	spec.isWorkingIdle = false
 	spec.lastWorkTime = -math.huge
 	spec.stoneLastState = 0
 	spec.stoneWearMultiplierData = g_currentMission.stoneSystem:getWearMultiplierByType("MULCHER")
@@ -146,7 +156,8 @@ end
 function Mulcher:onDelete()
 	local spec = self.spec_mulcher
 
-	g_soundManager:deleteSamples(spec.samples)
+	g_soundManager:deleteSamples(spec.samples.idle)
+	g_soundManager:deleteSamples(spec.samples.work)
 
 	if spec.effects ~= nil then
 		for _, effect in ipairs(spec.effects) do
@@ -222,12 +233,13 @@ end
 
 function Mulcher:processMulcherArea(workArea, dt)
 	local spec = self.spec_mulcher
+	spec.isWorkingIdle = self:getLastSpeed() > 0.5
 	local xs, _, zs = getWorldTranslation(workArea.start)
 	local xw, _, zw = getWorldTranslation(workArea.width)
 	local xh, _, zh = getWorldTranslation(workArea.height)
 	local realArea, area = FSDensityMapUtil.updateMulcherArea(xs, zs, xw, zw, xh, zh)
 
-	if realArea > 0 and self:getLastSpeed() > 0.5 then
+	if realArea > 0 and spec.isWorkingIdle then
 		local effects = spec.workAreaToEffects[workArea.index]
 
 		if effects ~= nil then
@@ -319,9 +331,11 @@ function Mulcher:onDeactivate()
 	local spec = self.spec_mulcher
 
 	if self.isClient then
-		g_soundManager:stopSamples(spec.samples)
+		g_soundManager:stopSamples(spec.samples.idle)
+		g_soundManager:stopSamples(spec.samples.work)
 
 		spec.isWorkSamplePlaying = false
+		spec.isIdleSamplePlaying = false
 	end
 
 	for _, effect in ipairs(spec.effects) do
@@ -332,6 +346,7 @@ end
 function Mulcher:onStartWorkAreaProcessing(dt)
 	local spec = self.spec_mulcher
 	spec.isWorking = false
+	spec.isWorkingIdle = false
 end
 
 function Mulcher:onEndWorkAreaProcessing(dt)
@@ -340,14 +355,26 @@ function Mulcher:onEndWorkAreaProcessing(dt)
 	if self.isClient then
 		if spec.isWorking then
 			if not spec.isWorkSamplePlaying then
-				g_soundManager:playSample(spec.samples.work)
+				g_soundManager:playSamples(spec.samples.work)
 
 				spec.isWorkSamplePlaying = true
 			end
 		elseif spec.isWorkSamplePlaying then
-			g_soundManager:stopSample(spec.samples.work)
+			g_soundManager:stopSamples(spec.samples.work)
 
 			spec.isWorkSamplePlaying = false
+		end
+
+		if spec.isWorkingIdle then
+			if not spec.isIdleSamplePlaying then
+				g_soundManager:playSamples(spec.samples.idle)
+
+				spec.isIdleSamplePlaying = true
+			end
+		elseif spec.isIdleSamplePlaying then
+			g_soundManager:stopSamples(spec.samples.idle)
+
+			spec.isIdleSamplePlaying = false
 		end
 	end
 end

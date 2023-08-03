@@ -88,6 +88,7 @@ function AIFieldWorker.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "getCanAIFieldWorkerContinueWork", AIFieldWorker.getCanAIFieldWorkerContinueWork)
 	SpecializationUtil.registerFunction(vehicleType, "getAIFieldWorkerIsTurning", AIFieldWorker.getAIFieldWorkerIsTurning)
 	SpecializationUtil.registerFunction(vehicleType, "getAIFieldWorkerLastTurnDirection", AIFieldWorker.getAIFieldWorkerLastTurnDirection)
+	SpecializationUtil.registerFunction(vehicleType, "getAIFieldWorkerIsBlocked", AIFieldWorker.getAIFieldWorkerIsBlocked)
 	SpecializationUtil.registerFunction(vehicleType, "getAttachedAIImplements", AIFieldWorker.getAttachedAIImplements)
 	SpecializationUtil.registerFunction(vehicleType, "getCanStartFieldWork", AIFieldWorker.getCanStartFieldWork)
 end
@@ -135,6 +136,7 @@ function AIFieldWorker:onLoad(savegame)
 
 	spec.didNotMoveTimer = spec.didNotMoveTimeout
 	spec.isActive = false
+	spec.isBlocked = false
 	spec.lastTurnDirection = false
 
 	if not self.isClient then
@@ -390,6 +392,7 @@ function AIFieldWorker:stopFieldWorker()
 	self:raiseAIEvent("onAIFieldWorkerEnd", "onAIImplementEnd")
 
 	spec.isTurning = false
+	spec.isBlocked = false
 	spec.lastTurnStrategy = nil
 	spec.isActive = false
 end
@@ -637,6 +640,8 @@ function AIFieldWorker:aiBlock(superFunc)
 	if spec.isActive and not spec.isTurning then
 		self:raiseAIEvent("onAIFieldWorkerBlock", "onAIImplementBlock")
 	end
+
+	spec.isBlocked = true
 end
 
 function AIFieldWorker:aiContinue(superFunc)
@@ -647,6 +652,8 @@ function AIFieldWorker:aiContinue(superFunc)
 	if spec.isActive and not spec.isTurning then
 		self:raiseAIEvent("onAIFieldWorkerContinue", "onAIImplementContinue")
 	end
+
+	spec.isBlocked = false
 end
 
 function AIFieldWorker:getCanAIFieldWorkerContinueWork()
@@ -675,6 +682,10 @@ end
 
 function AIFieldWorker:getAIFieldWorkerLastTurnDirection()
 	return self.spec_aiFieldWorker.lastTurnDirection
+end
+
+function AIFieldWorker:getAIFieldWorkerIsBlocked()
+	return self.spec_aiFieldWorker.isBlocked
 end
 
 function AIFieldWorker:getAttachedAIImplements()
