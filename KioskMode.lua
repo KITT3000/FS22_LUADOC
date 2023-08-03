@@ -504,7 +504,7 @@ function KioskMode:loadProfileConfig(configFileName)
 end
 
 function KioskMode:update(dt)
-	if (self.profileSelectorGamepadId ~= nil or StartParams.getIsSet("kioskProfileId")) and g_gui.currentGuiName == "MainScreen" and self.currentProfile == nil then
+	if (self.profileSelectorGamepadId ~= nil or StartParams.getIsSet("kioskProfileId") or StartParams.getIsSet("kioskProfileName")) and g_gui.currentGuiName == "MainScreen" and self.currentProfile == nil then
 		local profile = self:getProfile()
 
 		if profile ~= nil then
@@ -618,6 +618,31 @@ function KioskMode:getProfile()
 
 		if profile ~= nil then
 			return profile
+		end
+
+		if not self.startParamProfileIdWarningShown then
+			self.startParamProfileIdWarningShown = true
+
+			Logging.error("Invalid kioskProfileId '%s'!", profileId)
+		end
+
+		return nil
+	end
+
+	if StartParams.getIsSet("kioskProfileName") then
+		local name = StartParams.getValue("kioskProfileName")
+		local nameUpper = string.upper(name)
+
+		for _, profile in pairs(self.profiles) do
+			if string.upper(profile.name) == nameUpper then
+				return profile
+			end
+		end
+
+		if not self.startParamProfileNameWarningShown then
+			self.startParamProfileNameWarningShown = true
+
+			Logging.error("Invalid kioskProfileName '%s'!", name)
 		end
 
 		return nil

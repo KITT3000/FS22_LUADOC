@@ -1166,6 +1166,10 @@ function FieldManager:consoleCommandSetFieldFruit(fieldIndex, fruitName, state, 
 
 			self:setFieldFruit(field, fruitType, state, sprayTypeState, fertilizerState, plowingState, weedState, limeState, stubbleState, setSpray)
 
+			if groundType then
+				self:setFieldGround(field, groundType, 0, nil, fertilizerState, plowingState, weedState, limeState, stubbleState, buyField, false)
+			end
+
 			return "Updated field"
 		end
 

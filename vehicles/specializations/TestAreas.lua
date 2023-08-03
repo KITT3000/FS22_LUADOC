@@ -101,6 +101,13 @@ end
 
 function TestAreas:readTestAreasStream(streamId, connection)
 	local spec = self.spec_testAreas
+
+	for i = 1, #spec.testAreas do
+		spec.testAreas[i].hasContact = false
+	end
+
+	local startIndex = 0
+	local endIndex = 0
 	local hadFruitContact = false
 
 	for i = 1, #spec.testAreas do
@@ -109,6 +116,7 @@ function TestAreas:readTestAreasStream(streamId, connection)
 
 		if testArea.hasContact then
 			hadFruitContact = true
+			startIndex = i
 
 			break
 		end
@@ -120,8 +128,16 @@ function TestAreas:readTestAreasStream(streamId, connection)
 			testArea.hasContact = streamReadBool(streamId)
 
 			if testArea.hasContact then
+				endIndex = i
+
 				break
 			end
+		end
+	end
+
+	if startIndex ~= 0 and endIndex ~= 0 then
+		for i = startIndex, endIndex do
+			spec.testAreas[i].hasContact = true
 		end
 	end
 end

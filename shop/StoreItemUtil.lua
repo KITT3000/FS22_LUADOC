@@ -423,7 +423,7 @@ function StoreItemUtil.getConfigurationSetsFromXML(storeItem, xmlFile, key, base
 							Logging.xmlWarning(xmlFile, "Index '" .. index .. "' not defined for configuration '" .. name .. "'!")
 						end
 					end
-				else
+				elseif xmlFile:getValue(configKey .. "#showWarning") then
 					Logging.xmlWarning(xmlFile, "Configuration name '" .. name .. "' is not defined!")
 				end
 			else
@@ -688,4 +688,5 @@ function StoreItemUtil.registerConfigurationSetXMLPaths(schema, baseKey)
 	schema:register(XMLValueType.BOOL, setKey .. "#isDefault", "Is default set")
 	schema:register(XMLValueType.STRING, setKey .. ".configuration(?)#name", "Configuration name")
 	schema:register(XMLValueType.INT, setKey .. ".configuration(?)#index", "Selected index")
+	schema:register(XMLValueType.BOOL, setKey .. ".configuration(?)#showWarning", "Show a warning if the configuration name is not present. Can be used to block warnings while certain configurations are added via mods/DLCs and not always present.", true)
 end

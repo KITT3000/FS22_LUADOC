@@ -224,7 +224,7 @@ end
 
 function EsportsServerController:retrieveServers()
 	self.isFilteredServersRequestPending = true
-	local allowCrossplay = true
+	local allowCrossplay = getAllowCrossPlay()
 
 	masterServerRequestFilteredServers(self.languageId, allowCrossplay)
 	self.callbackFunc(self.callbackTarget, EsportsServerController.CALLBACK_TYPE.PROGRESS_UPDATE, {

@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 18
-g_gameVersionNotification = "1.11.0.0"
-g_gameVersionDisplay = "1.11.0.0"
+g_gameVersion = 19
+g_gameVersionNotification = "1.12.0.0"
+g_gameVersionDisplay = "1.12.0.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 76
+g_maxModDescVersion = 77
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -1759,8 +1759,9 @@ function startDevArenaServer()
 	end
 
 	print("Start developer arena mode mp server")
-	g_mainScreen:onEsportsClick()
-	g_esportsScreen:onClickArenaStartMatch()
+	g_gui:showGui("EsportsScreen")
+	g_esportsScreen:setIsArenaScreen(true)
+	g_esportsScreen:onClickStartMatch()
 end
 
 function startDevArenaClient()
@@ -1771,8 +1772,9 @@ function startDevArenaClient()
 	end
 
 	print("Start developer arena mode mp client")
-	g_mainScreen:onEsportsClick()
-	g_esportsScreen:onClickArenaJoinRandom()
+	g_gui:showGui("EsportsScreen")
+	g_esportsScreen:setIsArenaScreen(true)
+	g_esportsScreen:onClickJoinRandom()
 end
 
 function startDevBaleStackingServer()
@@ -1783,8 +1785,9 @@ function startDevBaleStackingServer()
 	end
 
 	print("Start developer bale stacking mode mp server")
-	g_mainScreen:onEsportsClick()
-	g_esportsScreen:onClickBaleStackingStartMatch()
+	g_gui:showGui("EsportsScreen")
+	g_esportsScreen:setIsArenaScreen(false)
+	g_esportsScreen:onClickStartMatch()
 end
 
 function startDevBaleStackingClient()
@@ -1795,8 +1798,9 @@ function startDevBaleStackingClient()
 	end
 
 	print("Start developer bale stacking mode mp client")
-	g_mainScreen:onEsportsClick()
-	g_esportsScreen:onClickBaleStackingJoinRandom()
+	g_gui:showGui("EsportsScreen")
+	g_esportsScreen:setIsArenaScreen(false)
+	g_esportsScreen:onClickJoinRandom()
 end
 
 function autoStartLocalSavegame(savegameId)

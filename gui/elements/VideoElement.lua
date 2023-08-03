@@ -14,6 +14,8 @@ function VideoElement.new(target, custom_mt)
 	self.currentSubtitleIndex = 0
 	self.playbackBarElement = nil
 	self.playbackBarElementId = nil
+	self.timeLeftElement = nil
+	self.timeLeftElementId = nil
 
 	return self
 end
@@ -27,6 +29,7 @@ function VideoElement:loadFromXML(xmlFile, key)
 	self.isLooping = Utils.getNoNil(getXMLBool(xmlFile, key .. "#isLooping"), self.isLooping)
 	self.subtitleElementId = Utils.getNoNil(getXMLString(xmlFile, key .. "#subtitleElementId"), self.subtitleElementId)
 	self.playbackBarElementId = Utils.getNoNil(getXMLString(xmlFile, key .. "#playbackBarElementId"), self.playbackBarElementId)
+	self.timeLeftElementId = Utils.getNoNil(getXMLString(xmlFile, key .. "#timeLeftElementId"), self.timeLeftElementId)
 
 	self:addCallback(xmlFile, key .. "#onEndVideo", "onEndVideoCallback")
 	self:changeVideo(self.videoFilename)
@@ -41,6 +44,7 @@ function VideoElement:loadProfile(profile, applyProfile)
 	self.isLooping = profile:getBool("isLooping", self.isLooping)
 	self.subtitleElementId = profile:getValue("subtitleElementId", self.subtitleElementId)
 	self.playbackBarElementId = profile:getValue("playbackBarElementId", self.playbackBarElementId)
+	self.timeLeftElementId = profile:getValue("timeLeftElementId", self.timeLeftElementId)
 end
 
 function VideoElement:copyAttributes(src)
@@ -54,6 +58,7 @@ function VideoElement:copyAttributes(src)
 	self.subtitles = src.subtitles
 	self.subtitleElementId = src.subtitleElementId
 	self.playbackBarElementId = src.playbackBarElementId
+	self.timeLeftElementId = src.timeLeftElementId
 end
 
 function VideoElement:onGuiSetupFinished()
@@ -76,6 +81,16 @@ function VideoElement:onGuiSetupFinished()
 			self.playbackBarElement = playbackBarElement
 		else
 			Logging.warning("playbackBarElementId '%s' not found for '%s'!", self.playbackBarElementId, self.parent.name)
+		end
+	end
+
+	if self.timeLeftElementId ~= nil then
+		local timeLeftElement = self.parent:getDescendantById(self.timeLeftElementId)
+
+		if timeLeftElement ~= nil then
+			self.timeLeftElement = timeLeftElement
+		else
+			Logging.warning("timeLeftElementId '%s' not found for '%s'!", self.timeLeftElementId, self.parent.name)
 		end
 	end
 end
@@ -184,6 +199,15 @@ function VideoElement:update(dt)
 			local currentTime = getVideoOverlayCurrentTime(self.overlay) or 1
 			local playbackTime = math.min(currentTime / self.duration, 1)
 			self.playbackBarElement.absSize[1] = self.playbackBarElement.size[1] * playbackTime
+		end
+
+		if self.timeLeftElement ~= nil then
+			local currentTime = getVideoOverlayCurrentTime(self.overlay) or 1
+			local timeLeft = math.max(0, self.duration - currentTime)
+			local timeLeftMinutes = math.floor(timeLeft / 60)
+			local timeLeftSeconds = timeLeft % 60
+
+			self.timeLeftElement:setText(string.format("-%02d:%02d", timeLeftMinutes, timeLeftSeconds))
 		end
 	else
 		self:disposeVideo()

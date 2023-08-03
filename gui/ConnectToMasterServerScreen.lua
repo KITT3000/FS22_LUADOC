@@ -34,9 +34,9 @@ function ConnectToMasterServerScreen:onClickCancel()
 	self.startMissionInfo.canStart = false
 
 	if self.startMissionInfo.createGame then
-		self:changeScreen(CreateGameScreen)
+		self:changeScreen(self.prevScreenClass or CreateGameScreen)
 	else
-		self:changeScreen(MultiplayerScreen)
+		self:changeScreen(self.prevScreenClass or MultiplayerScreen)
 	end
 end
 

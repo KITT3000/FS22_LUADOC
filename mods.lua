@@ -14,11 +14,11 @@ local internalMods = {
 		name = "agcoIdealSimulator"
 	},
 	{
-		version = "1.0.1.0",
+		version = "1.0.2.0",
 		name = "baleStacking"
 	},
 	{
-		version = "1.0.1.0",
+		version = "1.0.2.0",
 		name = "arena"
 	}
 }
