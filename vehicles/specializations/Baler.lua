@@ -638,20 +638,23 @@ function Baler:onDelete()
 
 	self:deleteDummyBale(spec.dummyBale)
 
-	if spec.buffer.dummyBale.available then
-		self:deleteDummyBale(spec.buffer.dummyBale)
+	if spec.buffer ~= nil then
+		if spec.buffer.dummyBale.available then
+			self:deleteDummyBale(spec.buffer.dummyBale)
+		end
+
+		g_soundManager:deleteSamples(spec.buffer.samplesOverloadingStart)
+		g_soundManager:deleteSamples(spec.buffer.samplesOverloadingWork)
+		g_soundManager:deleteSamples(spec.buffer.samplesOverloadingStop)
+		g_effectManager:deleteEffects(spec.buffer.overloadingEffects)
+		g_animationManager:deleteAnimations(spec.buffer.overloadingAnimationNodes)
 	end
 
 	g_soundManager:deleteSamples(spec.samples)
-	g_soundManager:deleteSamples(spec.buffer.samplesOverloadingStart)
-	g_soundManager:deleteSamples(spec.buffer.samplesOverloadingWork)
-	g_soundManager:deleteSamples(spec.buffer.samplesOverloadingStop)
 	g_effectManager:deleteEffects(spec.fillEffects)
 	g_effectManager:deleteEffects(spec.additiveEffects)
-	g_effectManager:deleteEffects(spec.buffer.overloadingEffects)
 	g_animationManager:deleteAnimations(spec.animationNodes)
 	g_animationManager:deleteAnimations(spec.unloadAnimationNodes)
-	g_animationManager:deleteAnimations(spec.buffer.overloadingAnimationNodes)
 end
 
 function Baler:saveToXMLFile(xmlFile, key, usedModNames)

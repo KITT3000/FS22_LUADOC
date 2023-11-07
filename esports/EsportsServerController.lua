@@ -320,7 +320,7 @@ function EsportsServerController:onServerInfoDetails(id, name, language, capacit
 	self:retrieveServersNextLanguage()
 end
 
-function EsportsServerController:onServerInfoDetailsFailed()
+function EsportsServerController:onServerInfoDetailsFailed(reason)
 	Logging.devWarning("onServerInfoDetailsFailed")
 
 	self.ignoredServers[self.currentDetailsServerName] = true

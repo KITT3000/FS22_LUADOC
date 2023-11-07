@@ -748,7 +748,7 @@ function XMLSchema:generateHTML()
 
 	add("<!DOCTYPE html>")
 	add("<head>")
-	add(string.format("  <title>XML Doc: %s</title>", self.name))
+	add(string.format("  <title>XML Documentation (v%s): %s</title>", g_gameVersionDisplay, self.name))
 
 	local currentLine = nil
 	local currentIndent = ""

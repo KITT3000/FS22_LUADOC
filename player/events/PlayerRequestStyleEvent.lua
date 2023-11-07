@@ -29,8 +29,12 @@ end
 
 function PlayerRequestStyleEvent:run(connection)
 	if not connection:getIsServer() then
-		local style = g_currentMission.playerInfoStorage:getPlayerStyle(self.player.userId)
+		if self.player ~= nil then
+			local style = g_currentMission.playerInfoStorage:getPlayerStyle(self.player.userId)
 
-		connection:sendEvent(PlayerSetStyleEvent.new(self.player, style))
+			connection:sendEvent(PlayerSetStyleEvent.new(self.player, style))
+		else
+			Logging.info("PlayerRequestStyleEvent - Player not found or already left the game")
+		end
 	end
 end

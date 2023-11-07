@@ -271,6 +271,10 @@ function FarmlandManager:getFarmlandOwner(farmlandId)
 end
 
 function FarmlandManager:getFarmlandIdAtWorldPosition(worldPosX, worldPosZ)
+	if self.localMap == nil then
+		return FarmlandManager.NO_OWNER_FARM_ID
+	end
+
 	local localPosX, localPosZ = self:convertWorldToLocalPosition(worldPosX, worldPosZ)
 
 	return getBitVectorMapPoint(self.localMap, localPosX, localPosZ, 0, self.numberOfBits)

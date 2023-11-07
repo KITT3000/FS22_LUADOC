@@ -910,7 +910,7 @@ function MPLoadingScreen:showFailedToConnectDialog(text)
 	self:cleanup()
 end
 
-function MPLoadingScreen:onServerInfoDetailsFailed()
+function MPLoadingScreen:onServerInfoDetailsFailed(reason)
 	g_deepLinkingInfo = nil
 
 	self:showFailedToConnectDialog()

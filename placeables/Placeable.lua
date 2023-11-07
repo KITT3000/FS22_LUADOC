@@ -130,6 +130,7 @@ function Placeable.init()
 	savegameSchema:register(XMLValueType.INT, basePathSavegame .. "#farmId", "Owner farmland", 0)
 	savegameSchema:register(XMLValueType.INT, basePathSavegame .. "#id", "Save id")
 	savegameSchema:register(XMLValueType.BOOL, basePathSavegame .. "#defaultFarmProperty", "Is property of default farm. Causes object to be removed on non-starter games.", false)
+	savegameSchema:register(XMLValueType.BOOL, basePathSavegame .. "#boughtWithFarmlandOverwrite", "Placeable is bought with farmland overwritten by savegame", false)
 	savegameSchema:register(XMLValueType.STRING, basePathSavegame .. "#modName", "Name of mod")
 	savegameSchema:register(XMLValueType.INT, basePathSavegame .. "#sinceVersion", "Version of xml file when this placeable was added. Will cause placeable to appear on older, existing saves")
 
@@ -369,13 +370,28 @@ function Placeable:onFinishedLoading()
 
 		self.isLoadingFromSavegameXML = false
 		self.mapBoundId = self.savegame.xmlFile:getValue(self.savegame.key .. "#mapBoundId", self.mapBoundId)
+		local boughtWithFarmlandSavegameOverwrite = self.savegame.xmlFile:getValue(self.savegame.key .. "#boughtWithFarmlandOverwrite")
+
+		if boughtWithFarmlandSavegameOverwrite ~= nil then
+			self.boughtWithFarmlandSavegameOverwrite = boughtWithFarmlandSavegameOverwrite
+		end
+
 		self.customImageFilename = self.savegame.xmlFile:getValue(self.savegame.key .. ".customImage#filename", self.customImageFilename)
 
 		if self.customImageFilename ~= nil then
 			self.customImageFilename = NetworkUtil.convertFromNetworkFilename(self.customImageFilename)
 		end
 
-		self.name = self.savegame.xmlFile:getValue(self.savegame.key .. "#name")
+		self.rawName = self.savegame.xmlFile:getValue(self.savegame.key .. "#name")
+
+		if self.rawName ~= nil then
+			local name, _ = self:getCustomName()
+
+			if name ~= nil then
+				self.name = name
+			end
+		end
+
 		self.age = self.savegame.xmlFile:getValue(self.savegame.key .. "#age", 0)
 		self.price = self.savegame.xmlFile:getValue(self.savegame.key .. "#price", self.price)
 
@@ -472,7 +488,7 @@ function Placeable:finalizePlacement()
 	local x, _, z = getWorldTranslation(self.rootNode)
 	self.farmlandId = g_farmlandManager:getFarmlandIdAtWorldPosition(x, z)
 
-	if self.boughtWithFarmland then
+	if self.boughtWithFarmlandSavegameOverwrite == nil and self.boughtWithFarmland or self.boughtWithFarmlandSavegameOverwrite then
 		if self.isServer then
 			self:updateOwnership()
 		end
@@ -532,7 +548,7 @@ function Placeable:delete()
 
 	SpecializationUtil.raiseEvent(self, "onDelete")
 
-	if self.boughtWithFarmland and self.isServer then
+	if (self.boughtWithFarmlandSavegameOverwrite == nil and self.boughtWithFarmland or self.boughtWithFarmlandSavegameOverwrite) and self.isServer then
 		g_farmlandManager:removeStateChangeListener(self)
 	end
 
@@ -715,11 +731,19 @@ function Placeable:saveToXMLFile(xmlFile, key, usedModNames)
 	xmlFile:setValue(key .. "#farmId", self:getOwnerFarmId() or 1)
 
 	if self.canBeRenamed and self.name ~= nil and self.name:trim() ~= "" then
-		xmlFile:setValue(key .. "#name", self.name)
+		local _, nameToSave = self:getCustomName()
+
+		if nameToSave ~= nil then
+			xmlFile:setValue(key .. "#name", nameToSave)
+		end
 	end
 
 	if self.mapBoundId ~= nil then
 		xmlFile:setValue(key .. "#mapBoundId", self.mapBoundId)
+	end
+
+	if self.boughtWithFarmlandSavegameOverwrite ~= nil then
+		xmlFile:setValue(key .. "#boughtWithFarmlandOverwrite", self.boughtWithFarmlandSavegameOverwrite)
 	end
 
 	if self.customImageFilename ~= nil then
@@ -733,6 +757,32 @@ function Placeable:saveToXMLFile(xmlFile, key, usedModNames)
 			spec.saveToXMLFile(self, xmlFile, key .. "." .. name, usedModNames)
 		end
 	end
+end
+
+function Placeable:getCustomName()
+	if self.rawName ~= nil then
+		local customEnvParts = string.split(g_currentMission.missionInfo.mapId, ".")
+
+		if #customEnvParts > 1 then
+			local mapEnv = customEnvParts[1]
+
+			if g_i18n:hasText(string.gsub(self.rawName, "$l10n_", ""), mapEnv) then
+				return g_i18n:convertText(self.rawName, mapEnv), self.rawName
+			end
+		end
+
+		if g_i18n:hasText(string.gsub(self.rawName, "$l10n_", "")) then
+			return g_i18n:convertText(self.rawName), self.rawName
+		end
+
+		if string.startsWith(self.rawName, "$l10n_") then
+			return nil, nil
+		end
+
+		return self.rawName, self.rawName
+	end
+
+	return self.name, self.name
 end
 
 function Placeable:setPropertyState(state)
@@ -853,7 +903,7 @@ function Placeable:performNodeDestruction(node)
 end
 
 function Placeable:onFarmlandStateChanged(farmlandId, farmId)
-	if self.boughtWithFarmland and farmlandId == self.farmlandId then
+	if (self.boughtWithFarmlandSavegameOverwrite == nil and self.boughtWithFarmland or self.boughtWithFarmlandSavegameOverwrite) and farmlandId == self.farmlandId then
 		self:updateOwnership()
 	end
 end
@@ -893,7 +943,7 @@ function Placeable:updateOwnership()
 
 	local farmId = g_farmlandManager:getFarmlandOwner(self.farmlandId)
 
-	if (not storeItem.canBeSold or self.boughtWithFarmland) and farmId == FarmlandManager.NO_OWNER_FARM_ID then
+	if (not storeItem.canBeSold or self.boughtWithFarmlandSavegameOverwrite == nil and self.boughtWithFarmland or self.boughtWithFarmlandSavegameOverwrite) and farmId == FarmlandManager.NO_OWNER_FARM_ID then
 		farmId = AccessHandler.NOBODY
 	end
 

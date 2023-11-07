@@ -57,12 +57,50 @@ end
 
 function XMLManager.consoleCommandGenerateSchemas()
 	if g_xmlManager ~= nil then
+		local schemasSorted = {}
+
 		for i = 1, #g_xmlManager.schemas do
 			local schema = g_xmlManager.schemas[i]
 
 			schema:generateSchema()
 			schema:generateHTML()
+			table.insert(schemasSorted, schema)
 		end
+
+		table.sort(schemasSorted, function (a, b)
+			return a.name < b.name
+		end)
+
+		local htmlPath = string.format("shared/xml/documentation/overview.html")
+		local file = io.open(htmlPath, "w")
+
+		file:write("<!DOCTYPE html>\n")
+		file:write("<html>\n")
+		file:write("  <head>\n")
+		file:write("    <title>XML Documentation (v" .. g_gameVersionDisplay .. ")</title>\n")
+		file:write("  </head>\n")
+		file:write("  <style>\n")
+		file:write("    li {\n")
+		file:write("      margin: 5px;\n")
+		file:write("    }\n")
+		file:write("    a {\n")
+		file:write("      text-decoration:none;\n")
+		file:write("      font-size: 15pt;\n")
+		file:write("      color: #000000;\n")
+		file:write("    }\n")
+		file:write("  </style>\n")
+		file:write("<body>\n")
+		file:write("  <h1>Schema Overview</h1>\n")
+		file:write("  <ul>\n")
+
+		for _, schema in ipairs(schemasSorted) do
+			file:write("   <li><a href=\"" .. schema.name .. ".html\">" .. schema.name .. "</a></li>\n")
+		end
+
+		file:write("  </ul>\n")
+		file:write("</body>\n")
+		file:write("</html>\n")
+		file:close()
 	end
 end
 

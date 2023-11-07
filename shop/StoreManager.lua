@@ -52,11 +52,20 @@ function StoreManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 		end
 
 		self:addPack(name, title, imageFilename, "")
+		packsXMLFile:iterate(key .. ".storeItem", function (_, storeItemKey)
+			local xmlFilename = packsXMLFile:getString(storeItemKey)
+
+			self:addPackItem(name, Utils.getFilename(xmlFilename, baseDirectory))
+		end)
 	end)
 	packsXMLFile:delete()
 
 	for _, item in ipairs(self.modStorePacks) do
 		self:addPack(item.name, item.title, item.imageFilename, item.baseDir)
+
+		for _, storeItem in ipairs(item.storeItems) do
+			self:addPackItem(item.name, storeItem)
+		end
 	end
 
 	local constructionXMLFile = XMLFile.load("constructionXML", "dataS/constructionCategories.xml")
@@ -453,10 +462,12 @@ function StoreManager:getItemsByCombinationData(combinationData)
 					categoryAllowed = false
 
 					for j = 1, #combinationData.filterCategories do
-						if combinationData.filterCategories[j]:upper() == storeItem.categoryName then
-							categoryAllowed = true
+						for cni = 1, #storeItem.categoryNames do
+							if combinationData.filterCategories[j]:upper() == storeItem.categoryNames[cni] then
+								categoryAllowed = true
 
-							break
+								break
+							end
 						end
 					end
 				end
@@ -709,16 +720,26 @@ function StoreManager:loadItem(rawXMLFilename, baseDir, customEnvironment, isMod
 	storeItem.dlcTitle = dlcTitle
 	storeItem.isMod = isMod
 	storeItem.customEnvironment = customEnvironment
+	storeItem.categoryNames = {}
 	local categoryName = xmlFile:getValue(storeDataXMLKey .. ".category")
-	local category = self:getCategoryByName(categoryName)
+	local categoryNames = categoryName:split(" ")
 
-	if category == nil then
-		Logging.xmlWarning(xmlFile, "Invalid category '%s' in store data! Using 'misc' instead!", tostring(categoryName))
+	for i = 1, #categoryNames do
+		local category = self:getCategoryByName(categoryNames[i])
 
-		category = self:getCategoryByName("misc")
+		if category == nil then
+			Logging.xmlWarning(xmlFile, "Invalid category '%s' in store data!", tostring(categoryNames[i]))
+		end
+
+		table.insert(storeItem.categoryNames, category.name)
 	end
 
-	storeItem.categoryName = category.name
+	if #storeItem.categoryNames == 0 then
+		Logging.xmlWarning(xmlFile, "No categories defined in store data! Using 'misc' instead!")
+		table.insert(storeItem.categoryNames, "MISC")
+	end
+
+	storeItem.categoryName = storeItem.categoryNames[1]
 
 	if species == "vehicle" then
 		storeItem.configurations, storeItem.defaultConfigurationIds = StoreItemUtil.getConfigurationsFromXML(xmlFile, baseXMLName, baseDir, customEnvironment, isMod, storeItem)
@@ -1020,12 +1041,13 @@ function StoreManager:addPack(name, title, imageFilename, baseDir)
 	return false
 end
 
-function StoreManager:addModStorePack(name, title, imageFilename, baseDir)
+function StoreManager:addModStorePack(name, title, imageFilename, baseDir, storeItems)
 	table.insert(self.modStorePacks, {
 		name = name,
 		title = title,
 		imageFilename = imageFilename,
-		baseDir = baseDir
+		baseDir = baseDir,
+		storeItems = storeItems or {}
 	})
 end
 

@@ -7,6 +7,7 @@ function FoliageSystem.new(customMt)
 	self.paintableFoliages = {}
 	self.decoFoliages = {}
 	self.decoFoliageMappings = {}
+	self.modFoliageTypesToLoad = {}
 
 	return self
 end
@@ -14,6 +15,7 @@ end
 function FoliageSystem:delete()
 	self.paintableFoliages = {}
 	self.decoFoliages = {}
+	self.modFoliageTypesToLoad = {}
 end
 
 function FoliageSystem:loadMapData(mapXmlFile, missionInfo, baseDirectory)
@@ -95,11 +97,62 @@ function FoliageSystem:loadMapData(mapXmlFile, missionInfo, baseDirectory)
 	end)
 	xmlFile:delete()
 
+	self.modFoliageTypesToLoad = missionInfo.foliageTypes or self.modFoliageTypesToLoad
+	local newFoliageTypes = g_fruitTypeManager.modFoliageTypesToLoad
+
+	for i = 1, #newFoliageTypes do
+		local newFoliageType = newFoliageTypes[i]
+		local alreadyAdded = false
+
+		for j = 1, #self.modFoliageTypesToLoad do
+			local foliageType = self.modFoliageTypesToLoad[j]
+
+			if newFoliageType.name == foliageType.name then
+				alreadyAdded = true
+
+				break
+			end
+		end
+
+		if not alreadyAdded then
+			table.insert(self.modFoliageTypesToLoad, {
+				name = newFoliageType.name,
+				filename = newFoliageType.filename
+			})
+		end
+	end
+
+	for i = 1, #self.modFoliageTypesToLoad do
+		local foliageType = self.modFoliageTypesToLoad[i]
+		local foliageXMLFile = XMLFile.load("fillTypeXMLFile", foliageType.filename, FillTypeManager.xmlSchemaFoliage)
+
+		g_fillTypeManager:loadFillTypes(foliageXMLFile, nil, false)
+
+		local foliageXMLFileHandle = loadXMLFile("foliageFruitType", foliageType.filename)
+
+		g_fruitTypeManager:loadFruitTypes(foliageXMLFileHandle, missionInfo, false)
+		g_densityMapHeightManager:loadDensityMapHeightTypes(foliageXMLFileHandle, missionInfo, nil, false)
+		g_motionPathEffectManager:loadMotionPathEffects(foliageXMLFileHandle, "foliageType.motionPathEffects.motionPathEffect", baseDirectory, nil)
+		g_currentMission.growthSystem:loadGrowthData(foliageXMLFile, "foliageType.growth")
+		foliageXMLFile:delete()
+		delete(foliageXMLFileHandle)
+	end
+
 	return true
 end
 
 function FoliageSystem:unloadMapData()
 	self.paintableFoliages = {}
+end
+
+function FoliageSystem:saveToXMLFile(xmlFile)
+	for i = 1, #self.modFoliageTypesToLoad do
+		local foliageType = self.modFoliageTypesToLoad[i]
+		local key = string.format("careerSavegame.foliageTypes.foliageType(%d)", i - 1)
+
+		setXMLString(xmlFile, key .. "#name", foliageType.name)
+		setXMLString(xmlFile, key .. "#filename", NetworkUtil.convertToNetworkFilename(foliageType.filename))
+	end
 end
 
 function FoliageSystem:initTerrain(mission, terrainRootNode, terrainDetailId)
@@ -125,6 +178,8 @@ function FoliageSystem:initTerrain(mission, terrainRootNode, terrainDetailId)
 			decoFoliage.modifier = DensityMapModifier.new(id, decoFoliage.startStateChannel, decoFoliage.numStateChannels, terrainRootNode)
 		end
 	end
+
+	self:loadModFoliageTypes()
 end
 
 function FoliageSystem:addDensityMapSyncer(densityMapSyncer)
@@ -210,6 +265,43 @@ function FoliageSystem:applyDecoFoliage(decoName, startWorldX, startWorldZ, widt
 		if modifier ~= nil then
 			modifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
 			modifier:executeSet(state)
+		end
+	end
+end
+
+local _sub = string.sub
+local _len = string.len
+local _oldAddFoliageTypFromXML = addFoliageTypFromXML
+
+local function _addFoliageTypFromXML(terrainId, dmId, name, xmlFilename)
+	local path = "data/foliage"
+
+	if _sub(xmlFilename, 1, _len(path)) == path then
+		return _oldAddFoliageTypFromXML(terrainId, dmId, name, xmlFilename)
+	end
+
+	Logging.error("Failed to load foliage xml '%s'", xmlFilename)
+
+	return nil
+end
+
+function FoliageSystem:loadModFoliageTypes()
+	for i = 1, #self.modFoliageTypesToLoad do
+		local foliageType = self.modFoliageTypesToLoad[i]
+		local id = nil
+
+		for _, fruitType in ipairs(g_fruitTypeManager:getFruitTypes()) do
+			id = getTerrainDataPlaneByName(self.terrainRootNode, fruitType.layerName)
+
+			if id ~= nil then
+				break
+			end
+		end
+
+		if id ~= nil then
+			_addFoliageTypFromXML(self.terrainRootNode, id, foliageType.name, foliageType.filename)
+		else
+			Logging.warning("Failed to load foliage xml '%s'", foliageType.filename)
 		end
 	end
 end

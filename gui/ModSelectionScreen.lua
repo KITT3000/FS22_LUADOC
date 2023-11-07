@@ -263,7 +263,27 @@ function ModSelectionScreen:onClickOk()
 			return
 		end
 
-		Logging.error("Could not start dedicated server with current mod setup because some dependencies are missing!")
+		local dependencyLines = {}
+
+		for _, item in ipairs(unresolved) do
+			if dependencyLines[item.mod.title] == nil then
+				dependencyLines[item.mod.title] = item.dependencyTitle
+			else
+				dependencyLines[item.mod.title] = dependencyLines[item.mod.title] .. ", " .. item.dependencyTitle
+			end
+		end
+
+		local listText = nil
+
+		for title, deps in pairs(dependencyLines) do
+			if listText == nil then
+				listText = "'" .. title .. "' wants " .. deps
+			else
+				listText = listText .. ";  '" .. title .. "' wants " .. deps
+			end
+		end
+
+		Logging.error("Could not start dedicated server with current mod setup because some dependencies are missing: " .. listText)
 	end
 end
 

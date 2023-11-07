@@ -1069,9 +1069,7 @@ function ProductionPoint:getIsProductionEnabled(productionId)
 	return table.hasElement(self.activeProductions, self.productionsIdToObj[productionId])
 end
 
-function ProductionPoint:updateInfo(superFunc, infoTable)
-	superFunc(self, infoTable)
-
+function ProductionPoint:updateInfo(infoTable)
 	local owningFarm = g_farmManager:getFarmById(self:getOwnerFarmId())
 
 	table.insert(infoTable, {

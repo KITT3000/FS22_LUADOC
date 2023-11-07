@@ -309,13 +309,19 @@ function HarvestMission:getVehicleVariant()
 		return "COTTON"
 	elseif fruitType == FruitType.SUGARCANE then
 		return "SUGARCANE"
+	elseif fruitType == FruitType.CARROT then
+		return "CARROT"
+	elseif fruitType == FruitType.PARSNIP then
+		return "PARSNIP"
+	elseif fruitType == FruitType.BEETROOT then
+		return "BEETROOT"
 	else
 		return "GRAIN"
 	end
 end
 
 function HarvestMission:updateRewardPerHa()
-	if self.fillType == FillType.SUGARCANE or self.fillType == FillType.POTATO or self.fillType == FillType.SUGARBEET then
+	if self.fillType == FillType.SUGARCANE or self.fillType == FillType.POTATO or self.fillType == FillType.SUGARBEET or self.fillType == FillType.CARROT or self.fillType == FillType.PARSNIP or self.fillType == FillType.BEETROOT then
 		self.rewardPerHa = HarvestMission.REWARD_PER_HA_SMALL
 	else
 		self.rewardPerHa = HarvestMission.REWARD_PER_HA_WIDE

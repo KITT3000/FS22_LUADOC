@@ -972,6 +972,14 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TITLE
 	})
 	table.insert(creditsTexts, {
+		c = "Barbara Kamińska",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Jainal Panchal",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Kacper Szczytowski",
 		t = CreditsScreen.TEXT
 	})
@@ -981,6 +989,10 @@ function CreditsScreen:loadCredits()
 	})
 	table.insert(creditsTexts, {
 		c = "Łukasz Miecznikowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Maciej Dąbrowski",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
@@ -996,6 +1008,10 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Marcin Dąbrowski",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Michał Pielech",
 		t = CreditsScreen.TEXT
 	})
@@ -1004,7 +1020,15 @@ function CreditsScreen:loadCredits()
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {
+		c = "Nigel Arubinu",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
 		c = "Paweł Pielech",
+		t = CreditsScreen.TEXT
+	})
+	table.insert(creditsTexts, {
+		c = "Przemysław Pascal",
 		t = CreditsScreen.TEXT
 	})
 	table.insert(creditsTexts, {

@@ -413,6 +413,10 @@ function ControlsController:onCaptureMouseInput(_, inputAxisName, inputValue, in
 end
 
 function ControlsController:onCaptureGamepadInput(deviceId, inputAxisName, inputValue, initInputValue, gatheringState)
+	if not self.waitForInput then
+		return
+	end
+
 	local deviceState = gatheringState.gamepadState[deviceId]
 
 	if not deviceState then

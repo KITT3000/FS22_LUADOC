@@ -153,6 +153,9 @@ function KioskMode:load()
 		haveModsChanged()
 	end
 
+	InputBinding.loadModActions = Utils.overwrittenFunction(InputBinding.loadModActions, KioskMode.inj_inputBinding_loadModActions)
+	InputBinding.loadModBindingDefaults = Utils.overwrittenFunction(InputBinding.loadModBindingDefaults, KioskMode.inj_inputBinding_loadModBindingDefaults)
+
 	return true
 end
 
@@ -239,6 +242,8 @@ function KioskMode:loadFromPath(path)
 	xmlFile:delete()
 
 	if #self.profiles == 0 then
+		Logging.xmlWarning(xmlFile, "KioskMode:loadFromPath - No profiles defined!")
+
 		return false
 	end
 
@@ -252,12 +257,21 @@ function KioskMode:loadFromPath(path)
 	return true
 end
 
-function KioskMode:loadInputBindings()
+function KioskMode:loadInputActions()
 	if self.configFileName ~= nil then
 		local xmlFileObj = XMLFile.load("KioskMode Inputs", self.configFileName)
 		local xmlFile = xmlFileObj:getHandle()
 
 		g_inputBinding:loadActionsFromXMLPath(xmlFile, "kioskMode.input.actions", g_i18n, nil)
+		xmlFileObj:delete()
+	end
+end
+
+function KioskMode:loadInputBindings()
+	if self.configFileName ~= nil then
+		local xmlFileObj = XMLFile.load("KioskMode Inputs", self.configFileName)
+		local xmlFile = xmlFileObj:getHandle()
+
 		g_inputBinding:loadActionBindingsFromXMLPath(xmlFile, "kioskMode.input.bindings", true, nil, true, true)
 		xmlFileObj:delete()
 	end
@@ -983,6 +997,16 @@ end
 
 function KioskMode.inj_inGameMenuGameSettingsFrame_initializeButtons(frame)
 	frame.saveButton = nil
+end
+
+function KioskMode.inj_inputBinding_loadModActions(inputBinding, superFunc)
+	superFunc(inputBinding)
+	g_kioskMode:loadInputActions()
+end
+
+function KioskMode.inj_inputBinding_loadModBindingDefaults(inputBinding, superFunc)
+	superFunc(inputBinding)
+	g_kioskMode:loadInputBindings()
 end
 
 function KioskMode:inj_productionPointActivatable_run(superFunc)

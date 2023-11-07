@@ -1,0 +1,19 @@
+ScenarioMessageType = {
+	SCENARIO_TOGGLE = nextMessageTypeId(),
+	SCENARIO_DETERMINED = nextMessageTypeId(),
+	SCENARIO_PENDING = nextMessageTypeId(),
+	SCENARIO_START_STOP = nextMessageTypeId(),
+	SCENARIO_ABORTED = nextMessageTypeId(),
+	SCENARIO_COMPLETED = nextMessageTypeId(),
+	SCENARIO_CHECKPOINT_CHANGED = nextMessageTypeId(),
+	SCENARIO_CHECKPOINT_PROGRESS = nextMessageTypeId(),
+	SCENARIO_CHECKPOINT_ACTION_CHANGED = nextMessageTypeId(),
+	SCENARIO_CHECKPOINT_ACTION_COUNT = nextMessageTypeId(),
+	SCENARIO_POSITION_DETERMINED = nextMessageTypeId(),
+	FIRE_THRIVES = nextMessageTypeId(),
+	FIRE_EXTINGUISHED = nextMessageTypeId(),
+	FIRE_STAGE_UPDATE = nextMessageTypeId(),
+	OBJECT_PLACED = nextMessageTypeId(),
+	OBJECT_CUT = nextMessageTypeId(),
+	STATEMACHINE_TRANSITION = nextMessageTypeId()
+}

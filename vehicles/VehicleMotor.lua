@@ -1464,10 +1464,16 @@ function VehicleMotor:updateGear(acceleratorPedal, brakePedal, dt)
 										local nextRatio = self.gearGroups[self.activeGearGroupIndex + 1].ratio
 
 										if MathUtil.sign(self.gearGroups[self.activeGearGroupIndex].ratio) == MathUtil.sign(nextRatio) then
-											nextRatio = nextRatio * self.currentGears[self.gear].ratio
+											for i = self.gear, 1, -1 do
+												nextRatio = nextRatio * self.currentGears[i].ratio
 
-											if self:getRequiredRpmAtSpeedLimit(nextRatio) > self.minRpm + (self.maxRpm - self.minRpm) * 0.25 then
-												self:shiftGroup(true)
+												if self:getRequiredRpmAtSpeedLimit(nextRatio) > self.minRpm + (self.maxRpm - self.minRpm) * 0.25 then
+													self:shiftGroup(true)
+
+													newGear = i
+
+													break
+												end
 											end
 										end
 									elseif self.groupType == VehicleMotor.TRANSMISSION_TYPE.POWERSHIFT then

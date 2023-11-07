@@ -1451,6 +1451,10 @@ function AbstractPalletObject.canStoreObject(storage, object)
 		return false
 	end
 
+	if object.dynamicMountType ~= MountableObject.MOUNT_TYPE_NONE then
+		return false
+	end
+
 	return true
 end
 

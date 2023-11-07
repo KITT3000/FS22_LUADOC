@@ -403,7 +403,7 @@ function AIDriveStrategyStraight:getDriveData(dt, vX, vY, vZ)
 		self.vehicle:addAIDebugText(string.format("===> turnLeft: %s", tostring(self.turnLeft)))
 	end
 
-	if distanceToCollision < lookAheadDistance and distanceToCollision < distanceToEndOfField and (self.turnLeft ~= nil or self.idealTurnStrategy == nil) then
+	if distanceToCollision < lookAheadDistance and distanceToCollision < distanceToEndOfField and (self.turnLeft ~= nil or self.idealTurnStrategy == nil) and not self.useCorridor then
 		AIVehicleUtil.updateInvertLeftRightMarkers(self.vehicle, self.vehicle)
 
 		for _, implement in pairs(attachedAIImplements) do

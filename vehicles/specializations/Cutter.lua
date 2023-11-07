@@ -1176,10 +1176,12 @@ function Cutter:getIsRandomlyMovingPartActive(superFunc, part)
 end
 
 function Cutter:getIsWorkAreaActive(superFunc, workArea)
-	local spec = self.spec_cutter
+	if workArea.type == WorkAreaType.CUTTER then
+		local spec = self.spec_cutter
 
-	if (self.getAllowsLowering == nil or self:getAllowsLowering()) and not spec.allowCuttingWhileRaised and not self:getIsLowered(true) then
-		return false
+		if (self.getAllowsLowering == nil or self:getAllowsLowering()) and not spec.allowCuttingWhileRaised and not self:getIsLowered(true) then
+			return false
+		end
 	end
 
 	return superFunc(self, workArea)

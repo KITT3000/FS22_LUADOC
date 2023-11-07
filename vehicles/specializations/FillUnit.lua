@@ -47,6 +47,7 @@ function FillUnit.initSpecialization()
 	schema:register(XMLValueType.BOOL, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#removeVehicleIfEmpty", "Remove vehicle if unit empty", false)
 	schema:register(XMLValueType.FLOAT, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#removeVehicleThreshold", "Remove vehicle if empty threshold in liters", 0.3)
 	schema:register(XMLValueType.TIME, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#removeVehicleDelay", "Delay for vehicle removal (e.g. can be used while sounds are still playing)", 0)
+	schema:register(XMLValueType.FLOAT, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#removeVehicleReward", "Amount of money as reward of removing the pallet", 0)
 	schema:register(XMLValueType.BOOL, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#allowFoldingWhileFilled", "Allow folding while filled", true)
 	schema:register(XMLValueType.FLOAT, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#allowFoldingThreshold", "Allow folding threshold", 0.0001)
 	schema:register(XMLValueType.FLOAT, FillUnit.FILL_UNIT_CONFIG_XML_KEY .. ".fillUnits#fillTypeChangeThreshold", "Fill type overwrite threshold", 0.05)
@@ -258,6 +259,7 @@ function FillUnit:onLoad(savegame)
 	spec.removeVehicleIfEmpty = self.xmlFile:getValue(baseKey .. "#removeVehicleIfEmpty", false)
 	spec.removeVehicleThreshold = self.xmlFile:getValue(baseKey .. "#removeVehicleThreshold", 0.3)
 	spec.removeVehicleDelay = self.xmlFile:getValue(baseKey .. "#removeVehicleDelay", 0)
+	spec.removeVehicleReward = self.xmlFile:getValue(baseKey .. "#removeVehicleReward", 0)
 	spec.allowFoldingWhileFilled = self.xmlFile:getValue(baseKey .. "#allowFoldingWhileFilled", true)
 	spec.allowFoldingThreshold = self.xmlFile:getValue(baseKey .. "#allowFoldingThreshold", 0.0001)
 	spec.fillTypeChangeThreshold = self.xmlFile:getValue(baseKey .. "#fillTypeChangeThreshold", 0.05)
@@ -1284,7 +1286,12 @@ function FillUnit:addFillUnitFillLevel(farmId, fillUnitIndex, fillLevelDelta, fi
 				local oldFillTypeIndex = fillUnit.fillType
 
 				if oldFillLevel > 0 then
+					local oldRemoveOnEmpty = spec.removeVehicleIfEmpty
+					spec.removeVehicleIfEmpty = false
+
 					self:addFillUnitFillLevel(farmId, fillUnitIndex, -math.huge, fillUnit.fillType, toolType, fillPositionData)
+
+					spec.removeVehicleIfEmpty = oldRemoveOnEmpty
 				end
 
 				oldFillLevel = 0
@@ -1368,12 +1375,20 @@ function FillUnit:addFillUnitFillLevel(farmId, fillUnitIndex, fillLevelDelta, fi
 
 		SpecializationUtil.raiseEvent(self, "onFillUnitFillLevelChanged", fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData, appliedDelta)
 
-		if self.isServer and spec.removeVehicleIfEmpty and fillUnit.fillLevel <= spec.removeVehicleThreshold then
+		if self.isServer and spec.removeVehicleIfEmpty and fillUnit.fillLevel <= spec.removeVehicleThreshold and fillLevelDelta ~= 0 then
 			if spec.removeVehicleDelay == 0 then
 				g_currentMission:removeVehicle(self)
+
+				if spec.removeVehicleReward > 0 then
+					g_currentMission:addMoney(spec.removeVehicleReward, self:getOwnerFarmId(), MoneyType.SOLD_PRODUCTS, true, true)
+				end
 			else
 				Timer.createOneshot(spec.removeVehicleDelay, function ()
 					g_currentMission:removeVehicle(self)
+
+					if spec.removeVehicleReward > 0 then
+						g_currentMission:addMoney(spec.removeVehicleReward, self:getOwnerFarmId(), MoneyType.SOLD_PRODUCTS, true, true)
+					end
 				end)
 			end
 		end

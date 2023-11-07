@@ -14,18 +14,20 @@ local internalMods = {
 		name = "agcoIdealSimulator"
 	},
 	{
-		version = "1.0.2.0",
+		version = "1.0.3.0",
 		name = "baleStacking"
 	},
 	{
-		version = "1.0.2.0",
+		version = "1.0.3.0",
 		name = "arena"
 	}
 }
 local internalScriptMods = {
 	"FS22_precisionFarming",
 	"FS22_lindnerLintracSupercup",
-	"FS22_GrimmePack"
+	"FS22_GrimmePack",
+	"FS22_emergencyPack",
+	"FS22_strawHarvestPack"
 }
 local outdatedMods = {
 	FS22_BetterContracts = {
@@ -1096,7 +1098,19 @@ function loadMod(modName, modDir, modFile, modTitle)
 			title = g_i18n:getText(title:sub(7))
 		end
 
-		g_storeManager:addModStorePack(name, title, imageFilename, modDir)
+		local storeItems = {}
+
+		xmlFile:iterate(key .. ".storeItem", function (_, storeItemKey)
+			local xmlFilename = xmlFile:getString(storeItemKey)
+			local fullXmlFilename = Utils.getFilename(xmlFilename, g_currentModDirectory)
+
+			if fileExists(fullXmlFilename) then
+				table.insert(storeItems, fullXmlFilename)
+			else
+				Logging.xmlWarning(xmlFile, "StoreItem '%s' not found for storepack '%s'", xmlFilename, name)
+			end
+		end)
+		g_storeManager:addModStorePack(name, title, imageFilename, modDir, storeItems)
 	end)
 
 	local fillTypesFilename = xmlFile:getString("modDesc.fillTypes#filename")
@@ -1109,6 +1123,19 @@ function loadMod(modName, modDir, modFile, modTitle)
 
 	if densityMapHeightTypesFilename ~= nil then
 		g_densityMapHeightManager:addModDensityMapHeightTypes(Utils.getFilename(densityMapHeightTypesFilename, g_currentModDirectory))
+	end
+
+	if isDLCFile then
+		xmlFile:iterate("modDesc.foliageTypes.foliageType", function (_, key)
+			local name = xmlFile:getString(key .. "#name")
+			local filename = xmlFile:getString(key .. "#filename")
+
+			if name ~= nil and filename ~= nil then
+				filename = Utils.getFilename(filename, g_currentModDirectory)
+
+				g_fruitTypeManager:addModFoliageType(name, filename)
+			end
+		end)
 	end
 
 	local missionVehiclesFilename = xmlFile:getString("modDesc.missionVehicles#filename")

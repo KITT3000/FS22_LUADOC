@@ -325,6 +325,11 @@ function StoreItemUtil.getConfigurationsFromXML(xmlFile, key, baseDir, customEnv
 			local vehicleBrandName = xmlFile:getValue(configKey .. "#vehicleBrand")
 			local vehicleBrand = g_brandManager:getBrandIndexByName(vehicleBrandName)
 			local vehicleName = xmlFile:getValue(configKey .. "#vehicleName")
+
+			if vehicleName ~= nil then
+				vehicleName = g_i18n:convertText(vehicleName, customEnvironment)
+			end
+
 			local vehicleIcon = xmlFile:getValue(configKey .. "#vehicleIcon")
 
 			if vehicleIcon ~= nil then

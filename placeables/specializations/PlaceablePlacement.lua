@@ -312,7 +312,7 @@ function PlaceablePlacement:getHasOverlap(x, y, z, rotY, checkFunc)
 		return true
 	end
 
-	for _, area in ipairs(spec.testAreas) do
+	for areaIndex, area in ipairs(spec.testAreas) do
 		local size = area.size
 		local center = area.center
 		local dirX, dirZ = MathUtil.getDirectionFromYRotation(rotY)

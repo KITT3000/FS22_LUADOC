@@ -137,6 +137,12 @@ function SowMission:getVehicleVariant()
 		return "COTTON"
 	elseif fruitType == FruitType.SUGARCANE then
 		return "SUGARCANE"
+	elseif fruitType == FruitType.CARROT then
+		return "CARROT"
+	elseif fruitType == FruitType.PARSNIP then
+		return "PARSNIP"
+	elseif fruitType == FruitType.BEETROOT then
+		return "BEETROOT"
 	else
 		return "GRAIN"
 	end

@@ -107,6 +107,7 @@ function FruitTypeManager:initDataStructures()
 	self.nameToConverter = {}
 	self.windrowFillTypes = {}
 	self.fruitTypeIndexToWindrowFillTypeIndex = {}
+	self.modFoliageTypesToLoad = {}
 	self.numCategories = 0
 	self.categories = {}
 	self.indexToCategory = {}
@@ -132,10 +133,11 @@ function FruitTypeManager:loadMapData(xmlFile, missionInfo, baseDirectory)
 end
 
 function FruitTypeManager:loadFruitTypes(xmlFile, missionInfo, isBaseType)
+	local rootName = getXMLRootName(xmlFile)
 	local i = 0
 
 	while true do
-		local key = string.format("map.fruitTypes.fruitType(%d)", i)
+		local key = string.format("%s.fruitTypes.fruitType(%d)", rootName, i)
 
 		if not hasXMLProperty(xmlFile, key) then
 			break
@@ -185,7 +187,7 @@ function FruitTypeManager:loadFruitTypes(xmlFile, missionInfo, isBaseType)
 	i = 0
 
 	while true do
-		local key = string.format("map.fruitTypeCategories.fruitTypeCategory(%d)", i)
+		local key = string.format("%s.fruitTypeCategories.fruitTypeCategory(%d)", rootName, i)
 
 		if not hasXMLProperty(xmlFile, key) then
 			break
@@ -217,7 +219,7 @@ function FruitTypeManager:loadFruitTypes(xmlFile, missionInfo, isBaseType)
 	i = 0
 
 	while true do
-		local key = string.format("map.fruitTypeConverters.fruitTypeConverter(%d)", i)
+		local key = string.format("%s.fruitTypeConverters.fruitTypeConverter(%d)", rootName, i)
 
 		if not hasXMLProperty(xmlFile, key) then
 			break
@@ -890,6 +892,13 @@ end
 
 function FruitTypeManager:getConverterDataByName(converterName)
 	return self.nameToConverter[converterName and converterName:upper()]
+end
+
+function FruitTypeManager:addModFoliageType(name, filename)
+	table.insert(self.modFoliageTypesToLoad, {
+		name = name,
+		filename = filename
+	})
 end
 
 g_fruitTypeManager = FruitTypeManager.new()

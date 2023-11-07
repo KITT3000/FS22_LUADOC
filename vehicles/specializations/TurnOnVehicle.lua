@@ -364,7 +364,7 @@ function TurnOnVehicle:onTurnedOn()
 		g_soundManager:playSamples(spec.samples.start)
 
 		for i = 1, #spec.samples.work do
-			g_soundManager:playSample(spec.samples.work[i], 0, spec.samples.start[i])
+			g_soundManager:playSample(spec.samples.work[i], 0, spec.samples.start[i] or spec.samples.start[1])
 		end
 
 		g_animationManager:startAnimations(spec.animationNodes)

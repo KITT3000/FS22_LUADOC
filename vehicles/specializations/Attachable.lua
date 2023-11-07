@@ -1999,10 +1999,12 @@ function Attachable:onRegisterAnimationValueTypes()
 	end
 
 	local function updateJointSettings(...)
-		local attacherVehicle = self:getAttacherVehicle()
+		if self.isServer then
+			local attacherVehicle = self:getAttacherVehicle()
 
-		if attacherVehicle ~= nil then
-			attacherVehicle:updateAttacherJointSettingsByObject(self, ...)
+			if attacherVehicle ~= nil then
+				attacherVehicle:updateAttacherJointSettingsByObject(self, ...)
+			end
 		end
 	end
 

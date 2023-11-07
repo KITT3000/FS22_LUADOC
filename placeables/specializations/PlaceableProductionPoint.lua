@@ -80,7 +80,8 @@ function PlaceableProductionPoint:onFinalizePlacement()
 end
 
 function PlaceableProductionPoint:updateInfo(superFunc, infoTable)
-	self.spec_productionPoint.productionPoint:updateInfo(superFunc, infoTable)
+	superFunc(self, infoTable)
+	self.spec_productionPoint.productionPoint:updateInfo(infoTable)
 end
 
 function PlaceableProductionPoint:outputsChanged(outputs, state)

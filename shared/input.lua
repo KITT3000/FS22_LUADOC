@@ -294,39 +294,12 @@ Input.addHalfAxisDefine("HALF_AXIS_1", Input.AXIS_11, true)
 Input.addHalfAxisDefine("HALF_AXIS_2", Input.AXIS_12, true)
 Input.addHalfAxisDefine("HALF_AXIS_3", Input.AXIS_13, true)
 Input.addHalfAxisDefine("HALF_AXIS_4", Input.AXIS_14, true)
-Input.addButtonDefine("BUTTON_1", 0)
-Input.addButtonDefine("BUTTON_2", 1)
-Input.addButtonDefine("BUTTON_3", 2)
-Input.addButtonDefine("BUTTON_4", 3)
-Input.addButtonDefine("BUTTON_5", 4)
-Input.addButtonDefine("BUTTON_6", 5)
-Input.addButtonDefine("BUTTON_7", 6)
-Input.addButtonDefine("BUTTON_8", 7)
-Input.addButtonDefine("BUTTON_9", 8)
-Input.addButtonDefine("BUTTON_10", 9)
-Input.addButtonDefine("BUTTON_11", 10)
-Input.addButtonDefine("BUTTON_12", 11)
-Input.addButtonDefine("BUTTON_13", 12)
-Input.addButtonDefine("BUTTON_14", 13)
-Input.addButtonDefine("BUTTON_15", 14)
-Input.addButtonDefine("BUTTON_16", 15)
-Input.addButtonDefine("BUTTON_17", 16)
-Input.addButtonDefine("BUTTON_18", 17)
-Input.addButtonDefine("BUTTON_19", 18)
-Input.addButtonDefine("BUTTON_20", 19)
-Input.addButtonDefine("BUTTON_21", 20)
-Input.addButtonDefine("BUTTON_22", 21)
-Input.addButtonDefine("BUTTON_23", 22)
-Input.addButtonDefine("BUTTON_24", 23)
-Input.addButtonDefine("BUTTON_25", 24)
-Input.addButtonDefine("BUTTON_26", 25)
-Input.addButtonDefine("BUTTON_27", 26)
-Input.addButtonDefine("BUTTON_28", 27)
-Input.addButtonDefine("BUTTON_29", 28)
-Input.addButtonDefine("BUTTON_30", 29)
-Input.addButtonDefine("BUTTON_31", 30)
-Input.addButtonDefine("BUTTON_32", 31)
 
-Input.MAX_NUM_BUTTONS = 32
+Input.MAX_NUM_BUTTONS = 128
+
+for i = 1, Input.MAX_NUM_BUTTONS do
+	Input.addButtonDefine(string.format("BUTTON_%d", i), i - 1)
+end
+
 Input.MOD_BUTTON_1 = Input.BUTTON_5
 Input.MOD_BUTTON_2 = Input.BUTTON_6

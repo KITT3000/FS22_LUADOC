@@ -76,6 +76,9 @@ function Bale:delete()
 		self.sharedLoadRequestId = nil
 	end
 
+	self.meshes = {}
+	self.tensionBeltMeshes = {}
+
 	g_currentMission.activatableObjectsSystem:removeActivatable(self.activatable)
 
 	if self.isFermenting then

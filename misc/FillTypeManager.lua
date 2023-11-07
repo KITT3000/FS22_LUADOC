@@ -8,10 +8,15 @@ FillTypeManager = {
 
 g_xmlManager:addCreateSchemaFunction(function ()
 	FillTypeManager.xmlSchema = XMLSchema.new("fillTypes")
+	FillTypeManager.xmlSchemaFoliage = XMLSchema.new("fillTypesFoliage")
 end)
 g_xmlManager:addInitSchemaFunction(function ()
-	local schema = FillTypeManager.xmlSchema
-	local fillTypeKey = "map.fillTypes.fillType(?)"
+	FillTypeManager.registerXMLPaths(FillTypeManager.xmlSchema, "map")
+	FillTypeManager.registerXMLPaths(FillTypeManager.xmlSchemaFoliage, "foliageType")
+end)
+
+function FillTypeManager.registerXMLPaths(schema, basePath)
+	local fillTypeKey = basePath .. ".fillTypes.fillType(?)"
 
 	schema:register(XMLValueType.STRING, fillTypeKey .. "#name", "Name of fill type")
 	schema:register(XMLValueType.STRING, fillTypeKey .. "#title", "Display name of fill type")
@@ -34,24 +39,24 @@ g_xmlManager:addInitSchemaFunction(function ()
 	schema:register(XMLValueType.VECTOR_4, fillTypeKey .. ".effects#fillSmokeColor", "Color of smoke effects")
 	schema:register(XMLValueType.VECTOR_4, fillTypeKey .. ".effects#fruitSmokeColor", "Color of fruit smoke effects")
 
-	local fillTypeCategoryKey = "map.fillTypeCategories.fillTypeCategory(?)"
+	local fillTypeCategoryKey = basePath .. ".fillTypeCategories.fillTypeCategory(?)"
 
 	schema:register(XMLValueType.STRING, fillTypeCategoryKey .. "#name", "Name of category")
 	schema:register(XMLValueType.STRING, fillTypeCategoryKey, "list of fillTypes, space separated")
 
-	local fillTypeConverterKey = "map.fillTypeConverters.fillTypeConverter(?)"
+	local fillTypeConverterKey = basePath .. ".fillTypeConverters.fillTypeConverter(?)"
 
 	schema:register(XMLValueType.STRING, fillTypeConverterKey .. "#name", "Converter name")
 	schema:register(XMLValueType.STRING, fillTypeConverterKey .. ".converter(?)#from", "From fill type")
 	schema:register(XMLValueType.STRING, fillTypeConverterKey .. ".converter(?)#to", "To fill type")
 	schema:register(XMLValueType.FLOAT, fillTypeConverterKey .. ".converter(?)#factor", "Multiplied by factor")
 
-	local fillTypeSoundKey = "map.fillTypeSounds.fillTypeSound(?)"
+	local fillTypeSoundKey = basePath .. ".fillTypeSounds.fillTypeSound(?)"
 
 	SoundManager.registerSampleXMLPaths(schema, fillTypeSoundKey, "sound")
 	schema:register(XMLValueType.STRING, fillTypeSoundKey .. "#fillTypes", "list of fillTypes, space separated")
 	schema:register(XMLValueType.BOOL, fillTypeSoundKey .. "#isDefault", "Is default sound", false)
-end)
+end
 
 local FillTypeManager_mt = Class(FillTypeManager, AbstractManager)
 
@@ -136,11 +141,14 @@ function FillTypeManager:loadFillTypes(xmlFile, baseDirectory, isBaseType, custo
 		xmlFile = XMLFile.wrap(xmlFile, FillTypeManager.xmlSchema)
 	end
 
+	local oldNumFillTypes = #self.fillTypes
+	local rootName = xmlFile:getRootName()
+
 	if isBaseType then
 		self:addFillType("UNKNOWN", "Unknown", false, 0, 0, 0, "", baseDirectory, nil, nil, nil, nil, {}, nil, nil, nil, nil, nil, nil, nil, nil, isBaseType)
 	end
 
-	xmlFile:iterate("map.fillTypes.fillType", function (_, key)
+	xmlFile:iterate(rootName .. ".fillTypes.fillType", function (_, key)
 		local name = xmlFile:getValue(key .. "#name")
 		local title = xmlFile:getValue(key .. "#title")
 		local achievementName = xmlFile:getValue(key .. "#achievementName")
@@ -174,7 +182,7 @@ function FillTypeManager:loadFillTypes(xmlFile, baseDirectory, isBaseType, custo
 
 		self:addFillType(name, title, showOnPriceTable, pricePerLiter, massPerLiter, maxPhysicalSurfaceAngle, hudFilename, baseDirectory, customEnv, fillPlaneColors, unitShort, palletFilename, economicCurve, diffuseMapFilename, normalMapFilename, specularMapFilename, distanceFilename, prioritizedEffectType, fillSmokeColor, fruitSmokeColor, achievementName, isBaseType or false)
 	end)
-	xmlFile:iterate("map.fillTypeCategories.fillTypeCategory", function (_, key)
+	xmlFile:iterate(rootName .. ".fillTypeCategories.fillTypeCategory", function (_, key)
 		local name = xmlFile:getValue(key .. "#name")
 		local fillTypesStr = xmlFile:getValue(key) or ""
 		local fillTypeCategoryIndex = self:addFillTypeCategory(name, isBaseType)
@@ -195,7 +203,7 @@ function FillTypeManager:loadFillTypes(xmlFile, baseDirectory, isBaseType, custo
 			end
 		end
 	end)
-	xmlFile:iterate("map.fillTypeConverters.fillTypeConverter", function (_, key)
+	xmlFile:iterate(rootName .. ".fillTypeConverters.fillTypeConverter", function (_, key)
 		local name = xmlFile:getValue(key .. "#name")
 		local converter = self:addFillTypeConverter(name, isBaseType)
 
@@ -213,7 +221,7 @@ function FillTypeManager:loadFillTypes(xmlFile, baseDirectory, isBaseType, custo
 			end)
 		end
 	end)
-	xmlFile:iterate("map.fillTypeSounds.fillTypeSound", function (_, key)
+	xmlFile:iterate(rootName .. ".fillTypeSounds.fillTypeSound", function (_, key)
 		local sample = g_soundManager:loadSampleFromXML(xmlFile, key, "sound", baseDirectory, getRootNode(), 0, AudioGroup.VEHICLE, nil, nil)
 
 		if sample ~= nil then
@@ -250,6 +258,10 @@ function FillTypeManager:loadFillTypes(xmlFile, baseDirectory, isBaseType, custo
 			table.insert(self.fillTypeSamples, entry)
 		end
 	end)
+
+	if #self.fillTypes ~= oldNumFillTypes then
+		self:constructFillTypeTextureArrays()
+	end
 
 	return true
 end

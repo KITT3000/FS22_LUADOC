@@ -3,7 +3,8 @@ ConsoleSimulator = {
 	NETWORK_ERROR = nil,
 	ACHIEVEMENTS_AVAILABLE = true,
 	NEW_DLCS = false,
-	STORE_DLC_CHANGED = false
+	STORE_DLC_CHANGED = false,
+	MOD_AVAILABILITY = MultiplayerAvailability.NOT_AVAILABLE
 }
 
 function ConsoleSimulator.init()
@@ -125,6 +126,12 @@ function ConsoleSimulator.init()
 		end
 
 		return oldStoreHaveDlcsChanged()
+	end
+
+	local oldGetModDownloadAvailability = getModDownloadAvailability
+
+	function getModDownloadAvailability()
+		return ConsoleSimulator.MOD_AVAILABILITY, false
 	end
 
 	local oldOpenMpFriendInvitation = openMpFriendInvitation

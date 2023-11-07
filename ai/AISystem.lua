@@ -70,6 +70,7 @@ function AISystem:delete()
 	removeConsoleCommand("gsAICostsShow")
 	removeConsoleCommand("gsAICostsUpdate")
 	removeConsoleCommand("gsAICostsExport")
+	removeConsoleCommand("gsAIAgentSetState")
 end
 
 function AISystem:loadMapData(xmlFile, missionInfo, baseDirectory)
@@ -78,6 +79,10 @@ function AISystem:loadMapData(xmlFile, missionInfo, baseDirectory)
 			addConsoleCommand("gsAISetTarget", "Sets AI Target", "consoleCommandAISetTarget", self)
 			addConsoleCommand("gsAISetLastTarget", "Sets AI Target to last position", "consoleCommandAISetLastTarget", self)
 			addConsoleCommand("gsAIStart", "Starts driving to target", "consoleCommandAIStart", self)
+
+			if g_isDevelopmentVersion then
+				addConsoleCommand("gsAIAgentSetState", "Sets the AI Agent State", "consoleCommandAIAgentSetState", self)
+			end
 		end
 
 		addConsoleCommand("gsAIEnableDebug", "Enables AI debugging", "consoleCommandAIEnableDebug", self)
@@ -668,6 +673,22 @@ function AISystem:consoleCommandAIStart()
 		return "Started ai..."
 	else
 		return "Error: " .. tostring(errorMessage)
+	end
+end
+
+function AISystem:consoleCommandAIAgentSetState(state)
+	if AISystem.getVehicleNavigationAgentNextCurvature == nil then
+		AISystem.getVehicleNavigationAgentNextCurvature = getVehicleNavigationAgentNextCurvature
+	end
+
+	local fixedState = AgentState[string.upper(state)]
+
+	if fixedState ~= nil then
+		function getVehicleNavigationAgentNextCurvature(...)
+			return 0, 0, fixedState
+		end
+	else
+		getVehicleNavigationAgentNextCurvature = AISystem.getVehicleNavigationAgentNextCurvature
 	end
 end
 

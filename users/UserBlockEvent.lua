@@ -34,14 +34,14 @@ function UserBlockEvent:run(connection)
 		local fromUser = g_currentMission.userManager:getUserByConnection(connection)
 		local toUser = g_currentMission.userManager:getUserByUserId(self.userId)
 
-		toUser:setIsBlockedBy(fromUser, self.isBlocked)
+		if toUser ~= nil then
+			toUser:setIsBlockedBy(fromUser, self.isBlocked)
+		end
 	end
 end
 
 function UserBlockEvent.sendEvent(userId, isBlocked, noEventSend)
-	if noEventSend == nil or noEventSend == false then
-		if g_server == nil then
-			g_client:getServerConnection():sendEvent(UserBlockEvent.new(userId, isBlocked))
-		end
+	if (noEventSend == nil or noEventSend == false) and g_server == nil then
+		g_client:getServerConnection():sendEvent(UserBlockEvent.new(userId, isBlocked))
 	end
 end

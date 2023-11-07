@@ -466,6 +466,11 @@ end
 
 function Leveler.onLevelerRaycastCallback(levelerNode, hitObjectId, x, y, z, distance, nx, ny, nz, subShapeIndex, shapeId, isLast)
 	local self = levelerNode.vehicle
+
+	if self.isDeleted or self.isDeleting then
+		return
+	end
+
 	local spec = self.spec_leveler
 
 	if hitObjectId ~= 0 and hitObjectId ~= g_currentMission.terrainRootNode then

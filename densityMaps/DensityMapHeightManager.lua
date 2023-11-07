@@ -91,12 +91,13 @@ function DensityMapHeightManager:unloadMapData()
 end
 
 function DensityMapHeightManager:loadDensityMapHeightTypes(xmlFile, missionInfo, baseDirectory, isBaseType)
-	self.heightTypeFirstChannel = getXMLInt(xmlFile, "map.densityMapHeightTypes#firstChannel") or self.heightTypeFirstChannel or 0
-	self.heightTypeNumChannels = getXMLInt(xmlFile, "map.densityMapHeightTypes#numChannels") or self.heightTypeNumChannels or 6
+	local rootName = getXMLRootName(xmlFile)
+	self.heightTypeFirstChannel = getXMLInt(xmlFile, rootName .. "map.densityMapHeightTypes#firstChannel") or self.heightTypeFirstChannel or 0
+	self.heightTypeNumChannels = getXMLInt(xmlFile, rootName .. "map.densityMapHeightTypes#numChannels") or self.heightTypeNumChannels or 6
 	local i = 0
 
 	while true do
-		local key = string.format("map.densityMapHeightTypes.densityMapHeightType(%d)", i)
+		local key = string.format("%s.densityMapHeightTypes.densityMapHeightType(%d)", rootName, i)
 
 		if not hasXMLProperty(xmlFile, key) then
 			break
@@ -130,8 +131,6 @@ function DensityMapHeightManager:loadDensityMapHeightTypes(xmlFile, missionInfo,
 
 		i = i + 1
 	end
-
-	self:sortHeightTypes()
 
 	return true
 end
@@ -229,6 +228,8 @@ function DensityMapHeightManager:addDensityMapHeightType(fillTypeName, maxSurfac
 		self.fillTypeNameToHeightType[fillTypeName] = heightType
 		self.fillTypeIndexToHeightType[fillTypeIndex] = heightType
 		self.heightTypeIndexToFillTypeIndex[heightType.index] = fillTypeIndex
+
+		self:sortHeightTypes()
 	end
 
 	heightType.maxSurfaceAngle = maxSurfaceAngle

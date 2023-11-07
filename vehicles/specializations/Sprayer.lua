@@ -418,6 +418,10 @@ function Sprayer:getIsSprayerExternallyFilled()
 			end
 		end
 
+		if self.rootVehicle.getIsFieldWorkActive == nil or not self.rootVehicle:getIsFieldWorkActive() then
+			return false
+		end
+
 		local spec = self.spec_sprayer
 
 		return spec.isSlurryTanker and g_currentMission.missionInfo.helperSlurrySource > 1 or spec.isManureSpreader and g_currentMission.missionInfo.helperManureSource > 1 or spec.isFertilizerSprayer and g_currentMission.missionInfo.helperBuyFertilizer

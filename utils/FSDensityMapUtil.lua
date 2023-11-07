@@ -2561,10 +2561,12 @@ function FSDensityMapUtil.updateSowingArea(fruitIndex, startWorldX, startWorldZ,
 		end
 	end
 
-	local _, _, totalAreaSown = groundTypeModifier:executeSet(fieldGroundType, sowableFilter)
+	fruitFilter:setValueCompareParams(DensityValueCompareType.EQUAL, growthState)
+
+	local _, _, totalAreaSown = groundTypeModifier:executeSet(fieldGroundType, sowableFilter, fruitFilter)
 	totalArea = totalArea + totalAreaSown
 
-	groundAngleModifier:executeSet(angle, sowingFilter)
+	groundAngleModifier:executeSet(angle, sowingFilter, fruitFilter)
 
 	local changedArea = numPixels
 

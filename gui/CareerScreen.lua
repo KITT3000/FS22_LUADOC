@@ -211,6 +211,12 @@ function CareerScreen:onStartAction(isMouseClick)
 		local savegame = self.savegameController:getSavegame(self.savegameList.selectedIndex)
 
 		self:startSavegame(savegame)
+	else
+		local savegame = self.savegameController:getSavegame(self.savegameList.selectedIndex)
+
+		if savegame ~= nil then
+			self:checkMissingMods(savegame)
+		end
 	end
 end
 
@@ -367,14 +373,6 @@ function CareerScreen:updateButtons()
 	if self.buttonDelete then
 		self.buttonDelete:setDisabled(not canDeleteGame)
 	end
-
-	local canStartGame = self.savegameController:getCanStartGame(self.savegameList.selectedIndex)
-	local isNewSave = not self.savegameController:getSavegame(self.savegameList.selectedIndex).isValid
-	canStartGame = canStartGame and (self.startMissionInfo.scenarioId == nil or isNewSave)
-
-	if self.buttonStart then
-		self.buttonStart:setDisabled(not canStartGame)
-	end
 end
 
 function CareerScreen:onYesNoSavegameSelectDevice(yes)
@@ -431,6 +429,12 @@ function CareerScreen:startSavegame(savegame)
 end
 
 function CareerScreen:doModCheck(savegame)
+	if self:checkMissingMods(savegame) then
+		self:startCurrentSavegame()
+	end
+end
+
+function CareerScreen:checkMissingMods(savegame)
 	local missingModTitles = {}
 	local hasRequiredMissing = false
 	local hasNoMpMods = false
@@ -484,9 +488,11 @@ function CareerScreen:doModCheck(savegame)
 				noButton = g_i18n:getText("button_cancel")
 			})
 		end
-	else
-		self:startCurrentSavegame()
+
+		return false
 	end
+
+	return true
 end
 
 function CareerScreen:onYesNoNotEnoughSpaceForNewSaveGame(yes)

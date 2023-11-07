@@ -29,6 +29,7 @@ DynamicMountAttacher = {
 		ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.dynamicMountAttacher.lockPosition(?)")
 		schema:register(XMLValueType.STRING, "vehicle.dynamicMountAttacher.animation#name", "Animation name")
 		schema:register(XMLValueType.FLOAT, "vehicle.dynamicMountAttacher.animation#speed", "Animation speed", 1)
+		schema:register(XMLValueType.BOOL, "vehicle.dynamicMountAttacher#allowFoldingWhileMounted", "Folding is allowed while a object is mounted", true)
 		schema:register(XMLValueType.BOOL, Cylindered.MOVING_TOOL_XML_KEY .. ".dynamicMountAttacher#value", "Update dynamic mount attacher joints")
 		schema:register(XMLValueType.BOOL, Cylindered.MOVING_PART_XML_KEY .. ".dynamicMountAttacher#value", "Update dynamic mount attacher joints")
 		schema:setXMLSpecializationType()
@@ -62,6 +63,7 @@ function DynamicMountAttacher.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateExtraDependentParts", DynamicMountAttacher.updateExtraDependentParts)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsAttachedTo", DynamicMountAttacher.getIsAttachedTo)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getAdditionalComponentMass", DynamicMountAttacher.getAdditionalComponentMass)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsFoldAllowed", DynamicMountAttacher.getIsFoldAllowed)
 end
 
 function DynamicMountAttacher.registerEventListeners(vehicleType)
@@ -165,6 +167,7 @@ function DynamicMountAttacher:onLoad(savegame)
 		self:playAnimation(spec.animationName, spec.animationSpeed, self:getAnimationTime(spec.animationName), true)
 	end
 
+	spec.allowFoldingWhileMounted = self.xmlFile:getValue("vehicle.dynamicMountAttacher#allowFoldingWhileMounted", true)
 	spec.dynamicMountedObjects = {}
 	spec.dynamicMountedObjectsDirtyFlag = self:getNextDirtyFlag()
 end
@@ -722,6 +725,16 @@ function DynamicMountAttacher:getAdditionalComponentMass(superFunc, component)
 	end
 
 	return additionalMass
+end
+
+function DynamicMountAttacher:getIsFoldAllowed(superFunc, direction, onAiTurnOn)
+	local spec = self.spec_dynamicMountAttacher
+
+	if not spec.allowFoldingWhileMounted and self:getHasDynamicMountedObjects() then
+		return false, g_i18n:getText("warning_toolIsFull")
+	end
+
+	return superFunc(self, direction, onAiTurnOn)
 end
 
 function DynamicMountAttacher:onPreAttachImplement(object, inputJointDescIndex, jointDescIndex)

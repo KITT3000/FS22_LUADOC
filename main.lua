@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 19
-g_gameVersionNotification = "1.12.0.0"
-g_gameVersionDisplay = "1.12.0.0"
+g_gameVersion = 21
+g_gameVersionNotification = "1.13.1.0"
+g_gameVersionDisplay = "1.13.1.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 77
+g_maxModDescVersion = 79
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -632,10 +632,6 @@ function init(args)
 
 	g_inputBinding:load()
 
-	if g_kioskMode ~= nil then
-		g_kioskMode:loadInputBindings()
-	end
-
 	g_inputDisplayManager = InputDisplayManager.new(g_messageCenter, g_inputBinding, g_modManager, GS_IS_CONSOLE_VERSION)
 
 	g_inputDisplayManager:load()
@@ -1209,6 +1205,10 @@ function draw()
 
 	if g_inputBinding ~= nil then
 		g_inputBinding:draw()
+	end
+
+	if g_inputDisplayManager ~= nil then
+		g_inputDisplayManager:draw()
 	end
 
 	if g_kioskMode ~= nil then

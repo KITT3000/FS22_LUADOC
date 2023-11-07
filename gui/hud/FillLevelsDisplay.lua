@@ -114,6 +114,12 @@ function FillLevelsDisplay:updateFillLevelFrames()
 				value = fillLevelInformation.fillLevel / fillLevelInformation.capacity
 			end
 
+			if self.fillTypeFrames[fillLevelInformation.fillType] == nil then
+				self:refreshFillTypes(g_fillTypeManager)
+
+				return self:updateFillLevelFrames()
+			end
+
 			local frame = self.fillTypeFrames[fillLevelInformation.fillType]
 
 			frame:setVisible(true)

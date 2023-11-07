@@ -125,6 +125,7 @@ function Combine.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getWearMultiplier", Combine.getWearMultiplier)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "loadTurnedOnAnimationFromXML", Combine.loadTurnedOnAnimationFromXML)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsTurnedOnAnimationActive", Combine.getIsTurnedOnAnimationActive)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getDischargeFillType", Combine.getDischargeFillType)
 end
 
 function Combine.registerEventListeners(vehicleType)
@@ -1531,6 +1532,37 @@ function Combine:getIsTurnedOnAnimationActive(superFunc, turnedOnAnimation)
 	end
 
 	return superFunc(self, turnedOnAnimation)
+end
+
+function Combine:getDischargeFillType(superFunc, dischargeNode)
+	local fillType, conversionFactor = superFunc(self, dischargeNode)
+
+	if fillType == FillType.UNKNOWN then
+		local spec = self.spec_combine
+
+		if spec.loadingDelay > 0 then
+			for i = 1, #spec.loadingDelaySlots do
+				local slot = spec.loadingDelaySlots[i]
+
+				if slot.valid and slot.fillLevelDelta > 0 and slot.fillType ~= 0 then
+					fillType = slot.fillType
+
+					if dischargeNode.fillTypeConverter ~= nil then
+						local conversion = dischargeNode.fillTypeConverter[fillType]
+
+						if conversion ~= nil then
+							fillType = conversion.targetFillTypeIndex
+							conversionFactor = conversion.conversionFactor
+						end
+					end
+
+					return fillType, conversionFactor
+				end
+			end
+		end
+	end
+
+	return fillType, conversionFactor
 end
 
 function Combine:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnoreSelection)

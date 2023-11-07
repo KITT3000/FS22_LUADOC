@@ -203,14 +203,6 @@ function AIDriveStrategyCombine:getDriveData(dt, vX, vY, vZ)
 					end
 				end
 
-				if isTurning and trailerInTrigger and combine:getCanDischargeToObject(dischargeNode) then
-					allowedToDrive = fillLevel == 0
-
-					if VehicleDebug.state == VehicleDebug.DEBUG_AI and not allowedToDrive then
-						self.vehicle:addAIDebugText("COMBINE -> Unload to trailer on headland")
-					end
-				end
-
 				local freeFillLevel = capacity - fillLevel
 
 				if freeFillLevel < self.slowDownFillLevel then
@@ -219,6 +211,28 @@ function AIDriveStrategyCombine:getDriveData(dt, vX, vY, vZ)
 					if VehicleDebug.state == VehicleDebug.DEBUG_AI then
 						self.vehicle:addAIDebugText(string.format("COMBINE -> Slow down because nearly full: %.2f", maxSpeed))
 					end
+				end
+			end
+
+			if isTurning and trailerInTrigger and combine:getCanDischargeToObject(dischargeNode) then
+				local spec_combine = combine.spec_combine
+
+				if spec_combine.loadingDelay > 0 then
+					for i = 1, #spec_combine.loadingDelaySlots do
+						local slot = spec_combine.loadingDelaySlots[i]
+
+						if slot.valid then
+							fillLevel = fillLevel + slot.fillLevelDelta
+						end
+					end
+				end
+
+				if fillLevel > 0 then
+					allowedToDrive = false
+				end
+
+				if VehicleDebug.state == VehicleDebug.DEBUG_AI and not allowedToDrive then
+					self.vehicle:addAIDebugText("COMBINE -> Unload to trailer on headland")
 				end
 			end
 

@@ -139,7 +139,7 @@ function JoinGameScreen:onOpen()
 	self.loadingText:setVisible(self.serverList:getItemCount() == 0)
 
 	if g_deepLinkingInfo ~= nil then
-		masterServerRequestServerDetailsWithPlatformServerId(g_deepLinkingInfo.platformServerId)
+		masterServerRequestServerDetailsWithPlatformServerId(g_deepLinkingInfo.platformServerId, getAllowCrossPlay())
 	else
 		self:getServers()
 	end
@@ -237,18 +237,29 @@ platformId :%s
 	self.serverDetailsPending = false
 end
 
-function JoinGameScreen:onServerInfoDetailsFailed()
+function JoinGameScreen:onServerInfoDetailsFailed(reason)
 	if g_deepLinkingInfo ~= nil then
 		g_deepLinkingInfo = nil
 
-		g_gui:showConnectionFailedDialog({
-			text = g_i18n:getText("ui_failedToConnectToGame"),
-			callback = g_connectionFailedDialog.onOkCallback,
-			target = g_connectionFailedDialog,
-			args = {
-				"JoinGameScreen"
-			}
-		})
+		if reason == MasterServerServerDetailsFailedReason.NO_CROSS_PLAY then
+			g_gui:showConnectionFailedDialog({
+				text = g_i18n:getText("ui_failedToConnectToGameCrossPlay"),
+				callback = g_connectionFailedDialog.onOkCallback,
+				target = g_connectionFailedDialog,
+				args = {
+					"JoinGameScreen"
+				}
+			})
+		else
+			g_gui:showConnectionFailedDialog({
+				text = g_i18n:getText("ui_failedToConnectToGame"),
+				callback = g_connectionFailedDialog.onOkCallback,
+				target = g_connectionFailedDialog,
+				args = {
+					"JoinGameScreen"
+				}
+			})
+		end
 	else
 		self.requestedDetailsServerId = -1
 	end

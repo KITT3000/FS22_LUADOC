@@ -442,7 +442,7 @@ function PlayerHUDUpdater:fieldAddFruit(data, box)
 	elseif fruitGrowthState > 0 and fruitGrowthState <= maxGrowingState then
 		text = g_i18n:getText("ui_growthMapGrowing")
 		isGrowing = true
-	elseif fruitType.minPreparingGrowthState >= 0 and fruitType.minPreparingGrowthState <= fruitGrowthState and fruitGrowthState <= fruitType.maxPreparingGrowthState then
+	elseif fruitType.minPreparingGrowthState >= 0 and fruitType.minPreparingGrowthState < fruitType.minHarvestingGrowthState and fruitType.minPreparingGrowthState <= fruitGrowthState and fruitGrowthState <= fruitType.maxPreparingGrowthState then
 		text = g_i18n:getText("ui_growthMapReadyToPrepareForHarvest")
 		isGrowing = true
 	elseif fruitType.minHarvestingGrowthState <= fruitGrowthState and fruitGrowthState <= fruitType.maxHarvestingGrowthState then

@@ -231,8 +231,10 @@ function GrowthSystem:getMaxUpdateTime()
 end
 
 function GrowthSystem:loadGrowthData(xmlFile, root)
-	self.seasonalFruitData = {}
-	self.nonSeasonalFruitData = {}
+	if self.seasonalFruitData == nil or self.nonSeasonalFruitData == nil then
+		self.seasonalFruitData = {}
+		self.nonSeasonalFruitData = {}
+	end
 
 	xmlFile:iterate(root .. ".seasonal.fruit", function (_, fruitKey)
 		local fruitName = xmlFile:getString(fruitKey .. "#name")

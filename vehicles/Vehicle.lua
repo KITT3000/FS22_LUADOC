@@ -1474,9 +1474,7 @@ function Vehicle:saveStatsToXMLFile(xmlFile, key)
 			name = tostring(storeItem.name)
 		end
 
-		if storeItem.categoryName ~= nil and storeItem.categoryName ~= "" then
-			categoryName = tostring(storeItem.categoryName)
-		end
+		categoryName = storeItem.categoryName
 	end
 
 	setXMLString(xmlFile, key .. "#name", HTMLUtil.encodeToHTML(name))

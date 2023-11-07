@@ -153,6 +153,10 @@ function ServerDetailScreen:getDownloadableModsInfo()
 end
 
 function ServerDetailScreen:onClickDownload()
+	if not PlatformPrivilegeUtil.checkModDownload(self.onClickDownload, self) then
+		return
+	end
+
 	local downloadable, totalSize, totalCount = self:getDownloadableModsInfo()
 	local freeSpaceKb = g_modHubController:getFreeModSpaceKb()
 	totalSize = math.floor((totalSize + 1023) / 1024)

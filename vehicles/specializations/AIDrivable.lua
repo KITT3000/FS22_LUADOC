@@ -70,6 +70,7 @@ function AIDrivable.registerFunctions(vehicleType)
 	SpecializationUtil.registerFunction(vehicleType, "deleteAgent", AIDrivable.deleteAgent)
 	SpecializationUtil.registerFunction(vehicleType, "setAITarget", AIDrivable.setAITarget)
 	SpecializationUtil.registerFunction(vehicleType, "unsetAITarget", AIDrivable.unsetAITarget)
+	SpecializationUtil.registerFunction(vehicleType, "stopAIDriving", AIDrivable.stopAIDriving)
 	SpecializationUtil.registerFunction(vehicleType, "reachedAITarget", AIDrivable.reachedAITarget)
 	SpecializationUtil.registerFunction(vehicleType, "getAIRootNode", AIDrivable.getAIRootNode)
 	SpecializationUtil.registerFunction(vehicleType, "getAIAllowsBackwards", AIDrivable.getAIAllowsBackwards)
@@ -218,13 +219,15 @@ function AIDrivable:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSelecti
 						isBlocked = false
 					end
 				elseif status == AgentState.PLANNING then
+					self:stopAIDriving()
+
 					isBlocked = false
 
 					self:brake(1)
 				elseif status == AgentState.BLOCKED then
-					isBlocked = true
+					self:stopAIDriving()
 
-					self:brake(1)
+					isBlocked = true
 				elseif status == AgentState.TARGET_REACHED then
 					isBlocked = false
 
@@ -379,10 +382,14 @@ function AIDrivable:unsetAITarget()
 	spec.task = nil
 	spec.useManualDriving = false
 
+	self:stopAIDriving()
+	SpecializationUtil.raiseEvent(self, "onAIDriveableEnd")
+end
+
+function AIDrivable:stopAIDriving()
 	self:brake(1)
 	self:stopVehicle()
 	self:setCruiseControlState(Drivable.CRUISECONTROL_STATE_OFF, true)
-	SpecializationUtil.raiseEvent(self, "onAIDriveableEnd")
 end
 
 function AIDrivable:getAIRootNode()

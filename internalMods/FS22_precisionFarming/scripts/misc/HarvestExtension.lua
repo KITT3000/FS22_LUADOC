@@ -13,13 +13,14 @@ function HarvestExtension.new(pfModule, customMt)
 		seedRateYieldFactor = 0,
 		yieldPotential = 0,
 		plowFactor = 0,
-		yieldFactor = 0,
+		beeYieldBonusPercentage = 0,
 		lastSeedRateFound = 0,
 		nFactor = 0,
 		nActualValue = 0,
 		pHRegularValue = 0,
 		yieldFactorRegular = 0,
 		pHActualValue = 0,
+		yieldFactor = 0,
 		nRegularValue = 0,
 		pHFactor = 0,
 		ignoreOverfertilization = false,
@@ -64,7 +65,7 @@ function HarvestExtension:draw()
 		renderText(0.01, 0.4, 0.015, string.format("Nitrogen: Yield Potential: %d%% | ignoreOverfertilization: %s", debugValues.yieldPotential * 100, debugValues.ignoreOverfertilization))
 		renderText(0.01, 0.38, 0.015, string.format("Seed Rate: Yield: %d%% | Optimal Rate: %s | Found Rate: %s", debugValues.seedRateYieldFactor * 100, seedRateMap:getRateLabelByIndex(debugValues.lastSeedRateTarget), seedRateMap:getRateLabelByIndex(debugValues.lastSeedRateFound)))
 		renderText(0.01, 0.36, 0.015, string.format("pH: Actual: %.3f | Target: %.3f | Regular: %.3f => Factor: %d%% | Regular Factor: %d%%", pHMap:getPhValueFromInternalValue(debugValues.pHActualValue), pHMap:getPhValueFromInternalValue(debugValues.pHTargetValue), pHMap:getPhValueFromInternalValue(debugValues.pHRegularValue), debugValues.pHFactor * 100, debugValues.regularPHFactor * 100))
-		renderText(0.01, 0.34, 0.015, string.format("Plow Factor: %d%% | Weed Factor: %d%% | Stubble Factor: %d%% | Roller Factor: %d%%", debugValues.plowFactor * 100, debugValues.weedFactor * 100, debugValues.stubbleFactor * 100, debugValues.rollerFactor * 100))
+		renderText(0.01, 0.34, 0.015, string.format("Plow Factor: %d%% | Weed Factor: %d%% | Stubble Factor: %d%% | Roller Factor: %d%% | Bee Bonus: %.1f%%", debugValues.plowFactor * 100, debugValues.weedFactor * 100, debugValues.stubbleFactor * 100, debugValues.rollerFactor * 100, debugValues.beeYieldBonusPercentage * 100))
 		renderText(0.01, 0.32, 0.015, string.format("Yield: %d%% | Regular Yield: %d%%", debugValues.yieldFactor * debugValues.yieldPotential / 2 * 100, debugValues.yieldFactorRegular * debugValues.yieldPotential / 2 * 100))
 		nitrogenMap:drawYieldDebug(debugValues.nActualValue, debugValues.nTargetValue)
 		pHMap:drawYieldDebug(debugValues.pHActualValue, debugValues.pHTargetValue)
@@ -328,6 +329,7 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 			defaultMultipliers = defaultMultipliers + self.lastWeedFactor * 0.15
 			defaultMultipliers = defaultMultipliers + self.lastStubbleFactor * 0.025
 			defaultMultipliers = defaultMultipliers + self.lastRollerFactor * 0.025
+			defaultMultipliers = defaultMultipliers + self.lastBeeYieldBonusPercentage
 			local multiplier = 1
 			multiplier = multiplier + nFactor * 0.5
 			multiplier = multiplier + pHFactor * 0.2
@@ -351,6 +353,7 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 				debugValues.weedFactor = self.lastWeedFactor
 				debugValues.stubbleFactor = self.lastStubbleFactor
 				debugValues.rollerFactor = self.lastRollerFactor
+				debugValues.beeYieldBonusPercentage = self.lastBeeYieldBonusPercentage
 			end
 
 			local fillTypeIndex = g_fruitTypeManager:getFillTypeIndexByFruitTypeIndex(inputFruitType)
@@ -383,11 +386,13 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 		self.lastWeedFactor = nil
 		self.lastStubbleFactor = nil
 		self.lastRollerFactor = nil
+		self.lastBeeYieldBonusPercentage = nil
 
 		return lastRealArea, lastArea
 	end)
 	pfModule:overwriteGameFunction(FSBaseMission, "getHarvestScaleMultiplier", function (superFunc, mission, fruitTypeIndex, sprayFactor, plowFactor, limeFactor, weedFactor, stubbleFactor, rollerFactor, beeYieldBonusPercentage)
 		local multiplier = superFunc(mission, fruitTypeIndex, sprayFactor, plowFactor, limeFactor, weedFactor, stubbleFactor, rollerFactor, beeYieldBonusPercentage)
+		beeYieldBonusPercentage = beeYieldBonusPercentage or 0
 
 		if self.checkMultiplier then
 			self.lastMultiplier = multiplier
@@ -395,6 +400,7 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 			self.lastWeedFactor = weedFactor
 			self.lastStubbleFactor = stubbleFactor
 			self.lastRollerFactor = rollerFactor
+			self.lastBeeYieldBonusPercentage = beeYieldBonusPercentage
 		end
 
 		if self.replaceMowerMultiplier then
@@ -405,6 +411,7 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 			multiplier = multiplier + rollerFactor * 0.025
 			multiplier = multiplier + self.replaceMowerMultiplierRegularNFactor * 0.5
 			multiplier = multiplier + self.replaceMowerMultiplierRegularPHFactor * 0.2
+			multiplier = multiplier + beeYieldBonusPercentage
 			multiplier = multiplier * self.replaceMowerMultiplierCurrentYieldPotential
 			self.replaceMowerRegularMultiplier = multiplier
 			multiplier = 1
@@ -414,6 +421,7 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 			multiplier = multiplier + rollerFactor * 0.025
 			multiplier = multiplier + self.replaceMowerMultiplierNFactor * 0.5
 			multiplier = multiplier + self.replaceMowerMultiplierPHFactor * 0.2
+			multiplier = multiplier + beeYieldBonusPercentage
 			multiplier = multiplier * self.replaceMowerMultiplierCurrentYieldPotential
 			self.replaceMowerNewMultiplier = multiplier
 		end
@@ -444,8 +452,79 @@ function HarvestExtension:overwriteGameFunctions(pfModule)
 		return changedArea, totalArea
 	end)
 	pfModule:overwriteGameFunction(FSDensityMapUtil, "getWeedFactor", function (superFunc, startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, fruitIndex)
-		local weedFactor = superFunc(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, fruitIndex)
+		local weedSystem = g_currentMission.weedSystem
 
-		return weedFactor > 0 and 1 or 0
+		if weedSystem:getMapHasWeed() then
+			local functionData = FSDensityMapUtil.functionCache.getWeedFactor
+
+			if functionData == nil then
+				local terrainRootNode = g_currentMission.terrainRootNode
+				local fieldGroundSystem = g_currentMission.fieldGroundSystem
+				local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
+				local weedMapId, weedFirstChannel, weedNumChannels = weedSystem:getDensityMapData()
+				local factors = weedSystem:getFactors()
+				functionData = {
+					weedModifier = DensityMapModifier.new(weedMapId, weedFirstChannel, weedNumChannels, terrainRootNode),
+					fieldFilter = DensityMapFilter.new(groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels)
+				}
+
+				functionData.fieldFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+
+				functionData.fruitFilters = {}
+				functionData.weedStateFilters = {}
+
+				for state, factor in pairs(factors) do
+					local filter = DensityMapFilter.new(weedMapId, weedFirstChannel, weedNumChannels, terrainRootNode)
+
+					filter:setValueCompareParams(DensityValueCompareType.EQUAL, state)
+
+					functionData.weedStateFilters[filter] = factor
+				end
+
+				FSDensityMapUtil.functionCache.getWeedFactor = functionData
+			end
+
+			local weedModifier = functionData.weedModifier
+			local weedStateFilters = functionData.weedStateFilters
+			local fieldFilter = functionData.fieldFilter
+			local _, pixels, totalPixels, fruitFilter = nil
+
+			if fruitIndex ~= nil then
+				fruitFilter = functionData.fruitFilters[fruitIndex]
+
+				if fruitFilter == nil then
+					local desc = g_fruitTypeManager:getFruitTypeByIndex(fruitIndex)
+					fruitFilter = DensityMapFilter.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
+
+					fruitFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, desc.minForageGrowthState or desc.minHarvestingGrowthState, desc.maxHarvestingGrowthState)
+
+					functionData.fruitFilters[fruitIndex] = fruitFilter
+				end
+			end
+
+			weedModifier:setParallelogramWorldCoords(startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ, DensityCoordType.POINT_POINT_POINT)
+
+			_, totalPixels, _ = weedModifier:executeGet(fieldFilter, fruitFilter)
+
+			if totalPixels ~= 0 then
+				local maxPixelAmount = 0
+				local maxPixelFactor = 0
+
+				for filter, factor in pairs(weedStateFilters) do
+					_, pixels, _ = weedModifier:executeGet(filter, fieldFilter, fruitFilter)
+
+					if maxPixelAmount < pixels then
+						maxPixelAmount = pixels
+						maxPixelFactor = factor
+					end
+				end
+
+				if maxPixelAmount > 0 then
+					return maxPixelFactor
+				end
+			end
+		end
+
+		return 0
 	end)
 end

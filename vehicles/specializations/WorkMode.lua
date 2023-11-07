@@ -891,12 +891,14 @@ function WorkMode:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnor
 				local _, actionEventId = self:addPoweredActionEvent(spec.actionEvents, InputAction.TOGGLE_WORKMODE, self, WorkMode.actionEventWorkModeChange, false, true, false, true, nil)
 
 				g_inputBinding:setActionEventTextPriority(actionEventId, GS_PRIO_NORMAL)
+				g_inputBinding:setActionEventActive(actionEventId, false)
 
 				for _, mode in ipairs(spec.workModes) do
 					if mode.inputAction ~= nil then
 						_, actionEventId = self:addPoweredActionEvent(spec.actionEvents, mode.inputAction, self, WorkMode.actionEventWorkModeChangeDirect, false, true, false, true, nil)
 
 						g_inputBinding:setActionEventTextVisibility(actionEventId, false)
+						g_inputBinding:setActionEventActive(actionEventId, false)
 					end
 				end
 			end

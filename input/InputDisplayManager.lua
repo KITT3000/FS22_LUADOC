@@ -70,6 +70,7 @@ function InputDisplayManager.new(messageCenter, inputManager, modManager, isCons
 	self.axisIconOverlays = {}
 	self.buttonIconSize = 45
 	self.uiScale = 1
+	self.debugControllerSymbols = false
 
 	return self
 end
@@ -85,6 +86,7 @@ function InputDisplayManager:load()
 	self:loadAxisIcons(axisIconsXmlFile)
 	delete(axisIconsXmlFile)
 	self:loadModAxisIcons()
+	addConsoleCommand("gsInputDebugControllerSymbols", "", "consoleCommandShowInputControllerSymbols", self)
 end
 
 function InputDisplayManager:delete()
@@ -900,4 +902,74 @@ end
 
 function InputDisplayManager:onActionBindingsChanged(actionBindings)
 	self.actionBindings = actionBindings
+end
+
+function InputDisplayManager:draw()
+	if self.debugControllerSymbols then
+		self:debugRenderControllerSymbols()
+	end
+end
+
+function InputDisplayManager:debugRenderControllerSymbols()
+	new2DLayer()
+	setOverlayColor(GuiElement.debugOverlay, 0, 0, 0, 0.99)
+	renderOverlay(GuiElement.debugOverlay, 0, 0, 1, 1)
+
+	local symbols = self.controllerSymbolsSorted
+	local posX = 0.005
+	local posY = 0.97
+	local width, height = getNormalizedScreenValues(30, 30)
+	local textOffsetX, _ = getNormalizedScreenValues(5, 0)
+	local offsetX, offsetY = getNormalizedScreenValues(20, -45)
+	local textSize = getCorrectTextSize(0.007)
+	local maxTextWidth = getNormalizedScreenValues(120, 0)
+	local maxWidth = 0
+
+	setTextWrapWidth(maxTextWidth, true)
+	setTextColor(1, 1, 1, 1)
+	setTextVerticalAlignment(RenderText.VERTICAL_ALIGN_MIDDLE)
+
+	for _, data in ipairs(symbols) do
+		local overlay = data.overlay
+
+		overlay:setPosition(posX, posY)
+		overlay:setDimension(width, height)
+		overlay:render()
+		overlay:resetDimensions()
+
+		maxWidth = math.max(maxWidth, getTextWidth(textSize, data.name))
+
+		renderText(posX + textOffsetX + width, posY, textSize, data.name)
+
+		posY = posY + offsetY
+
+		if posY < 0 then
+			posY = 0.97
+			posX = posX + width + offsetX + maxWidth
+			maxWidth = 0
+		end
+	end
+
+	setTextWrapWidth(0)
+	setTextVerticalAlignment(RenderText.VERTICAL_ALIGN_BASELINE)
+end
+
+function InputDisplayManager:consoleCommandShowInputControllerSymbols()
+	self.debugControllerSymbols = not self.debugControllerSymbols
+
+	if self.debugControllerSymbols then
+		if self.controllerSymbolsSorted == nil then
+			self.controllerSymbolsSorted = {}
+
+			for _, symbol in pairs(self.controllerSymbols) do
+				table.insert(self.controllerSymbolsSorted, symbol)
+			end
+
+			table.sort(self.controllerSymbolsSorted, function (a, b)
+				return a.name < b.name
+			end)
+		end
+	else
+		self.controllerSymbolsSorted = nil
+	end
 end

@@ -38,6 +38,7 @@ end
 
 function Dischargeable.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.BOOL, basePath .. "#requiresTipOcclusionArea", "Requires tip occlusion area", true)
+	schema:register(XMLValueType.BOOL, basePath .. "#consumePower", "While in discharge state, PTO power is consumed", true)
 	schema:register(XMLValueType.BOOL, basePath .. "#stopDischargeOnDeactivate", "Stop discharge if the vehicle is deactivated", true)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".dischargeNode(?)#node", "Discharge node")
 	schema:register(XMLValueType.INT, basePath .. ".dischargeNode(?)#fillUnitIndex", "Fill unit index")
@@ -78,6 +79,7 @@ function Dischargeable.registerXMLPaths(schema, basePath)
 	schema:register(XMLValueType.BOOL, basePath .. ".dischargeNode(?).dischargeSound#overwriteSharedSound", "Overwrite shared discharge sound with sound defined in discharge node", false)
 	SoundManager.registerSampleXMLPaths(schema, basePath .. ".dischargeNode(?)", "dischargeStateSound(?)")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, basePath .. ".dischargeNode(?).animationNodes")
+	AnimationManager.registerAnimationNodesXMLPaths(schema, basePath .. ".dischargeNode(?).effectAnimationNodes")
 end
 
 function Dischargeable.registerFunctions(vehicleType)
@@ -171,6 +173,7 @@ function Dischargeable:onLoad(savegame)
 	spec.triggerToDischargeNode = {}
 	spec.activationTriggerToDischargeNode = {}
 	spec.requiresTipOcclusionArea = self.xmlFile:getValue(configKey .. "#requiresTipOcclusionArea", true)
+	spec.consumePower = self.xmlFile:getValue(configKey .. "#consumePower", true)
 	spec.stopDischargeOnDeactivate = self.xmlFile:getValue(configKey .. "#stopDischargeOnDeactivate", true)
 	spec.dischargedLiters = 0
 
@@ -274,6 +277,7 @@ function Dischargeable:onDelete()
 			g_soundManager:deleteSample(dischargeNode.dischargeSample)
 			g_soundManager:deleteSamples(dischargeNode.dischargeStateSamples)
 			g_animationManager:deleteAnimations(dischargeNode.animationNodes)
+			g_animationManager:deleteAnimations(dischargeNode.effectAnimationNodes)
 
 			if dischargeNode.trigger.node ~= nil then
 				removeTrigger(dischargeNode.trigger.node)
@@ -298,10 +302,10 @@ function Dischargeable:onReadStream(streamId, connection)
 				dischargeNode.dischargeDistance = distance
 				local fillTypeIndex = streamReadUIntN(streamId, FillTypeManager.SEND_NUM_BITS)
 
-				self:setDischargeEffectActive(dischargeNode, true, false, fillTypeIndex)
+				self:setDischargeEffectActive(dischargeNode, true, true, fillTypeIndex)
 				self:setDischargeEffectDistance(dischargeNode, distance)
 			else
-				self:setDischargeEffectActive(dischargeNode, false)
+				self:setDischargeEffectActive(dischargeNode, false, true)
 			end
 		end
 
@@ -335,10 +339,10 @@ function Dischargeable:onReadUpdateStream(streamId, timestamp, connection)
 					dischargeNode.dischargeDistance = distance
 					local fillTypeIndex = streamReadUIntN(streamId, FillTypeManager.SEND_NUM_BITS)
 
-					self:setDischargeEffectActive(dischargeNode, true, false, fillTypeIndex)
+					self:setDischargeEffectActive(dischargeNode, true, true, fillTypeIndex)
 					self:setDischargeEffectDistance(dischargeNode, distance)
 				else
-					self:setDischargeEffectActive(dischargeNode, false)
+					self:setDischargeEffectActive(dischargeNode, false, true)
 				end
 			end
 		end
@@ -514,11 +518,10 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 				end
 			end
 
-			if dischargeNode.isEffectActive ~= dischargeNode.isEffectActiveSent or math.abs(dischargeNode.dischargeDistanceSent - dischargeNode.dischargeDistance) > 0.05 then
+			if math.abs(dischargeNode.dischargeDistanceSent - dischargeNode.dischargeDistance) > 0.05 then
 				self:raiseDirtyFlags(spec.dirtyFlag)
 
 				dischargeNode.dischargeDistanceSent = dischargeNode.dischargeDistance
-				dischargeNode.isEffectActiveSent = dischargeNode.isEffectActive
 			end
 		end
 	end
@@ -537,14 +540,16 @@ function Dischargeable:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnore
 		g_currentMission:showBlinkingWarning(warning, 5000)
 	end
 
-	for _, inactiveDischargeNode in ipairs(spec.dischargeNodes) do
-		if inactiveDischargeNode.stopEffectTime ~= nil then
-			if inactiveDischargeNode.stopEffectTime < g_time then
-				self:setDischargeEffectActive(inactiveDischargeNode, false, true)
+	if self.isServer then
+		for _, inactiveDischargeNode in ipairs(spec.dischargeNodes) do
+			if inactiveDischargeNode.stopEffectTime ~= nil then
+				if inactiveDischargeNode.stopEffectTime < g_time then
+					self:setDischargeEffectActive(inactiveDischargeNode, false, true)
 
-				inactiveDischargeNode.stopEffectTime = nil
-			else
-				self:raiseActive()
+					inactiveDischargeNode.stopEffectTime = nil
+				else
+					self:raiseActive()
+				end
 			end
 		end
 	end
@@ -687,6 +692,7 @@ function Dischargeable:loadDischargeNode(xmlFile, key, entry)
 
 		entry.dischargeStateSamples = g_soundManager:loadSamplesFromXML(self.xmlFile, key, "dischargeStateSound", self.baseDirectory, self.components, 0, AudioGroup.VEHICLE, self.i3dMappings, self)
 		entry.animationNodes = g_animationManager:loadAnimations(self.xmlFile, key .. ".animationNodes", self.components, self, self.i3dMappings)
+		entry.effectAnimationNodes = g_animationManager:loadAnimations(self.xmlFile, key .. ".effectAnimationNodes", self.components, self, self.i3dMappings)
 	end
 
 	entry.sentHitDistance = 0
@@ -706,6 +712,7 @@ function Dischargeable:setCurrentDischargeNodeIndex(dischargeNodeIndex)
 
 		if spec.dischargeNodes[dischargeNodeIndex] ~= spec.currentDischargeNode then
 			g_animationManager:stopAnimations(spec.currentDischargeNode.animationNodes)
+			g_animationManager:stopAnimations(spec.currentDischargeNode.effectAnimationNodes)
 		end
 
 		g_soundManager:stopSamples(spec.currentDischargeNode.dischargeStateSamples)
@@ -763,11 +770,11 @@ function Dischargeable:getCanBeSelected(superFunc)
 end
 
 function Dischargeable:getDoConsumePtoPower(superFunc)
-	return self:getDischargeState() ~= Dischargeable.DISCHARGE_STATE_OFF or superFunc(self)
+	return self.spec_dischargeable.consumePower and self:getDischargeState() ~= Dischargeable.DISCHARGE_STATE_OFF or superFunc(self)
 end
 
 function Dischargeable:getIsPowerTakeOffActive(superFunc)
-	return self:getDischargeState() ~= Dischargeable.DISCHARGE_STATE_OFF or superFunc(self)
+	return self.spec_dischargeable.consumePower and self:getDischargeState() ~= Dischargeable.DISCHARGE_STATE_OFF or superFunc(self)
 end
 
 function Dischargeable:getAllowLoadTriggerActivation(superFunc, rootVehicle)
@@ -883,9 +890,9 @@ function Dischargeable:setDischargeState(state, noEventSend)
 		local dischargeNode = spec.currentDischargeNode
 
 		if state == Dischargeable.DISCHARGE_STATE_OFF then
-			self:setDischargeEffectActive(dischargeNode, false)
-
-			dischargeNode.isEffectActiveSent = false
+			if self.isServer then
+				self:setDischargeEffectActive(dischargeNode, false)
+			end
 
 			g_animationManager:stopAnimations(dischargeNode.animationNodes)
 		else
@@ -1278,12 +1285,14 @@ end
 function Dischargeable:handleDischargeRaycast(dischargeNode, object, shape, distance, illUnitIndex, hitTerrain)
 	local spec = self.spec_dischargeable
 
-	if object == nil and spec.currentDischargeState == Dischargeable.DISCHARGE_STATE_OBJECT then
-		self:setDischargeState(Dischargeable.DISCHARGE_STATE_OFF)
-	end
+	if self.isServer then
+		if object == nil and spec.currentDischargeState == Dischargeable.DISCHARGE_STATE_OBJECT then
+			self:setDischargeState(Dischargeable.DISCHARGE_STATE_OFF)
+		end
 
-	if object == nil and dischargeNode.canStartGroundDischargeAutomatically and self:getCanDischargeToGround(dischargeNode) then
-		self:setDischargeState(Dischargeable.DISCHARGE_STATE_GROUND)
+		if object == nil and dischargeNode.canStartGroundDischargeAutomatically and self:getCanDischargeToGround(dischargeNode) then
+			self:setDischargeState(Dischargeable.DISCHARGE_STATE_GROUND)
+		end
 	end
 
 	local currentDischargeNode = spec.currentDischargeNode
@@ -1318,6 +1327,7 @@ function Dischargeable:setDischargeEffectActive(dischargeNode, isActive, force, 
 
 			g_effectManager:setFillType(dischargeNode.effects, fillTypeIndex)
 			g_effectManager:startEffects(dischargeNode.effects)
+			g_animationManager:startAnimations(dischargeNode.effectAnimationNodes)
 
 			dischargeNode.isEffectActive = true
 		end
@@ -1331,8 +1341,15 @@ function Dischargeable:setDischargeEffectActive(dischargeNode, isActive, force, 
 		end
 	elseif dischargeNode.isEffectActive then
 		g_effectManager:stopEffects(dischargeNode.effects)
+		g_animationManager:stopAnimations(dischargeNode.effectAnimationNodes)
 
 		dischargeNode.isEffectActive = false
+	end
+
+	if self.isServer and dischargeNode.isEffectActive ~= dischargeNode.isEffectActiveSent then
+		self:raiseDirtyFlags(self.spec_dischargeable.dirtyFlag)
+
+		dischargeNode.isEffectActiveSent = dischargeNode.isEffectActive
 	end
 end
 

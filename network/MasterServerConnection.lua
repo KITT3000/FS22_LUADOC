@@ -79,9 +79,9 @@ function MasterServerConnection:onServerInfoDetails(id, name, language, capacity
 	end
 end
 
-function MasterServerConnection:onServerInfoDetailsFailed()
+function MasterServerConnection:onServerInfoDetailsFailed(reason)
 	if self.masterServerCallbackTarget.onServerInfoDetailsFailed ~= nil then
-		self.masterServerCallbackTarget:onServerInfoDetailsFailed()
+		self.masterServerCallbackTarget:onServerInfoDetailsFailed(reason)
 	else
 		Logging.devWarning("Warning: Callback target is missing onServerInfoDetailsFailed")
 	end

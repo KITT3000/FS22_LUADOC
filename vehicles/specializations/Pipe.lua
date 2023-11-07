@@ -33,6 +33,7 @@ function Pipe.registers(schema, basePath)
 	schema:register(XMLValueType.BOOL, basePath .. "#forceDischargeNodeIndex", "Force discharge node selection while changing pipe state. Can be deactivated e.g. if the selection is done by trailer spec etc.", true)
 	schema:register(XMLValueType.BOOL, basePath .. "#automaticDischarge", "Pipe is automatically starting to discharge as soon as it hits the trailer", true)
 	schema:register(XMLValueType.BOOL, basePath .. "#toggleableDischargeToGround", "Defines if the discharge to ground can be enabled separatly", false)
+	schema:register(XMLValueType.BOOL, basePath .. "#defaultDischargeToGroundState", "Discharge to ground is enabled by default if #toggleableDischargeToGround is set", false)
 	schema:register(XMLValueType.NODE_INDEX, basePath .. ".unloadingTriggers.unloadingTrigger(?)#node", "Unload trigger node")
 	schema:register(XMLValueType.STRING, basePath .. ".animation#name", "Pipe animation name")
 	schema:register(XMLValueType.FLOAT, basePath .. ".animation#speedScale", "Pipe animation speed scale", 1)
@@ -152,7 +153,7 @@ function Pipe:onLoad(savegame)
 
 	spec.automaticDischarge = self.xmlFile:getValue(baseKey .. "#automaticDischarge", true)
 	spec.toggleableDischargeToGround = self.xmlFile:getValue(baseKey .. "#toggleableDischargeToGround", false)
-	spec.dischargeToGroundState = false
+	spec.dischargeToGroundState = self.xmlFile:getValue(baseKey .. "#defaultDischargeToGroundState", false)
 	spec.unloadingTriggers = {}
 	spec.objectsInTriggers = {}
 	spec.unloadTriggersInTriggers = {}

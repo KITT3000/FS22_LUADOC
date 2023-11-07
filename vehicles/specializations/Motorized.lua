@@ -69,7 +69,7 @@ function Motorized.initSpecialization()
 	schema:register(XMLValueType.STRING, "vehicle.motorized#statsType", "Statistic type", "tractor")
 	schema:register(XMLValueType.BOOL, "vehicle.motorized#forceSpeedHudDisplay", "Force usage of vehicle speed display in hud independent of setting", false)
 	schema:register(XMLValueType.BOOL, "vehicle.motorized#forceRpmHudDisplay", "Force usage of motor speed display in hud independent of setting", false)
-	Dashboard.registerDashboardXMLPaths(schema, "vehicle.motorized.dashboards", "rpm | load | speed | speedDir | fuelUsage | motorTemperature | motorTemperatureWarning | clutchPedal | gear | gearGroup | movingDirection | directionForward | directionForwardExclusive | directionBackward | movingDirectionLetter | ignitionState")
+	Dashboard.registerDashboardXMLPaths(schema, "vehicle.motorized.dashboards", "rpm | load | speed | speedDir | fuelUsage | motorTemperature | motorTemperatureWarning | clutchPedal | gear | gearGroup | movingDirection | directionForward | directionForwardExclusive | directionBackward | directionNeutral | movingDirectionLetter | ignitionState")
 	Dashboard.registerDashboardWarningXMLPaths(schema, "vehicle.motorized.dashboards")
 	AnimationManager.registerAnimationNodesXMLPaths(schema, "vehicle.motorized.animationNodes")
 	schema:register(XMLValueType.BOOL, Dashboard.GROUP_XML_KEY .. "#isMotorStarting", "Is motor starting")
@@ -539,6 +539,13 @@ function Motorized:onLoad(savegame)
 			valueObject = spec.motor,
 			valueFunc = function (motor)
 				return motor:getDrivingDirection() < 0
+			end
+		})
+		self:loadDashboardsFromXML(self.xmlFile, "vehicle.motorized.dashboards", {
+			valueTypeToLoad = "directionNeutral",
+			valueObject = spec.motor,
+			valueFunc = function (motor)
+				return motor:getDrivingDirection() == 0
 			end
 		})
 		self:loadDashboardsFromXML(self.xmlFile, "vehicle.motorized.dashboards", {

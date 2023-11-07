@@ -67,6 +67,7 @@ function PlaceableDynamicallyLoadedParts:onDynamicallyPartI3DLoaded(i3dNode, fai
 
 		if node == nil then
 			Logging.xmlWarning(xmlFile, "Failed to load dynamicallyLoadedPart '%s'. Unable to find node in loaded i3d", partKey)
+			self:finishLoadingTask(loadingTask)
 
 			return false
 		end
@@ -75,6 +76,7 @@ function PlaceableDynamicallyLoadedParts:onDynamicallyPartI3DLoaded(i3dNode, fai
 
 		if linkNode == nil then
 			Logging.xmlWarning(xmlFile, "Failed to load dynamicallyLoadedPart '%s'. Unable to find linkNode", partKey)
+			self:finishLoadingTask(loadingTask)
 
 			return false
 		end

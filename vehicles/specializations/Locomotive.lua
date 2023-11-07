@@ -45,6 +45,7 @@ function Locomotive.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsEnterable", Locomotive.getIsEnterable)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsMapHotspotVisible", Locomotive.getIsMapHotspotVisible)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanBeReset", Locomotive.getCanBeReset)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getStopMotorOnLeave", Locomotive.getStopMotorOnLeave)
 end
 
 function Locomotive.registerEventListeners(vehicleType)
@@ -497,4 +498,8 @@ end
 
 function Locomotive:getCanBeReset(superFunc)
 	return false
+end
+
+function Locomotive:getStopMotorOnLeave(superFunc)
+	return self.spec_locomotive.state == Locomotive.STATE_MANUAL_TRAVEL_ACTIVE or self.spec_locomotive.state == Locomotive.STATE_MANUAL_TRAVEL_INACTIVE
 end

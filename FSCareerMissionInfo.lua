@@ -191,8 +191,33 @@ function FSCareerMissionInfo:loadFromXML(xmlFile)
 			mapModNameParts = self.mapId:split(".")
 		end
 
-		self.mods = {}
+		self.foliageTypes = {}
 		local i = 0
+
+		while true do
+			local modKey = string.format("careerSavegame.foliageTypes.foliageType(%d)", i)
+
+			if not hasXMLProperty(xmlFile, modKey) then
+				break
+			end
+
+			local name = getXMLString(xmlFile, modKey .. "#name")
+			local filename = getXMLString(xmlFile, modKey .. "#filename")
+
+			if name ~= nil and filename ~= nil then
+				filename = NetworkUtil.convertFromNetworkFilename(filename)
+
+				table.insert(self.foliageTypes, {
+					name = name,
+					filename = filename
+				})
+			end
+
+			i = i + 1
+		end
+
+		self.mods = {}
+		i = 0
 
 		while true do
 			local modKey = key .. string.format(".mod(%d)", i)
@@ -366,6 +391,7 @@ function FSCareerMissionInfo:saveToXMLFile()
 		g_densityMapHeightManager:saveToXMLFile(self.densityMapHeightXML)
 		g_treePlantManager:saveToXMLFile(self.treePlantXML)
 		g_currentMission.vehicleSaleSystem:saveToXMLFile(self.vehicleSaleXML)
+		g_currentMission.foliageSystem:saveToXMLFile(xmlFile)
 
 		local mapModName = ClassUtil.getClassModName(self.mapId)
 

@@ -115,7 +115,7 @@ function ShopController:load()
 		local foundDLCs = {}
 
 		for _, storeItem in ipairs(self.storeManager:getItems()) do
-			if storeItem.categoryName ~= "" and storeItem.showInStore and (storeItem.extraContentId == nil or g_extraContentSystem:getIsItemIdUnlocked(storeItem.extraContentId)) then
+			if #storeItem.categoryNames > 0 and storeItem.showInStore and (storeItem.extraContentId == nil or g_extraContentSystem:getIsItemIdUnlocked(storeItem.extraContentId)) then
 				local brand = self.brandManager:getBrandByIndex(storeItem.brandIndex)
 
 				if brand ~= nil and not foundBrands[storeItem.brandIndex] and storeItem.species ~= "placeable" then
@@ -126,12 +126,14 @@ function ShopController:load()
 					end
 				end
 
-				local category = self.storeManager:getCategoryByName(storeItem.categoryName)
+				for i = 1, #storeItem.categoryNames do
+					local category = g_storeManager:getCategoryByName(storeItem.categoryNames[i])
 
-				if category ~= nil and not foundCategory[storeItem.categoryName] then
-					foundCategory[storeItem.categoryName] = true
+					if category ~= nil and not foundCategory[storeItem.categoryNames[i]] then
+						foundCategory[storeItem.categoryNames[i]] = true
 
-					self:addCategoryForDisplay(category)
+						self:addCategoryForDisplay(category)
+					end
 				end
 
 				if storeItem.customEnvironment ~= nil and foundDLCs[storeItem.customEnvironment] == nil and storeItem.species ~= "placeable" then
@@ -626,10 +628,16 @@ function ShopController:getItemsByCategory(categoryName)
 	for _, storeItem in pairs(self.storeManager:getItems()) do
 		local isUnlocked = storeItem.extraContentId == nil or g_extraContentSystem:getIsItemIdUnlocked(storeItem.extraContentId)
 
-		if not storeItem.isBundleItem and isUnlocked and storeItem.showInStore and storeItem.categoryName == categoryName and storeItem.species ~= "placeable" then
-			local displayItem = self:makeDisplayItem(storeItem)
+		if not storeItem.isBundleItem and isUnlocked and storeItem.showInStore and storeItem.species ~= "placeable" then
+			for i = 1, #storeItem.categoryNames do
+				if categoryName == storeItem.categoryNames[i] then
+					local displayItem = self:makeDisplayItem(storeItem)
 
-			table.insert(items, displayItem)
+					table.insert(items, displayItem)
+
+					break
+				end
+			end
 		end
 	end
 
@@ -802,10 +810,14 @@ function ShopController:getItemsByPack(packName)
 	for i = 1, #packItems do
 		local storeItem = self.storeManager:getItemByXMLFilename(packItems[i])
 
-		if not storeItem.isBundleItem and storeItem.showInStore then
-			local displayItem = self:makeDisplayItem(storeItem)
+		if storeItem ~= nil then
+			if not storeItem.isBundleItem and storeItem.showInStore then
+				local displayItem = self:makeDisplayItem(storeItem)
 
-			table.insert(items, displayItem)
+				table.insert(items, displayItem)
+			end
+		else
+			Logging.warning("Vehicle '%s' not found! Ignoring it for vehicle pack '%s'.", packItems[i], packName)
 		end
 	end
 

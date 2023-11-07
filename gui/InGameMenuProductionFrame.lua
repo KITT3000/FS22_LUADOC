@@ -143,6 +143,11 @@ end
 
 function InGameMenuProductionFrame:updateDetails()
 	local production = self:getSelectedProduction()
+
+	if production == nil then
+		return
+	end
+
 	local status = production.status
 	local statusKey = ProductionPoint.PROD_STATUS_TO_L10N[production.status] or "unknown"
 	local statusProfile = "ingameMenuProductionDetailValue"
@@ -206,6 +211,11 @@ function InGameMenuProductionFrame:updateMenuButtons()
 
 	if isProductionListActive then
 		local production, productionPoint = self:getSelectedProduction()
+
+		if production == nil then
+			return
+		end
+
 		local state = productionPoint:getIsProductionEnabled(production.id)
 		self.activateButtonInfo.text = state and self.i18n:getText("button_deactivate") or self.i18n:getText("button_activate")
 

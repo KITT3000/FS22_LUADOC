@@ -23,6 +23,9 @@ InputBinding.PATHS = {
 	DEFAULT_BINDINGS_SAITEK_WHEEL_AND_PANEL = getAppBasePath() .. "profileTemplate/inputBindingDefault_SaitekWheelAndPanel.xml",
 	DEFAULT_BINDINGS_SAITEK_WHEEL = getAppBasePath() .. "profileTemplate/inputBindingDefault_SaitekWheel.xml",
 	DEFAULT_BINDINGS_SAITEK_PANEL = getAppBasePath() .. "profileTemplate/inputBindingDefault_SaitekPanel.xml",
+	DEFAULT_BINDINGS_HORI_WHEEL = getAppBasePath() .. "profileTemplate/inputBindingDefault_HoriFarmingControllerWheel.xml",
+	DEFAULT_BINDINGS_HORI_PANEL = getAppBasePath() .. "profileTemplate/inputBindingDefault_HoriFarmingControllerPanel.xml",
+	DEFAULT_BINDINGS_THURSTMASTER_FARMJOYSTICK = getAppBasePath() .. "profileTemplate/inputBindingDefault_ThrustmasterFarmJoystick.xml",
 	ACTION_DEFINITIONS = getAppBasePath() .. "dataS/inputActions.xml",
 	USER_BINDINGS = getUserProfileAppPath() .. "inputBinding.xml"
 }
@@ -34,16 +37,22 @@ InputBinding.DEVICE_CATEGORY_DEFAULTS_PATHS = {
 	[InputDevice.CATEGORY.FARMPANEL] = InputBinding.PATHS.DEFAULT_BINDINGS_SAITEK_PANEL,
 	[InputDevice.CATEGORY.UNKNOWN] = InputBinding.PATHS.DEFAULT_BINDINGS_GAMEPAD,
 	[InputDevice.CATEGORY.WHEEL_AND_PANEL] = InputBinding.PATHS.DEFAULT_BINDINGS_WHEEL_AND_PANEL,
-	[InputDevice.CATEGORY.FARMWHEEL_AND_PANEL] = InputBinding.PATHS.DEFAULT_BINDINGS_SAITEK_WHEEL_AND_PANEL
+	[InputDevice.CATEGORY.FARMWHEEL_AND_PANEL] = InputBinding.PATHS.DEFAULT_BINDINGS_SAITEK_WHEEL_AND_PANEL,
+	[InputDevice.CATEGORY.FARMWHEEL_HORI] = InputBinding.PATHS.DEFAULT_BINDINGS_HORI_WHEEL,
+	[InputDevice.CATEGORY.FARMPANEL_HORI] = InputBinding.PATHS.DEFAULT_BINDINGS_HORI_PANEL,
+	[InputDevice.CATEGORY.FARMJOYSTICK_THRUSTMASTER] = InputBinding.PATHS.DEFAULT_BINDINGS_THURSTMASTER_FARMJOYSTICK
 }
 InputBinding.DEVICE_CATEGORY_DEFAULT_LOAD_ORDER = {
 	InputDevice.CATEGORY.FARMWHEEL_AND_PANEL,
 	InputDevice.CATEGORY.WHEEL_AND_PANEL,
 	InputDevice.CATEGORY.FARMWHEEL,
+	InputDevice.CATEGORY.FARMWHEEL_HORI,
 	InputDevice.CATEGORY.WHEEL,
 	InputDevice.CATEGORY.GAMEPAD,
 	InputDevice.CATEGORY.JOYSTICK,
-	InputDevice.CATEGORY.FARMPANEL
+	InputDevice.CATEGORY.FARMPANEL,
+	InputDevice.CATEGORY.FARMPANEL_HORI,
+	InputDevice.CATEGORY.FARMJOYSTICK_THRUSTMASTER
 }
 InputBinding.INPUTTYPE_NONE = 0
 InputBinding.INPUTTYPE_KEYBOARD = 1
