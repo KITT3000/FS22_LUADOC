@@ -92,8 +92,8 @@ end
 
 function DensityMapHeightManager:loadDensityMapHeightTypes(xmlFile, missionInfo, baseDirectory, isBaseType)
 	local rootName = getXMLRootName(xmlFile)
-	self.heightTypeFirstChannel = getXMLInt(xmlFile, rootName .. "map.densityMapHeightTypes#firstChannel") or self.heightTypeFirstChannel or 0
-	self.heightTypeNumChannels = getXMLInt(xmlFile, rootName .. "map.densityMapHeightTypes#numChannels") or self.heightTypeNumChannels or 6
+	self.heightTypeFirstChannel = getXMLInt(xmlFile, rootName .. ".densityMapHeightTypes#firstChannel") or self.heightTypeFirstChannel or 0
+	self.heightTypeNumChannels = getXMLInt(xmlFile, rootName .. ".densityMapHeightTypes#numChannels") or self.heightTypeNumChannels or 6
 	local i = 0
 
 	while true do
