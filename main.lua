@@ -12,8 +12,8 @@ GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
 g_gameVersion = 22
-g_gameVersionNotification = "1.13.1.0"
-g_gameVersionDisplay = "1.13.1.0"
+g_gameVersionNotification = "1.13.1.1"
+g_gameVersionDisplay = "1.13.1.1"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
@@ -972,7 +972,7 @@ function init(args)
 			copyFile(soundPlayerReadmeTemplate, soundPlayerReadme, false)
 		end
 
-		g_soundPlayer = SoundPlayer.new(getAppBasePath(), "https://www.farming-simulator.com/feed/fs2022-radio-station-feed.xml", soundPlayerTarget, soundPlayerLocal, soundUserPlayerLocal, g_languageShort, AudioGroup.RADIO)
+		g_soundPlayer = SoundPlayer.new(getAppBasePath(), "https://www.farming-simulator.com/feed/fs2022-radio-station-feed_v2.xml", soundPlayerTarget, soundPlayerLocal, soundUserPlayerLocal, g_languageShort, AudioGroup.RADIO)
 	end
 
 	RestartManager:init(args)

@@ -1,5 +1,6 @@
 ConsoleSimulator = {
 	MP_AVAILABILITY = nil,
+	CROSSPLAY_AVAILABILITY = MultiplayerAvailability.AVAILABILITY_UNKNOWN,
 	NETWORK_ERROR = nil,
 	ACHIEVEMENTS_AVAILABLE = true,
 	NEW_DLCS = false,
@@ -51,6 +52,22 @@ function ConsoleSimulator.init()
 				ConsoleSimulator.ACHIEVEMENTS_AVAILABLE = not ConsoleSimulator.ACHIEVEMENTS_AVAILABLE
 
 				Logging.devInfo("ConsoleSimulator: ACHIEVEMENTS_AVAILABLE: %s", tostring(ConsoleSimulator.ACHIEVEMENTS_AVAILABLE))
+			elseif sym == Input.KEY_KP_4 then
+				Logging.devInfo("ConsoleSimulator: CROSSPLAY_AVAILABILITY - AVAILABILITY_UNKNOWN")
+
+				ConsoleSimulator.CROSSPLAY_AVAILABILITY = MultiplayerAvailability.AVAILABILITY_UNKNOWN
+			elseif sym == Input.KEY_KP_5 then
+				Logging.devInfo("ConsoleSimulator: CROSSPLAY_AVAILABILITY - NOT_AVAILABLE")
+
+				ConsoleSimulator.CROSSPLAY_AVAILABILITY = MultiplayerAvailability.NOT_AVAILABLE
+			elseif sym == Input.KEY_KP_6 then
+				Logging.devInfo("ConsoleSimulator: CROSSPLAY_AVAILABILITY - NO_PRIVILEGES")
+
+				ConsoleSimulator.CROSSPLAY_AVAILABILITY = MultiplayerAvailability.NO_PRIVILEGES
+			elseif sym == Input.KEY_KP_7 then
+				Logging.devInfo("ConsoleSimulator: CROSSPLAY_AVAILABILITY - NO_PRIVILEGES")
+
+				ConsoleSimulator.CROSSPLAY_AVAILABILITY = MultiplayerAvailability.AVAILABLE
 			end
 		end
 
@@ -75,6 +92,16 @@ function ConsoleSimulator.init()
 		end
 
 		return oldGetMultiplayerAvailability()
+	end
+
+	local oldGetCrossPlayAvailability = getCrossPlayAvailability
+
+	function getCrossPlayAvailability(showDialog)
+		if ConsoleSimulator.CROSSPLAY_AVAILABILITY ~= nil then
+			return ConsoleSimulator.CROSSPLAY_AVAILABILITY, Platform.isXbox
+		end
+
+		return oldGetCrossPlayAvailability(showDialog)
 	end
 
 	function areAchievementsAvailable()

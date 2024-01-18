@@ -168,6 +168,8 @@ function JoinGameScreen:onClose()
 		table.clear(self.temporarilyHiddenElements)
 	end
 
+	self.isEsportsMode = nil
+
 	g_messageCenter:unsubscribeAll(self)
 end
 
@@ -231,6 +233,11 @@ platformId :%s
 		end
 	elseif id == self.requestedDetailsServerId then
 		g_serverDetailScreen:setServerInfo(id, name, language, capacity, numPlayers, mapName, mapId, hasPassword, isLanServer, modTitles, modHashes, g_modManager:getAreAllModsAvailable(modHashes), allowCrossPlay, platformId)
+
+		if self.isEsportsMode then
+			g_serverDetailScreen.isEsportsMode = true
+		end
+
 		g_gui:showGui("ServerDetailScreen")
 	end
 
@@ -239,17 +246,27 @@ end
 
 function JoinGameScreen:onServerInfoDetailsFailed(reason)
 	if g_deepLinkingInfo ~= nil then
+		local oldDeepLinkingInfo = g_deepLinkingInfo
 		g_deepLinkingInfo = nil
 
 		if reason == MasterServerServerDetailsFailedReason.NO_CROSS_PLAY then
-			g_gui:showConnectionFailedDialog({
-				text = g_i18n:getText("ui_failedToConnectToGameCrossPlay"),
-				callback = g_connectionFailedDialog.onOkCallback,
-				target = g_connectionFailedDialog,
-				args = {
-					"JoinGameScreen"
-				}
-			})
+			local _, didDialogShow = getCrossPlayAvailability(true)
+
+			if didDialogShow then
+				self.serverDetailsPending = false
+				self.crossPlayDialogPendingInfo = oldDeepLinkingInfo
+
+				return
+			else
+				g_gui:showConnectionFailedDialog({
+					text = g_i18n:getText("ui_failedToConnectToGameCrossPlay"),
+					callback = g_connectionFailedDialog.onOkCallback,
+					target = g_connectionFailedDialog,
+					args = {
+						"JoinGameScreen"
+					}
+				})
+			end
 		else
 			g_gui:showConnectionFailedDialog({
 				text = g_i18n:getText("ui_failedToConnectToGame"),
@@ -808,6 +825,29 @@ end
 function JoinGameScreen:update(dt)
 	JoinGameScreen:superClass().update(self, dt)
 	Platform.verifyMultiplayerAvailabilityInMenu()
+
+	if self.crossPlayDialogPendingInfo ~= nil then
+		local mpAvailibility, _ = getCrossPlayAvailability(true)
+
+		if mpAvailibility ~= MultiplayerAvailability.AVAILABILITY_UNKNOWN then
+			if getAllowCrossPlay() then
+				g_deepLinkingInfo = self.crossPlayDialogPendingInfo
+
+				masterServerRequestServerDetailsWithPlatformServerId(g_deepLinkingInfo.platformServerId, getAllowCrossPlay())
+			else
+				g_gui:showMessageDialog({
+					visible = false
+				})
+				self.mainBox:setVisible(g_deepLinkingInfo == nil)
+				FocusManager:setFocus(self.mapSelectionElement)
+				self:getServers()
+			end
+
+			self.crossPlayDialogPendingInfo = nil
+		else
+			return
+		end
+	end
 
 	if not self.requestPending and not self.serverDetailsPending and not self.showingPasswordDialog then
 		self.refreshTimer = self.refreshTimer - dt

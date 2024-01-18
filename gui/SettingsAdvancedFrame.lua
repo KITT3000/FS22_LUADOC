@@ -6,7 +6,8 @@ SettingsAdvancedFrame.CONTROLS = {
 	"ppaaElement",
 	"dlssElement",
 	"fidelityFxSRElement",
-	"fidelityFxSR20Element",
+	"fidelityFxSR30Element",
+	"fidelityFxSR30FrameInterpolationElement",
 	"valarElement",
 	"xeSSElement",
 	"sharpnessElement",
@@ -32,6 +33,7 @@ SettingsAdvancedFrame.CONTROLS = {
 	"ssaoQualityElement",
 	"cloudQualityElement",
 	"resolutionScale3dElement",
+	"resolutionScale3dElementBox",
 	BOX_LAYOUT = "boxLayout",
 	MAIN_CONTAINER = "settingsContainer"
 }
@@ -101,7 +103,8 @@ function SettingsAdvancedFrame:updateValues()
 	self.ppaaElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.POST_PROCESS_AA))
 	self.dlssElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.DLSS))
 	self.fidelityFxSRElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR))
-	self.fidelityFxSR20Element:setState(self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR_20))
+	self.fidelityFxSR30Element:setState(self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR_30))
+	self.fidelityFxSR30FrameInterpolationElement:setIsChecked(self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR_30_FRAME_INTER_POLATION))
 	self.xeSSElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.XESS))
 	self.sharpnessElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.SHARPNESS))
 	self.shadingRateQualityElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.SHADING_RATE_QUALITY))
@@ -127,17 +130,36 @@ function SettingsAdvancedFrame:updateValues()
 	self.cloudQualityElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.CLOUD_QUALITY))
 	self.resolutionScale3dElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.RESOLUTION_SCALE_3D))
 	self.valarElement:setState(self.settingsModel:getValue(SettingsModel.SETTING.VALAR))
-	self.resolutionScale3dElement:setVisible(not GS_PLATFORM_GGP)
+
+	if self.resolutionScale3dElementBox ~= nil then
+		self.resolutionScale3dElementBox:setVisible(not GS_PLATFORM_GGP)
+	else
+		self.resolutionScale3dElement:setVisible(not GS_PLATFORM_GGP)
+	end
 
 	local isFSRActive = self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR) ~= self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF]
-	local isFSR20Active = self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR_20) ~= self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF]
+	local isFSR30Active = self.settingsModel:getValue(SettingsModel.SETTING.FIDELITYFX_SR_30) ~= self.settingsModel.fidelityFxSR30Mapping[FidelityFxSR30Quality.OFF]
 	local isDLSSActive = self.settingsModel:getValue(SettingsModel.SETTING.DLSS) ~= self.settingsModel.dlssMapping[DLSSQuality.OFF]
 	local isDLAAActive = self.settingsModel:getValue(SettingsModel.SETTING.POST_PROCESS_AA) == self.settingsModel.postProcessAntiAliasingMapping[PostProcessAntiAliasing.DLAA]
-	local isActive = isFSRActive or isFSR20Active or isDLSSActive or isDLAAActive
+	local isNativeFSR3 = self.settingsModel:getValue(SettingsModel.SETTING.POST_PROCESS_AA) == self.settingsModel.postProcessAntiAliasingMapping[PostProcessAntiAliasing.FSR3]
+	local isActive = isFSRActive or isFSR30Active or isDLSSActive or isDLAAActive or isTAAActive or isNativeFSR3
+	local isExclusiveFullscreen = getFullscreenMode() == 2
+	local supportsFrameInterpolation = getSupportsFidelityFxFrameInterpolation()
+	local frameInterpolationActive = (isNativeFSR3 or isFSR30Active) and isExclusiveFullscreen ~= true and supportsFrameInterpolation
 	local isDisabled = not isActive
 
 	if isDisabled ~= self.sharpnessElement:getIsDisabled() then
 		self.sharpnessElement:setDisabled(isDisabled)
+	end
+
+	self.fidelityFxSR30FrameInterpolationElement:setDisabled(not frameInterpolationActive)
+
+	if isExclusiveFullscreen == true then
+		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30_FRAME_INTER_POLATION, false)
+	end
+
+	if not frameInterpolationActive then
+		self.fidelityFxSR30FrameInterpolationElement:setIsChecked(false)
 	end
 
 	self:setMenuButtonInfoDirty()
@@ -207,15 +229,15 @@ function SettingsAdvancedFrame:onCreateXeSS(element)
 	element:setVisible(#texts > 1)
 end
 
-function SettingsAdvancedFrame:onCreateFidelityFxSR20(element)
-	local texts = self.settingsModel:getFidelityFxSR20Texts()
+function SettingsAdvancedFrame:onCreateFidelityFxSR30(element)
+	local texts = self.settingsModel:getFidelityFxSR30Texts()
 
 	element:setTexts(texts)
 	element:setVisible(#texts > 1)
 end
 
 function SettingsAdvancedFrame:onCreateSharpness(element)
-	local texts = self.settingsModel:getSharpnessTexts()
+	local texts = g_settingsModel:getSharpnessTexts()
 
 	element:setTexts(texts)
 	element:setVisible(#texts > 1)
@@ -309,13 +331,13 @@ end
 function SettingsAdvancedFrame:onClickMSAA(state)
 	if state ~= 1 then
 		self.settingsModel:setValue(SettingsModel.SETTING.DLSS, self.settingsModel.dlssMapping[DLSSQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
+		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30, self.settingsModel.fidelityFxSR30Mapping[FidelityFxSR30Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.VALAR, self.settingsModel.valarMapping[ValarQuality.OFF])
 
 		local postProcessState = self.settingsModel:getValue(SettingsModel.SETTING.POST_PROCESS_AA)
 
-		if postProcessState == PostProcessAntiAliasing.DLAA + 1 then
+		if postProcessState == PostProcessAntiAliasing.DLAA + 1 or postProcessState == PostProcessAntiAliasing.FSR3 + 1 then
 			self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
 		end
 	end
@@ -328,17 +350,22 @@ end
 function SettingsAdvancedFrame:onClickPPAA(state)
 	if state ~= PostProcessAntiAliasing.OFF + 1 then
 		self.settingsModel:setValue(SettingsModel.SETTING.DLSS, self.settingsModel.dlssMapping[DLSSQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
+		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30, self.settingsModel.fidelityFxSR30Mapping[FidelityFxSR30Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
+
+		if state ~= PostProcessAntiAliasing.FSR3 then
+			self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30_FRAME_INTER_POLATION, false)
+		end
 
 		if state == PostProcessAntiAliasing.DLAA + 1 then
 			self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
 			self.settingsModel:setValue(SettingsModel.SETTING.MSAA, 1)
+		elseif state == PostProcessAntiAliasing.FSR3 + 1 then
+			self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
+			self.settingsModel:setValue(SettingsModel.SETTING.MSAA, 1)
 		end
-
-		if state ~= PostProcessAntiAliasing.TAA + 1 then
-			self.settingsModel:setValue(SettingsModel.SETTING.VALAR, self.settingsModel.valarMapping[ValarQuality.OFF])
-		end
+	else
+		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30_FRAME_INTER_POLATION, false)
 	end
 
 	self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, state)
@@ -350,7 +377,7 @@ function SettingsAdvancedFrame:onClickDLSS(state)
 	if state ~= self.settingsModel.dlssMapping[DLSSQuality.OFF] then
 		self.settingsModel:setValue(SettingsModel.SETTING.MSAA, 1)
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
+		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30, self.settingsModel.fidelityFxSR30Mapping[FidelityFxSR30Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
 	end
@@ -365,7 +392,7 @@ function SettingsAdvancedFrame:onClickFidelityFxSR(state)
 		self.settingsModel:setValue(SettingsModel.SETTING.MSAA, 1)
 		self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.TAA + 1)
 		self.settingsModel:setValue(SettingsModel.SETTING.DLSS, self.settingsModel.dlssMapping[DLSSQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
+		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30, self.settingsModel.fidelityFxSR30Mapping[FidelityFxSR30Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
 	end
 
@@ -374,16 +401,24 @@ function SettingsAdvancedFrame:onClickFidelityFxSR(state)
 	self:updateValues()
 end
 
-function SettingsAdvancedFrame:onClickFidelityFxSR20(state)
-	if state ~= self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF] then
+function SettingsAdvancedFrame:onClickFidelityFxSR30(state)
+	if state ~= self.settingsModel.fidelityFxSR30Mapping[FidelityFxSR30Quality.OFF] then
 		self.settingsModel:setValue(SettingsModel.SETTING.MSAA, 1)
 		self.settingsModel:setValue(SettingsModel.SETTING.DLSS, self.settingsModel.dlssMapping[DLSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.XESS, self.settingsModel.xeSSMapping[XeSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
+	else
+		g_settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30_FRAME_INTER_POLATION, false)
 	end
 
-	self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, state)
+	self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30, state)
+	self.settingsModel:applyCustomSettings()
+	self:updateValues()
+end
+
+function SettingsAdvancedFrame:onClickFidelityFxSR30FrameInterpolation(state)
+	self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30_FRAME_INTER_POLATION, self.fidelityFxSR30FrameInterpolationElement:getIsChecked())
 	self.settingsModel:applyCustomSettings()
 	self:updateValues()
 end
@@ -403,7 +438,7 @@ function SettingsAdvancedFrame:onClickXeSS(state)
 		self.settingsModel:setValue(SettingsModel.SETTING.MSAA, 1)
 		self.settingsModel:setValue(SettingsModel.SETTING.DLSS, self.settingsModel.dlssMapping[DLSSQuality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR, self.settingsModel.fidelityFxSRMapping[FidelityFxSRQuality.OFF])
-		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_20, self.settingsModel.fidelityFxSR20Mapping[FidelityFxSR20Quality.OFF])
+		self.settingsModel:setValue(SettingsModel.SETTING.FIDELITYFX_SR_30, self.settingsModel.fidelityFxSR30Mapping[FidelityFxSR30Quality.OFF])
 		self.settingsModel:setValue(SettingsModel.SETTING.POST_PROCESS_AA, PostProcessAntiAliasing.OFF + 1)
 	end
 

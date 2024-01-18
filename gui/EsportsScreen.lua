@@ -262,23 +262,29 @@ function EsportsScreen:onControllerCallback(callbackType, callbackArguments)
 			dialogType = DialogElement.TYPE_LOADING
 		})
 	elseif callbackType == EsportsServerController.CALLBACK_TYPE.READY_FOR_SERVER_LIST then
-		g_joinGameScreen.isRequestPending = true
-
-		g_gui:changeScreen(nil, JoinGameScreen, EsportsScreen)
-		g_joinGameScreen:hideElementTemporarily("mapSelectionElement")
-
-		g_joinGameScreen.selectedMap = callbackArguments.joinGameMapId
-
-		g_joinGameScreen:hideElementTemporarily("modDlcElement")
-
-		g_joinGameScreen.onlyWithAllModsAvailable = true
-
-		g_joinGameScreen:hideElementTemporarily("detailButtonElement")
-		g_joinGameScreen.settingsBox:invalidateLayout()
-		FocusManager:setFocus(g_joinGameScreen.serverNameElement)
-
-		g_joinGameScreen.isRequestPending = false
-
-		g_joinGameScreen:getServers()
+		self:changeToJoinGameScreen(callbackArguments.joinGameMapId)
 	end
+end
+
+function EsportsScreen:changeToJoinGameScreen(selectedMap)
+	g_joinGameScreen.isRequestPending = true
+
+	g_gui:changeScreen(nil, JoinGameScreen, EsportsScreen)
+
+	g_joinGameScreen.isEsportsMode = true
+
+	g_joinGameScreen:hideElementTemporarily("mapSelectionElement")
+
+	g_joinGameScreen.selectedMap = selectedMap or ""
+
+	g_joinGameScreen:hideElementTemporarily("modDlcElement")
+
+	g_joinGameScreen.onlyWithAllModsAvailable = true
+
+	g_joinGameScreen.settingsBox:invalidateLayout()
+	FocusManager:setFocus(g_joinGameScreen.serverNameElement)
+
+	g_joinGameScreen.isRequestPending = false
+
+	g_joinGameScreen:getServers()
 end

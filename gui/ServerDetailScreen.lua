@@ -80,10 +80,7 @@ function ServerDetailScreen:setServerInfo(id, name, language, capacity, numPlaye
 	local numPlayersText = string.format("%02d/%02d", numPlayers, capacity)
 
 	self.numPlayersElement:setText(numPlayersText)
-
-	local canStart = areAllModsAvailable and numPlayers < capacity
-
-	self.startElement:setDisabled(not canStart)
+	self:updateStartButton()
 
 	self.modTitles = modTitles
 	self.modHashes = modHashes
@@ -113,8 +110,14 @@ function ServerDetailScreen:onOpen()
 	self.getModsButton:setVisible(not Platform.isStadia)
 end
 
+function ServerDetailScreen:onClose()
+	ServerDetailScreen:superClass().onClose(self)
+
+	self.isEsportsMode = nil
+end
+
 function ServerDetailScreen:onClickOk()
-	if self.areAllModsAvailable and self.numPlayers < self.capacity then
+	if self:getCanStartGame() then
 		if not self.hasPassword then
 			g_joinGameScreen:startGame("", self.serverId)
 		else
@@ -127,6 +130,43 @@ function ServerDetailScreen:onClickOk()
 			})
 		end
 	end
+end
+
+function ServerDetailScreen:onClickBack()
+	if self.isEsportsMode then
+		g_esportsScreen:changeToJoinGameScreen()
+	else
+		ServerDetailScreen:superClass().onClickBack(self)
+	end
+end
+
+function ServerDetailScreen:update(dt)
+	ServerDetailScreen:superClass().update(self, dt)
+	self:updateStartButton()
+end
+
+function ServerDetailScreen:updateStartButton()
+	local canStart = self:getCanStartGame()
+	local isDisabled = not canStart
+
+	if self.startElement:getIsDisabled() ~= isDisabled then
+		self.startElement:setDisabled(isDisabled)
+	end
+end
+
+function ServerDetailScreen:getCanStartGame()
+	local canStart = self.areAllModsAvailable and self.numPlayers < self.capacity
+
+	if self.serverId ~= nil then
+		local uniqueUserId, platformUserId, platformId = masterServerGetServerUserInfo(self.serverId)
+		local isBlocked = getIsUserBlocked(uniqueUserId, platformUserId, platformId)
+
+		if isBlocked then
+			canStart = false
+		end
+	end
+
+	return canStart
 end
 
 function ServerDetailScreen:getDownloadableModsInfo()

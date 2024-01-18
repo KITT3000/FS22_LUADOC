@@ -195,6 +195,8 @@ function AdditionalSettingsManager.createGuiElement(settingsFrame, setting, targ
 		element:setState(setting.value, false)
 	end
 
+	element:reloadFocusHandling(true)
+
 	return element
 end
 

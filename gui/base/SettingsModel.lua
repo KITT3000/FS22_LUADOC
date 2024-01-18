@@ -7,24 +7,24 @@ SettingsModel.SETTING_CLASS = {
 	SAVE_NONE = 0
 }
 SettingsModel.SETTING = {
-	VALAR = "valar",
-	RESOLUTION = "resolution",
 	SHARPNESS = "sharpness",
-	FIDELITYFX_SR_20 = "fidelityFxSR20",
-	TERRAIN_LOD_DISTANCE = "terrainLODDistance",
+	FULLSCREEN_MODE = "fullscreenMode",
+	RESOLUTION = "resolution",
 	TEXTURE_RESOLUTION = "textureResolution",
+	SHADOW_DISTANCE_QUALITY = "shadowDistanceQuality",
 	V_SYNC = "vSync",
+	FIDELITYFX_SR_30_FRAME_INTER_POLATION = "fidelityFxSR30FrameInterpolation",
 	FOLIAGE_SHADOW = "foliageShadow",
 	LANGUAGE = "language",
 	SHADOW_MAP_FILTERING = "shadowMapFiltering",
-	SHADOW_DISTANCE_QUALITY = "shadowDistanceQuality",
+	FIDELITYFX_SR_30 = "fidelityFxSR30",
 	HDR_PEAK_BRIGHTNESS = "hdrPeakBrightness",
 	RESOLUTION_SCALE = "resolutionScale",
 	SHADOW_QUALITY = "shadowQuality",
 	DLSS = "dlss",
 	TEXTURE_FILTERING = "textureFiltering",
 	MSAA = "msaa",
-	FULLSCREEN_MODE = "fullscreenMode",
+	VALAR = "valar",
 	VOLUME_MESH_TESSELLATION = "volumeMeshTessellation",
 	CONSOLE_RESOLUTION = "consoleResolution",
 	RESOLUTION_SCALE_3D = "resolutionScale3d",
@@ -33,6 +33,7 @@ SettingsModel.SETTING = {
 	FIDELITYFX_SR = "fidelityFxSR",
 	XESS = "xess",
 	LOD_DISTANCE = "lodDistance",
+	TERRAIN_LOD_DISTANCE = "terrainLODDistance",
 	FOLIAGE_DRAW_DISTANCE = "foliageDrawDistance",
 	POST_PROCESS_AA = "postProcessAntiAliasing",
 	TERRAIN_QUALITY = "terrainQuality",
@@ -147,7 +148,8 @@ function SettingsModel.new(gameSettings, settingsFileHandle, l10n, soundMixer, i
 	self.resolutionScale3dTexts = {}
 	self.dlssTexts = {}
 	self.fidelityFxSRTexts = {}
-	self.fidelityFxSR20Texts = {}
+	self.fidelityFxSR30Texts = {}
+	self.fidelityFxSR30FrameInterpolationTexts = {}
 	self.xeSSTexts = {}
 	self.sharpnessTexts = {}
 	self.postProcessAntiAliasingTexts = {}
@@ -226,8 +228,13 @@ function SettingsModel:addManagedSettings()
 	self:addPostProcessAntiAliasingSetting()
 	self:addDLSSSetting()
 	self:addFidelityFxSRSetting()
-	self:addFidelityFxSR20Setting()
-	self:addValarSetting()
+
+	if not GS_IS_MOBILE_VERSION then
+		self:addFidelityFxSR30Setting()
+		self:addFidelityFxSR30FrameInterpolationSetting()
+		self:addValarSetting()
+	end
+
 	self:addXeSSSetting()
 	self:addSharpnessSetting()
 	self:addShadingRateQualitySetting()
@@ -687,29 +694,31 @@ function SettingsModel:createControlDisplayValues()
 		end
 	end
 
-	self.fidelityFxSR20Texts = {}
-	self.fidelityFxSR20Mapping = {}
-	self.fidelityFxSR20MappingReverse = {}
+	if not GS_IS_MOBILE_VERSION then
+		self.fidelityFxSR30Texts = {}
+		self.fidelityFxSR30Mapping = {}
+		self.fidelityFxSR30MappingReverse = {}
 
-	for quality = 0, FidelityFxSR20Quality.NUM - 1 do
-		if quality == FidelityFxSR20Quality.OFF or getSupportsFidelityFxSR20Quality(quality) then
-			table.insert(self.fidelityFxSR20Texts, quality == FidelityFxSR20Quality.OFF and self.l10n:getText("ui_off") or getFidelityFxSR20QualityName(quality))
+		for quality = 0, FidelityFxSR30Quality.NUM - 1 do
+			if quality == FidelityFxSR30Quality.OFF or getSupportsFidelityFxSR30Quality(quality) then
+				table.insert(self.fidelityFxSR30Texts, quality == FidelityFxSR30Quality.OFF and g_i18n:getText("ui_off") or getFidelityFxSR30QualityName(quality))
 
-			self.fidelityFxSR20Mapping[quality] = #self.fidelityFxSR20Texts
-			self.fidelityFxSR20MappingReverse[#self.fidelityFxSR20Texts] = quality
+				self.fidelityFxSR30Mapping[quality] = #self.fidelityFxSR30Texts
+				self.fidelityFxSR30MappingReverse[#self.fidelityFxSR30Texts] = quality
+			end
 		end
-	end
 
-	self.valarTexts = {}
-	self.valarMapping = {}
-	self.valarMappingReverse = {}
+		self.valarTexts = {}
+		self.valarMapping = {}
+		self.valarMappingReverse = {}
 
-	for quality = 0, ValarQuality.NUM - 1 do
-		if quality == ValarQuality.OFF or getSupportsValarQuality(quality) then
-			table.insert(self.valarTexts, quality == ValarQuality.OFF and g_i18n:getText("ui_off") or getValarQualityName(quality))
+		for quality = 0, ValarQuality.NUM - 1 do
+			if quality == ValarQuality.OFF or getSupportsValarQuality(quality) then
+				table.insert(self.valarTexts, quality == ValarQuality.OFF and g_i18n:getText("ui_off") or getValarQualityName(quality))
 
-			self.valarMapping[quality] = #self.valarTexts
-			self.valarMappingReverse[#self.valarTexts] = quality
+				self.valarMapping[quality] = #self.valarTexts
+				self.valarMappingReverse[#self.valarTexts] = quality
+			end
 		end
 	end
 
@@ -746,6 +755,8 @@ function SettingsModel:createControlDisplayValues()
 				self.postProcessAntiAliasingToolTip = self.postProcessAntiAliasingToolTip .. "\n" .. self.l10n:getText("toolTip_ppaa_taa")
 			elseif ppaa == PostProcessAntiAliasing.DLAA then
 				self.postProcessAntiAliasingToolTip = self.postProcessAntiAliasingToolTip .. "\n" .. self.l10n:getText("toolTip_ppaa_dlaa")
+			elseif ppaa == PostProcessAntiAliasing.FSR3 then
+				self.postProcessAntiAliasingToolTip = self.postProcessAntiAliasingToolTip .. "\n" .. self.l10n:getText("toolTip_ppaa_fsr")
 			end
 		end
 	end
@@ -1294,8 +1305,12 @@ function SettingsModel:getFidelityFxSRTexts()
 	return self.fidelityFxSRTexts
 end
 
-function SettingsModel:getFidelityFxSR20Texts()
-	return self.fidelityFxSR20Texts
+function SettingsModel:getFidelityFxSR30Texts()
+	return self.fidelityFxSR30Texts
+end
+
+function SettingsModel:getFidelityFxSR30FrameInterpolationTexts()
+	return self.fidelityFxSR30FrameInterpolationTexts
 end
 
 function SettingsModel:getValarTexts()
@@ -1624,20 +1639,32 @@ function SettingsModel:addFidelityFxSRSetting()
 	self:addSetting(SettingsModel.SETTING.FIDELITYFX_SR, readValue, writeValue, true)
 end
 
-function SettingsModel:addFidelityFxSR20Setting()
+function SettingsModel:addFidelityFxSR30Setting()
 	local function readValue()
-		return self.fidelityFxSR20Mapping[getFidelityFxSR20Quality()]
+		return self.fidelityFxSR30Mapping[getFidelityFxSR30Quality()]
 	end
 
 	local function writeValue(value)
-		local newValue = self.fidelityFxSR20MappingReverse[value]
+		local newValue = self.fidelityFxSR30MappingReverse[value]
 
-		if getFidelityFxSR20Quality() ~= newValue then
-			setFidelityFxSR20Quality(newValue)
+		if getFidelityFxSR30Quality() ~= newValue then
+			setFidelityFxSR30Quality(newValue)
 		end
 	end
 
-	self:addSetting(SettingsModel.SETTING.FIDELITYFX_SR_20, readValue, writeValue, true)
+	self:addSetting(SettingsModel.SETTING.FIDELITYFX_SR_30, readValue, writeValue, true)
+end
+
+function SettingsModel:addFidelityFxSR30FrameInterpolationSetting()
+	local function readValue()
+		return getFidelityFxSR30FrameInterpolation()
+	end
+
+	local function writeValue(value)
+		setFidelityFxSR30FrameInterpolation(value)
+	end
+
+	self:addSetting(SettingsModel.SETTING.FIDELITYFX_SR_30_FRAME_INTER_POLATION, readValue, writeValue, true)
 end
 
 function SettingsModel:addValarSetting()

@@ -9,6 +9,7 @@ function TreeScenario.new(customEnvironment, mission, messageCenter)
 	self.tree = nil
 	self.treeIndex = nil
 	self.didInitialRun = false
+	self.seenTreeParts = {}
 
 	g_messageCenter:subscribe(MessageType.TREE_SHAPE_CUT, self.onTreeShapeCut, self)
 
@@ -201,6 +202,10 @@ function TreeScenario:cutTree(tree)
 end
 
 function TreeScenario:validateTreeParts()
+	if self.seenTreeParts == nil then
+		return
+	end
+
 	for i, id in ipairs(self.seenTreeParts) do
 		if not entityExists(id) then
 			table.remove(self.seenTreeParts, i)

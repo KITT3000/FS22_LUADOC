@@ -498,8 +498,8 @@ end
 
 function WheelsUtil:updateWheelNetInfo(wheel)
 	if wheel.updateWheel then
-		local x, y, z, xDrive, suspensionLength = getWheelShapePosition(wheel.node, wheel.wheelShape)
-		xDrive = xDrive + wheel.xDriveOffset
+		local x, y, z, _, suspensionLength = getWheelShapePosition(wheel.node, wheel.wheelShape)
+		local axleSpeed = getWheelShapeAxleSpeed(wheel.node, wheel.wheelShape)
 
 		if wheel.dirtyFlag ~= nil and (wheel.netInfo.x ~= x or wheel.netInfo.z ~= z) then
 			self:raiseDirtyFlags(wheel.dirtyFlag)
@@ -508,7 +508,7 @@ function WheelsUtil:updateWheelNetInfo(wheel)
 		wheel.netInfo.x = x
 		wheel.netInfo.y = y
 		wheel.netInfo.z = z
-		wheel.netInfo.xDrive = xDrive
+		wheel.netInfo.xDrive = wheel.netInfo.xDrive + MathUtil.clamp(axleSpeed, -10, 10) * g_physicsDt * 0.001
 		wheel.netInfo.suspensionLength = suspensionLength
 	else
 		wheel.updateWheel = true
