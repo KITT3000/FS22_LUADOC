@@ -553,7 +553,7 @@ end
 function SowingMachine:doCheckSpeedLimit(superFunc)
 	local spec = self.spec_sowingMachine
 
-	return superFunc(self) or self:getIsImplementChainLowered() and (not spec.needsActivation or self:getIsTurnedOn())
+	return superFunc(self) or (self.getIsImplementChainLowered == nil or self:getIsImplementChainLowered()) and (not spec.needsActivation or self:getIsTurnedOn())
 end
 
 function SowingMachine:getDirtMultiplier(superFunc)

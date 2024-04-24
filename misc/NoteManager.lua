@@ -1,3 +1,4 @@
+local localDeleteFile = deleteFile
 NoteManager = {
 	NOTES_DIRECTORY = getUserProfileAppPath() .. "notes/"
 }
@@ -153,7 +154,7 @@ end
 
 function NoteManager:cancelCurrentNote()
 	if self.lastNoteScreenshotFilepath ~= nil and fileExists(self.lastNoteScreenshotFilepath) then
-		deleteFile(self.lastNoteScreenshotFilepath)
+		localDeleteFile(self.lastNoteScreenshotFilepath)
 	end
 end
 

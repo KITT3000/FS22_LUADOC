@@ -9,6 +9,7 @@ function MotorlessHandTool.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsEnterable", MotorlessHandTool.getIsEnterable)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanToggleTurnedOn", MotorlessHandTool.getCanToggleTurnedOn)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getMotorNotAllowedWarning", MotorlessHandTool.getMotorNotAllowedWarning)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "isAttachAllowed", MotorlessHandTool.isAttachAllowed)
 end
 
 function MotorlessHandTool.registerEventListeners(vehicleType)
@@ -60,4 +61,12 @@ end
 
 function MotorlessHandTool:getMotorNotAllowedWarning(superFunc)
 	return nil
+end
+
+function MotorlessHandTool:isAttachAllowed(superFunc, farmId, attacherVehicle)
+	if self.getIsControlled ~= nil and self:getIsControlled() then
+		return false, g_i18n:getText("warning_actionNotAllowedNow")
+	end
+
+	return superFunc(self, farmId, attacherVehicle)
 end

@@ -1,6 +1,6 @@
 RolePlay = {
 	SCENARIO_STOP_MAX_IDLE_TIME = 60000,
-	SCENARIO_PAGER_MIN_INTERVAL_TIME = 300,
+	SCENARIO_PAGER_TIME_RANGE = 600,
 	SCENARIO_PAGER_MAX_INTERVAL_TIMES = {
 		600,
 		900,
@@ -164,8 +164,13 @@ function RolePlay:update(dt)
 
 	if pagerActivated and self.isServer and self.pagerTimer == nil then
 		local pagerMaxTimeKey = self.settings:getSetting("ROLEPLAY_PAGER_MAX_INTERVAL")
+		local timeRange = RolePlay.SCENARIO_PAGER_TIME_RANGE
 		local maxTime = RolePlay.SCENARIO_PAGER_MAX_INTERVAL_TIMES[pagerMaxTimeKey]
-		self.pagerTimer = Timer.createOneshot(math.random(RolePlay.SCENARIO_PAGER_MIN_INTERVAL_TIME, maxTime) * 1000, function ()
+		local duration = math.random(maxTime - timeRange, maxTime + timeRange) * 1000
+
+		Logging.devInfo("EmergencyPack: created pager event in %d minutes (real time)", duration / 1000 / 60)
+
+		self.pagerTimer = Timer.createOneshot(duration, function ()
 			self:onPagerScenario()
 		end)
 	end

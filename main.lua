@@ -11,13 +11,13 @@ GS_PROFILE_LOW = 1
 GS_PROFILE_MEDIUM = 2
 GS_PROFILE_HIGH = 3
 GS_PROFILE_VERY_HIGH = 4
-g_gameVersion = 22
-g_gameVersionNotification = "1.13.1.1"
-g_gameVersionDisplay = "1.13.1.1"
+g_gameVersion = 23
+g_gameVersionNotification = "1.14.0.0"
+g_gameVersionDisplay = "1.14.0.0"
 g_gameVersionDisplayExtra = ""
 g_isDevelopmentConsoleScriptModTesting = false
 g_minModDescVersion = 60
-g_maxModDescVersion = 79
+g_maxModDescVersion = 80
 g_language = 0
 g_languageShort = "en"
 g_languageSuffix = "_en"
@@ -292,6 +292,14 @@ function init(args)
 
 	getClipboard = nil
 	addFoliageTypFromXML = nil
+
+	function deleteFolder(path)
+		printWarning("Warning: Access to 'deleteFolder' in global environment denied!")
+	end
+
+	function deleteFile(path)
+		printWarning("Warning: Access to 'deleteFile' in global environment denied!")
+	end
 
 	Platform.init()
 
@@ -1636,6 +1644,10 @@ function registerGlobalActionEvents(inputManager)
 
 	if g_addTestCommands and Platform.isPC then
 		g_noteManager:registerInputActionEvent()
+	end
+
+	if g_kioskMode ~= nil then
+		g_kioskMode:registerGlobalInputActionEvents()
 	end
 end
 

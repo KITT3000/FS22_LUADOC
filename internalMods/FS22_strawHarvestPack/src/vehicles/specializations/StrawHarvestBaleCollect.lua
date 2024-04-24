@@ -368,7 +368,7 @@ function StrawHarvestBaleCollect.getBaleInRange(object, refNode, distance)
 	local nearestBale = nil
 
 	for bale, _ in pairs(spec.collector.balesInTrigger) do
-		if bale.mountObject == nil and entityExists(bale.nodeId) and not bale.isAttachedToBaleHook then
+		if bale.mountObject == nil and g_currentMission.itemSystem.itemsToSave[bale] ~= nil and entityExists(bale.nodeId) and not bale.isAttachedToBaleHook then
 			local maxDist = nil
 
 			if bale.isRoundbale then
@@ -408,8 +408,9 @@ function StrawHarvestBaleCollect:collectBale(index, baleObjectId, doDepart)
 			bale.isCollectedByBaleCollect = true
 			local _, _, _, visualLength = g_baleManager:getBaleInfoByXMLFilename(bale.xmlFilename, true)
 
-			bale:mount(self, place.node, 0, 0, 1.2 - visualLength / 2, 0, 0, 0)
+			bale:mountKinematic(self, place.node, 0, 0, 1.2 - visualLength / 2, 0, 0, 0)
 			bale:setReducedComponentMass(true)
+			bale:setCanBeSold(false)
 
 			if place.moveAnimationName ~= nil then
 				self:playAnimation(place.moveAnimationName, 1, nil, true)
@@ -443,9 +444,11 @@ function StrawHarvestBaleCollect:departBale(index)
 		local bale = NetworkUtil.getObject(place.baleNetworkId)
 
 		if bale ~= nil then
+			spec.collector.balesInTrigger[bale] = nil
 			bale.isCollectedByBaleCollect = false
 
-			bale:unmount()
+			bale:unmountKinematic()
+			bale:setCanBeSold(true)
 
 			spec.collectPlacesToMount[place.baleNetworkId] = nil
 			place.baleNetworkId = nil

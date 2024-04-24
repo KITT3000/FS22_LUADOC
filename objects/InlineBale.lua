@@ -1,6 +1,8 @@
 InlineBale = {
-	xmlSchema = nil
+	xmlSchema = nil,
+	AMOUNT_NUM_BITS = 11
 }
+InlineBale.MAX_NUM_BALES = 2^InlineBale.AMOUNT_NUM_BITS - 1
 
 source("dataS/scripts/events/InlineBaleOpenEvent.lua")
 InitStaticObjectClass(InlineBale, "InlineBale", ObjectIds.OBJECT_INLINE_BALE)
@@ -283,7 +285,7 @@ function InlineBale:writeUpdateStream(streamId, connection, dirtyMask)
 end
 
 function InlineBale:readBales(streamId, timestamp, connection)
-	local sum = streamReadUIntN(streamId, 6)
+	local sum = streamReadUIntN(streamId, InlineBale.AMOUNT_NUM_BITS)
 
 	for _, bale in ipairs(self.bales) do
 		if entityExists(bale.nodeId) then
@@ -313,7 +315,7 @@ function InlineBale:writeBales(streamId, connection, dirtyMask)
 		numToSend = numToSend - 1
 	end
 
-	streamWriteUIntN(streamId, numToSend, 6)
+	streamWriteUIntN(streamId, numToSend, InlineBale.AMOUNT_NUM_BITS)
 
 	for i = 1, numToSend do
 		NetworkUtil.writeNodeObject(streamId, self.bales[i])
@@ -483,6 +485,10 @@ end
 function InlineBale:getIsBaleAllowed(bale, baleType)
 	if #self.bales == 0 then
 		return true
+	end
+
+	if InlineBale.MAX_NUM_BALES <= #self.bales then
+		return false
 	end
 
 	if baleType ~= nil and self.configFileName ~= baleType.inlineBaleFilename then

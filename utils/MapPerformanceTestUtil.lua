@@ -1,3 +1,4 @@
+local localDeleteFile = deleteFile
 MapPerformanceTestUtil = {}
 local MapPerformanceTestUtil_mt = Class(MapPerformanceTestUtil)
 
@@ -98,7 +99,7 @@ function MapPerformanceTestUtil:runMapPerformanceTest(xStart, zStart, xSize, zSi
 
 			local filename = foldername .. tostring(mapName) .. getDate("_%Y_%m_%d") .. ".ppm"
 
-			deleteFile(filename)
+			localDeleteFile(filename)
 
 			self.fileId = createFile(filename, FileAccess.WRITE)
 

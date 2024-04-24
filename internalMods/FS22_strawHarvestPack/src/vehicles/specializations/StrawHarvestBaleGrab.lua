@@ -16,6 +16,7 @@ StrawHarvestBaleGrab = {
 		schema:register(XMLValueType.BOOL, "vehicle.baleGrab.units.unit(?)#isZAxisGrabUnit", "Is Z axis grab")
 		schema:register(XMLValueType.BOOL, "vehicle.baleGrab.units.unit(?)#onlyCloseIfTriggered", "Only close grab is triggered")
 		schema:register(XMLValueType.STRING, "vehicle.baleGrab.units.unit(?)#noBaleAttachedAnimationName", "No bale attached animation name")
+		schema:register(XMLValueType.INT, "vehicle.baleGrab#maxGrabUnits", "Max units for filllevel calculation")
 		schema:setXMLSpecializationType()
 	end
 }
@@ -46,6 +47,7 @@ function StrawHarvestBaleGrab.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", StrawHarvestBaleGrab)
 	SpecializationUtil.registerEventListener(vehicleType, "onDelete", StrawHarvestBaleGrab)
 	SpecializationUtil.registerEventListener(vehicleType, "onUpdate", StrawHarvestBaleGrab)
+	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", StrawHarvestBaleGrab)
 	SpecializationUtil.registerEventListener(vehicleType, "onReadStream", StrawHarvestBaleGrab)
 	SpecializationUtil.registerEventListener(vehicleType, "onWriteStream", StrawHarvestBaleGrab)
 	SpecializationUtil.registerEventListener(vehicleType, "onReadUpdateStream", StrawHarvestBaleGrab)
@@ -100,6 +102,7 @@ function StrawHarvestBaleGrab:onLoad(savegame)
 		i = i + 1
 	end
 
+	spec.maxGrabUnits = self.xmlFile:getValue("vehicle.baleGrab#maxGrabUnits", #spec.grabUnits)
 	spec.dirtyFlag = self:getNextDirtyFlag()
 end
 
@@ -176,7 +179,7 @@ function StrawHarvestBaleGrab:onUpdate(dt, isActiveForInput, isActiveForInputIgn
 		local actionGrabEvent = spec.actionEvents[InputAction.SH_GRAB_BALES]
 
 		if actionGrabEvent ~= nil then
-			g_inputBinding:setActionEventActive(actionGrabEvent.actionEventId, self:canOperateGrab())
+			g_inputBinding:setActionEventActive(actionGrabEvent.actionEventId, self:canOperateGrab() and spec.numAttachedBales < spec.maxGrabUnits)
 		end
 
 		local actionDropEvent = spec.actionEvents[InputAction.SH_DROP_BALES]
@@ -184,6 +187,26 @@ function StrawHarvestBaleGrab:onUpdate(dt, isActiveForInput, isActiveForInputIgn
 		if actionDropEvent ~= nil then
 			g_inputBinding:setActionEventActive(actionDropEvent.actionEventId, self:hasClosedGrabUnit())
 		end
+	end
+end
+
+function StrawHarvestBaleGrab:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	if not self.isClient then
+		return
+	end
+
+	local hasAttachedBales = self:hasAttachedBales()
+	local spec_foldable = self.spec_foldable
+	local actionEvent = spec_foldable.actionEvents[spec_foldable.foldInputButton]
+
+	if actionEvent ~= nil then
+		g_inputBinding:setActionEventTextVisibility(actionEvent.actionEventId, not hasAttachedBales)
+	end
+
+	actionEvent = spec_foldable.actionEvents[spec_foldable.foldMiddleInputButton]
+
+	if actionEvent ~= nil then
+		g_inputBinding:setActionEventTextVisibility(actionEvent.actionEventId, not hasAttachedBales)
 	end
 end
 
@@ -402,7 +425,7 @@ function StrawHarvestBaleGrab:getAllowDynamicMountFillLevelInfo(superFunc)
 end
 
 function StrawHarvestBaleGrab:getIsFoldAllowed(superFunc, direction, onAiTurnOn)
-	if self:hasAttachedBales() then
+	if self:hasAttachedBales() or self:getHasDynamicMountedObjects() then
 		return false
 	end
 
@@ -413,6 +436,13 @@ function StrawHarvestBaleGrab:getFillLevelInformation(superFunc, display)
 	superFunc(self, display)
 
 	local spec = self.spec_strawHarvestBaleGrab
+
+	if not self:hasAttachedBales() then
+		return
+	end
+
+	local defaultFillType = FillType.STRAW
+	local defaultCapacity = 1000
 
 	for _, baleNetworkId in ipairs(spec.attachedBales) do
 		local bale = NetworkUtil.getObject(baleNetworkId)
@@ -426,7 +456,18 @@ function StrawHarvestBaleGrab:getFillLevelInformation(superFunc, display)
 				capacity = bale:getCapacity()
 			end
 
+			defaultFillType = fillType
+			defaultCapacity = capacity
+
 			display:addFillLevel(fillType, fillLevel, capacity)
+		end
+	end
+
+	if #spec.attachedBales < spec.maxGrabUnits then
+		local numFreeBaleUnits = spec.maxGrabUnits - #spec.attachedBales
+
+		for i = 1, numFreeBaleUnits do
+			display:addFillLevel(defaultFillType, 0, defaultCapacity)
 		end
 	end
 end

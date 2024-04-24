@@ -33,6 +33,10 @@ function StartParams.getIsSet(name)
 	return params[name] ~= nil
 end
 
+function StartParams.setValue(name, value)
+	params[name] = value
+end
+
 function StartParams.printAll()
 	log("Used Start Parameters:")
 

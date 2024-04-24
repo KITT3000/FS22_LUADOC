@@ -1,3 +1,4 @@
+local localDeleteFolder = deleteFolder
 SavegameController = {}
 local SavegameController_mt = Class(SavegameController)
 
@@ -379,7 +380,7 @@ function SavegameController:backupSavegame(savegame)
 
 			for _, backup in pairs(foundBackups) do
 				if backup.toDelete then
-					deleteFolder(backupBasePath .. "/" .. backup.filename)
+					localDeleteFolder(backupBasePath .. "/" .. backup.filename)
 				end
 			end
 		end

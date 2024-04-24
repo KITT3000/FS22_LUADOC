@@ -508,7 +508,15 @@ function WheelsUtil:updateWheelNetInfo(wheel)
 		wheel.netInfo.x = x
 		wheel.netInfo.y = y
 		wheel.netInfo.z = z
-		wheel.netInfo.xDrive = wheel.netInfo.xDrive + MathUtil.clamp(axleSpeed, -10, 10) * g_physicsDt * 0.001
+		local xDrive = wheel.netInfo.xDrive + MathUtil.clamp(axleSpeed, -10, 10) * g_physicsDt * 0.001
+
+		if xDrive < 0 then
+			xDrive = xDrive + 2 * math.pi
+		elseif xDrive >= 2 * math.pi then
+			xDrive = xDrive - 2 * math.pi
+		end
+
+		wheel.netInfo.xDrive = xDrive
 		wheel.netInfo.suspensionLength = suspensionLength
 	else
 		wheel.updateWheel = true

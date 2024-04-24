@@ -33,6 +33,7 @@ function StrawHarvestBaleCollectBaler.registerEventListeners(vehicleType)
 	SpecializationUtil.registerEventListener(vehicleType, "onLoad", StrawHarvestBaleCollectBaler)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostAttachImplement", StrawHarvestBaleCollectBaler)
 	SpecializationUtil.registerEventListener(vehicleType, "onPostDetachImplement", StrawHarvestBaleCollectBaler)
+	SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", StrawHarvestBaleCollectBaler)
 end
 
 function StrawHarvestBaleCollectBaler:onLoad(savegame)
@@ -87,6 +88,25 @@ function StrawHarvestBaleCollectBaler:onLoad(savegame)
 	end
 
 	spec.attachedBaleCollect = nil
+end
+
+function StrawHarvestBaleCollectBaler:onUpdateTick(dt, isActiveForInput, isActiveForInputIgnoreSelection, isSelected)
+	if not self.isClient or not self:isBaleCollectActive() then
+		return
+	end
+
+	local spec_foldable = self.spec_foldable
+	local actionEvent = spec_foldable.actionEvents[spec_foldable.foldInputButton]
+
+	if actionEvent ~= nil then
+		g_inputBinding:setActionEventTextVisibility(actionEvent.actionEventId, false)
+	end
+
+	actionEvent = spec_foldable.actionEvents[spec_foldable.foldMiddleInputButton]
+
+	if actionEvent ~= nil then
+		g_inputBinding:setActionEventTextVisibility(actionEvent.actionEventId, false)
+	end
 end
 
 function StrawHarvestBaleCollectBaler:hasAttachedBaleCollect()

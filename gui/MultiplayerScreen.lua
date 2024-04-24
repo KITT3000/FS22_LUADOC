@@ -116,6 +116,13 @@ function MultiplayerScreen:onClickJoinGame()
 	self:onContinue()
 end
 
+function MultiplayerScreen:onClickBaleStacking()
+	g_startMissionInfo.canStart = false
+
+	self:changeScreen(EsportsScreen)
+	g_esportsScreen:setIsArenaScreen(false)
+end
+
 function MultiplayerScreen:update(dt)
 	MultiplayerScreen:superClass().update(self, dt)
 	Platform.verifyMultiplayerAvailabilityInMenu()

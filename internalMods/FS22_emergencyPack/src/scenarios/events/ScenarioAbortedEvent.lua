@@ -7,8 +7,10 @@ function ScenarioAbortedEvent.emptyNew()
 	return Event.new(ScenarioAbortedEvent_mt)
 end
 
-function ScenarioAbortedEvent.new(reason)
+function ScenarioAbortedEvent.new(farmId, scenarioId, reason)
 	local self = ScenarioAbortedEvent.emptyNew()
+	self.farmId = farmId
+	self.scenarioId = scenarioId
 	self.reason = reason
 
 	return self

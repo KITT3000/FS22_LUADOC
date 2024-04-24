@@ -301,6 +301,14 @@ function VehicleCamera:loadFromXML(xmlFile, key, savegame, cameraIndex)
 					setFovY(self.cameraNode, fovY)
 				end
 			end
+
+			local lodDebugActive = savegame.xmlFile:getValue(cameraKey .. "#lodDebugActive", false)
+
+			if lodDebugActive then
+				self:consoleCommandLODDebug()
+
+				self.loadDebugZoom = savegame.xmlFile:getValue(cameraKey .. "#lodDebugZoom", self.zoom)
+			end
 		end
 	end
 
@@ -337,6 +345,11 @@ function VehicleCamera:saveToXMLFile(xmlFile, key, usedModNames)
 	xmlFile:setValue(key .. "#translation", self.transX, self.transY, self.transZ)
 	xmlFile:setValue(key .. "#zoom", self.zoom)
 	xmlFile:setValue(key .. "#fovY", getFovY(self.cameraNode))
+
+	if self.lodDebugMode then
+		xmlFile:setValue(key .. "#lodDebugActive", true)
+		xmlFile:setValue(key .. "#lodDebugZoom", self.loadDebugZoom)
+	end
 end
 
 function VehicleCamera:delete()
@@ -353,6 +366,10 @@ function VehicleCamera:delete()
 end
 
 function VehicleCamera:zoomSmoothly(offset)
+	if self.lodDebugMode then
+		offset = offset * 10
+	end
+
 	local zoomTarget = self.zoomTarget
 
 	if self.transMin ~= nil and self.transMax ~= nil and self.transMin ~= self.transMax then
@@ -623,6 +640,8 @@ function VehicleCamera:onActivate()
 		self.touchListenerY = g_touchHandler:registerGestureListener(TouchHandler.GESTURE_AXIS_Y, VehicleCamera.touchEventLookUpDown, self)
 		self.touchListenerX = g_touchHandler:registerGestureListener(TouchHandler.GESTURE_AXIS_X, VehicleCamera.touchEventLookLeftRight, self)
 	end
+
+	addConsoleCommand("gsVehicleDebugLOD", "Enables vehicle LOD debug", "consoleCommandLODDebug", self)
 end
 
 function VehicleCamera:consoleCommandLODDebug()
@@ -677,6 +696,12 @@ function VehicleCamera:onDeactivate()
 		g_touchHandler:removeGestureListener(self.touchListenerPinch)
 		g_touchHandler:removeGestureListener(self.touchListenerY)
 		g_touchHandler:removeGestureListener(self.touchListenerX)
+	end
+
+	removeConsoleCommand("gsVehicleDebugLOD")
+
+	if self.lodDebugMode then
+		self:consoleCommandLODDebug()
 	end
 end
 
@@ -806,6 +831,22 @@ function VehicleCamera:setSeparateCameraPose()
 	end
 
 	setTranslation(self.cameraNode, self.position[1], self.position[2], self.position[3])
+
+	if self.lodDebugMode then
+		local _, _, curZoom = localToLocal(self.cameraNode, self.rotateNode, 0, 0, 0)
+		local l = math.atan(self.fovY) * self.loadDebugZoom
+		local mouseButtonLast, mouseButtonStateLast = g_inputBinding:getMouseButtonState()
+
+		if mouseButtonStateLast and mouseButtonLast == Input.MOUSE_BUTTON_MIDDLE then
+			setFovY(self.cameraNode, self.fovY)
+		else
+			setFovY(self.cameraNode, math.tan(l / math.max(curZoom, l)))
+		end
+
+		setTextAlignment(RenderText.ALIGN_CENTER)
+		renderText(0.5, 0.1, 0.04, string.format("Distance: %d", self.zoom))
+		setTextAlignment(RenderText.ALIGN_LEFT)
+	end
 end
 
 function VehicleCamera:getTiltDirectionOffset()

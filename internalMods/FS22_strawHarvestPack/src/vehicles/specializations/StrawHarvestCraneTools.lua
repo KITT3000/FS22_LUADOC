@@ -58,6 +58,7 @@ function StrawHarvestCraneTools.registerOverwrittenFunctions(vehicleType)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsDischargeNodeActive", StrawHarvestCraneTools.getIsDischargeNodeActive)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getFillLevelInformation", StrawHarvestCraneTools.getFillLevelInformation)
 	SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateExtraDependentParts", StrawHarvestCraneTools.updateExtraDependentParts)
+	SpecializationUtil.registerOverwrittenFunction(vehicleType, "getFillUnitAllowsFillType", StrawHarvestCraneTools.getFillUnitAllowsFillType)
 end
 
 function StrawHarvestCraneTools.registerEventListeners(vehicleType)
@@ -600,6 +601,17 @@ function StrawHarvestCraneTools:updateExtraDependentParts(superFunc, part, dt)
 			end
 		end
 	end
+end
+
+function StrawHarvestCraneTools:getFillUnitAllowsFillType(superFunc, fillUnitIndex, fillType)
+	local spec = self.spec_strawHarvestCraneTools
+	local tool = self:getCraneTool(spec.currentCraneToolIndex)
+
+	if tool.fillUnitIndex == nil then
+		return false
+	end
+
+	return superFunc(self, fillUnitIndex, fillType)
 end
 
 function StrawHarvestCraneTools:actionEventToggleTool(...)

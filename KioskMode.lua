@@ -1,3 +1,5 @@
+local localDeleteFile = deleteFile
+local localDeleteFolder = deleteFolder
 KioskMode = {
 	GAMEPAD_NAME = "JoyWarrior Gamepad 32",
 	BIT_TO_BUTTON_ID = {
@@ -155,6 +157,23 @@ function KioskMode:load()
 
 	InputBinding.loadModActions = Utils.overwrittenFunction(InputBinding.loadModActions, KioskMode.inj_inputBinding_loadModActions)
 	InputBinding.loadModBindingDefaults = Utils.overwrittenFunction(InputBinding.loadModBindingDefaults, KioskMode.inj_inputBinding_loadModBindingDefaults)
+	Gui.changeScreen = Utils.overwrittenFunction(Gui.changeScreen, KioskMode.inj_gui_changeScreen)
+	Gui.showGui = Utils.overwrittenFunction(Gui.showGui, KioskMode.inj_gui_showGui)
+	MessageCenter.publish = Utils.overwrittenFunction(MessageCenter.publish, KioskMode.inj_messageCenter_publish)
+
+	if Platform.isPC and StartParams.getIsSet("kioskModeResetFiles") then
+		local inputBinding = getUserProfileAppPath() .. "inputBinding.xml"
+
+		if fileExists(inputBinding) then
+			localDeleteFile(inputBinding)
+		end
+
+		local gameSettings = getUserProfileAppPath() .. "gameSettings.xml"
+
+		if fileExists(gameSettings) then
+			localDeleteFile(gameSettings)
+		end
+	end
 
 	return true
 end
@@ -333,6 +352,12 @@ function KioskMode:init()
 	end
 
 	self:loadProfileConfig(self.defaultConfigFile)
+
+	if GS_PLATFORM_PC and not g_gameSettings:getValue("gamepadEnabledSetByUser") then
+		g_gameSettings:setValue("gamepadEnabledSetByUser", true)
+		g_gameSettings:setValue("isGamepadEnabled", true)
+		g_gameSettings:saveToXMLFile(g_savegameXML)
+	end
 end
 
 function KioskMode:initProfileSelectorGamepad()
@@ -414,6 +439,35 @@ function KioskMode:loadProfileConfig(configFileName)
 	self.settings.startMoney = xmlFile:getInt("config.startMoney", 1000000)
 	self.settings.skipMainMenu = xmlFile:getBool("config.skipMainMenu", false)
 	self.settings.startVehicleIndex = xmlFile:getInt("config.startVehicleIndex", nil)
+	self.settings.bscSPAutoStart = xmlFile:getBool("config.bsc#autoStartSP", false)
+
+	if xmlFile:getBool("config.bsc#disableQuit", false) then
+		StartParams.setValue("baleStackingDisableQuit", true)
+	end
+
+	if xmlFile:getBool("config.bsc#disableAdmin", false) then
+		StartParams.setValue("baleStackingDisableAdmin", true)
+	end
+
+	if xmlFile:getBool("config.bsc#openMenuAfterGame", false) then
+		StartParams.setValue("baleStackingOpenMenuAfterGame", true)
+	end
+
+	if xmlFile:getBool("config.bsc#disableMenuDuringGame", false) then
+		StartParams.setValue("baleStackingDisableMenuDuringGame", true)
+	end
+
+	if xmlFile:getBool("config.bsc#displayLogos", false) then
+		StartParams.setValue("baleStackingDisplayLogos", true)
+	end
+
+	if xmlFile:getBool("config.bsc#resetUserSettings", true) then
+		StartParams.setValue("baleStackingResetUserSettingsAfterGame", true)
+	end
+
+	if not xmlFile:getBool("config.bsc#saveUserSettings", true) then
+		StartParams.setValue("baleStackingDoNotSaveUserSettings", true)
+	end
 
 	if KioskMode.TIMESCALE_BACKUP == nil then
 		KioskMode.TIMESCALE_BACKUP = Platform.gameplay.timeScaleSettings
@@ -690,7 +744,7 @@ function KioskMode:setSavegame(path)
 		else
 			local savegamePath = getUserProfileAppPath() .. "savegame1"
 
-			deleteFolder(savegamePath)
+			localDeleteFolder(savegamePath)
 			createFolder(savegamePath)
 
 			local newFiles = Files.new(path).files
@@ -706,7 +760,7 @@ function KioskMode:setSavegame(path)
 	elseif not GS_IS_CONSOLE_VERSION then
 		local savegamePath = getUserProfileAppPath() .. "savegame1"
 
-		deleteFolder(savegamePath)
+		localDeleteFolder(savegamePath)
 	end
 end
 
@@ -718,6 +772,7 @@ function KioskMode:setupMainMenu()
 	local mainMenuEnabled = self:getSetting("mainMenuEnabled")
 	local areButtonsDisabled = not mainMenuEnabled
 
+	g_mainScreen.careerButton:setDisabled(self:getSetting("bscSPAutoStart"))
 	g_mainScreen.multiplayerButton:setDisabled(areButtonsDisabled)
 	g_mainScreen.downloadModsButton:setDisabled(areButtonsDisabled)
 	g_mainScreen.achievementsButton:setDisabled(areButtonsDisabled)
@@ -796,6 +851,20 @@ function KioskMode:nextVideo()
 	self.videoOverlay = createVideoOverlay(self.settings.videos[self.currentVideoIndex], false, 1)
 
 	playVideoOverlay(self.videoOverlay)
+end
+
+function KioskMode:onResetFiles()
+	if GS_PLATFORM_PC then
+		doRestart(false, "-kioskModeResetFiles")
+	end
+end
+
+function KioskMode:registerGlobalInputActionEvents()
+	if GS_PLATFORM_PC then
+		local _, eventId = g_inputBinding:registerActionEvent(InputAction.KIOSK_MODE_RESET_FILES, g_kioskMode, g_kioskMode.onResetFiles, false, true, false, true)
+
+		g_inputBinding:setActionEventTextVisibility(eventId, false)
+	end
 end
 
 function KioskMode.inj_mapManager_addMapItem(mapManager, superFunc, ...)
@@ -1025,7 +1094,28 @@ function KioskMode.inj_specializationManager_addSpecialization(specializationMan
 	if specializationManager == g_specializationManager then
 		if className == "AIJobVehicle" then
 			if not g_kioskMode:getSetting("aiEnabled") then
-				function AIJobVehicle.onRegisterActionEvents()
+				local old = AIJobVehicle.onRegisterActionEvents
+
+				function AIJobVehicle.onRegisterActionEvents(vehicle, isActiveForInput, isActiveForInputIgnoreSelection)
+					if vehicle.isClient then
+						local spec = vehicle.spec_aiJobVehicle
+
+						vehicle:clearActionEventsTable(spec.actionEvents)
+					end
+
+					if not g_kioskMode:getSetting("aiEnabled") then
+						return
+					end
+
+					if not g_kioskMode:getSetting("ingameMenuEnabled") then
+						local startableJob = vehicle:getStartableAIJob()
+
+						if startableJob == nil then
+							return
+						end
+					end
+
+					old(vehicle, isActiveForInput, isActiveForInputIgnoreSelection)
 				end
 			end
 		elseif className == "Drivable" and g_kioskMode:getSetting("extendedDrivingHelp") then
@@ -1177,7 +1267,13 @@ end
 
 function KioskMode.inj_mainScreen_update(screen, superFunc, dt)
 	if g_kioskMode:getSetting("skipMainMenu") then
-		screen:onCareerClick()
+		if g_kioskMode:getSetting("bscSPAutoStart") then
+			screen:onMultiplayerClick()
+			g_multiplayerScreen:onClickBaleStacking()
+			g_esportsScreen:onClickStartTraining()
+		else
+			screen:onCareerClick()
+		end
 
 		return
 	end
@@ -1245,4 +1341,28 @@ function KioskMode.inj_mainScreen_onOpen(screen)
 	end
 
 	g_kioskMode:openMainMenu()
+end
+
+function KioskMode.inj_gui_changeScreen(gui, superFunc, sourceScreen, screenClass, ...)
+	if not g_kioskMode:getSetting("ingameMenuEnabled") and screenClass == InGameMenu then
+		return
+	end
+
+	return superFunc(gui, sourceScreen, screenClass, ...)
+end
+
+function KioskMode.inj_gui_showGui(gui, superFunc, screenName, ...)
+	if not g_kioskMode:getSetting("ingameMenuEnabled") and screenName == "InGameMenu" then
+		return
+	end
+
+	return superFunc(gui, screenName, ...)
+end
+
+function KioskMode.inj_messageCenter_publish(messageCenter, superFunc, msg, ...)
+	if not g_kioskMode:getSetting("ingameMenuEnabled") and msg == MessageType.GUI_INGAME_OPEN_AI_SCREEN then
+		return
+	end
+
+	return superFunc(messageCenter, msg, ...)
 end

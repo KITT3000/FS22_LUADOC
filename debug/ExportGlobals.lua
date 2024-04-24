@@ -1,3 +1,4 @@
+local localDeleteFile = deleteFile
 local exportFilenameRaw = "exportedGlobals.txt"
 local exportFilenameStrings = "exportedGlobalsStrings.txt"
 local maxLineLength = 180
@@ -19,11 +20,11 @@ print(#engineGlobals .. " globals found")
 print("saving to " .. exportFilenameRaw)
 
 if fileExists(exportFilenameRaw) then
-	deleteFile(exportFilenameRaw)
+	localDeleteFile(exportFilenameRaw)
 end
 
 if fileExists(exportFilenameStrings) then
-	deleteFile(exportFilenameStrings)
+	localDeleteFile(exportFilenameStrings)
 end
 
 local fileRaw = createFile(exportFilenameRaw, FileAccess.WRITE)

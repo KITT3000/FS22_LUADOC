@@ -1,3 +1,5 @@
+local localDeleteFolder = deleteFolder
+local localDeleteFile = deleteFile
 g_uniqueDlcNamePrefix = "pdlc_"
 g_modEventListeners = {}
 g_dlcsDirectories = {}
@@ -14,7 +16,7 @@ local internalMods = {
 		name = "agcoIdealSimulator"
 	},
 	{
-		version = "1.0.3.0",
+		version = "1.0.4.0",
 		name = "baleStacking"
 	},
 	{
@@ -689,8 +691,8 @@ function loadModDesc(modName, modDir, modFile, modFileHash, absBaseFilename, isD
 	modEnv.loadMods = ""
 	modEnv.reloadDlcsAndMods = ""
 	modEnv.verifyDlcs = ""
-	modEnv.deleteFile = protectedDelete(deleteFile)
-	modEnv.deleteFolder = protectedDelete(deleteFolder)
+	modEnv.deleteFile = protectedDelete(localDeleteFile)
+	modEnv.deleteFolder = protectedDelete(localDeleteFolder)
 	modEnv.isAbsolutPath = isAbsolutPath
 	modEnv.g_isDevelopmentVersion = g_isDevelopmentVersion
 	modEnv.GS_IS_CONSOLE_VERSION = GS_IS_CONSOLE_VERSION
